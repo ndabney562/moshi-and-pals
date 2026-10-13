@@ -167,10 +167,11 @@ try {
     const scene = window.game.scene.getScene('Game');
     scene.sprayer.reserve = 0;
     scene.addCopays(100 - scene.copays);
-    scene.player.setPosition(scene.cart.x + scene.cart.w / 2, scene.cart.y - 50);
+    const cart = scene.carts[0];
+    scene.player.setPosition(cart.x + cart.w / 2, cart.y - 50);
   });
-  await page.waitForFunction(() => window.game.scene.getScene('Hud').restockButton.visible, null, { timeout: 3000 });
-  const restockAt = await buttonAt('restockButton');
+  await page.waitForFunction(() => window.game.scene.getScene('Hud').interactButton.visible, null, { timeout: 3000 });
+  const restockAt = await buttonAt('interactButton');
   await page.touchscreen.tap(restockAt.x, restockAt.y);
   await page.waitForTimeout(200);
   const restocked = await page.evaluate(() => {
@@ -178,6 +179,34 @@ try {
     return { reserve: scene.sprayer.reserve, copays: scene.copays };
   });
   check(restocked.reserve === 480 && restocked.copays === 60, `supply cart restocks the jug for Copays (${JSON.stringify(restocked)})`);
+
+  // Rooms: walk up to the bathroom door and buy it open with Copays
+  await page.evaluate(() => {
+    const scene = window.game.scene.getScene('Game');
+    scene.addCopays(250 - scene.copays);
+    const door = scene.lockedDoors.find((d) => d.o.opens === 'bathroom').o;
+    scene.player.setPosition(door.x + door.w + 40, door.y + door.h / 2);
+  });
+  await page.waitForFunction(() => window.game.scene.getScene('Hud').interactButton.label?.text?.startsWith('OPEN'), null, { timeout: 3000 }).catch(() => {});
+  const doorLabel = await page.evaluate(() => window.game.scene.getScene('Hud').interactButton.label?.text);
+  const openAt = await buttonAt('interactButton');
+  await page.touchscreen.tap(openAt.x, openAt.y);
+  await page.waitForTimeout(200);
+  const opened = await page.evaluate(() => {
+    const scene = window.game.scene.getScene('Game');
+    return {
+      unlocked: scene.unlocked.has('bathroom'),
+      doorGone: !scene.lockedDoors.some((d) => d.o.opens === 'bathroom'),
+      copays: scene.copays,
+      room: window.game.scene.getScene('Hud').roomText.text,
+    };
+  });
+  check(opened.unlocked && opened.doorGone && opened.copays === 50, `USE (${JSON.stringify(doorLabel)}) buys the bathroom door open (${JSON.stringify(opened)})`);
+  check(opened.room.includes('WAITING ROOM'), `HUD shows which room Eugene is in (${opened.room})`);
+  await page.evaluate(() => window.game.scene.getScene('Game').player.setPosition(300, 1650));
+  await page.waitForFunction(() => window.game.scene.getScene('Hud').roomText.text.includes('BATHROOM'), null, { timeout: 3000 }).catch(() => {});
+  check((await page.evaluate(() => window.game.scene.getScene('Hud').roomText.text)).includes('BATHROOM'), 'walking into the bathroom updates the room label');
+  await page.screenshot({ path: 'smoke-rooms.png' });
 
   // Patients: one walks in, commits a health code violation, and gets sprayed into compliance
   const violation = await page.evaluate(() => {
@@ -211,9 +240,9 @@ try {
     const scene = window.game.scene.getScene('Game');
     for (const g of scene.germs.getChildren()) if (g.active) g.kill();
     scene.player.hp = 100;
-    scene.player.setPosition(640, 460);
+    scene.player.setPosition(1240, 1460);
     scene.spawnGerm('diamond', { hpMult: 1, speedMult: 1 });
-    scene.boss.germ.setPosition(860, 460);
+    scene.boss.germ.setPosition(1460, 1460);
     scene.boss.nextMeetingAt = 0;
   });
   await page.waitForTimeout(1000);

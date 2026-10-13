@@ -22,6 +22,8 @@ export const BALANCE = {
   spawning: {
     /** Germs never spawn closer than this to Eugene. */
     minSpawnDistance: 380,
+    /** ...and prefer spawn points within this distance, so germs in far-off rooms don't take forever to arrive. */
+    maxSpawnDistance: 1600,
   },
   germs: {
     /** How often germ paths are recalculated around furniture. */
@@ -104,8 +106,8 @@ export const BALANCE = {
     restockCost: 40,
     /** Paid for spraying a health code violator into compliance. */
     cleanPatientCopays: 10,
-    /** How close Eugene must be to use the supply cart. */
-    stationRange: 120,
+    /** How close Eugene must be to a supply cart or locked door (from its edge) to use it. Door prices live in data/rooms.ts. */
+    interactRange: 80,
   },
   /** SINUS PURGE: Eugene's signature honk. A shockwave that damages and blasts germs away. */
   purge: {

@@ -4,7 +4,7 @@ Values live in `src/config/balance.ts` and `src/config/controls.ts`.
 
 | Value | Current | Notes |
 |---|---|---|
-| Eugene move speed | 260 px/s | Room is 1800×1100; crossing it takes ~7 s |
+| Eugene move speed | 260 px/s | Waiting room is 1800×1100 (~7 s across); the whole building is 3800×2100 |
 | Joystick radius | 80 px | Logical pixels (screen is 720 tall) |
 | Joystick dead zone | 15% | |
 | Aim threshold | 30% | Right stick must be pushed this far to count as aiming |
@@ -15,6 +15,9 @@ Values live in `src/config/balance.ts` and `src/config/controls.ts`.
 | Refill time | 1.1 s | Pours from the jug |
 | Jug (reserve) | 480 mL (4 refills) | Restock at SUPPLIES cart for $40 Copays |
 | Copays per kill | Basic 5, Sprinter 8, Write-Up 2, Diamond 100 | Cleaning a patient: 10 |
+| Door prices | Bathroom 200, Exam Rooms 350, Lab 500, Break Room 600, X-Ray 750 | In `src/data/rooms.ts`; round 1 earns ~$50 |
+| USE range | 80 px from a cart or door's edge | |
+| Germ spawn distance | at least 380 px from Eugene, preferably within 1600 px | Only from rooms that are open |
 | Sinus Purge | 240 px, 35 damage, big knockback, 0.6 s stun | 18 s cooldown; ready at start |
 | Basic Germ HP / speed | 40 / 95 px/s | Was 75; Noah: round 1 too easy |
 | Eugene HP / invulnerability | 100 / 0.7 s | |
