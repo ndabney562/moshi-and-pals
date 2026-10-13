@@ -5,9 +5,9 @@
  */
 export const DISPLAY = {
   logicalHeight: 720,
-  /** Narrowest/widest aspect ratios we lay out for (iPad-ish to modern iPhone). */
+  /** Narrowest/widest aspect ratios we lay out for (iPad-ish to an iPhone in Safari with its toolbars showing). */
   minAspect: 4 / 3,
-  maxAspect: 2.4,
+  maxAspect: 3.2,
   backgroundColor: '#0d2b2e',
   showFps: true,
 };
