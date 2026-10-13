@@ -21,6 +21,8 @@ export interface RoomLayout {
   width: number;
   height: number;
   playerSpawn: { x: number; y: number };
+  /** Where germs enter the room (just inside doors and vents). */
+  germSpawns: { x: number; y: number }[];
   obstacles: Obstacle[];
 }
 
@@ -39,6 +41,13 @@ export const WAITING_ROOM: RoomLayout = {
   width: W,
   height: H,
   playerSpawn: { x: 900, y: 880 },
+  germSpawns: [
+    { x: 440, y: 90 },    // exam rooms door
+    { x: 90, y: 580 },    // bathroom door
+    { x: W - 90, y: 700 }, // hallway door
+    { x: 900, y: H - 90 }, // front entrance
+    { x: 1460, y: 300 },  // behind the front desk
+  ],
   obstacles: [
     // Outer walls
     { kind: 'wall', x: 0, y: 0, w: W, h: T },

@@ -11,6 +11,10 @@ export interface InputState {
   aimX: number;
   aimY: number;
   aiming: boolean;
+  /** Spraying this frame (right stick pushed, or mouse held on desktop). */
+  firing: boolean;
+  /** Set by the Refill button or R key; the game clears it once handled. */
+  refillRequested: boolean;
   /** Desktop testing: last mouse position on screen, when a mouse is in use. */
   mouseX: number;
   mouseY: number;
@@ -20,5 +24,6 @@ export interface InputState {
 export const inputState: InputState = {
   moveX: 0, moveY: 0,
   aimX: 1, aimY: 0, aiming: false,
+  firing: false, refillRequested: false,
   mouseX: 0, mouseY: 0, mouseActive: false,
 };
