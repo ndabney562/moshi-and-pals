@@ -331,6 +331,38 @@ try {
   check(end.x > start.x + 20 && end.y < start.y - 20, `Eugene moved up-right (${start.x | 0},${start.y | 0}) -> (${end.x | 0},${end.y | 0})`);
   check(Math.abs(end.rotation - -Math.PI / 4) < 0.3, `Eugene faces where he walks (up-right), rotation ${end.rotation.toFixed(2)}`);
   check(errors.length === 0, `no console errors${errors.length ? ': ' + errors.join(' | ') : ''}`);
+
+  // Phone held upright: the game still plays in landscape, turned sideways, and touches land where they look
+  const tall = await browser.newContext({ viewport: { width: 393, height: 852 }, deviceScaleFactor: 3, isMobile: true, hasTouch: true });
+  const pp = await tall.newPage();
+  const tallErrors = [];
+  pp.on('pageerror', (e) => tallErrors.push(e.message));
+  await pp.goto(url);
+  await pp.waitForFunction(() => window.game?.scene.isActive('Title'));
+  await pp.touchscreen.tap(196, 426);
+  await pp.waitForFunction(() => window.game.scene.isActive('Hud'), null, { timeout: 5000 });
+  await pp.waitForTimeout(400);
+  const shape = await pp.evaluate(() => {
+    const r = window.game.canvas.getBoundingClientRect();
+    return { w: window.game.scale.width, h: window.game.scale.height, rw: Math.round(r.width), rh: Math.round(r.height) };
+  });
+  check(shape.w > shape.h && shape.rw >= 380 && shape.rh >= 800, `portrait phone gets a sideways landscape game filling the screen (${JSON.stringify(shape)})`);
+  // Turned 90° clockwise: game (x, y) sits at screen (right - y, top + x)
+  const tallPurgeAt = await pp.evaluate(() => {
+    const b = window.game.scene.getScene('Hud').purgeButton;
+    const r = window.game.canvas.getBoundingClientRect();
+    const k = r.height / window.game.scale.width;
+    return { x: r.right - b.y * k, y: r.top + b.x * k };
+  });
+  await pp.touchscreen.tap(tallPurgeAt.x, tallPurgeAt.y);
+  await pp.waitForTimeout(300);
+  const purgedTall = await pp.evaluate(() => {
+    const scene = window.game.scene.getScene('Game');
+    return scene.purgeReadyAt > scene.time.now;
+  });
+  await pp.screenshot({ path: 'smoke-portrait.png' });
+  check(purgedTall, 'tapping SINUS PURGE works while the phone is upright');
+  check(tallErrors.length === 0, `no errors in portrait${tallErrors.length ? ': ' + tallErrors.join(' | ') : ''}`);
 } catch (e) {
   check(false, String(e) + (errors.length ? " | errors: " + errors.join(" | ") : ""));
 } finally {

@@ -1,4 +1,5 @@
 import { DISPLAY } from '../config/display';
+import { isPortrait, rotateInsets } from './orientation';
 
 export interface Insets { top: number; right: number; bottom: number; left: number; }
 
@@ -10,12 +11,13 @@ export function readSafeArea(): Insets {
   const probe = document.getElementById('safe-area-probe');
   if (!probe) return { top: 0, right: 0, bottom: 0, left: 0 };
   const style = getComputedStyle(probe);
-  const toGame = DISPLAY.logicalHeight / window.innerHeight;
+  // The game's height runs across the screen's width when it is turned sideways
+  const toGame = DISPLAY.logicalHeight / (isPortrait() ? window.innerWidth : window.innerHeight);
   const px = (v: string) => (parseFloat(v) || 0) * toGame;
-  return {
+  return rotateInsets({
     top: px(style.paddingTop),
     right: px(style.paddingRight),
     bottom: px(style.paddingBottom),
     left: px(style.paddingLeft),
-  };
+  });
 }

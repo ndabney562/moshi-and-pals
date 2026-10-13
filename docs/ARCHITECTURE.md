@@ -38,3 +38,4 @@ Systems will announce gameplay events on `core/events.ts` (event bus); dialogue,
 
 ## Testing
 `npm run build && npm run smoke` serves the build, opens it in a phone-sized touch browser, drives both sticks, checks Eugene moves and faces the aim direction, waits for germs, sprays them until some die, taps Refill, and fails on console errors. CI runs it on every pull request.
+- Orientation: `core/orientation.ts` keeps the game landscape. On a touch screen taller than wide it rotates `#game` 90° with CSS, and patches Phaser's parent measuring, centering and pointer mapping to match; `safeArea.ts` rotates the insets too.
