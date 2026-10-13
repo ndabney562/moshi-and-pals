@@ -1,6 +1,6 @@
 /**
- * Everything Diamond says. Noah's direction: a grouchy practice manager who
- * has it out for Moshi. The joke is clinic bureaucracy: write-ups, policy,
+ * Everything Diamond says. Noah's direction: a grouchy practice manager from
+ * Trinidad who has it out for Moshi. The joke is clinic bureaucracy: write-ups, policy,
  * mandatory meetings. Add lines freely; one is picked at random.
  */
 export const DIAMOND_LINES = {
@@ -17,6 +17,8 @@ export const DIAMOND_LINES = {
     'That is coming out of your paycheck.',
     'We are short-staffed and you are SPRAYING?',
     'Did you clock in? I bet you did not clock in.',
+    'Back home in Trinidad, doctors show up ON TIME.',
+    'I left the sunshine for THIS waiting room?!',
   ],
   meetingWindup: [
     'We need to talk.',

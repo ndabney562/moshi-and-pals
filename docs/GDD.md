@@ -27,7 +27,7 @@
 Stocky, thinning grey hair, no facial hair, an oddly shaped mouth, glasses. White lab coat over a dark scrub top. Wears a dark patterned scrub cap at work (possible outfit later). Reference photo shared in the project thread (not stored in this public repo).
 
 ## Bosses
-- **Diamond the Practice Manager** (Noah's pick; replaced the earlier Babushka Bacillus idea): a grouchy manager germ with a bun, a pencil and a clipboard who has it out for Moshi. She grumbles in speech bubbles ("Your charts are three days late!"). Moves: Mandatory Meeting (ties Eugene in red tape and drags him to the EXIT; spray to break free), Write-Ups (flings angry pink slips when hurt), Policy Tantrum (clipboard-slam knockback at low health).
+- **Diamond the Practice Manager** (Noah's pick; replaced the earlier Babushka Bacillus idea): a grouchy practice manager from Trinidad who has it out for Moshi: a big, heavy, slimy germ monster with a bun, a pencil and a clipboard. Fictional. She grumbles in speech bubbles ("Your charts are three days late!"). Moves: Mandatory Meeting (ties Eugene in red tape and drags him to the EXIT; spray to break free), Write-Ups (flings angry pink slips when hurt), Policy Tantrum (clipboard-slam knockback at low health).
 
 ## Not yet decided (with Noah)
 Currency name, clinic name, Eugene's final look, weapon upgrade path, bosses, power-up names.

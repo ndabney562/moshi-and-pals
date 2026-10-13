@@ -182,7 +182,8 @@ try {
     for (const g of scene.germs.getChildren()) if (g.active && g.def.id === 'writeUp') g.kill();
     scene.player.hp = 100;
   });
-  await hitBoss(260);
+  // Down to 30% health, below the tantrum threshold
+  await hitBoss(await page.evaluate(() => { const b = window.game.scene.getScene('Game').boss.germ; return b.hp - b.maxHp * 0.3; }));
   await page.waitForFunction(() => window.game.scene.getScene('Game').boss.mode === 'tantrumWindup', null, { timeout: 3000 });
   await page.waitForFunction(() => window.game.scene.getScene('Game').boss.nextTantrumAt > 0, null, { timeout: 3000 });
   check(true, 'Policy Tantrum winds up and stomps at low health');

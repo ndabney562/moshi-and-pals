@@ -98,6 +98,10 @@ export class BootScene extends Phaser.Scene {
       this.makePaperGerm(def);
       return;
     }
+    if (def.look === 'manager') {
+      this.makeManagerMonster(def);
+      return;
+    }
     const g = this.add.graphics();
     if (def.shape === 'spiky') {
       // Virus spikes: little triangles all the way round
@@ -126,19 +130,12 @@ export class BootScene extends Phaser.Scene {
     g.lineStyle(3, def.outline).strokeCircle(c, c, r);
     g.fillStyle(0xffffff, 0.25).fillCircle(c - r * 0.35, c - r * 0.35, r * 0.3);
     g.fillStyle(def.outline, 0.35).fillCircle(c + r * 0.4, c + r * 0.45, r * 0.15).fillCircle(c - r * 0.45, c + r * 0.3, r * 0.1);
-    if (def.look === 'manager') this.drawManagerHair(g, c, r);
     // Eyes facing right (+x), the direction it moves
     for (const dy of [-0.32, 0.32]) {
       g.fillStyle(0xffffff).fillCircle(c + r * 0.38, c + r * dy, r * 0.27);
       g.fillStyle(0x111111).fillCircle(c + r * 0.48, c + r * dy, r * 0.13);
     }
-    // Grin (bosses scowl; Diamond scowls harder and carries a clipboard)
-    if (def.look === 'manager') {
-      this.drawManagerFace(g, c, r, def.outline);
-      g.generateTexture(`germ-${def.id}`, size, size);
-      g.destroy();
-      return;
-    }
+    // Grin (bosses scowl)
     if (def.boss) {
       g.lineStyle(4, def.outline).lineBetween(c + r * 0.15, c - r * 0.55, c + r * 0.5, c - r * 0.2)
         .lineBetween(c + r * 0.15, c + r * 0.55, c + r * 0.5, c + r * 0.2);
@@ -149,35 +146,78 @@ export class BootScene extends Phaser.Scene {
     g.destroy();
   }
 
-  /** A tight bun and a severe hair cap over the back of the head. */
-  private drawManagerHair(g: Phaser.GameObjects.Graphics, c: number, r: number): void {
-    const back = Math.PI;
-    const hair = 0x3b2417;
-    g.fillStyle(hair).slice(c, c, r + 1, back - 1.3, back + 1.3, false).fillPath();
-    g.fillStyle(hair).fillCircle(c - r * 0.82, c, r * 0.3);
-    g.lineStyle(2, 0x6b4a33).strokeCircle(c - r * 0.82, c, r * 0.2);
-    // A pencil stuck in the bun
-    g.lineStyle(4, 0xffc93c).lineBetween(c - r * 1.05, c - r * 0.35, c - r * 0.6, c + r * 0.3);
-  }
+  /**
+   * Diamond: a big, slimy germ monster in the style of cold-medicine ad
+   * creatures. Stubby arms (one holding her clipboard), a bun with a pencil,
+   * furious eyebrows, a toothy scowl, and a lanyard with a Trinidad and Tobago
+   * flag pin. Faces right (+x) like every germ.
+   */
+  private makeManagerMonster(def: GermDef): void {
+    const r = def.radius;
+    const size = (r + 14) * 2;
+    const c = size / 2;
+    const ink = def.outline;
+    const g = this.add.graphics();
 
-  /** Furious eyebrows, a flat frown, reading glasses on a chain, and a clipboard. */
-  private drawManagerFace(g: Phaser.GameObjects.Graphics, c: number, r: number, outline: number): void {
-    // Eyebrows slant down toward the middle: maximum disapproval
-    g.lineStyle(r / 8, 0x3b2417);
-    g.lineBetween(c + r * 0.15, c - r * 0.62, c + r * 0.62, c - r * 0.22);
-    g.lineBetween(c + r * 0.15, c + r * 0.62, c + r * 0.62, c + r * 0.22);
-    // Thin, unimpressed mouth
-    g.lineStyle(r / 12, outline).lineBetween(c + r * 0.82, c - r * 0.22, c + r * 0.82, c + r * 0.22);
-    g.lineBetween(c + r * 0.82, c - r * 0.22, c + r * 0.74, c - r * 0.3).lineBetween(c + r * 0.82, c + r * 0.22, c + r * 0.74, c + r * 0.3);
-    // Glasses chain
-    g.lineStyle(2, 0xffd166).beginPath().arc(c, c, r * 0.72, -0.9, 0.9, false).strokePath();
-    // Clipboard held out to one side
-    const bx = c + r * 0.05, by = c + r * 0.62;
-    g.fillStyle(0x8b5a2b).fillRoundedRect(bx, by, r * 0.62, r * 0.42, 3);
-    g.fillStyle(0xffffff).fillRect(bx + r * 0.06, by + r * 0.06, r * 0.5, r * 0.3);
-    g.lineStyle(2, 0x999999).lineBetween(bx + r * 0.12, by + r * 0.14, bx + r * 0.48, by + r * 0.14)
-      .lineBetween(bx + r * 0.12, by + r * 0.24, bx + r * 0.4, by + r * 0.24);
-    g.fillStyle(0xc0c0c0).fillRect(bx + r * 0.22, by - 2, r * 0.18, 5);
+    // Stubby arms out to the sides, reaching forward
+    g.fillStyle(def.color).fillEllipse(c + r * 0.35, c - r * 0.95, r * 0.7, r * 0.42).fillEllipse(c + r * 0.35, c + r * 0.95, r * 0.7, r * 0.42);
+    g.lineStyle(3, ink).strokeEllipse(c + r * 0.35, c - r * 0.95, r * 0.7, r * 0.42).strokeEllipse(c + r * 0.35, c + r * 0.95, r * 0.7, r * 0.42);
+
+    // Lumpy, slimy body: a ring of bumps under the main blob
+    g.fillStyle(def.color);
+    for (let i = 0; i < 14; i++) {
+      const a = (i / 14) * Math.PI * 2;
+      g.fillCircle(c + Math.cos(a) * r * 0.86, c + Math.sin(a) * r * 0.86, r * 0.26);
+    }
+    g.fillCircle(c, c, r * 0.95);
+    g.lineStyle(3, ink);
+    for (let i = 0; i < 14; i++) {
+      const a = (i / 14) * Math.PI * 2;
+      g.beginPath().arc(c + Math.cos(a) * r * 0.86, c + Math.sin(a) * r * 0.86, r * 0.26, a - 1.1, a + 1.1, false).strokePath();
+    }
+    // Slime shine and drips
+    g.fillStyle(0xffffff, 0.3).fillEllipse(c - r * 0.3, c - r * 0.35, r * 0.5, r * 0.3);
+    g.fillStyle(0x000000, 0.12).fillCircle(c - r * 0.5, c + r * 0.4, r * 0.14).fillCircle(c - r * 0.1, c + r * 0.6, r * 0.09);
+
+    // Hair cap and bun on the back of the head, pencil through the bun
+    const hair = 0x2a1a12;
+    g.fillStyle(hair).slice(c, c, r * 0.8, Math.PI - 1.1, Math.PI + 1.1, false).fillPath();
+    g.fillStyle(hair).fillCircle(c - r * 0.8, c, r * 0.28);
+    g.lineStyle(2, 0x5a3a26).strokeCircle(c - r * 0.8, c, r * 0.17);
+    g.lineStyle(4, 0xffc93c).lineBetween(c - r * 1.05, c - r * 0.3, c - r * 0.55, c + r * 0.3);
+
+    // Lanyard with a Trinidad and Tobago flag pin
+    g.lineStyle(3, 0x222222).beginPath().arc(c, c, r * 0.62, -1.0, 1.0, false).strokePath();
+    const fx = c + r * 0.12, fy = c + r * 0.5, fw = r * 0.34, fh = r * 0.22;
+    g.fillStyle(0xce1126).fillRect(fx, fy, fw, fh);
+    g.lineStyle(fh * 0.5, 0xffffff).lineBetween(fx, fy, fx + fw, fy + fh);
+    g.lineStyle(fh * 0.3, 0x000000).lineBetween(fx, fy, fx + fw, fy + fh);
+    g.lineStyle(1.5, ink).strokeRect(fx, fy, fw, fh);
+
+    // Eyes and furious eyebrows
+    for (const dy of [-0.3, 0.3]) {
+      g.fillStyle(0xffffff).fillCircle(c + r * 0.42, c + r * dy, r * 0.2);
+      g.fillStyle(0x111111).fillCircle(c + r * 0.5, c + r * dy, r * 0.1);
+    }
+    g.lineStyle(r / 9, hair);
+    g.lineBetween(c + r * 0.18, c - r * 0.55, c + r * 0.6, c - r * 0.16);
+    g.lineBetween(c + r * 0.18, c + r * 0.55, c + r * 0.6, c + r * 0.16);
+
+    // Big toothy scowl across the front
+    g.fillStyle(0x3a0f1f).fillEllipse(c + r * 0.78, c, r * 0.22, r * 0.62);
+    g.fillStyle(0xffffff);
+    for (const ty of [-0.2, 0, 0.2]) g.fillRect(c + r * 0.7, c + r * ty - r * 0.07, r * 0.09, r * 0.14);
+    g.lineStyle(2, ink).strokeEllipse(c + r * 0.78, c, r * 0.22, r * 0.62);
+
+    // Clipboard in the right hand
+    const bx = c + r * 0.55, by = c + r * 0.8;
+    g.fillStyle(0x8b5a2b).fillRoundedRect(bx, by, r * 0.5, r * 0.36, 3);
+    g.fillStyle(0xffffff).fillRect(bx + r * 0.05, by + r * 0.05, r * 0.4, r * 0.26);
+    g.lineStyle(2, 0x999999).lineBetween(bx + r * 0.1, by + r * 0.13, bx + r * 0.38, by + r * 0.13)
+      .lineBetween(bx + r * 0.1, by + r * 0.22, bx + r * 0.3, by + r * 0.22);
+
+    g.generateTexture(`germ-${def.id}`, size, size);
+    g.destroy();
   }
 
   /** A crumpled pink slip with angry eyes. */
