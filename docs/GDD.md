@@ -8,9 +8,9 @@
 
 **Core loop:** move → aim → disinfect → dodge → earn → upgrade → unlock → survive → repeat.
 
-## Current state (v0.4.0, the MVP)
+## Current state (v0.5.0)
 - Title screen, tap to start.
-- Waiting room (fictional layout) with chairs, desk, table, plants, locked doors to future areas.
+- MoshiLand Urgent Care (fictional layout): you start in the waiting room; bathroom, exam rooms, lab, staff break room and X-ray are bought open with Copays.
 - Eugene (placeholder art) moves with left stick, faces right-stick aim.
 - Holding SPRAY sprays the alcohol bottle (cone of droplets, limited supply, manual refill). Eugene auto-aims at the nearest germ in range.
 - Germs come in escalating rounds through the doors and hurt Eugene on contact. Health regenerates after a few seconds without a hit.

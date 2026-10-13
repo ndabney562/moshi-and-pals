@@ -18,7 +18,7 @@ export class TitleScene extends Phaser.Scene {
     const title = this.add.text(width / 2, height * 0.24, 'MOSHI AND PALS', {
       fontFamily: font, fontSize: '84px', fontStyle: '900', color: COLORS.uiText,
     }).setOrigin(0.5).setShadow(0, 6, '#000', 10);
-    this.add.text(width / 2, height * 0.24 + 66, 'An Infection Control Emergency', {
+    this.add.text(width / 2, height * 0.24 + 66, 'An Infection Control Emergency at MoshiLand Urgent Care', {
       fontFamily: font, fontSize: '26px', fontStyle: 'italic', color: COLORS.uiAccent,
     }).setOrigin(0.5);
 

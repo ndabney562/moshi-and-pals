@@ -16,6 +16,8 @@ export interface BossHost {
   spawnMinion(id: string, x: number, y: number, vx: number, vy: number): void;
   /** Hurts Eugene through the normal damage path (sound, HUD, death). */
   damagePlayer(amount: number): void;
+  /** Whether Eugene is somewhere she can drag him to the exit from (the waiting room). */
+  canMeet(): boolean;
 }
 
 type Mode = 'chase' | 'meetingWindup' | 'meeting' | 'tantrumWindup';
@@ -99,7 +101,7 @@ export class DiamondBrain {
         if (this.hpFraction < this.cfg.tantrumBelow && time >= this.nextTantrumAt) {
           this.startTantrum(time);
         } else if (
-          time >= this.nextMeetingAt && toPlayer < this.cfg.meetingRange &&
+          time >= this.nextMeetingAt && toPlayer < this.cfg.meetingRange && this.host.canMeet() &&
           Phaser.Math.Distance.Between(player.x, player.y, exit.x, exit.y) > this.cfg.meetingDoorDistance + 100
         ) {
           this.mode = 'meetingWindup';

@@ -1,7 +1,7 @@
 import Phaser from 'phaser';
 import { BALANCE } from '../config/balance';
 import { VIOLATIONS } from '../data/patients';
-import type { RoomLayout } from '../data/rooms';
+import type { RoomArea, RoomLayout } from '../data/rooms';
 import { Patient } from '../entities/Patient';
 import type { Player } from '../entities/Player';
 import { SpeechBubble } from '../ui/SpeechBubble';
@@ -11,6 +11,8 @@ export interface PatientHost {
   readonly scene: Phaser.Scene;
   readonly player: Player;
   readonly room: RoomLayout;
+  /** The room patients wait in (they never wander past its walls). */
+  readonly area: RoomArea;
   /** Lets a germ loose at (x, y). */
   spawnGermAt(id: string, x: number, y: number): void;
   /** A patient was sprayed into compliance. */
@@ -87,11 +89,11 @@ export class PatientDirector {
 
   private spawn(time: number): void {
     this.nextSpawnAt = time + Phaser.Math.Between(...this.cfg.spawnEveryMs);
-    const { room, player } = this.host;
+    const { area, player } = this.host;
     const p = this.group.get() as Patient | null;
     if (!p) return;
-    const far = room.germSpawns.filter((s) => Phaser.Math.Distance.Between(s.x, s.y, player.x, player.y) > 300);
-    const door = Phaser.Utils.Array.GetRandom(far.length ? far : room.germSpawns);
+    const far = area.germSpawns.filter((s) => Phaser.Math.Distance.Between(s.x, s.y, player.x, player.y) > 300);
+    const door = Phaser.Utils.Array.GetRandom(far.length ? far : area.germSpawns);
     p.enter(Phaser.Utils.Array.GetRandom(VIOLATIONS), door.x, door.y, time);
   }
 
@@ -113,13 +115,13 @@ export class PatientDirector {
     this.leftAt.set(p, time);
   }
 
-  /** A random spot on open floor, away from walls and furniture. */
+  /** A random spot on the waiting room's open floor, away from walls and furniture. */
   private openSpot(out: Phaser.Math.Vector2): void {
-    const { room } = this.host;
+    const { room, area } = this.host;
     const m = 50;
     for (let tries = 0; tries < 20; tries++) {
-      const x = Phaser.Math.Between(80, room.width - 80);
-      const y = Phaser.Math.Between(80, room.height - 80);
+      const x = Phaser.Math.Between(area.x + 80, area.x + area.w - 80);
+      const y = Phaser.Math.Between(area.y + 80, area.y + area.h - 80);
       if (!room.obstacles.some((o) => x > o.x - m && x < o.x + o.w + m && y > o.y - m && y < o.y + o.h + m)) {
         out.set(x, y);
         return;

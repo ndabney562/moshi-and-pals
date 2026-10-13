@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import type { RoomLayout } from '../data/rooms';
+import type { Obstacle } from '../data/rooms';
 
 /**
  * Lets germs path around furniture. The room is split into a coarse grid;
@@ -19,19 +19,26 @@ export class FlowField {
   ] as const;
 
   /** `clearance` inflates obstacles so germ bodies don't scrape corners. */
-  constructor(room: RoomLayout, private readonly cell = 40, clearance = 18) {
-    this.cols = Math.ceil(room.width / cell);
-    this.rows = Math.ceil(room.height / cell);
+  constructor(width: number, height: number, obstacles: Obstacle[], private readonly cell = 40, private readonly clearance = 18) {
+    this.cols = Math.ceil(width / cell);
+    this.rows = Math.ceil(height / cell);
     const n = this.cols * this.rows;
     this.blocked = new Uint8Array(n);
     this.dist = new Int32Array(n);
     this.queue = new Int32Array(n);
-    for (const o of room.obstacles) {
+    this.rebuild(obstacles);
+  }
+
+  /** Re-marks which cells are solid, e.g. after a door is bought open. */
+  rebuild(obstacles: Obstacle[]): void {
+    const { cell, clearance, cols, rows } = this;
+    this.blocked.fill(0);
+    for (const o of obstacles) {
       const x0 = Math.max(0, Math.floor((o.x - clearance) / cell));
       const y0 = Math.max(0, Math.floor((o.y - clearance) / cell));
-      const x1 = Math.min(this.cols - 1, Math.floor((o.x + o.w + clearance - 1) / cell));
-      const y1 = Math.min(this.rows - 1, Math.floor((o.y + o.h + clearance - 1) / cell));
-      for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) this.blocked[y * this.cols + x] = 1;
+      const x1 = Math.min(cols - 1, Math.floor((o.x + o.w + clearance - 1) / cell));
+      const y1 = Math.min(rows - 1, Math.floor((o.y + o.h + clearance - 1) / cell));
+      for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) this.blocked[y * cols + x] = 1;
     }
   }
 

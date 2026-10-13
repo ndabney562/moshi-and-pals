@@ -1,5 +1,14 @@
 # Changelog
 
+## v0.5.0: Milestone 5, MoshiLand
+- The clinic is now **MoshiLand Urgent Care** (Noah named it). The map grew from one waiting room to a whole building, 3800×2100.
+- Five rooms sit behind locked doors. Walk up to a door and tap **USE** (E on desktop) to buy it open with Copays: Bathroom $200, Exam Rooms $350, Lab $500, Staff Break Room $600, X-Ray $750 (two doors, one from the exam hall and one from the lab). Locked rooms are dimmed with their price on the floor.
+- Each room is busier than the last: stalls and a sink, three curtained exam bays and a triage desk, a break room with couch and fridge, lab benches that make narrow aisles, and the X-ray machine behind lead walls.
+- Germs come in through every room that's open, so opening rooms means more ground to cover. They still never spawn right next to Eugene, and prefer doors within 1600 px.
+- The lab has a second SUPPLIES cart. RESTOCK is now the same USE button.
+- The HUD shows which room Eugene is in.
+- Patients stay in the waiting room. Diamond only calls a Mandatory Meeting when Eugene is in the waiting room (the exit is there).
+
 ## v0.4.0: Milestone 4, the MVP
 - **Copays** (Noah named them): earned for every kill (Basic $5, Sprinter $8, Write-Up $2, Diamond $100) and for cleaning up a patient ($10). Shown under the score.
 - The bottle now refills from a limited **jug** (480 mL, shown under the bottle). When the jug runs dry, walk to the **SUPPLIES** cart and tap RESTOCK ($40).

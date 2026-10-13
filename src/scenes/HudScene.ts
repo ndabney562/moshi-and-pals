@@ -4,7 +4,7 @@ import { DISPLAY } from '../config/display';
 import { COLORS } from '../config/theme';
 import { BALANCE } from '../config/balance';
 import {
-  events, GameEvents, type BossPayload, type EquipmentChangedPayload, type HealthPayload, type RoundPayload, type StationPayload,
+  events, GameEvents, type BossPayload, type EquipmentChangedPayload, type HealthPayload, type RoomPayload, type RoundPayload, type StationPayload,
 } from '../core/events';
 import { inputState } from '../core/inputState';
 import { readSafeArea, type Insets } from '../core/safeArea';
@@ -39,7 +39,8 @@ export class HudScene extends Phaser.Scene {
   private autoAimToggle?: Phaser.GameObjects.Text;
   private refillButton!: HudButton;
   private purgeButton!: HudButton;
-  private restockButton!: HudButton;
+  private interactButton!: HudButton;
+  private roomText!: Phaser.GameObjects.Text;
   private copaysText!: Phaser.GameObjects.Text;
   private bottle!: BottleMeter;
   private mouseDown = false;
@@ -71,6 +72,7 @@ export class HudScene extends Phaser.Scene {
     this.versionText = this.add.text(0, 0, __APP_VERSION__, { ...tag, fontSize: '14px' }).setOrigin(1, 0);
     if (DISPLAY.showFps) this.fpsText = this.add.text(0, 0, '', { ...tag, fontSize: '16px' });
     this.scoreText = this.add.text(0, 0, 'SCORE 0', { ...tag, fontSize: '18px', fontStyle: 'bold' }).setOrigin(0.5, 0);
+    this.roomText = this.add.text(0, 0, '', { ...tag, fontSize: '15px' }).setOrigin(1, 0);
     this.copaysText = this.add.text(0, 0, '$0 COPAYS', { ...tag, fontSize: '17px', fontStyle: 'bold', color: COLORS.uiAccent }).setOrigin(0.5, 0);
     this.health = new Bar(this, 240, 22, 0x4cd964, 'EUGENE');
     this.bossBar = new Bar(this, 420, 20, 0xd64545, '').setVisible(false);
@@ -100,8 +102,9 @@ export class HudScene extends Phaser.Scene {
     this.purgeButton = new HudButton(this, CONTROLS.buttons.purgeRadius, 'SINUS\nPURGE', 0xc8ff6b, () => {
       inputState.purgeRequested = true;
     });
-    this.restockButton = new HudButton(this, CONTROLS.buttons.restockRadius, 'RESTOCK', 0x7fffd4, () => {
-      inputState.restockRequested = true;
+    // USE pops up at supply carts (restock) and locked doors (buy them open)
+    this.interactButton = new HudButton(this, CONTROLS.buttons.interactRadius, 'USE', 0x7fffd4, () => {
+      inputState.interactRequested = true;
     }).setVisible(false);
 
     const onEquipment = (p: EquipmentChangedPayload) => {
@@ -127,8 +130,10 @@ export class HudScene extends Phaser.Scene {
       this.purgeButton.setProgress(ready ? -1 : p.progress).setAlpha(ready ? 1 : 0.55);
     };
     const onStation = (p: StationPayload) => {
-      this.restockButton.setVisible(p.near).setLabel(`RESTOCK\n$${p.cost}`).setAlpha(p.affordable ? 1 : 0.55);
+      this.interactButton.setVisible(p.near).setLabel(p.label).setAlpha(p.affordable ? 1 : 0.55);
     };
+    const onRoomEntered = (p: RoomPayload) => this.roomText.setText(`📍 ${p.name.toUpperCase()}`);
+    const onRoomUnlocked = (p: RoomPayload) => this.showBanner(`${p.name.toUpperCase()} OPEN`, 'More room to run. More places for germs, too.', 1800);
     const onBossDown = () => this.time.delayedCall(600, () => this.bossBar.setVisible(false));
 
     const listeners: [string, (...args: never[]) => void][] = [
@@ -144,6 +149,8 @@ export class HudScene extends Phaser.Scene {
       [GameEvents.CopaysChanged, onCopays],
       [GameEvents.PurgeChanged, onPurge],
       [GameEvents.StationNearby, onStation],
+      [GameEvents.RoomEntered, onRoomEntered],
+      [GameEvents.RoomUnlocked, onRoomUnlocked],
     ];
     for (const [name, fn] of listeners) events.on(name, fn);
     this.events.once('shutdown', () => {
@@ -162,7 +169,7 @@ export class HudScene extends Phaser.Scene {
     }) as HudScene['keys'];
     this.keys.r.on('down', () => (inputState.refillRequested = true));
     this.keys.q.on('down', () => (inputState.purgeRequested = true));
-    this.keys.e.on('down', () => (inputState.restockRequested = true));
+    this.keys.e.on('down', () => (inputState.interactRequested = true));
     this.input.keyboard!.addKey('SPACE').on('down', () => (this.spaceDown = true)).on('up', () => (this.spaceDown = false));
 
     this.layout();
@@ -232,15 +239,16 @@ export class HudScene extends Phaser.Scene {
     this.autoAimToggle?.setPosition(this.safe.left + m, this.safe.top + m + this.health.outerHeight + 10);
     this.versionText.setPosition(width - this.safe.right - m, this.safe.top + m);
     this.fpsText?.setOrigin(1, 0).setPosition(width - this.safe.right - m, this.safe.top + m + 30);
+    this.roomText.setPosition(width - this.safe.right - m, this.safe.top + m + (this.fpsText ? 64 : 34));
     const right = width - this.safe.right - m;
     const refillY = rightY - CONTROLS.buttons.sprayRadius - CONTROLS.buttons.refillRadius - 24;
     this.refillButton.setPosition(right - CONTROLS.buttons.refillRadius, refillY);
     this.bottle.setPosition(right - CONTROLS.buttons.refillRadius * 2 - 44, refillY - 10);
-    // Sinus Purge sits just left of SPRAY, within the same thumb's reach; RESTOCK pops up above it
-    const { sprayRadius, purgeRadius, restockRadius } = CONTROLS.buttons;
+    // Sinus Purge sits just left of SPRAY, within the same thumb's reach; USE pops up above it
+    const { sprayRadius, purgeRadius, interactRadius } = CONTROLS.buttons;
     const purgeX = rightX - sprayRadius - purgeRadius - 22;
     this.purgeButton.setPosition(purgeX, rightY + sprayRadius - purgeRadius);
-    this.restockButton.setPosition(purgeX - 10, rightY - sprayRadius - restockRadius - 10);
+    this.interactButton.setPosition(purgeX - 10, rightY - sprayRadius - interactRadius - 10);
   }
 
   private refreshAutoAimToggle(): void {

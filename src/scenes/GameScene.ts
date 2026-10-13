@@ -2,7 +2,7 @@ import Phaser from 'phaser';
 import { BALANCE } from '../config/balance';
 import { CONTROLS } from '../config/controls';
 import { COLORS } from '../config/theme';
-import { events, GameEvents, type RunResult, type StationPayload } from '../core/events';
+import { events, GameEvents, type RoomPayload, type RunResult, type StationPayload } from '../core/events';
 import { inputState } from '../core/inputState';
 import { settings } from '../core/settings';
 import { recordRun } from '../core/save';
@@ -10,7 +10,7 @@ import { initSfx, sfx } from '../core/sfx';
 import { EQUIPMENT, STARTING_EQUIPMENT } from '../data/equipment';
 import { GERMS } from '../data/germs';
 import { WAVES } from '../data/waves';
-import { WAITING_ROOM, type Obstacle, type RoomLayout } from '../data/rooms';
+import { MOSHILAND, type Obstacle, type RoomArea, type RoomLayout } from '../data/rooms';
 import { Droplet } from '../entities/Droplet';
 import { Germ, type GermScaling } from '../entities/Germ';
 import type { Patient } from '../entities/Patient';
@@ -22,10 +22,33 @@ import { PatientDirector } from '../systems/PatientDirector';
 import { Sprayer } from '../systems/Sprayer';
 import { WaveDirector } from '../systems/WaveDirector';
 
-/** The playable world: the room, Eugene, his equipment, and the germs. */
+/** A door still waiting to be bought open, with the pieces to remove when it is. */
+interface LockedDoor {
+  o: Obstacle;
+  zone: Phaser.GameObjects.Zone;
+  art: Phaser.GameObjects.Graphics;
+  label: Phaser.GameObjects.Text;
+}
+
+/** What the USE button would act on right now. */
+type Interactable = { kind: 'cart'; o: Obstacle } | { kind: 'door'; door: LockedDoor };
+
+/** How far (x, y) is from the edge of a rectangle; 0 inside it. */
+const rectDistance = (o: Obstacle, x: number, y: number): number =>
+  Math.hypot(Math.max(o.x - x, 0, x - (o.x + o.w)), Math.max(o.y - y, 0, y - (o.y + o.h)));
+
+/** The playable world: the clinic, Eugene, his equipment, and the germs. */
 export class GameScene extends Phaser.Scene {
   private player!: Player;
-  private room: RoomLayout = WAITING_ROOM;
+  private room: RoomLayout = MOSHILAND;
+  private solids!: Phaser.Physics.Arcade.StaticGroup;
+  /** Rooms bought open so far this run (starts with the waiting room). */
+  private unlocked = new Set<string>();
+  private lockedDoors: LockedDoor[] = [];
+  /** Dark overlay on each locked room, faded out when it opens. */
+  private fog = new Map<string, Phaser.GameObjects.GameObject[]>();
+  private currentRoom?: RoomArea;
+  private interactTarget?: Interactable;
   private germs!: Phaser.Physics.Arcade.Group;
   private droplets!: Phaser.Physics.Arcade.Group;
   private sprayer!: Sprayer;
@@ -42,8 +65,8 @@ export class GameScene extends Phaser.Scene {
   private copays = 0;
   private purgeReadyAt = 0;
   private lastPurgeProgress = -1;
-  private cart?: Obstacle;
-  private station: StationPayload = { near: false, cost: 0, affordable: false };
+  private carts: Obstacle[] = [];
+  private station: StationPayload = { near: false, label: '', affordable: false };
   private lastJugWarningAt = -Infinity;
   /** The current boss's behavior, if a boss with a brain is (or was last) in the room. */
   private boss?: DiamondBrain;
@@ -63,24 +86,32 @@ export class GameScene extends Phaser.Scene {
     this.copays = 0;
     this.purgeReadyAt = 0;
     this.lastPurgeProgress = -1;
-    this.station = { near: false, cost: BALANCE.economy.restockCost, affordable: false };
+    this.station = { near: false, label: '', affordable: false };
     inputState.purgeRequested = false;
-    inputState.restockRequested = false;
-    this.cart = room.obstacles.find((o) => o.kind === 'supplyCart');
+    inputState.interactRequested = false;
+    this.carts = room.obstacles.filter((o) => o.kind === 'supplyCart');
+    this.unlocked = new Set(room.rooms.filter((r) => r.start).map((r) => r.id));
+    this.lockedDoors = [];
+    this.fog = new Map();
+    this.currentRoom = undefined;
+    this.interactTarget = undefined;
     inputState.firing = false;
     inputState.refillRequested = false;
     this.physics.world.setBounds(0, 0, room.width, room.height);
     this.add.tileSprite(0, 0, room.width, room.height, 'floor').setOrigin(0);
 
-    const solids = this.physics.add.staticGroup();
+    this.drawFloors();
+    const solids = (this.solids = this.physics.add.staticGroup());
     const art = this.add.graphics().setDepth(5);
     for (const o of room.obstacles) {
-      this.drawObstacle(art, o);
-      solids.add(this.add.zone(o.x + o.w / 2, o.y + o.h / 2, o.w, o.h));
+      const zone = this.add.zone(o.x + o.w / 2, o.y + o.h / 2, o.w, o.h);
+      solids.add(zone);
+      if (o.opens) this.lockedDoors.push(this.drawLockedDoor(o, zone));
+      else this.drawObstacle(art, o);
     }
 
     this.fx = new Fx(this);
-    this.flow = new FlowField(room);
+    this.flow = new FlowField(room.width, room.height, this.blockingObstacles());
     this.player = new Player(this, room.playerSpawn.x, room.playerSpawn.y);
 
     // Pools: created once, reused all game
@@ -92,6 +123,7 @@ export class GameScene extends Phaser.Scene {
       scene: this,
       player: this.player,
       room,
+      area: room.rooms.find((r) => r.start) ?? room.rooms[0],
       spawnGermAt: (id, x, y) => this.spawnGermAt(id, x, y),
       onCleaned: (p) => this.onPatientCleaned(p),
     });
@@ -148,6 +180,7 @@ export class GameScene extends Phaser.Scene {
     events.emit(GameEvents.CopaysChanged, { copays: this.copays });
     events.emit(GameEvents.PurgeChanged, { progress: this.purgeProgress(this.time.now) });
     events.emit(GameEvents.StationNearby, this.station);
+    if (this.currentRoom) events.emit(GameEvents.RoomEntered, { id: this.currentRoom.id, name: this.currentRoom.name });
     this.sprayer.emitChanged(this.time.now);
   }
 
@@ -170,17 +203,18 @@ export class GameScene extends Phaser.Scene {
       if (!this.sprayer.startRefill(time) && time - this.lastJugWarningAt > 1500) {
         this.lastJugWarningAt = time;
         sfx.denied();
-        this.fx.number(this.player.x, this.player.y - 60, 'JUG EMPTY! Restock at SUPPLIES', '#ffb3b3', 20);
+        this.fx.number(this.player.x, this.player.y - 60, 'JUG EMPTY! Restock at a SUPPLIES cart', '#ffb3b3', 20);
       }
     }
     if (inputState.purgeRequested) {
       inputState.purgeRequested = false;
       this.sinusPurge(time);
     }
-    this.updateStation();
-    if (inputState.restockRequested) {
-      inputState.restockRequested = false;
-      this.restock(time);
+    this.updateRoom();
+    this.updateInteract();
+    if (inputState.interactRequested) {
+      inputState.interactRequested = false;
+      this.interact(time);
     }
     const purge = this.purgeProgress(time);
     if (Math.abs(purge - this.lastPurgeProgress) >= 0.01 || (purge === 1 && this.lastPurgeProgress !== 1)) {
@@ -315,20 +349,50 @@ export class GameScene extends Phaser.Scene {
     events.emit(GameEvents.PurgeUsed);
   }
 
-  /** Shows the RESTOCK button while Eugene stands at the supply cart. */
-  private updateStation(): void {
-    const c = this.cart;
-    const near = !!c && !this.player.dead &&
-      Phaser.Math.Distance.Between(this.player.x, this.player.y, c.x + c.w / 2, c.y + c.h / 2) < BALANCE.economy.stationRange + c.w / 2;
-    const affordable = this.copays >= BALANCE.economy.restockCost;
-    if (near !== this.station.near || affordable !== this.station.affordable) {
-      this.station = { near, cost: BALANCE.economy.restockCost, affordable };
-      events.emit(GameEvents.StationNearby, this.station);
+  /** Tracks which room Eugene is in, for the HUD and Diamond. */
+  private updateRoom(): void {
+    const { x, y } = this.player;
+    const here = this.room.rooms.find((r) => x >= r.x && x < r.x + r.w && y >= r.y && y < r.y + r.h);
+    if (here && here !== this.currentRoom) {
+      this.currentRoom = here;
+      events.emit(GameEvents.RoomEntered, { id: here.id, name: here.name } satisfies RoomPayload);
     }
   }
 
+  /** Shows the USE button while Eugene stands at a supply cart or a locked door. */
+  private updateInteract(): void {
+    const { x, y } = this.player;
+    let target: Interactable | undefined;
+    let best = BALANCE.economy.interactRange;
+    if (!this.player.dead) {
+      for (const o of this.carts) {
+        const d = rectDistance(o, x, y);
+        if (d < best) { best = d; target = { kind: 'cart', o }; }
+      }
+      for (const door of this.lockedDoors) {
+        const d = rectDistance(door.o, x, y);
+        if (d < best) { best = d; target = { kind: 'door', door }; }
+      }
+    }
+    this.interactTarget = target;
+    const cost = !target ? 0 : target.kind === 'cart' ? BALANCE.economy.restockCost : target.door.o.cost ?? 0;
+    const label = !target ? '' : `${target.kind === 'cart' ? 'RESTOCK' : 'OPEN'}\n$${cost}`;
+    const station = { near: !!target, label, affordable: this.copays >= cost };
+    const s = this.station;
+    if (station.near !== s.near || station.label !== s.label || station.affordable !== s.affordable) {
+      this.station = station;
+      events.emit(GameEvents.StationNearby, station);
+    }
+  }
+
+  private interact(time: number): void {
+    const t = this.interactTarget;
+    if (!t) return;
+    if (t.kind === 'cart') this.restock(time);
+    else this.buyDoor(t.door);
+  }
+
   private restock(time: number): void {
-    if (!this.station.near) return;
     const cost = BALANCE.economy.restockCost;
     if (this.sprayer.reserveFull) {
       this.fx.number(this.player.x, this.player.y - 60, 'JUG ALREADY FULL', '#e8fff9', 20);
@@ -343,6 +407,43 @@ export class GameScene extends Phaser.Scene {
     this.sprayer.restock(time);
     sfx.cash();
     this.fx.number(this.player.x, this.player.y - 60, `JUG RESTOCKED -$${cost}`, '#7fffd4', 22);
+  }
+
+  private buyDoor(door: LockedDoor): void {
+    const cost = door.o.cost ?? 0;
+    if (this.copays < cost) {
+      sfx.denied();
+      this.fx.number(this.player.x, this.player.y - 60, `NEED $${cost} COPAYS`, '#ffb3b3', 22);
+      return;
+    }
+    this.addCopays(-cost);
+    this.unlockRoom(door.o.opens!, cost);
+  }
+
+  /** Opens every door into a room, lets germs path (and spawn) there, and lifts its fog. */
+  unlockRoom(id: string, cost = 0): void {
+    if (this.unlocked.has(id)) return;
+    this.unlocked.add(id);
+    for (const d of this.lockedDoors.filter((d) => d.o.opens === id)) {
+      this.solids.remove(d.zone, true, true);
+      d.art.destroy();
+      d.label.destroy();
+      this.fx.number(d.o.x + d.o.w / 2, d.o.y + d.o.h / 2, 'OPEN!', '#7fffd4', 26);
+    }
+    this.lockedDoors = this.lockedDoors.filter((d) => d.o.opens !== id);
+    this.flow.rebuild(this.blockingObstacles());
+    for (const obj of this.fog.get(id) ?? []) {
+      this.tweens.add({ targets: obj, alpha: 0, duration: 500, onComplete: () => obj.destroy() });
+    }
+    this.fog.delete(id);
+    sfx.cash();
+    const area = this.room.rooms.find((r) => r.id === id);
+    events.emit(GameEvents.RoomUnlocked, { id, name: area?.name ?? id, cost } satisfies RoomPayload);
+  }
+
+  /** Everything solid right now: furniture, walls, and doors not yet bought. */
+  private blockingObstacles(): Obstacle[] {
+    return this.room.obstacles.filter((o) => !(o.opens && this.unlocked.has(o.opens)));
   }
 
   private onGermBump(germ: Germ): void {
@@ -368,10 +469,13 @@ export class GameScene extends Phaser.Scene {
     const def = GERMS[id];
     const germ = this.germs.get() as Germ | null;
     if (!def || !germ) return false;
-    const far = this.room.germSpawns.filter(
-      (p) => Phaser.Math.Distance.Between(p.x, p.y, this.player.x, this.player.y) >= BALANCE.spawning.minSpawnDistance,
-    );
-    const spot = Phaser.Utils.Array.GetRandom(far.length ? far : this.room.germSpawns);
+    // Germs come in through every room that's open, but not right on top of Eugene or miles away
+    const { minSpawnDistance, maxSpawnDistance } = BALANCE.spawning;
+    const spots = this.room.rooms.filter((r) => this.unlocked.has(r.id)).flatMap((r) => r.germSpawns);
+    const dist = (p: { x: number; y: number }) => Phaser.Math.Distance.Between(p.x, p.y, this.player.x, this.player.y);
+    const far = spots.filter((p) => dist(p) >= minSpawnDistance);
+    const ideal = far.filter((p) => dist(p) <= maxSpawnDistance);
+    const spot = Phaser.Utils.Array.GetRandom(ideal.length ? ideal : far.length ? far : spots);
     germ.spawn(def, spot.x, spot.y, scaling);
     if (def.brain === 'diamond') {
       this.boss?.destroy();
@@ -416,6 +520,7 @@ export class GameScene extends Phaser.Scene {
         germ.setVelocity(vx, vy);
       },
       damagePlayer: (amount) => this.hurtPlayer(amount, 'diamond'),
+      canMeet: () => !!this.currentRoom?.start,
     };
   }
 
@@ -443,6 +548,50 @@ export class GameScene extends Phaser.Scene {
     });
   }
 
+  /** A door's sign, turned to read along vertical doors. */
+  private doorLabel(o: Obstacle, text: string): Phaser.GameObjects.Text {
+    const label = this.add.text(o.x + o.w / 2, o.y + o.h / 2, text, {
+      fontFamily: 'system-ui, sans-serif', fontSize: '14px', fontStyle: 'bold', color: '#fff3c4',
+    }).setOrigin(0.5).setDepth(8);
+    if (o.h > o.w) label.setAngle(o.x < this.room.width / 2 ? 90 : -90);
+    return label;
+  }
+
+  private furnitureLabel(o: Obstacle): void {
+    this.add.text(o.x + o.w / 2, o.y + o.h / 2, o.label ?? '', {
+      fontFamily: 'system-ui, sans-serif', fontSize: '16px', fontStyle: 'bold', color: '#1b2b30',
+    }).setOrigin(0.5).setDepth(6);
+  }
+
+  /** A door that can be bought open, drawn on its own so it can be removed. */
+  private drawLockedDoor(o: Obstacle, zone: Phaser.GameObjects.Zone): LockedDoor {
+    const art = this.add.graphics().setDepth(5);
+    art.fillStyle(COLORS.doorLocked).fillRect(o.x, o.y, o.w, o.h);
+    art.lineStyle(3, 0xffd166).strokeRect(o.x + 3, o.y + 3, o.w - 6, o.h - 6);
+    const label = this.doorLabel(o, `🔒 ${o.label ?? ''} $${o.cost ?? 0}`);
+    return { o, zone, art, label };
+  }
+
+  /** Room floor tints, painted signs, and a dark veil over each room still locked. */
+  private drawFloors(): void {
+    const floor = this.add.graphics().setDepth(0.5);
+    for (const r of this.room.rooms) {
+      if (r.tint !== undefined) floor.fillStyle(r.tint, 0.16).fillRect(r.x, r.y, r.w, r.h);
+      if (this.unlocked.has(r.id)) continue;
+      const cheapest = Math.min(...this.room.obstacles.filter((o) => o.opens === r.id).map((o) => o.cost ?? 0));
+      const veil = this.add.rectangle(r.x, r.y, r.w, r.h, 0x0d1b1e, 0.55).setOrigin(0).setDepth(9);
+      const sign = this.add.text(r.x + r.w / 2, r.y + r.h / 2, `🔒 ${r.name.toUpperCase()}\n$${cheapest} COPAYS`, {
+        fontFamily: 'system-ui, sans-serif', fontSize: '34px', fontStyle: '900', color: '#fff3c4', align: 'center',
+      }).setOrigin(0.5).setDepth(9).setAlpha(0.8);
+      this.fog.set(r.id, [veil, sign]);
+    }
+    for (const sgn of this.room.signs) {
+      this.add.text(sgn.x, sgn.y, sgn.text, {
+        fontFamily: 'system-ui, sans-serif', fontSize: '30px', fontStyle: '900', color: '#1f4f55',
+      }).setOrigin(0.5).setAlpha(0.35).setDepth(1);
+    }
+  }
+
   /** Placeholder drawing for each obstacle type. Real sprites replace this later. */
   private drawObstacle(g: Phaser.GameObjects.Graphics, o: Obstacle): void {
     const outline = 0x1b2b30;
@@ -452,13 +601,10 @@ export class GameScene extends Phaser.Scene {
         g.lineStyle(3, COLORS.wallTrim).strokeRect(o.x + 2, o.y + 2, o.w - 4, o.h - 4);
         break;
       case 'door': {
+        // Doors that never open (the exit)
         g.fillStyle(COLORS.doorLocked).fillRect(o.x, o.y, o.w, o.h);
         g.lineStyle(3, 0xffd166).strokeRect(o.x + 3, o.y + 3, o.w - 6, o.h - 6);
-        const vertical = o.h > o.w;
-        const label = this.add.text(o.x + o.w / 2, o.y + o.h / 2, `🔒 ${o.label ?? ''}`, {
-          fontFamily: 'system-ui, sans-serif', fontSize: '14px', fontStyle: 'bold', color: '#fff3c4',
-        }).setOrigin(0.5).setDepth(6);
-        if (vertical) label.setAngle(o.x < this.room.width / 2 ? 90 : -90);
+        this.doorLabel(o, `🔒 ${o.label ?? ''}`);
         break;
       }
       case 'chairRow': {
@@ -501,6 +647,57 @@ export class GameScene extends Phaser.Scene {
           fontFamily: 'system-ui, sans-serif', fontSize: '14px', fontStyle: 'bold', color: '#ffffff',
           backgroundColor: '#0d2b2ecc', padding: { x: 6, y: 2 },
         }).setOrigin(0.5, 1).setDepth(6);
+        break;
+      }
+      case 'stall':
+        g.fillStyle(0xcfd8dc).fillRect(o.x, o.y, o.w, o.h);
+        g.lineStyle(3, outline).strokeRect(o.x, o.y, o.w, o.h);
+        g.fillStyle(0xffffff).fillEllipse(o.x + o.w / 2, o.y + 50, 54, 66); // toilet
+        g.lineStyle(2, outline).strokeEllipse(o.x + o.w / 2, o.y + 50, 54, 66);
+        g.fillStyle(0x90a4ae).fillRect(o.x + 16, o.y + o.h - 10, o.w - 32, 8); // stall door
+        break;
+      case 'sink':
+        g.fillStyle(0xeceff1).fillRect(o.x, o.y, o.w, o.h);
+        g.lineStyle(3, outline).strokeRect(o.x, o.y, o.w, o.h);
+        for (let i = 0; i < 2; i++) g.fillStyle(0x90caf9).fillEllipse(o.x + o.w * (0.28 + i * 0.44), o.y + o.h / 2, o.w * 0.3, o.h * 0.6);
+        break;
+      case 'examTable':
+        g.fillStyle(0x4db6ac).fillRoundedRect(o.x, o.y, o.w, o.h, 10);
+        g.fillStyle(0xfafafa).fillRect(o.x + o.w * 0.25, o.y + 6, o.w * 0.5, o.h - 12); // paper roll
+        g.lineStyle(3, outline).strokeRoundedRect(o.x, o.y, o.w, o.h, 10);
+        break;
+      case 'counter':
+        g.fillStyle(0x8d6e63).fillRect(o.x, o.y, o.w, o.h);
+        g.fillStyle(0xd7ccc8).fillRect(o.x + 5, o.y + 5, o.w - 10, o.h - 10);
+        g.lineStyle(3, outline).strokeRect(o.x, o.y, o.w, o.h);
+        if (o.label) this.furnitureLabel(o);
+        break;
+      case 'xray':
+        g.fillStyle(0x90a4ae).fillRoundedRect(o.x, o.y, o.w, o.h, 14);
+        g.fillStyle(0x263238).fillRect(o.x + 30, o.y + 30, o.w - 60, o.h - 60); // the plate
+        g.fillStyle(0xffd166).fillRect(o.x, o.y + o.h - 14, o.w, 8); // caution stripe
+        g.lineStyle(4, outline).strokeRoundedRect(o.x, o.y, o.w, o.h, 14);
+        if (o.label) this.furnitureLabel(o);
+        break;
+      case 'couch':
+        g.fillStyle(0x6d4c7d).fillRoundedRect(o.x, o.y, o.w, o.h, 16);
+        for (let i = 0; i < 3; i++) g.fillStyle(0x9575cd).fillRoundedRect(o.x + 14 + i * ((o.w - 28) / 3), o.y + 24, (o.w - 28) / 3 - 6, o.h - 34, 8);
+        g.lineStyle(3, outline).strokeRoundedRect(o.x, o.y, o.w, o.h, 16);
+        break;
+      case 'fridge':
+        g.fillStyle(0xf5f5f5).fillRoundedRect(o.x, o.y, o.w, o.h, 6);
+        g.lineStyle(3, outline).strokeRoundedRect(o.x, o.y, o.w, o.h, 6);
+        g.lineStyle(2, outline).lineBetween(o.x + 4, o.y + o.h * 0.35, o.x + o.w - 4, o.y + o.h * 0.35);
+        g.fillStyle(0x607d8b).fillRect(o.x + o.w - 16, o.y + o.h * 0.45, 6, 22); // handle
+        break;
+      case 'cabinet': {
+        g.fillStyle(0xb0bec5).fillRect(o.x, o.y, o.w, o.h);
+        g.lineStyle(3, outline).strokeRect(o.x, o.y, o.w, o.h);
+        const tall = o.h > o.w;
+        for (let i = 1; i < 3; i++) {
+          if (tall) g.lineBetween(o.x + 4, o.y + (o.h * i) / 3, o.x + o.w - 4, o.y + (o.h * i) / 3);
+          else g.lineBetween(o.x + (o.w * i) / 3, o.y + 4, o.x + (o.w * i) / 3, o.y + o.h - 4);
+        }
         break;
       }
       case 'waterCooler':

@@ -33,12 +33,17 @@ export const GameEvents = {
   /** { progress } 0..1 while recharging, 1 when ready */
   PurgeChanged: 'purge.changed',
   PurgeUsed: 'purge.used',
-  /** { near, cost, affordable } whether Eugene is at the supply cart */
+  /** { near, label, affordable } whether Eugene is at something he can use (supply cart, locked door) */
   StationNearby: 'station.nearby',
+  /** { id, name } Eugene walked into a different room */
+  RoomEntered: 'room.entered',
+  /** { id, name, cost } a door was bought open */
+  RoomUnlocked: 'room.unlocked',
 } as const;
 
 export interface EquipmentChangedPayload { ammo: number; capacity: number; refillProgress: number; reserve: number; }
-export interface StationPayload { near: boolean; cost: number; affordable: boolean; }
+export interface StationPayload { near: boolean; label: string; affordable: boolean; }
+export interface RoomPayload { id: string; name: string; cost?: number; }
 export interface GermKilledPayload { germId: string; x: number; y: number; totalKills: number; }
 
 export interface HealthPayload { hp: number; maxHp: number; }
