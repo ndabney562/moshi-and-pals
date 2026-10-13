@@ -1,5 +1,14 @@
 # Changelog
 
+## v0.3.0: Milestone 3, waves, health, death, restart
+- Eugene has 100 HP. Germs hurt on contact (Basic 12, Sprinter 8, boss 25), with 0.7 s of invulnerability after a hit and regen after 4.5 s without damage.
+- Wave system (`systems/WaveDirector`, tuned in `data/waves.ts`): escalating rounds, intermissions for refilling, funny round titles.
+- Viral Sprinter: small, fast, fragile virus that joins from round 3.
+- Boss rounds every 5th round with a boss health bar. The boss is a placeholder until Babushka Bacillus is built.
+- Score (+points popups), ROUND/SCORE HUD, health bar, red damage flash and low-health pulse.
+- Game over screen ("CONTAMINATED") with stats, saved high score and best round, SCRUB IN AGAIN and MAIN MENU.
+- New placeholder sounds: hurt, round start/clear, boss arrival, game over.
+
 ## v0.2.2
 - AUTO-AIM ON/OFF toggle in the top-left HUD, saved on the device (`src/core/settings.ts`). Off: Eugene faces and sprays where he walks.
 

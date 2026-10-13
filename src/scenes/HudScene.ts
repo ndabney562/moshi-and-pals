@@ -2,11 +2,16 @@ import Phaser from 'phaser';
 import { CONTROLS } from '../config/controls';
 import { DISPLAY } from '../config/display';
 import { COLORS } from '../config/theme';
-import { events, GameEvents, type EquipmentChangedPayload, type GermKilledPayload } from '../core/events';
+import { BALANCE } from '../config/balance';
+import {
+  events, GameEvents, type BossPayload, type EquipmentChangedPayload, type HealthPayload, type RoundPayload,
+} from '../core/events';
 import { inputState } from '../core/inputState';
 import { readSafeArea, type Insets } from '../core/safeArea';
 import { saveSettings, settings } from '../core/settings';
+import { Bar } from '../ui/Bar';
 import { BottleMeter } from '../ui/BottleMeter';
+import type { GameScene } from './GameScene';
 import { HudButton } from '../ui/HudButton';
 import { VirtualJoystick } from '../ui/VirtualJoystick';
 
@@ -22,8 +27,15 @@ export class HudScene extends Phaser.Scene {
   private sprayButton?: HudButton;
   private fpsText?: Phaser.GameObjects.Text;
   private versionText!: Phaser.GameObjects.Text;
-  private roomText!: Phaser.GameObjects.Text;
-  private killText!: Phaser.GameObjects.Text;
+  private roundText!: Phaser.GameObjects.Text;
+  private scoreText!: Phaser.GameObjects.Text;
+  private health!: Bar;
+  private bossBar!: Bar;
+  private banner!: Phaser.GameObjects.Text;
+  private bannerSub!: Phaser.GameObjects.Text;
+  /** Red screen-edge flash on damage; pulses when health is low. */
+  private vignette!: Phaser.GameObjects.Graphics;
+  private lowHealthPulse?: Phaser.Tweens.Tween;
   private autoAimToggle?: Phaser.GameObjects.Text;
   private refillButton!: HudButton;
   private bottle!: BottleMeter;
@@ -36,7 +48,7 @@ export class HudScene extends Phaser.Scene {
     super('Hud');
   }
 
-  create(data: { roomName: string }): void {
+  create(): void {
     // Two thumbs plus a spare finger for future buttons
     this.input.addPointer(2);
 
@@ -48,13 +60,21 @@ export class HudScene extends Phaser.Scene {
     }
 
     const style = { fontFamily: 'system-ui, -apple-system, sans-serif', fontSize: '18px', color: COLORS.uiText };
-    this.roomText = this.add.text(0, 0, data.roomName.toUpperCase(), { ...style, fontSize: '22px', fontStyle: 'bold' })
+    this.vignette = this.add.graphics().setAlpha(0).setDepth(-1);
+    this.roundText = this.add.text(0, 0, '', { ...style, fontSize: '26px', fontStyle: '900' })
       .setOrigin(0.5, 0).setShadow(0, 2, '#000', 4);
     // Small labels get a dark backing so they stay readable over the light floor
     const tag = { ...style, backgroundColor: '#0d2b2ecc', padding: { x: 8, y: 4 } };
     this.versionText = this.add.text(0, 0, __APP_VERSION__, { ...tag, fontSize: '14px' }).setOrigin(1, 0);
     if (DISPLAY.showFps) this.fpsText = this.add.text(0, 0, '', { ...tag, fontSize: '16px' });
-    this.killText = this.add.text(0, 0, 'GERMS DISINFECTED: 0', { ...tag, fontSize: '16px' }).setOrigin(0.5, 0);
+    this.scoreText = this.add.text(0, 0, 'SCORE 0', { ...tag, fontSize: '18px', fontStyle: 'bold' }).setOrigin(0.5, 0);
+    this.health = new Bar(this, 240, 22, 0x4cd964, 'EUGENE');
+    this.bossBar = new Bar(this, 420, 20, 0xd64545, '').setVisible(false);
+
+    this.banner = this.add.text(0, 0, '', { ...style, fontSize: '72px', fontStyle: '900' })
+      .setOrigin(0.5).setShadow(0, 6, '#000', 10).setAlpha(0);
+    this.bannerSub = this.add.text(0, 0, '', { ...style, fontSize: '26px', fontStyle: 'italic', color: COLORS.uiAccent })
+      .setOrigin(0.5).setShadow(0, 3, '#000', 6).setAlpha(0);
 
     // Auto-aim on/off, remembered on this device (only meaningful with the SPRAY button)
     if (this.sprayButton) {
@@ -78,12 +98,34 @@ export class HudScene extends Phaser.Scene {
       this.refillButton.setProgress(p.refillProgress);
       this.refillButton.setUrgent(p.refillProgress < 0 && p.ammo / p.capacity < 0.15);
     };
-    const onKill = (p: GermKilledPayload) => this.killText.setText(`GERMS DISINFECTED: ${p.totalKills}`);
-    events.on(GameEvents.EquipmentChanged, onEquipment);
-    events.on(GameEvents.GermKilled, onKill);
+    const onHealth = (p: HealthPayload) => this.showHealth(p);
+    const onHurt = () => this.flashDamage();
+    const onScore = (p: { score: number }) => this.scoreText.setText(`SCORE ${p.score.toLocaleString()}`);
+    const onRound = (p: RoundPayload) => {
+      this.roundText.setText(`ROUND ${p.round}`);
+      this.showBanner(`ROUND ${p.round}`, p.title);
+    };
+    const onCleared = (p: { round: number }) => this.showBanner('CLEARED!', `Round ${p.round} sanitized. Refill while you can.`, 1800);
+    const onBoss = (p: BossPayload) => {
+      this.bossBar.setVisible(true).setValue(p.hp, p.maxHp, p.name.toUpperCase());
+    };
+    const onBossHealth = (p: BossPayload) => this.bossBar.setValue(p.hp, p.maxHp);
+    const onBossDown = () => this.time.delayedCall(600, () => this.bossBar.setVisible(false));
+
+    const listeners: [string, (...args: never[]) => void][] = [
+      [GameEvents.EquipmentChanged, onEquipment],
+      [GameEvents.PlayerHealthChanged, onHealth],
+      [GameEvents.PlayerBumped, onHurt],
+      [GameEvents.ScoreChanged, onScore],
+      [GameEvents.RoundStarted, onRound],
+      [GameEvents.RoundCompleted, onCleared],
+      [GameEvents.BossSpawned, onBoss],
+      [GameEvents.BossHealth, onBossHealth],
+      [GameEvents.BossDefeated, onBossDown],
+    ];
+    for (const [name, fn] of listeners) events.on(name, fn);
     this.events.once('shutdown', () => {
-      events.off(GameEvents.EquipmentChanged, onEquipment);
-      events.off(GameEvents.GermKilled, onKill);
+      for (const [name, fn] of listeners) events.off(name, fn);
     });
 
     this.input.on('pointerdown', this.onPointerDown, this);
@@ -102,6 +144,46 @@ export class HudScene extends Phaser.Scene {
     this.layout();
     this.scale.on('resize', this.layout, this);
     this.events.once('shutdown', () => this.scale.off('resize', this.layout, this));
+
+    // Ask the game for current health/score/bottle so the HUD starts correct
+    (this.scene.get('Game') as GameScene).broadcastState();
+  }
+
+  private showHealth(p: HealthPayload): void {
+    this.health.setValue(p.hp, p.maxHp, `EUGENE ${Math.ceil(p.hp)}`);
+    const low = p.hp / p.maxHp < BALANCE.player.lowHealth;
+    this.health.setColor(low ? 0xff5a5a : p.hp / p.maxHp < 0.6 ? 0xffc145 : 0x4cd964);
+    if (low && p.hp > 0 && !this.lowHealthPulse) {
+      this.lowHealthPulse = this.tweens.add({ targets: this.vignette, alpha: { from: 0.15, to: 0.55 }, duration: 520, yoyo: true, repeat: -1 });
+    } else if ((!low || p.hp <= 0) && this.lowHealthPulse) {
+      this.lowHealthPulse.stop();
+      this.lowHealthPulse = undefined;
+      this.vignette.setAlpha(0);
+    }
+  }
+
+  private flashDamage(): void {
+    if (this.lowHealthPulse) return; // already pulsing
+    this.tweens.killTweensOf(this.vignette);
+    this.vignette.setAlpha(0.8);
+    this.tweens.add({ targets: this.vignette, alpha: 0, duration: 400 });
+  }
+
+  private showBanner(title: string, subtitle: string, holdMs = 2200): void {
+    for (const t of [this.banner, this.bannerSub]) this.tweens.killTweensOf(t);
+    this.banner.setText(title).setAlpha(0).setScale(1.6);
+    this.bannerSub.setText(subtitle).setAlpha(0);
+    this.tweens.add({ targets: this.banner, alpha: 1, scale: 1, duration: 350, ease: 'Back.out' });
+    this.tweens.add({ targets: this.bannerSub, alpha: 1, duration: 350, delay: 150 });
+    this.tweens.add({ targets: [this.banner, this.bannerSub], alpha: 0, duration: 450, delay: holdMs });
+  }
+
+  /** Thick red border drawn once per resize; its alpha is what animates. */
+  private drawVignette(width: number, height: number): void {
+    const g = this.vignette.clear();
+    for (let i = 0; i < 6; i++) {
+      g.lineStyle(14, 0xff2020, 0.35 - i * 0.05).strokeRect(i * 12, i * 12, width - i * 24, height - i * 24);
+    }
   }
 
   /** Positions everything relative to the current screen size and iPhone safe areas. */
@@ -115,11 +197,16 @@ export class HudScene extends Phaser.Scene {
     const rightY = height * restRight.y - this.safe.bottom;
     this.aimStick?.setHome(rightX, rightY);
     this.sprayButton?.setPosition(rightX, rightY);
-    this.roomText.setPosition(width / 2, this.safe.top + m);
+    this.drawVignette(width, height);
+    this.roundText.setPosition(width / 2, this.safe.top + m - 4);
+    this.scoreText.setPosition(width / 2, this.safe.top + m + 30);
+    this.bossBar.setPosition(width / 2 - this.bossBar.barWidth / 2, this.safe.top + m + 68);
+    this.banner.setPosition(width / 2, height * 0.38);
+    this.bannerSub.setPosition(width / 2, height * 0.38 + 60);
+    this.health.setPosition(this.safe.left + m, this.safe.top + m);
+    this.autoAimToggle?.setPosition(this.safe.left + m, this.safe.top + m + this.health.outerHeight + 10);
     this.versionText.setPosition(width - this.safe.right - m, this.safe.top + m);
-    this.fpsText?.setPosition(this.safe.left + m, this.safe.top + m);
-    this.autoAimToggle?.setPosition(this.safe.left + m, this.safe.top + m + 36);
-    this.killText.setPosition(width / 2, this.safe.top + m + 34);
+    this.fpsText?.setOrigin(1, 0).setPosition(width - this.safe.right - m, this.safe.top + m + 30);
     const right = width - this.safe.right - m;
     const refillY = rightY - CONTROLS.buttons.sprayRadius - CONTROLS.buttons.refillRadius - 24;
     this.refillButton.setPosition(right - CONTROLS.buttons.refillRadius, refillY);

@@ -15,9 +15,27 @@ export const GameEvents = {
   GermKilled: 'germ.killed',
   /** { germId } */
   PlayerBumped: 'player.bumped',
+  /** { hp, maxHp } sent whenever Eugene's health changes */
+  PlayerHealthChanged: 'player.health',
+  PlayerDied: 'player.died',
+  /** { round, title } */
+  RoundStarted: 'round.started',
+  /** { round } */
+  RoundCompleted: 'round.completed',
+  /** { score } */
+  ScoreChanged: 'score.changed',
+  /** { name, hp, maxHp } for BossSpawned and BossHealth */
+  BossSpawned: 'boss.spawned',
+  BossHealth: 'boss.health',
+  BossDefeated: 'boss.defeated',
 } as const;
 
 export interface EquipmentChangedPayload { ammo: number; capacity: number; refillProgress: number; }
 export interface GermKilledPayload { germId: string; x: number; y: number; totalKills: number; }
+
+export interface HealthPayload { hp: number; maxHp: number; }
+export interface RoundPayload { round: number; title: string; }
+export interface BossPayload { name: string; hp: number; maxHp: number; }
+export interface RunResult { score: number; round: number; kills: number; bestScore: number; bestRound: number; newBestScore: boolean; newBestRound: boolean; }
 
 export const events = new Phaser.Events.EventEmitter();

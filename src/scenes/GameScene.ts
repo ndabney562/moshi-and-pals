@@ -2,19 +2,21 @@ import Phaser from 'phaser';
 import { BALANCE } from '../config/balance';
 import { CONTROLS } from '../config/controls';
 import { COLORS } from '../config/theme';
-import { events, GameEvents } from '../core/events';
+import { events, GameEvents, type RunResult } from '../core/events';
 import { inputState } from '../core/inputState';
 import { settings } from '../core/settings';
+import { recordRun } from '../core/save';
 import { initSfx, sfx } from '../core/sfx';
 import { EQUIPMENT, STARTING_EQUIPMENT } from '../data/equipment';
 import { GERMS } from '../data/germs';
 import { WAITING_ROOM, type Obstacle, type RoomLayout } from '../data/rooms';
 import { Droplet } from '../entities/Droplet';
-import { Germ } from '../entities/Germ';
+import { Germ, type GermScaling } from '../entities/Germ';
 import { Player } from '../entities/Player';
 import { FlowField } from '../systems/FlowField';
 import { Fx } from '../systems/Fx';
 import { Sprayer } from '../systems/Sprayer';
+import { WaveDirector } from '../systems/WaveDirector';
 
 /** The playable world: the room, Eugene, his equipment, and the germs. */
 export class GameScene extends Phaser.Scene {
@@ -27,8 +29,10 @@ export class GameScene extends Phaser.Scene {
   private flow!: FlowField;
   private nextFlowAt = 0;
   private readonly step = new Phaser.Math.Vector2();
+  private waves!: WaveDirector;
   private kills = 0;
-  private nextSpawnAt = 0;
+  private score = 0;
+  private runOver = false;
   private readonly mouseWorld = new Phaser.Math.Vector2();
   private readonly nozzle = new Phaser.Math.Vector2();
 
@@ -39,6 +43,10 @@ export class GameScene extends Phaser.Scene {
   create(): void {
     const room = this.room;
     this.kills = 0;
+    this.score = 0;
+    this.runOver = false;
+    inputState.firing = false;
+    inputState.refillRequested = false;
     this.physics.world.setBounds(0, 0, room.width, room.height);
     this.add.tileSprite(0, 0, room.width, room.height, 'floor').setOrigin(0);
 
@@ -57,6 +65,7 @@ export class GameScene extends Phaser.Scene {
     this.droplets = this.physics.add.group({ classType: Droplet, maxSize: 90, runChildUpdate: true, defaultKey: 'droplet' });
     this.germs = this.physics.add.group({ classType: Germ, maxSize: 60, defaultKey: 'germ-basic' });
     this.sprayer = new Sprayer(EQUIPMENT[STARTING_EQUIPMENT], this.droplets);
+    this.waves = new WaveDirector(this.time.now);
 
     this.physics.add.collider(this.player, solids);
     this.physics.add.collider(this.germs, solids);
@@ -74,19 +83,30 @@ export class GameScene extends Phaser.Scene {
     cam.startFollow(this.player, true, BALANCE.camera.followLerp, BALANCE.camera.followLerp);
 
     initSfx(this);
-    events.on(GameEvents.EquipmentEmpty, sfx.empty);
-    events.on(GameEvents.EquipmentRefilled, sfx.refill);
+    const sounds: [string, () => void][] = [
+      [GameEvents.EquipmentEmpty, sfx.empty],
+      [GameEvents.EquipmentRefilled, sfx.refill],
+      [GameEvents.RoundStarted, sfx.roundStart],
+      [GameEvents.RoundCompleted, sfx.roundEnd],
+    ];
+    for (const [name, fn] of sounds) events.on(name, fn);
     this.events.once('shutdown', () => {
-      events.off(GameEvents.EquipmentEmpty, sfx.empty);
-      events.off(GameEvents.EquipmentRefilled, sfx.refill);
+      for (const [name, fn] of sounds) events.off(name, fn);
     });
 
-    this.scene.launch('Hud', { roomName: room.name });
-    this.sprayer.emitChanged(this.time.now);
+    this.scene.launch('Hud');
     events.emit(GameEvents.RunStarted, { roomId: room.id });
   }
 
+  /** Re-sends current health, score and equipment so a freshly started HUD can draw them. */
+  broadcastState(): void {
+    events.emit(GameEvents.PlayerHealthChanged, { hp: this.player.hp, maxHp: this.player.maxHp });
+    events.emit(GameEvents.ScoreChanged, { score: this.score });
+    this.sprayer.emitChanged(this.time.now);
+  }
+
   update(time: number, delta: number): void {
+    if (this.runOver) return;
     let aimTarget: { x: number; y: number } | undefined;
     if (inputState.mouseActive) {
       aimTarget = this.cameras.main.getWorldPoint(inputState.mouseX, inputState.mouseY, this.mouseWorld);
@@ -94,6 +114,9 @@ export class GameScene extends Phaser.Scene {
       aimTarget = this.nearestGerm(CONTROLS.autoAimRange);
     }
     this.player.drive(inputState, delta, aimTarget);
+    if (this.player.regen(time, delta)) {
+      events.emit(GameEvents.PlayerHealthChanged, { hp: this.player.hp, maxHp: this.player.maxHp });
+    }
 
     // Equipment
     if (inputState.refillRequested) {
@@ -121,7 +144,7 @@ export class GameScene extends Phaser.Scene {
       const near = Phaser.Math.Distance.Between(g.x, g.y, this.player.x, this.player.y) < BALANCE.germs.directChaseDistance;
       g.chase(near || !this.flow.nextStep(g.x, g.y, this.step) ? this.player : this.step, time, delta);
     }
-    this.keepGermsAlive(time);
+    this.waves.update(time, this.germs.countActive(true), (id, scaling) => this.spawnGerm(id, scaling));
   }
 
   /** Auto-aim: the closest living germ within `range`, if any. */
@@ -152,35 +175,80 @@ export class GameScene extends Phaser.Scene {
       germ.lastNumberAt = time;
     }
 
+    if (germ.def.boss) {
+      events.emit(GameEvents.BossHealth, { name: germ.def.name, hp: Math.max(0, germ.hp), maxHp: germ.maxHp });
+    }
+
     if (killed) {
       this.kills++;
+      this.score += germ.def.points;
       this.fx.germSplat(germ.x, germ.y, germ.def.color);
+      this.fx.number(germ.x, germ.y - germ.def.radius - 24, `+${germ.def.points}`, '#ffe66d', germ.def.boss ? 34 : 18);
       sfx.pop();
+      if (germ.def.boss) {
+        // Extra-large mess and a proper camera kick
+        for (let i = 0; i < 4; i++) {
+          this.fx.germSplat(germ.x + Phaser.Math.Between(-40, 40), germ.y + Phaser.Math.Between(-40, 40), germ.def.color);
+        }
+        this.cameras.main.shake(300, 0.01);
+        events.emit(GameEvents.BossDefeated, { name: germ.def.name, hp: 0, maxHp: germ.maxHp });
+      }
       events.emit(GameEvents.GermKilled, { germId: germ.def.id, x: germ.x, y: germ.y, totalKills: this.kills });
+      events.emit(GameEvents.ScoreChanged, { score: this.score });
       germ.kill();
-      this.nextSpawnAt = Math.max(this.nextSpawnAt, time + BALANCE.sandbox.respawnDelayMs);
     }
   }
 
   private onGermBump(germ: Germ): void {
+    if (this.runOver) return;
     const time = this.time.now;
     germ.bounceFrom(this.player.x, this.player.y, time);
-    this.player.flashHurt();
-    sfx.bump();
+    if (!this.player.takeDamage(germ.def.contactDamage, time)) return;
+    sfx.hurt();
+    this.cameras.main.shake(120, 0.006);
     events.emit(GameEvents.PlayerBumped, { germId: germ.def.id });
+    events.emit(GameEvents.PlayerHealthChanged, { hp: this.player.hp, maxHp: this.player.maxHp });
+    if (this.player.dead) this.endRun();
   }
 
-  /** Milestone 2 sandbox: keep a few germs around. Replaced by the wave system in M3. */
-  private keepGermsAlive(time: number): void {
-    if (this.germs.countActive(true) >= BALANCE.sandbox.germsAlive || time < this.nextSpawnAt) return;
+  /** Places one germ at a spawn point away from Eugene. Returns false if the pool is full. */
+  private spawnGerm(id: string, scaling: GermScaling): boolean {
+    const def = GERMS[id];
+    const germ = this.germs.get() as Germ | null;
+    if (!def || !germ) return false;
     const far = this.room.germSpawns.filter(
-      (p) => Phaser.Math.Distance.Between(p.x, p.y, this.player.x, this.player.y) >= BALANCE.sandbox.minSpawnDistance,
+      (p) => Phaser.Math.Distance.Between(p.x, p.y, this.player.x, this.player.y) >= BALANCE.spawning.minSpawnDistance,
     );
     const spot = Phaser.Utils.Array.GetRandom(far.length ? far : this.room.germSpawns);
-    const germ = this.germs.get() as Germ | null;
-    if (!germ) return;
-    germ.spawn(GERMS.basic, spot.x, spot.y);
-    this.nextSpawnAt = time + 400;
+    germ.spawn(def, spot.x, spot.y, scaling);
+    if (def.boss) {
+      sfx.bossArrives();
+      events.emit(GameEvents.BossSpawned, { name: def.name, hp: germ.hp, maxHp: germ.maxHp });
+    }
+    return true;
+  }
+
+  /** Eugene is down: freeze the room, save the high score, show the game over screen. */
+  private endRun(): void {
+    this.runOver = true;
+    inputState.firing = false;
+    this.player.collapse();
+    for (const g of this.germs.getChildren() as Germ[]) if (g.active) g.freeze();
+    sfx.gameOver();
+    events.emit(GameEvents.PlayerDied);
+
+    const round = this.waves.round;
+    const record = recordRun(this.score, round);
+    const result: RunResult = {
+      score: this.score, round, kills: this.kills,
+      bestScore: Math.max(record.previous.bestScore, this.score),
+      bestRound: Math.max(record.previous.bestRound, round),
+      newBestScore: record.newBestScore, newBestRound: record.newBestRound,
+    };
+    this.time.delayedCall(1600, () => {
+      this.scene.stop('Hud');
+      this.scene.launch('GameOver', result);
+    });
   }
 
   /** Placeholder drawing for each obstacle type. Real sprites replace this later. */

@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import { DISPLAY } from './config/display';
 import { BootScene } from './scenes/BootScene';
+import { GameOverScene } from './scenes/GameOverScene';
 import { GameScene } from './scenes/GameScene';
 import { HudScene } from './scenes/HudScene';
 import { TitleScene } from './scenes/TitleScene';
@@ -24,7 +25,7 @@ const game = new Phaser.Game({
   physics: { default: 'arcade', arcade: { debug: false } },
   input: { activePointers: 3 },
   render: { antialias: true, powerPreference: 'high-performance' },
-  scene: [BootScene, TitleScene, GameScene, HudScene],
+  scene: [BootScene, TitleScene, GameScene, HudScene, GameOverScene],
 });
 
 // Keep the game's shape matched to the screen when the phone rotates

@@ -9,11 +9,17 @@ export const BALANCE = {
     bodyRadius: 22,
     /** How quickly Eugene turns toward his aim direction (0..1 per frame at 60fps). */
     turnSmoothing: 0.35,
+    maxHp: 100,
+    /** After a hit, Eugene can't be hurt again for this long. */
+    invulnerableMs: 700,
+    /** Health comes back on its own after this long without being hit... */
+    regenDelayMs: 4500,
+    /** ...at this many HP per second. */
+    regenPerSecond: 12,
+    /** Below this fraction of health the screen edges pulse red. */
+    lowHealth: 0.3,
   },
-  sandbox: {
-    /** Milestone 2 only: how many germs to keep alive at once (waves replace this in M3). */
-    germsAlive: 4,
-    respawnDelayMs: 1200,
+  spawning: {
     /** Germs never spawn closer than this to Eugene. */
     minSpawnDistance: 380,
   },

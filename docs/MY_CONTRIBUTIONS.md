@@ -6,9 +6,11 @@
 - Playtested Milestone 2: wanted a spray button, shorter range; bottle, refill, sounds OK.
 - Described Eugene and shared a reference photo.
 - Playtested v0.2.1: auto-aim feels fine, wanted an off switch.
+- Asked for boss germs; designed the first boss direction (whiny, comedic, wants to take Eugene back to Mother Russia) and picked the name Babushka Bacillus.
 
 ## Requested now
-- Nothing pending; Milestone 3 next.
+- Playtest Milestone 3 (questions in the project thread).
+- Optional: round titles and game over lines (`src/data/waves.ts`, `src/scenes/GameOverScene.ts`).
 
 ## Coming up
 - M4: a name for the currency; a first Sinus Purge recording (placeholder is fine).
