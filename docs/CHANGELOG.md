@@ -1,5 +1,11 @@
 # Changelog
 
+## v0.2.1: Noah's Milestone 2 playtest
+- Spraying is now a SPRAY button (hold to spray). Eugene auto-aims at the nearest germ within 240 px, otherwise faces where he walks. Twin-stick aiming is still available via `CONTROLS.scheme`.
+- Spray range shortened from 300 to 200 px.
+- Eugene redrawn from Noah's description: stocky, thinning grey hair with a bald top, glasses, white coat over a dark navy scrub top.
+- Desktop testing: Space also sprays.
+
 ## v0.2.0: Milestone 2, squirt bottle vs. first germ
 - Isopropyl alcohol squirt bottle: push the aim stick to spray. 120 mL, drains as you spray.
 - Bottle meter and REFILL button (also R key). The button throbs when you're nearly empty.

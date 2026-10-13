@@ -6,6 +6,8 @@ export class HudButton extends Phaser.GameObjects.Container {
   private readonly ring: Phaser.GameObjects.Graphics;
   private readonly label: Phaser.GameObjects.Text;
   private pulse?: Phaser.Tweens.Tween;
+  /** Pointer currently holding this button down, if any. */
+  private holdPointerId: number | null = null;
 
   constructor(scene: Phaser.Scene, readonly radius: number, text: string, private readonly color: number, onPress: () => void) {
     super(scene, 0, 0);
@@ -19,14 +21,30 @@ export class HudButton extends Phaser.GameObjects.Container {
 
     this.setSize(radius * 2, radius * 2);
     this.setInteractive(new Phaser.Geom.Circle(radius, radius, radius * 1.15), Phaser.Geom.Circle.Contains);
-    this.on('pointerdown', () => {
+    this.on('pointerdown', (pointer: Phaser.Input.Pointer) => {
+      this.holdPointerId = pointer.id;
       this.disc.setFillStyle(this.color, 0.7);
       this.setScale(0.92);
       onPress();
     });
-    const release = () => { this.disc.setFillStyle(this.color, 0.35); this.setScale(1); };
-    this.on('pointerup', release);
-    this.on('pointerout', release);
+    // Release when that finger lifts anywhere, so a thumb that slides off still lets go
+    const release = (pointer: Phaser.Input.Pointer) => {
+      if (pointer.id !== this.holdPointerId) return;
+      this.holdPointerId = null;
+      this.disc.setFillStyle(this.color, 0.35);
+      this.setScale(1);
+    };
+    scene.input.on('pointerup', release);
+    scene.input.on('pointerupoutside', release);
+    this.once('destroy', () => {
+      scene.input.off('pointerup', release);
+      scene.input.off('pointerupoutside', release);
+    });
+  }
+
+  /** True while a finger (or mouse) is holding the button down. */
+  get held(): boolean {
+    return this.holdPointerId !== null;
   }
 
   /** Draws a ring showing 0..1 progress; pass a negative number to hide it. */

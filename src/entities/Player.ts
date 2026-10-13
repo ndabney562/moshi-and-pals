@@ -42,7 +42,7 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
   }
 
   /** Called every frame by the game scene with this frame's input. */
-  drive(input: InputState, dtMs: number, aimTarget?: Phaser.Math.Vector2): void {
+  drive(input: InputState, dtMs: number, aimTarget?: { x: number; y: number }): void {
     const speed = BALANCE.player.moveSpeed;
     this.setVelocity(input.moveX * speed, input.moveY * speed);
 

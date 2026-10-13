@@ -42,15 +42,21 @@ try {
   });
   const start = await pos();
 
-  // Drag the left stick up-right with one finger, and hold the aim stick left with a second
+  // Screen position of a HUD button, in page pixels
+  const buttonAt = (name) => page.evaluate((n) => {
+    const b = window.game.scene.getScene('Hud')[n];
+    const canvas = window.game.canvas.getBoundingClientRect();
+    const k = canvas.width / window.game.scale.width;
+    return { x: canvas.left + b.x * k, y: canvas.top + b.y * k };
+  }, name);
+
+  // Drag the left stick up-right with one finger
   const cdp = await context.newCDPSession(page);
   const touch = (type, points) => cdp.send('Input.dispatchTouchEvent', { type, touchPoints: points });
   const L = { x: 120, y: 300, id: 1 };
-  const R = { x: 730, y: 300, id: 2 };
   await touch('touchStart', [L]);
-  await touch('touchStart', [L, R]);
   for (let i = 1; i <= 10; i++) {
-    await touch('touchMove', [{ ...L, x: L.x + i * 4, y: L.y - i * 4 }, { ...R, x: R.x - i * 5 }]);
+    await touch('touchMove', [{ ...L, x: L.x + i * 4, y: L.y - i * 4 }]);
     await page.waitForTimeout(16);
   }
   await page.waitForTimeout(800);
@@ -58,7 +64,7 @@ try {
   const end = await pos();
   await touch('touchEnd', []);
 
-  // Spray at the nearest germ for a few seconds by steering the aim stick toward it
+  // Hold SPRAY for a few seconds and let auto-aim find the germs
   const game = () => page.evaluate(() => {
     const scene = window.game.scene.getScene('Game');
     const eugene = scene.children.list.find((c) => c.texture?.key === 'eugene');
@@ -67,6 +73,8 @@ try {
     const g = germs[0];
     return {
       ammo: scene.sprayer.ammo, kills: scene.kills, germs: germs.length,
+      dist: g ? Math.hypot(g.x - eugene.x, g.y - eugene.y) : Infinity,
+      facing: eugene.rotation,
       aim: g ? Math.atan2(g.y - eugene.y, g.x - eugene.x) : 0,
     };
   });
@@ -74,30 +82,32 @@ try {
   await page.waitForFunction(() => {
     const scene = window.game.scene.getScene('Game');
     const e = scene.children.list.find((c) => c.texture?.key === 'eugene');
-    return scene.children.list.some((c) => c.texture?.key?.startsWith('germ-') && c.active && Math.hypot(c.x - e.x, c.y - e.y) < 260);
+    return scene.children.list.some((c) => c.texture?.key?.startsWith('germ-') && c.active && Math.hypot(c.x - e.x, c.y - e.y) < 180);
   }, null, { timeout: 30000 });
   const before = await game();
   check(before.germs > 0, `germs spawned and approached (${before.germs} alive)`);
-  await touch('touchStart', [R]);
+  const spray = await buttonAt('sprayButton');
+  await touch('touchStart', [{ ...spray, id: 3 }]);
+  let aimSamples = 0;
+  let aimHits = 0;
   for (let i = 0; i < 70; i++) {
-    const { aim } = await game();
-    await touch('touchMove', [{ ...R, x: R.x + Math.cos(aim) * 70, y: R.y + Math.sin(aim) * 70 }]);
     await page.waitForTimeout(100);
     if (i === 8) await page.screenshot({ path: 'smoke-spray.png' });
+    // Whenever a germ is clearly in range, Eugene should be facing it
+    const { aim, dist, facing } = await game();
+    if (dist < 180) {
+      aimSamples++;
+      if (Math.abs(Math.atan2(Math.sin(facing - aim), Math.cos(facing - aim))) < 0.5) aimHits++;
+    }
   }
+  check(aimSamples > 0 && aimHits / aimSamples >= 0.6, `auto-aim faces the nearest germ (${aimHits}/${aimSamples} samples)`);
   await touch('touchEnd', []);
   const after = await game();
   check(after.ammo < before.ammo, `spraying used alcohol (${before.ammo} -> ${after.ammo} mL)`);
   check(after.kills > 0, `germs disinfected (${after.kills})`);
 
   // Tap the Refill button
-  const refillAt = await page.evaluate(() => {
-    const hud = window.game.scene.getScene('Hud');
-    const b = hud.refillButton;
-    const canvas = window.game.canvas.getBoundingClientRect();
-    const k = canvas.width / window.game.scale.width;
-    return { x: canvas.left + b.x * k, y: canvas.top + b.y * k };
-  });
+  const refillAt = await buttonAt('refillButton');
   await page.touchscreen.tap(refillAt.x, refillAt.y);
   await page.waitForTimeout(1400);
   const refilled = await game();
@@ -105,7 +115,7 @@ try {
   await page.screenshot({ path: 'smoke-after.png' });
 
   check(end.x > start.x + 20 && end.y < start.y - 20, `Eugene moved up-right (${start.x | 0},${start.y | 0}) -> (${end.x | 0},${end.y | 0})`);
-  check(Math.abs(Math.abs(end.rotation) - Math.PI) < 0.3, `Eugene faces the aim stick (left), rotation ${end.rotation.toFixed(2)}`);
+  check(Math.abs(end.rotation - -Math.PI / 4) < 0.3, `Eugene faces where he walks (up-right), rotation ${end.rotation.toFixed(2)}`);
   check(errors.length === 0, `no console errors${errors.length ? ': ' + errors.join(' | ') : ''}`);
 } catch (e) {
   check(false, String(e));

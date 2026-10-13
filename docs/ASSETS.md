@@ -2,7 +2,7 @@
 
 | Asset | Status |
 |---|---|
-| Eugene sprite | Placeholder, drawn in code (BootScene) |
+| Eugene sprite | Placeholder drawn in code, matched to Noah's description (grey thinning hair, glasses, stocky, navy scrubs) |
 | Floor tile, furniture | Placeholder, drawn in code |
 | App icons | Placeholder (`public/icons/`) |
 | Basic Germ | Placeholder, drawn in code |

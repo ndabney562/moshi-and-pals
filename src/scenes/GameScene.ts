@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 import { BALANCE } from '../config/balance';
+import { CONTROLS } from '../config/controls';
 import { COLORS } from '../config/theme';
 import { events, GameEvents } from '../core/events';
 import { inputState } from '../core/inputState';
@@ -85,9 +86,11 @@ export class GameScene extends Phaser.Scene {
   }
 
   update(time: number, delta: number): void {
-    let aimTarget: Phaser.Math.Vector2 | undefined;
+    let aimTarget: { x: number; y: number } | undefined;
     if (inputState.mouseActive) {
       aimTarget = this.cameras.main.getWorldPoint(inputState.mouseX, inputState.mouseY, this.mouseWorld);
+    } else if (CONTROLS.scheme === 'sprayButton') {
+      aimTarget = this.nearestGerm(CONTROLS.autoAimRange);
     }
     this.player.drive(inputState, delta, aimTarget);
 
@@ -118,6 +121,18 @@ export class GameScene extends Phaser.Scene {
       g.chase(near || !this.flow.nextStep(g.x, g.y, this.step) ? this.player : this.step, time, delta);
     }
     this.keepGermsAlive(time);
+  }
+
+  /** Auto-aim: the closest living germ within `range`, if any. */
+  private nearestGerm(range: number): Germ | undefined {
+    let best: Germ | undefined;
+    let bestDist = range * range;
+    for (const g of this.germs.getChildren() as Germ[]) {
+      if (!g.active) continue;
+      const d = Phaser.Math.Distance.Squared(g.x, g.y, this.player.x, this.player.y);
+      if (d < bestDist) { bestDist = d; best = g; }
+    }
+    return best;
   }
 
   private onDropletHit(drop: Droplet, germ: Germ): void {

@@ -40,7 +40,7 @@ export const EQUIPMENT: Record<string, EquipmentDef> = {
     dropletsPerShot: 2,
     spreadDeg: 14,
     dropletSpeed: 620,
-    range: 300,
+    range: 200,
     damage: 4,
     effectiveness: { bacteria: 1, virus: 1.2, spore: 0.25, biofilm: 0.5 },
     knockback: 18,

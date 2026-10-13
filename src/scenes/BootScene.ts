@@ -21,34 +21,52 @@ export class BootScene extends Phaser.Scene {
     this.scene.start('Title');
   }
 
-  /** Top-down Eugene facing right (+x). 96x96, centered. */
+  /**
+   * Top-down Eugene facing right (+x). 96x96, centered.
+   * Based on Noah's description: stocky, thinning grey hair, glasses,
+   * white lab coat over a dark scrub top.
+   */
   private makeEugene(): void {
     const g = this.add.graphics();
     const outline = 0x1b2b30;
 
     // Right arm reaching forward holding the squirt bottle (his right side is +y when facing +x)
-    g.fillStyle(COLORS.coat).lineStyle(3, outline).fillRoundedRect(46, 56, 30, 12, 6).strokeRoundedRect(46, 56, 30, 12, 6);
-    g.fillStyle(COLORS.skin).fillCircle(78, 62, 6).strokeCircle(78, 62, 6);
+    g.fillStyle(COLORS.coat).lineStyle(3, outline).fillRoundedRect(46, 60, 30, 13, 6).strokeRoundedRect(46, 60, 30, 13, 6);
+    g.fillStyle(COLORS.skin).fillCircle(78, 66, 6).strokeCircle(78, 66, 6);
     // Squirt bottle: body, cap, nozzle
-    g.fillStyle(COLORS.bottle).fillRoundedRect(76, 66, 14, 20, 4).strokeRoundedRect(76, 66, 14, 20, 4);
-    g.fillStyle(COLORS.bottleCap).fillRect(79, 60, 8, 7).strokeRect(79, 60, 8, 7);
-    g.fillStyle(COLORS.bottleCap).fillTriangle(87, 61, 94, 63, 87, 65);
+    g.fillStyle(COLORS.bottle).fillRoundedRect(76, 70, 14, 20, 4).strokeRoundedRect(76, 70, 14, 20, 4);
+    g.fillStyle(COLORS.bottleCap).fillRect(79, 64, 8, 7).strokeRect(79, 64, 8, 7);
+    g.fillStyle(COLORS.bottleCap).fillTriangle(87, 65, 94, 67, 87, 69);
 
     // Left arm, slightly forward
-    g.fillStyle(COLORS.coat).fillRoundedRect(44, 22, 22, 12, 6).strokeRoundedRect(44, 22, 22, 12, 6);
-    g.fillStyle(COLORS.skin).fillCircle(68, 28, 6).strokeCircle(68, 28, 6);
+    g.fillStyle(COLORS.coat).fillRoundedRect(44, 18, 22, 13, 6).strokeRoundedRect(44, 18, 22, 13, 6);
+    g.fillStyle(COLORS.skin).fillCircle(68, 24, 6).strokeCircle(68, 24, 6);
 
-    // Lab coat (shoulders seen from above)
-    g.fillStyle(COLORS.coat).fillEllipse(42, 46, 40, 66).strokeEllipse(42, 46, 40, 66);
-    g.fillStyle(COLORS.coatShadow).fillEllipse(36, 46, 18, 50);
-    // Scrubs collar peeking out
-    g.fillStyle(COLORS.scrubs).fillCircle(50, 46, 12);
+    // Lab coat over broad, stocky shoulders
+    g.fillStyle(COLORS.coat).fillEllipse(41, 46, 46, 78).strokeEllipse(41, 46, 46, 78);
+    g.fillStyle(COLORS.coatShadow).fillEllipse(34, 46, 20, 58);
+    // Dark scrub top showing at the collar
+    g.fillStyle(COLORS.scrubs).fillCircle(49, 46, 20).fillEllipse(58, 46, 22, 26);
 
-    // Head: big confident nose leading the way (important for later sinus business)
+    // Head
     g.fillStyle(COLORS.skin).fillCircle(48, 46, 15).strokeCircle(48, 46, 15);
-    g.fillStyle(COLORS.skin).fillEllipse(64, 46, 12, 9).strokeEllipse(64, 46, 12, 9);
-    // Hair on the back of the head
-    g.fillStyle(COLORS.hair).beginPath().slice(46, 46, 15, Phaser.Math.DegToRad(100), Phaser.Math.DegToRad(260), false).fillPath();
+    // Thinning grey hair: a fringe around the back and sides, bald on top
+    g.fillStyle(COLORS.hair).beginPath()
+      .slice(48, 46, 15, Phaser.Math.DegToRad(70), Phaser.Math.DegToRad(290), false).fillPath();
+    g.fillStyle(COLORS.skinTop).fillCircle(50, 46, 9.5);
+    g.fillStyle(COLORS.skin, 0.6).fillCircle(52, 44, 4);
+    // A few heroic surviving strands
+    g.lineStyle(2, COLORS.hairStrand).lineBetween(42, 42, 54, 40).lineBetween(42, 47, 55, 46).lineBetween(43, 51, 53, 52);
+    g.lineStyle(3, outline).strokeCircle(48, 46, 15);
+
+    // Big confident nose leading the way (important for later sinus business)
+    g.fillStyle(COLORS.skin).fillEllipse(65, 46, 12, 9).strokeEllipse(65, 46, 12, 9);
+    // Glasses: lenses in front of the face, arms running back along the head
+    g.lineStyle(2, COLORS.glasses);
+    g.lineBetween(60, 35, 50, 33).lineBetween(60, 57, 50, 59);
+    g.fillStyle(COLORS.lens, 0.85).fillRoundedRect(58, 34, 6, 9, 2).fillRoundedRect(58, 49, 6, 9, 2);
+    g.strokeRoundedRect(58, 34, 6, 9, 2).strokeRoundedRect(58, 49, 6, 9, 2);
+    g.lineBetween(61, 43, 61, 49);
 
     g.generateTexture('eugene', 96, 96);
     g.destroy();

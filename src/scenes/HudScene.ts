@@ -16,7 +16,9 @@ import { VirtualJoystick } from '../ui/VirtualJoystick';
  */
 export class HudScene extends Phaser.Scene {
   private moveStick!: VirtualJoystick;
-  private aimStick!: VirtualJoystick;
+  /** Only exists in the twin-stick scheme. */
+  private aimStick?: VirtualJoystick;
+  private sprayButton?: HudButton;
   private fpsText?: Phaser.GameObjects.Text;
   private versionText!: Phaser.GameObjects.Text;
   private roomText!: Phaser.GameObjects.Text;
@@ -24,6 +26,7 @@ export class HudScene extends Phaser.Scene {
   private refillButton!: HudButton;
   private bottle!: BottleMeter;
   private mouseDown = false;
+  private spaceDown = false;
   private keys!: Record<'up' | 'down' | 'left' | 'right' | 'w' | 'a' | 's' | 'd' | 'r', Phaser.Input.Keyboard.Key>;
   private safe: Insets = { top: 0, right: 0, bottom: 0, left: 0 };
 
@@ -36,7 +39,11 @@ export class HudScene extends Phaser.Scene {
     this.input.addPointer(2);
 
     this.moveStick = new VirtualJoystick(this, 0xffffff);
-    this.aimStick = new VirtualJoystick(this, 0x7fffd4);
+    if (CONTROLS.scheme === 'twinStick') {
+      this.aimStick = new VirtualJoystick(this, 0x7fffd4);
+    } else {
+      this.sprayButton = new HudButton(this, CONTROLS.buttons.sprayRadius, 'SPRAY', 0x7fffd4, () => {});
+    }
 
     const style = { fontFamily: 'system-ui, -apple-system, sans-serif', fontSize: '18px', color: COLORS.uiText };
     this.roomText = this.add.text(0, 0, data.roomName.toUpperCase(), { ...style, fontSize: '22px', fontStyle: 'bold' })
@@ -76,6 +83,7 @@ export class HudScene extends Phaser.Scene {
       up: 'UP', down: 'DOWN', left: 'LEFT', right: 'RIGHT', w: 'W', a: 'A', s: 'S', d: 'D', r: 'R',
     }) as HudScene['keys'];
     this.keys.r.on('down', () => (inputState.refillRequested = true));
+    this.input.keyboard!.addKey('SPACE').on('down', () => (this.spaceDown = true)).on('up', () => (this.spaceDown = false));
 
     this.layout();
     this.scale.on('resize', this.layout, this);
@@ -89,14 +97,18 @@ export class HudScene extends Phaser.Scene {
     const m = CONTROLS.hudMargin;
     const { restLeft, restRight } = CONTROLS.joystick;
     this.moveStick.setHome(Math.max(width * restLeft.x, this.safe.left + 110), height * restLeft.y - this.safe.bottom);
-    this.aimStick.setHome(Math.min(width * restRight.x, width - this.safe.right - 110), height * restRight.y - this.safe.bottom);
+    const rightX = Math.min(width * restRight.x, width - this.safe.right - 110);
+    const rightY = height * restRight.y - this.safe.bottom;
+    this.aimStick?.setHome(rightX, rightY);
+    this.sprayButton?.setPosition(rightX, rightY);
     this.roomText.setPosition(width / 2, this.safe.top + m);
     this.versionText.setPosition(width - this.safe.right - m, this.safe.top + m);
     this.fpsText?.setPosition(this.safe.left + m, this.safe.top + m);
     this.killText.setPosition(width / 2, this.safe.top + m + 34);
     const right = width - this.safe.right - m;
-    this.refillButton.setPosition(right - CONTROLS.buttons.refillRadius, height * 0.4);
-    this.bottle.setPosition(right - CONTROLS.buttons.refillRadius * 2 - 44, height * 0.4 - 10);
+    const refillY = rightY - CONTROLS.buttons.sprayRadius - CONTROLS.buttons.refillRadius - 24;
+    this.refillButton.setPosition(right - CONTROLS.buttons.refillRadius, refillY);
+    this.bottle.setPosition(right - CONTROLS.buttons.refillRadius * 2 - 44, refillY - 10);
   }
 
   private onPointerDown(pointer: Phaser.Input.Pointer, over: Phaser.GameObjects.GameObject[]): void {
@@ -108,12 +120,12 @@ export class HudScene extends Phaser.Scene {
     }
     // Left half of the screen moves, right half aims
     const stick = pointer.x < this.scale.width / 2 ? this.moveStick : this.aimStick;
-    if (!stick.active) stick.start(pointer);
+    if (stick && !stick.active) stick.start(pointer);
   }
 
   private onPointerMove(pointer: Phaser.Input.Pointer): void {
     if (pointer.id === this.moveStick.pointerId) this.moveStick.move(pointer);
-    else if (pointer.id === this.aimStick.pointerId) this.aimStick.move(pointer);
+    else if (this.aimStick && pointer.id === this.aimStick.pointerId) this.aimStick.move(pointer);
     else if (!pointer.wasTouch) {
       inputState.mouseActive = true;
       inputState.mouseX = pointer.x;
@@ -124,7 +136,7 @@ export class HudScene extends Phaser.Scene {
   private onPointerUp(pointer: Phaser.Input.Pointer): void {
     if (!pointer.wasTouch) this.mouseDown = false;
     if (pointer.id === this.moveStick.pointerId) this.moveStick.release();
-    if (pointer.id === this.aimStick.pointerId) this.aimStick.release();
+    if (this.aimStick && pointer.id === this.aimStick.pointerId) this.aimStick.release();
   }
 
   update(): void {
@@ -142,16 +154,16 @@ export class HudScene extends Phaser.Scene {
     inputState.moveY = my;
 
     // Aim: only counts once the thumb is pushed past the threshold
-    const aim = this.aimStick.value;
-    const aimLen = aim.length();
-    inputState.aiming = this.aimStick.active && aimLen >= CONTROLS.aimThreshold;
-    if (inputState.aiming) {
+    const aim = this.aimStick?.value;
+    const aimLen = aim ? aim.length() : 0;
+    inputState.aiming = !!this.aimStick?.active && aimLen >= CONTROLS.aimThreshold;
+    if (aim && inputState.aiming) {
       inputState.aimX = aim.x / aimLen;
       inputState.aimY = aim.y / aimLen;
       inputState.mouseActive = false;
     }
-    // Pushing the aim stick sprays; on desktop, holding the mouse does
-    inputState.firing = inputState.aiming || (this.mouseDown && inputState.mouseActive);
+    // Spray: SPRAY button, or the aim stick in twin-stick mode, or the mouse on desktop
+    inputState.firing = !!this.sprayButton?.held || this.spaceDown || inputState.aiming || (this.mouseDown && inputState.mouseActive);
 
     this.fpsText?.setText(`${Math.round(this.game.loop.actualFps)} FPS`);
   }
