@@ -79,4 +79,24 @@ export const BALANCE = {
     tantrumShoveMs: 320,
     tantrumDamage: 8,
   },
+  /** Patients with health code violations (data/patients.ts). */
+  patients: {
+    /** First round they show up in. Boss rounds stay patient-free so Diamond gets the spotlight. */
+    firstRound: 2,
+    /** Most patients in the room at once, by round. */
+    maxActive: (r: number) => Math.min(1 + Math.floor(r / 3), 3),
+    spawnEveryMs: [9000, 16000] as [number, number],
+    speed: 60,
+    radius: 20,
+    /** How long they wander before heading home. */
+    stayMs: 30000,
+    /** Time between violations (each one lets germs in). */
+    violationEveryMs: [5000, 8500] as [number, number],
+    /** Droplets it takes to shame a patient into cleaning up and leaving. */
+    hitsToClean: 8,
+    cleanPoints: 25,
+    /** Eugene only grumbles about violations he can actually see. */
+    grumbleRange: 650,
+  },
 };
+

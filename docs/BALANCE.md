@@ -28,3 +28,6 @@ Values live in `src/config/balance.ts` and `src/config/controls.ts`.
 | Write-Ups | 3 per 20% of her health lost | 10 HP, 170 px/s |
 | Policy Tantrum | below 40% health, every 7 s, 280 px stomp | 8 damage + knockback |
 | Intermission | 5 s | Time to refill |
+| Patients | from round 2, max 1 + round/3 (cap 3), every 9-16 s | None in boss rounds; leave after 30 s |
+| Violations | every 5-8.5 s while a round is active | 1-2 germs each (Basic or Sprinter) |
+| Cleaning a patient | 8 droplet hits | +25 points |

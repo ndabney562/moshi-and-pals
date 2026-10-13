@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import { COLORS } from '../config/theme';
 import { GERMS, type GermDef } from '../data/germs';
+import { VIOLATIONS, type ViolationDef } from '../data/patients';
 
 /**
  * Creates placeholder textures in code so the prototype needs no image files.
@@ -16,6 +17,7 @@ export class BootScene extends Phaser.Scene {
     this.makeFloorTile();
     this.makeShadow();
     for (const def of Object.values(GERMS)) this.makeGerm(def);
+    for (const def of VIOLATIONS) this.makePatient(def);
     this.makeDroplet();
     this.makeSplat();
     this.scene.start('Title');
@@ -237,6 +239,26 @@ export class BootScene extends Phaser.Scene {
     g.lineStyle(2, def.outline).lineBetween(c + r * 0.1, c - r * 0.75, c + r * 0.6, c - r * 0.5)
       .lineBetween(c + r * 0.1, c + r * 0.75, c + r * 0.6, c + r * 0.5);
     g.generateTexture(`germ-${def.id}`, size, size);
+    g.destroy();
+  }
+
+  /** A patient seen from above, facing right (+x): shoulders, head, hair. Texture key: patient-<id>. */
+  private makePatient(def: ViolationDef): void {
+    const g = this.add.graphics();
+    const c = 32;
+    const outline = 0x1b2b30;
+    // Shoulders and arms
+    g.fillStyle(def.shirt).fillEllipse(c - 2, c, 30, 52);
+    g.lineStyle(2, outline).strokeEllipse(c - 2, c, 30, 52);
+    g.fillStyle(COLORS.skin).fillCircle(c + 8, c - 22, 6).fillCircle(c + 8, c + 22, 6);
+    // Head with hair on the back half
+    g.fillStyle(COLORS.skin).fillCircle(c + 2, c, 13);
+    g.fillStyle(def.hair).slice(c + 2, c, 13, Math.PI / 2, Math.PI * 1.5, false).fillPath();
+    g.lineStyle(2, outline).strokeCircle(c + 2, c, 13);
+    // Nose
+    g.fillStyle(COLORS.skin).fillCircle(c + 15, c, 3);
+    if (def.id === 'chinMask') g.fillStyle(0x9ad1f5).fillRect(c + 9, c - 8, 5, 16);
+    g.generateTexture(`patient-${def.id}`, 64, 64);
     g.destroy();
   }
 

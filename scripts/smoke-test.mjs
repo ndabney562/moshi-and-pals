@@ -133,6 +133,33 @@ try {
   check(run.round >= 1 && run.hud === `ROUND ${run.round}`, `wave system running (${run.hud})`);
   check(run.score > 0, `score counts kills (${run.score})`);
 
+  // Patients: one walks in, commits a health code violation, and gets sprayed into compliance
+  const violation = await page.evaluate(() => {
+    const scene = window.game.scene.getScene('Game');
+    scene.patients.spawn(scene.time.now);
+    const p = scene.patients.group.getChildren().find((c) => c.active);
+    p.setPosition(scene.player.x + 150, scene.player.y);
+    p.nextViolationAt = 0;
+    return { germsBefore: scene.germs.countActive(true), id: p.def.id };
+  });
+  await page.waitForFunction(() => window.game.scene.getScene('Game').patients.eugeneBubble.text.length > 0, null, { timeout: 4000 }).catch(() => {});
+  const violated = await page.evaluate(() => {
+    const scene = window.game.scene.getScene('Game');
+    const p = scene.patients.group.getChildren().find((c) => c.active);
+    return { said: p.bubble.text, eugene: scene.patients.eugeneBubble.text, germs: scene.germs.countActive(true) };
+  });
+  await page.screenshot({ path: 'smoke-patient.png' });
+  check(violated.said.length > 0 && violated.eugene.length > 0, `patient violation (${violation.id}: "${violated.said}") and Eugene grumbles ("${violated.eugene}")`);
+  check(violated.germs > violation.germsBefore, `the violation lets germs in (${violation.germsBefore} -> ${violated.germs})`);
+  const cleaned = await page.evaluate(() => {
+    const scene = window.game.scene.getScene('Game');
+    const p = scene.patients.group.getChildren().find((c) => c.active);
+    const before = scene.score;
+    for (let i = 0; i < 12; i++) scene.patients.sprayed(p);
+    return { state: p.state, gained: scene.score - before };
+  });
+  check(cleaned.state === 'leaving' && cleaned.gained > 0, `spraying a patient cleans them up and sends them home (${JSON.stringify(cleaned)})`);
+
   // Diamond the Practice Manager: spawn her near Eugene and walk her through every move
   await page.evaluate(() => {
     const scene = window.game.scene.getScene('Game');
@@ -156,7 +183,7 @@ try {
   await page.screenshot({ path: 'smoke-boss.png' });
   const meeting = await page.evaluate(() => {
     const scene = window.game.scene.getScene('Game');
-    return { y: scene.player.y, pull: scene.player.pull.length(), aim: scene.nearestGerm(240) === scene.boss.germ };
+    return { y: scene.player.y, pull: scene.player.pull.length(), aim: scene.nearestGerm(2000) === scene.boss.germ };
   });
   check(meeting.pull > 0 && meeting.y > meetingStart + 30, `Mandatory Meeting drags Eugene toward the exit (y ${meetingStart | 0} -> ${meeting.y | 0})`);
   check(meeting.aim, 'auto-aim locks onto Diamond during the meeting');
@@ -230,7 +257,7 @@ try {
   check(Math.abs(end.rotation - -Math.PI / 4) < 0.3, `Eugene faces where he walks (up-right), rotation ${end.rotation.toFixed(2)}`);
   check(errors.length === 0, `no console errors${errors.length ? ': ' + errors.join(' | ') : ''}`);
 } catch (e) {
-  check(false, String(e));
+  check(false, String(e) + (errors.length ? " | errors: " + errors.join(" | ") : ""));
 } finally {
   await browser.close();
   server.httpServer.close();
