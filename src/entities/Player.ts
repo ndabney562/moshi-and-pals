@@ -15,6 +15,11 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
   dead = false;
   private invulnerableUntil = 0;
   private lastHurtAt = -Infinity;
+  /** Outside forces, e.g. a boss dragging him: extra velocity, and a cap on his own walking speed. */
+  readonly pull = new Phaser.Math.Vector2();
+  moveScale = 1;
+  /** While shoved, Eugene slides and can't steer. */
+  private shovedUntil = 0;
 
   constructor(scene: Phaser.Scene, x: number, y: number) {
     super(scene, x, y, 'eugene');
@@ -65,6 +70,13 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     return true;
   }
 
+  /** Knocks Eugene away at velocity (vx, vy) for `ms`; he can't steer until it wears off. */
+  shove(vx: number, vy: number, ms: number): void {
+    if (this.dead) return;
+    this.setVelocity(vx, vy);
+    this.shovedUntil = this.scene.time.now + ms;
+  }
+
   /** Dramatic collapse. */
   collapse(): void {
     this.setVelocity(0, 0);
@@ -76,7 +88,13 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
   drive(input: InputState, dtMs: number, aimTarget?: { x: number; y: number }): void {
     if (this.dead) return;
     const speed = BALANCE.player.moveSpeed;
-    this.setVelocity(input.moveX * speed, input.moveY * speed);
+    if (this.scene.time.now < this.shovedUntil) {
+      const body = this.body as Phaser.Physics.Arcade.Body;
+      body.velocity.scale(Math.pow(0.9, dtMs / 16.67));
+    } else {
+      const walk = speed * this.moveScale;
+      this.setVelocity(input.moveX * walk + this.pull.x, input.moveY * walk + this.pull.y);
+    }
 
     // Decide facing: active aim wins, then mouse (desktop), then walking direction
     let face: number | undefined;

@@ -4,15 +4,15 @@
  */
 export const WAVES = {
   /** Pause before round 1, and between rounds (refill time!). */
-  firstRoundDelayMs: 2500,
+  firstRoundDelayMs: 2000,
   intermissionMs: 5000,
 
   /** Total germs in the round. */
-  count: (r: number) => Math.round(6 + 3 * (r - 1) + 0.15 * (r - 1) ** 2),
+  count: (r: number) => Math.round(10 + 3 * (r - 1) + 0.15 * (r - 1) ** 2),
   /** Most germs on screen at once (keeps late rounds readable and fast on iPhone). */
-  maxAlive: (r: number) => Math.min(6 + r * 2, 28),
+  maxAlive: (r: number) => Math.min(8 + r * 2, 28),
   /** Time between spawns while below maxAlive. */
-  spawnIntervalMs: (r: number) => Math.max(260, 1000 - r * 60),
+  spawnIntervalMs: (r: number) => Math.max(260, 800 - r * 50),
   /** Health and speed multipliers. Kept gentle: variety should carry difficulty, not sponges. */
   hpMult: (r: number) => 1 + 0.1 * (r - 1),
   speedMult: (r: number) => Math.min(1 + 0.035 * (r - 1), 1.6),
@@ -23,7 +23,7 @@ export const WAVES = {
 
   /** Every Nth round is a boss round: the boss plus a lighter escort of normal germs. */
   bossEvery: 5,
-  bossId: 'bossPlaceholder',
+  bossId: 'babushka',
   bossEscortFraction: 0.5,
 
   /** Shown under the ROUND banner. Noah: add your own! Index = round - 1; the last one repeats. */

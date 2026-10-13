@@ -7,6 +7,7 @@
 - Described Eugene and shared a reference photo.
 - Playtested v0.2.1: auto-aim feels fine, wanted an off switch.
 - Asked for boss germs; designed the first boss direction (whiny, comedic, wants to take Eugene back to Mother Russia) and picked the name Babushka Bacillus.
+- M3 playtest: round 1 too easy, regen too forgiving, boss needed more personality. Idea: patients who wander in as obstacles, and Eugene hates health code violations.
 
 ## Requested now
 - Playtest Milestone 3 (questions in the project thread).

@@ -46,14 +46,15 @@ export class Germ extends Phaser.Physics.Arcade.Sprite {
     this.stunnedUntil = Number.MAX_SAFE_INTEGER;
   }
 
-  chase(target: { x: number; y: number }, time: number, dtMs: number): void {
+  /** Steers toward `target` at its normal speed, or at `speed` when a boss brain says so. */
+  chase(target: { x: number; y: number }, time: number, dtMs: number, speed = this.speed): void {
     if (!this.active) return;
     if (time >= this.stunnedUntil) {
       const angle = Phaser.Math.Angle.Between(this.x, this.y, target.x, target.y);
       const body = this.body as Phaser.Physics.Arcade.Body;
       // Ease toward full chase speed so knockback recovers smoothly
-      body.velocity.x = Phaser.Math.Linear(body.velocity.x, Math.cos(angle) * this.speed, 0.1);
-      body.velocity.y = Phaser.Math.Linear(body.velocity.y, Math.sin(angle) * this.speed, 0.1);
+      body.velocity.x = Phaser.Math.Linear(body.velocity.x, Math.cos(angle) * speed, 0.1);
+      body.velocity.y = Phaser.Math.Linear(body.velocity.y, Math.sin(angle) * speed, 0.1);
       this.rotation = Phaser.Math.Angle.RotateTo(this.rotation, angle, 0.08);
     }
     // Jelly wobble
