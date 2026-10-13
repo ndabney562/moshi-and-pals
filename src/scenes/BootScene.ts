@@ -12,6 +12,11 @@ export class BootScene extends Phaser.Scene {
     super('Boot');
   }
 
+  preload(): void {
+    // Noah's title art (MoshiMonsters poster)
+    this.load.image('title-art', 'assets/title.jpg');
+  }
+
   create(): void {
     this.makeEugene();
     this.makeFloorTile();
