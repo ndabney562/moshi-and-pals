@@ -1,5 +1,8 @@
 # Changelog
 
+## v0.2.2
+- AUTO-AIM ON/OFF toggle in the top-left HUD, saved on the device (`src/core/settings.ts`). Off: Eugene faces and sprays where he walks.
+
 ## v0.2.1: Noah's Milestone 2 playtest
 - Spraying is now a SPRAY button (hold to spray). Eugene auto-aims at the nearest germ within 240 px, otherwise faces where he walks. Twin-stick aiming is still available via `CONTROLS.scheme`.
 - Spray range shortened from 300 to 200 px.

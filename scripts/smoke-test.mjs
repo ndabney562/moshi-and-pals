@@ -112,6 +112,17 @@ try {
   await page.waitForTimeout(1400);
   const refilled = await game();
   check(refilled.ammo === 120, `Refill button refilled the bottle (${refilled.ammo} mL)`);
+  // Tap AUTO-AIM to turn it off; it should be saved for next time
+  const toggle = await buttonAt('autoAimToggle');
+  const t = await page.evaluate(() => {
+    const b = window.game.scene.getScene('Hud').autoAimToggle;
+    return { w: b.width, h: b.height };
+  });
+  const k = await page.evaluate(() => window.game.canvas.getBoundingClientRect().width / window.game.scale.width);
+  await page.touchscreen.tap(toggle.x + (t.w / 2) * k, toggle.y + (t.h / 2) * k);
+  await page.waitForTimeout(200);
+  const saved = await page.evaluate(() => JSON.parse(localStorage.getItem('moshi.settings.v1') ?? '{}'));
+  check(saved.autoAim === false, `AUTO-AIM toggle turns it off and saves it (${JSON.stringify(saved)})`);
   await page.screenshot({ path: 'smoke-after.png' });
 
   check(end.x > start.x + 20 && end.y < start.y - 20, `Eugene moved up-right (${start.x | 0},${start.y | 0}) -> (${end.x | 0},${end.y | 0})`);

@@ -5,9 +5,10 @@
 - Playtested Milestone 1: controls feel good, 60 FPS, nothing under the notch.
 - Playtested Milestone 2: wanted a spray button, shorter range; bottle, refill, sounds OK.
 - Described Eugene and shared a reference photo.
+- Playtested v0.2.1: auto-aim feels fine, wanted an off switch.
 
 ## Requested now
-- Playtest v0.2.1: does the SPRAY button + auto-aim feel right?
+- Nothing pending; Milestone 3 next.
 
 ## Coming up
 - M4: a name for the currency; a first Sinus Purge recording (placeholder is fine).

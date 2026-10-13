@@ -8,7 +8,7 @@
 
 **Core loop:** move → aim → disinfect → dodge → earn → upgrade → unlock → survive → repeat.
 
-## Current state (v0.2.1)
+## Current state (v0.2.2)
 - Title screen, tap to start.
 - Waiting room (fictional layout) with chairs, desk, table, plants, locked doors to future areas.
 - Eugene (placeholder art) moves with left stick, faces right-stick aim.
@@ -16,7 +16,7 @@
 - Basic Germs keep coming (4 at a time) through doors; they bump Eugene but can't hurt him yet.
 
 ## Controls
-- Left thumb: floating move stick. Right thumb: hold SPRAY (Noah preferred a button to a hold-to-aim stick). Auto-aim picks the nearest germ.
+- Left thumb: floating move stick. Right thumb: hold SPRAY (Noah preferred a button to a hold-to-aim stick). Auto-aim picks the nearest germ; Noah asked for it to be optional, so an AUTO-AIM ON/OFF toggle (saved per device) sits in the top-left HUD.
 - Buttons: SPRAY, REFILL; Sinus Purge and contextual Interact later.
 - Alternative scheme kept in code: twin-stick (`CONTROLS.scheme = 'twinStick'`).
 - Desktop testing: WASD/arrows to move, mouse to aim, hold mouse or Space to spray, R to refill.

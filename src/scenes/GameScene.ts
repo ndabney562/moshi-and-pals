@@ -4,6 +4,7 @@ import { CONTROLS } from '../config/controls';
 import { COLORS } from '../config/theme';
 import { events, GameEvents } from '../core/events';
 import { inputState } from '../core/inputState';
+import { settings } from '../core/settings';
 import { initSfx, sfx } from '../core/sfx';
 import { EQUIPMENT, STARTING_EQUIPMENT } from '../data/equipment';
 import { GERMS } from '../data/germs';
@@ -89,7 +90,7 @@ export class GameScene extends Phaser.Scene {
     let aimTarget: { x: number; y: number } | undefined;
     if (inputState.mouseActive) {
       aimTarget = this.cameras.main.getWorldPoint(inputState.mouseX, inputState.mouseY, this.mouseWorld);
-    } else if (CONTROLS.scheme === 'sprayButton') {
+    } else if (CONTROLS.scheme === 'sprayButton' && settings.autoAim) {
       aimTarget = this.nearestGerm(CONTROLS.autoAimRange);
     }
     this.player.drive(inputState, delta, aimTarget);
