@@ -2,6 +2,7 @@
 
 ## v0.5.3: MoshiMonsters
 - Noah renamed the game **MoshiMonsters** (from his title poster). The home screen icon, browser tab and docs use the new name. The repo and web address stay `moshi-and-pals` so existing links and home screen icons keep working.
+- The title screen now uses Noah's landscape poster, filling the whole screen with TAP TO START over the bottom.
 
 ## v0.5.2: Title art
 - The title screen now shows Noah's MoshiMonsters poster (`public/assets/title.jpg`), with TAP TO START beside it.

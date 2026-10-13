@@ -14,22 +14,17 @@ export class TitleScene extends Phaser.Scene {
     const { width, height } = this.scale;
     const font = 'system-ui, -apple-system, sans-serif';
 
-    // Noah's poster, blown up and dimmed behind, then full size on the left
-    const backdrop = this.add.image(width / 2, height / 2, 'title-art');
-    backdrop.setScale(Math.max(width / backdrop.width, height / backdrop.height)).setAlpha(0.14);
-    const art = this.add.image(0, height / 2, 'title-art').setOrigin(0, 0.5);
-    art.setScale((height * 0.96) / art.height).setX(Math.max(16, width * 0.06));
-    this.tweens.add({ targets: art, scale: { from: art.scale * 0.94, to: art.scale }, duration: 500, ease: 'Back.out' });
+    // Noah's poster fills the screen. Wide phones crop it, mostly from the bottom, so the logo stays in view.
+    const art = this.add.image(width / 2, 0, 'title-art').setOrigin(0.5, 0);
+    const k = Math.max(width / art.width, height / art.height);
+    const spare = art.height - height / k; // image rows that don't fit
+    art.setScale(k).setY(-Math.min(spare, 30) * k);
+    this.tweens.add({ targets: art, alpha: { from: 0, to: 1 }, duration: 400 });
 
-    // Everything else sits in the space to the right of the poster
-    const cx = (art.x + art.displayWidth + width) / 2;
-    this.add.text(cx, height * 0.36, 'An Infection Control Emergency\nat MoshiLand Urgent Care', {
-      fontFamily: font, fontSize: '28px', fontStyle: 'italic', color: COLORS.uiAccent, align: 'center',
-    }).setOrigin(0.5).setShadow(0, 3, '#000', 8);
-
-    const tap = this.add.text(cx, height * 0.6, 'TAP TO START', {
-      fontFamily: font, fontSize: '44px', fontStyle: '900', color: COLORS.uiText,
-    }).setOrigin(0.5).setShadow(0, 4, '#000', 10);
+    const tap = this.add.text(width / 2, height * 0.92, 'TAP TO START', {
+      fontFamily: font, fontSize: '40px', fontStyle: '900', color: COLORS.uiText,
+      backgroundColor: '#0d2b2ecc', padding: { x: 22, y: 10 },
+    }).setOrigin(0.5).setShadow(0, 3, '#000', 6);
     this.tweens.add({ targets: tap, alpha: 0.35, duration: 650, yoyo: true, repeat: -1 });
 
     this.input.keyboard?.once('keydown', () => this.begin());
