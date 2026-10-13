@@ -1,5 +1,8 @@
 # Changelog
 
+## v0.5.2: Title art
+- The title screen now shows Noah's MoshiMonsters poster (`public/assets/title.jpg`), with TAP TO START beside it.
+
 ## v0.5.1: Always landscape
 - Noah: the screen broke when the phone was upright. The game now always plays in landscape. On an upright phone (or one with rotation lock on) it turns itself sideways to fill the screen, and touches, the HUD and the notch spacing all follow. The "turn your phone" screen is gone.
 
