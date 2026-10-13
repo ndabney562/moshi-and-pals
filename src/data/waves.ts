@@ -23,7 +23,7 @@ export const WAVES = {
 
   /** Every Nth round is a boss round: the boss plus a lighter escort of normal germs. */
   bossEvery: 5,
-  bossId: 'babushka',
+  bossId: 'diamond',
   bossEscortFraction: 0.5,
 
   /** Shown under the ROUND banner. Noah: add your own! Index = round - 1; the last one repeats. */

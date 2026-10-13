@@ -94,6 +94,10 @@ export class BootScene extends Phaser.Scene {
     const r = def.radius;
     const size = (r + 10) * 2;
     const c = size / 2;
+    if (def.shape === 'paper') {
+      this.makePaperGerm(def);
+      return;
+    }
     const g = this.add.graphics();
     if (def.shape === 'spiky') {
       // Virus spikes: little triangles all the way round
@@ -122,22 +126,15 @@ export class BootScene extends Phaser.Scene {
     g.lineStyle(3, def.outline).strokeCircle(c, c, r);
     g.fillStyle(0xffffff, 0.25).fillCircle(c - r * 0.35, c - r * 0.35, r * 0.3);
     g.fillStyle(def.outline, 0.35).fillCircle(c + r * 0.4, c + r * 0.45, r * 0.15).fillCircle(c - r * 0.45, c + r * 0.3, r * 0.1);
-    if (def.headscarf !== undefined) this.drawHeadscarf(g, c, r, def.headscarf, def.outline);
+    if (def.look === 'manager') this.drawManagerHair(g, c, r);
     // Eyes facing right (+x), the direction it moves
     for (const dy of [-0.32, 0.32]) {
       g.fillStyle(0xffffff).fillCircle(c + r * 0.38, c + r * dy, r * 0.27);
       g.fillStyle(0x111111).fillCircle(c + r * 0.48, c + r * dy, r * 0.13);
     }
-    // Grin (bosses scowl; the babushka family pouts)
-    if (def.headscarf !== undefined) {
-      g.fillStyle(0xff7aa8, 0.6).fillCircle(c + r * 0.55, c - r * 0.62, r * 0.14).fillCircle(c + r * 0.55, c + r * 0.62, r * 0.14);
-      g.lineStyle(Math.max(2, r / 14), def.outline).beginPath()
-        .arc(c + r * 1.05, c, r * 0.32, Phaser.Math.DegToRad(150), Phaser.Math.DegToRad(210)).strokePath();
-      if (def.boss) {
-        // A tear, mid-guilt-trip
-        g.fillStyle(0x7fd3ff).fillCircle(c + r * 0.22, c + r * 0.5, r * 0.08).fillTriangle(
-          c + r * 0.14, c + r * 0.47, c + r * 0.3, c + r * 0.47, c + r * 0.3, c + r * 0.3);
-      }
+    // Grin (bosses scowl; Diamond scowls harder and carries a clipboard)
+    if (def.look === 'manager') {
+      this.drawManagerFace(g, c, r, def.outline);
       g.generateTexture(`germ-${def.id}`, size, size);
       g.destroy();
       return;
@@ -152,25 +149,55 @@ export class BootScene extends Phaser.Scene {
     g.destroy();
   }
 
-  /** A floral headscarf over the back of the head, tied off behind. */
-  private drawHeadscarf(g: Phaser.GameObjects.Graphics, c: number, r: number, color: number, outline: number): void {
+  /** A tight bun and a severe hair cap over the back of the head. */
+  private drawManagerHair(g: Phaser.GameObjects.Graphics, c: number, r: number): void {
     const back = Math.PI;
-    g.fillStyle(color);
-    // Knot tails trailing behind
-    g.fillTriangle(c - r * 0.85, c - r * 0.2, c - r * 0.85, c + r * 0.2, c - r - 9, c - r * 0.35);
-    g.fillTriangle(c - r * 0.85, c - r * 0.1, c - r * 0.85, c + r * 0.3, c - r - 8, c + r * 0.4);
-    g.slice(c, c, r + 2, back - 1.45, back + 1.45, false).fillPath();
-    g.lineStyle(Math.max(2, r / 16), outline).beginPath().arc(c, c, r + 2, back - 1.45, back + 1.45, false).strokePath();
-    g.lineBetween(c + Math.cos(back - 1.45) * (r + 2), c + Math.sin(back - 1.45) * (r + 2), c + Math.cos(back + 1.45) * (r + 2), c + Math.sin(back + 1.45) * (r + 2));
-    // Little white flowers
-    const dots = r > 30 ? 7 : 3;
-    for (let i = 0; i < dots; i++) {
-      const a = back - 1.1 + (2.2 * i) / Math.max(1, dots - 1);
-      const d = r * (i % 2 ? 0.45 : 0.75);
-      const fx = c + Math.cos(a) * d, fy = c + Math.sin(a) * d;
-      g.fillStyle(0xffffff).fillCircle(fx, fy, Math.max(1.5, r * 0.08));
-      g.fillStyle(0xffd166).fillCircle(fx, fy, Math.max(0.8, r * 0.035));
+    const hair = 0x3b2417;
+    g.fillStyle(hair).slice(c, c, r + 1, back - 1.3, back + 1.3, false).fillPath();
+    g.fillStyle(hair).fillCircle(c - r * 0.82, c, r * 0.3);
+    g.lineStyle(2, 0x6b4a33).strokeCircle(c - r * 0.82, c, r * 0.2);
+    // A pencil stuck in the bun
+    g.lineStyle(4, 0xffc93c).lineBetween(c - r * 1.05, c - r * 0.35, c - r * 0.6, c + r * 0.3);
+  }
+
+  /** Furious eyebrows, a flat frown, reading glasses on a chain, and a clipboard. */
+  private drawManagerFace(g: Phaser.GameObjects.Graphics, c: number, r: number, outline: number): void {
+    // Eyebrows slant down toward the middle: maximum disapproval
+    g.lineStyle(r / 8, 0x3b2417);
+    g.lineBetween(c + r * 0.15, c - r * 0.62, c + r * 0.62, c - r * 0.22);
+    g.lineBetween(c + r * 0.15, c + r * 0.62, c + r * 0.62, c + r * 0.22);
+    // Thin, unimpressed mouth
+    g.lineStyle(r / 12, outline).lineBetween(c + r * 0.82, c - r * 0.22, c + r * 0.82, c + r * 0.22);
+    g.lineBetween(c + r * 0.82, c - r * 0.22, c + r * 0.74, c - r * 0.3).lineBetween(c + r * 0.82, c + r * 0.22, c + r * 0.74, c + r * 0.3);
+    // Glasses chain
+    g.lineStyle(2, 0xffd166).beginPath().arc(c, c, r * 0.72, -0.9, 0.9, false).strokePath();
+    // Clipboard held out to one side
+    const bx = c + r * 0.05, by = c + r * 0.62;
+    g.fillStyle(0x8b5a2b).fillRoundedRect(bx, by, r * 0.62, r * 0.42, 3);
+    g.fillStyle(0xffffff).fillRect(bx + r * 0.06, by + r * 0.06, r * 0.5, r * 0.3);
+    g.lineStyle(2, 0x999999).lineBetween(bx + r * 0.12, by + r * 0.14, bx + r * 0.48, by + r * 0.14)
+      .lineBetween(bx + r * 0.12, by + r * 0.24, bx + r * 0.4, by + r * 0.24);
+    g.fillStyle(0xc0c0c0).fillRect(bx + r * 0.22, by - 2, r * 0.18, 5);
+  }
+
+  /** A crumpled pink slip with angry eyes. */
+  private makePaperGerm(def: GermDef): void {
+    const r = def.radius;
+    const size = (r + 10) * 2;
+    const c = size / 2;
+    const g = this.add.graphics();
+    g.fillStyle(def.color).fillRect(c - r, c - r * 1.1, r * 2, r * 2.2);
+    g.lineStyle(2, def.outline).strokeRect(c - r, c - r * 1.1, r * 2, r * 2.2);
+    g.lineStyle(1.5, def.outline, 0.5);
+    for (const dy of [-0.5, -0.1, 0.3, 0.7]) g.lineBetween(c - r * 0.8, c + r * dy, c - r * 0.1, c + r * dy);
+    for (const dy of [-0.35, 0.35]) {
+      g.fillStyle(0xffffff).fillCircle(c + r * 0.4, c + r * dy, r * 0.28);
+      g.fillStyle(0x111111).fillCircle(c + r * 0.5, c + r * dy, r * 0.14);
     }
+    g.lineStyle(2, def.outline).lineBetween(c + r * 0.1, c - r * 0.75, c + r * 0.6, c - r * 0.5)
+      .lineBetween(c + r * 0.1, c + r * 0.75, c + r * 0.6, c + r * 0.5);
+    g.generateTexture(`germ-${def.id}`, size, size);
+    g.destroy();
   }
 
   private makeDroplet(): void {
