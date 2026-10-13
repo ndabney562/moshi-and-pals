@@ -5,6 +5,7 @@ import { COLORS } from '../config/theme';
 import { events, GameEvents, type EquipmentChangedPayload, type GermKilledPayload } from '../core/events';
 import { inputState } from '../core/inputState';
 import { readSafeArea, type Insets } from '../core/safeArea';
+import { saveSettings, settings } from '../core/settings';
 import { BottleMeter } from '../ui/BottleMeter';
 import { HudButton } from '../ui/HudButton';
 import { VirtualJoystick } from '../ui/VirtualJoystick';
@@ -23,6 +24,7 @@ export class HudScene extends Phaser.Scene {
   private versionText!: Phaser.GameObjects.Text;
   private roomText!: Phaser.GameObjects.Text;
   private killText!: Phaser.GameObjects.Text;
+  private autoAimToggle?: Phaser.GameObjects.Text;
   private refillButton!: HudButton;
   private bottle!: BottleMeter;
   private mouseDown = false;
@@ -53,6 +55,18 @@ export class HudScene extends Phaser.Scene {
     this.versionText = this.add.text(0, 0, __APP_VERSION__, { ...tag, fontSize: '14px' }).setOrigin(1, 0);
     if (DISPLAY.showFps) this.fpsText = this.add.text(0, 0, '', { ...tag, fontSize: '16px' });
     this.killText = this.add.text(0, 0, 'GERMS DISINFECTED: 0', { ...tag, fontSize: '16px' }).setOrigin(0.5, 0);
+
+    // Auto-aim on/off, remembered on this device (only meaningful with the SPRAY button)
+    if (this.sprayButton) {
+      this.autoAimToggle = this.add.text(0, 0, '', { ...tag, fontSize: '16px', padding: { x: 10, y: 8 } })
+        .setInteractive({ useHandCursor: true })
+        .on('pointerdown', () => {
+          settings.autoAim = !settings.autoAim;
+          saveSettings();
+          this.refreshAutoAimToggle();
+        });
+      this.refreshAutoAimToggle();
+    }
 
     this.bottle = new BottleMeter(this);
     this.refillButton = new HudButton(this, CONTROLS.buttons.refillRadius, 'REFILL', 0x2a9df4, () => {
@@ -104,11 +118,17 @@ export class HudScene extends Phaser.Scene {
     this.roomText.setPosition(width / 2, this.safe.top + m);
     this.versionText.setPosition(width - this.safe.right - m, this.safe.top + m);
     this.fpsText?.setPosition(this.safe.left + m, this.safe.top + m);
+    this.autoAimToggle?.setPosition(this.safe.left + m, this.safe.top + m + 36);
     this.killText.setPosition(width / 2, this.safe.top + m + 34);
     const right = width - this.safe.right - m;
     const refillY = rightY - CONTROLS.buttons.sprayRadius - CONTROLS.buttons.refillRadius - 24;
     this.refillButton.setPosition(right - CONTROLS.buttons.refillRadius, refillY);
     this.bottle.setPosition(right - CONTROLS.buttons.refillRadius * 2 - 44, refillY - 10);
+  }
+
+  private refreshAutoAimToggle(): void {
+    this.autoAimToggle?.setText(`AUTO-AIM: ${settings.autoAim ? 'ON' : 'OFF'}`)
+      .setColor(settings.autoAim ? COLORS.uiAccent : '#ffb3b3');
   }
 
   private onPointerDown(pointer: Phaser.Input.Pointer, over: Phaser.GameObjects.GameObject[]): void {

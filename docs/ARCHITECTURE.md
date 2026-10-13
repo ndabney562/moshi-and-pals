@@ -21,6 +21,9 @@ Systems will announce gameplay events on `core/events.ts` (event bus); dialogue,
 - `systems/FlowField` floods a 40 px grid from Eugene every 250 ms; germs step toward the closer neighbor cell, so they route around furniture at a flat cost regardless of germ count.
 - `systems/Fx` owns capped/pooled feedback (particles, stains, damage numbers). `core/sfx` holds placeholder synthesized sounds, one named slot per sound.
 
+## Settings
+`core/settings.ts` holds player settings saved in localStorage (wrapped in try/catch; falls back to defaults). Currently: `autoAim`.
+
 ## Content as data
 - `src/config/`: tuning numbers (balance, controls, display, theme colors).
 - `src/data/`: content (rooms now; germs, equipment, waves, dialogue later).
