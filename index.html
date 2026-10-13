@@ -29,22 +29,13 @@
         position: fixed; visibility: hidden; pointer-events: none;
         padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
       }
-      /* Shown on phones held in portrait. Safari can't lock orientation, so we ask nicely. */
-      #rotate {
-        display: none; position: fixed; inset: 0; z-index: 10;
-        background: #0d2b2e; color: #e8fff9;
-        font: 600 20px/1.4 -apple-system, system-ui, sans-serif;
-        align-items: center; justify-content: center; text-align: center; padding: 24px;
-      }
-      #rotate .phone { font-size: 56px; display: block; margin-bottom: 12px; animation: tilt 1.6s ease-in-out infinite; }
-      @keyframes tilt { 0%, 30% { transform: rotate(0); } 60%, 100% { transform: rotate(-90deg); } }
-      @media (orientation: portrait) and (max-width: 900px) { #rotate { display: flex; } }
+      /* Phones held upright: src/core/orientation.ts sizes #game sideways and this turns it to fill the screen. */
+      body.portrait #game { right: auto; bottom: auto; top: 0; transform-origin: top left; transform: rotate(90deg); }
     </style>
   </head>
   <body>
     <div id="game"></div>
     <div id="safe-area-probe"></div>
-    <div id="rotate"><div><span class="phone">📱</span>Turn your phone sideways.<br />Dr. Moshkovich does not work in portrait.</div></div>
     <script type="module" src="/src/main.ts"></script>
   </body>
 </html>

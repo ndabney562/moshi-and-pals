@@ -1,5 +1,8 @@
 # Changelog
 
+## v0.5.1: Always landscape
+- Noah: the screen broke when the phone was upright. The game now always plays in landscape. On an upright phone (or one with rotation lock on) it turns itself sideways to fill the screen, and touches, the HUD and the notch spacing all follow. The "turn your phone" screen is gone.
+
 ## v0.5.0: Milestone 5, MoshiLand
 - The clinic is now **MoshiLand Urgent Care** (Noah named it). The map grew from one waiting room to a whole building, 3800×2100.
 - Five rooms sit behind locked doors. Walk up to a door and tap **USE** (E on desktop) to buy it open with Copays: Bathroom $200, Exam Rooms $350, Lab $500, Staff Break Room $600, X-Ray $750 (two doors, one from the exam hall and one from the lab). Locked rooms are dimmed with their price on the floor.

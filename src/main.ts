@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 import { DISPLAY } from './config/display';
+import { applyOrientation, isPortrait, patchForPortrait } from './core/orientation';
 import { BootScene } from './scenes/BootScene';
 import { GameOverScene } from './scenes/GameOverScene';
 import { GameScene } from './scenes/GameScene';
@@ -8,9 +9,15 @@ import { TitleScene } from './scenes/TitleScene';
 
 /** Logical width that matches the screen's shape at our fixed logical height. */
 function logicalWidth(): number {
-  const aspect = Phaser.Math.Clamp(window.innerWidth / window.innerHeight, DISPLAY.minAspect, DISPLAY.maxAspect);
+  const long = Math.max(window.innerWidth, window.innerHeight);
+  const short = Math.min(window.innerWidth, window.innerHeight);
+  const aspect = Phaser.Math.Clamp((isPortrait() ? long / short : window.innerWidth / window.innerHeight), DISPLAY.minAspect, DISPLAY.maxAspect);
   return Math.round(DISPLAY.logicalHeight * aspect);
 }
+
+// The game is always landscape. Safari can't lock orientation, so on a phone
+// held upright (or with rotation lock on) we turn the whole game sideways.
+applyOrientation();
 
 const game = new Phaser.Game({
   type: Phaser.AUTO,
@@ -28,10 +35,18 @@ const game = new Phaser.Game({
   scene: [BootScene, TitleScene, GameScene, HudScene, GameOverScene],
 });
 
+patchForPortrait(game);
+
 // Keep the game's shape matched to the screen when the phone rotates
 // or Safari's toolbars appear/disappear.
-const resize = () => game.scale.setGameSize(logicalWidth(), DISPLAY.logicalHeight);
+const resize = () => {
+  applyOrientation();
+  game.scale.setGameSize(logicalWidth(), DISPLAY.logicalHeight);
+  game.scale.refresh();
+};
 window.addEventListener('resize', resize);
+// Phaser may have measured the page before the portrait patch was in place
+resize();
 window.addEventListener('orientationchange', () => setTimeout(resize, 300));
 
 // Stop iOS pinch-zoom and double-tap gestures from hijacking the game.
