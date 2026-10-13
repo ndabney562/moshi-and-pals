@@ -24,6 +24,8 @@ export interface RoomLayout {
   /** Where germs enter the room (just inside doors and vents). */
   germSpawns: { x: number; y: number }[];
   obstacles: Obstacle[];
+  /** The way out. Babushka Bacillus tries to drag Eugene here. */
+  exit: { x: number; y: number };
 }
 
 const W = 1800;
@@ -41,6 +43,7 @@ export const WAITING_ROOM: RoomLayout = {
   width: W,
   height: H,
   playerSpawn: { x: 900, y: 880 },
+  exit: { x: 900, y: H - 60 },
   germSpawns: [
     { x: 440, y: 90 },    // exam rooms door
     { x: 90, y: 580 },    // bathroom door

@@ -14,7 +14,7 @@
 - Eugene (placeholder art) moves with left stick, faces right-stick aim.
 - Holding SPRAY sprays the alcohol bottle (cone of droplets, limited supply, manual refill). Eugene auto-aims at the nearest germ in range.
 - Germs come in escalating rounds through the doors and hurt Eugene on contact. Health regenerates after a few seconds without a hit.
-- Round 3+: Viral Sprinters. Every 5th round: a boss (placeholder until Babushka Bacillus).
+- Round 3+: Viral Sprinters. Every 5th round: Babushka Bacillus.
 - Score per kill; death shows a game over screen with high score; restart in one tap.
 
 ## Controls
@@ -27,7 +27,7 @@
 Stocky, thinning grey hair, no facial hair, an oddly shaped mouth, glasses. White lab coat over a dark scrub top. Wears a dark patterned scrub cap at work (possible outfit later). Reference photo shared in the project thread (not stored in this public repo).
 
 ## Bosses
-- **Babushka Bacillus** (Noah approved the name and concept): a whiny grandmother germ who wants to take Eugene "back to Mother Russia". She complains in speech bubbles ("Eugeeeene, you never call!"). Planned moves: Homesick Haul (drags Eugene toward the EXIT door; spray to break free), Little Cousins (sobs out small fast germs when hurt), Guilt Trip (wail knockback at low health).
+- **Babushka Bacillus** (Noah approved the name and concept): a whiny grandmother germ who wants to take Eugene "back to Mother Russia". She complains in speech bubbles ("Eugeeeene, you never call!"). Moves: Homesick Haul (drags Eugene toward the EXIT door; spray to break free), Little Cousins (sobs out small fast germs when hurt), Guilt Trip (wail knockback at low health).
 
 ## Not yet decided (with Noah)
 Currency name, clinic name, Eugene's final look, weapon upgrade path, bosses, power-up names.

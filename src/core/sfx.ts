@@ -109,4 +109,19 @@ export const sfx = {
   }),
   /** Germ bumps into Eugene (no damage) */
   bump: () => play('bump', 150, (c, o, t) => tone(c, o, t, 0.12, 140, 70, 0.3, 'sawtooth')),
+  /** Babushka complains: a wobbly, descending "oyyy" */
+  whine: () => play('whine', 600, (c, o, t) => {
+    tone(c, o, t, 0.22, 620, 560, 0.12, 'triangle');
+    tone(c, o, t + 0.2, 0.45, 600, 340, 0.14, 'triangle');
+  }),
+  /** Guilt Trip: a long wavering wail */
+  wail: () => play('wail', 800, (c, o, t) => {
+    for (let i = 0; i < 5; i++) tone(c, o, t + i * 0.13, 0.16, 760 - i * 40, 680 - i * 50, 0.16, 'sawtooth');
+    noiseBurst(c, o, t, 0.5, 1200, 0.12, 'bandpass');
+  }),
+  /** Yarn pulled tight or snapped */
+  yarnSnap: () => play('yarn', 200, (c, o, t) => {
+    tone(c, o, t, 0.12, 300, 1200, 0.18, 'square');
+    noiseBurst(c, o, t, 0.06, 2500, 0.2, 'highpass');
+  }),
 };

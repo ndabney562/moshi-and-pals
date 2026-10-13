@@ -15,6 +15,7 @@ import { Germ, type GermScaling } from '../entities/Germ';
 import { Player } from '../entities/Player';
 import { FlowField } from '../systems/FlowField';
 import { Fx } from '../systems/Fx';
+import { BabushkaBrain, type BossHost } from '../systems/BabushkaBrain';
 import { Sprayer } from '../systems/Sprayer';
 import { WaveDirector } from '../systems/WaveDirector';
 
@@ -33,6 +34,8 @@ export class GameScene extends Phaser.Scene {
   private kills = 0;
   private score = 0;
   private runOver = false;
+  /** The current boss's behavior, if a boss with a brain is (or was last) in the room. */
+  private boss?: BabushkaBrain;
   private readonly mouseWorld = new Phaser.Math.Vector2();
   private readonly nozzle = new Phaser.Math.Vector2();
 
@@ -45,6 +48,7 @@ export class GameScene extends Phaser.Scene {
     this.kills = 0;
     this.score = 0;
     this.runOver = false;
+    this.boss = undefined;
     inputState.firing = false;
     inputState.refillRequested = false;
     this.physics.world.setBounds(0, 0, room.width, room.height);
@@ -92,6 +96,8 @@ export class GameScene extends Phaser.Scene {
     for (const [name, fn] of sounds) events.on(name, fn);
     this.events.once('shutdown', () => {
       for (const [name, fn] of sounds) events.off(name, fn);
+      this.boss?.destroy();
+      this.boss = undefined;
     });
 
     this.scene.launch('Hud');
@@ -138,8 +144,14 @@ export class GameScene extends Phaser.Scene {
       this.flow.update(this.player.x, this.player.y);
       this.nextFlowAt = time + BALANCE.germs.pathRefreshMs;
     }
+    this.boss?.update(time);
     for (const g of this.germs.getChildren() as Germ[]) {
       if (!g.active) continue;
+      const override = this.boss?.germ === g ? this.boss.movement() : undefined;
+      if (override) {
+        g.chase(override.target, time, delta, override.speed);
+        continue;
+      }
       // Close in directly when near; otherwise follow the path around furniture
       const near = Phaser.Math.Distance.Between(g.x, g.y, this.player.x, this.player.y) < BALANCE.germs.directChaseDistance;
       g.chase(near || !this.flow.nextStep(g.x, g.y, this.step) ? this.player : this.step, time, delta);
@@ -149,6 +161,8 @@ export class GameScene extends Phaser.Scene {
 
   /** Auto-aim: the closest living germ within `range`, if any. */
   private nearestGerm(range: number): Germ | undefined {
+    const priority = this.boss?.priorityTarget;
+    if (priority && Phaser.Math.Distance.Between(priority.x, priority.y, this.player.x, this.player.y) < range) return priority;
     let best: Germ | undefined;
     let bestDist = range * range;
     for (const g of this.germs.getChildren() as Germ[]) {
@@ -163,7 +177,9 @@ export class GameScene extends Phaser.Scene {
     if (!drop.active || !germ.active) return;
     const time = this.time.now;
     const mult = this.sprayer.def.effectiveness[germ.def.tag] ?? 1;
-    const killed = germ.hurt(drop.damage * mult, drop.rotation, drop.knockback, time);
+    const damage = drop.damage * mult;
+    const killed = germ.hurt(damage, drop.rotation, drop.knockback, time);
+    if (this.boss?.germ === germ) this.boss.onHurt(damage, time);
     this.fx.dropletSplash(drop.x, drop.y);
     drop.retire();
     sfx.hit();
@@ -191,6 +207,7 @@ export class GameScene extends Phaser.Scene {
           this.fx.germSplat(germ.x + Phaser.Math.Between(-40, 40), germ.y + Phaser.Math.Between(-40, 40), germ.def.color);
         }
         this.cameras.main.shake(300, 0.01);
+        if (this.boss?.germ === germ) this.boss.onDefeated();
         events.emit(GameEvents.BossDefeated, { name: germ.def.name, hp: 0, maxHp: germ.maxHp });
       }
       events.emit(GameEvents.GermKilled, { germId: germ.def.id, x: germ.x, y: germ.y, totalKills: this.kills });
@@ -202,11 +219,17 @@ export class GameScene extends Phaser.Scene {
   private onGermBump(germ: Germ): void {
     if (this.runOver) return;
     const time = this.time.now;
+    if (this.boss?.germ === germ && this.boss.ignoresContact) return;
     germ.bounceFrom(this.player.x, this.player.y, time);
-    if (!this.player.takeDamage(germ.def.contactDamage, time)) return;
+    this.hurtPlayer(germ.def.contactDamage, germ.def.id);
+  }
+
+  /** Every way Eugene gets hurt goes through here: sound, shake, HUD, and death. */
+  private hurtPlayer(amount: number, source: string): void {
+    if (this.runOver || !this.player.takeDamage(amount, this.time.now)) return;
     sfx.hurt();
     this.cameras.main.shake(120, 0.006);
-    events.emit(GameEvents.PlayerBumped, { germId: germ.def.id });
+    events.emit(GameEvents.PlayerBumped, { germId: source });
     events.emit(GameEvents.PlayerHealthChanged, { hp: this.player.hp, maxHp: this.player.maxHp });
     if (this.player.dead) this.endRun();
   }
@@ -221,6 +244,10 @@ export class GameScene extends Phaser.Scene {
     );
     const spot = Phaser.Utils.Array.GetRandom(far.length ? far : this.room.germSpawns);
     germ.spawn(def, spot.x, spot.y, scaling);
+    if (def.brain === 'babushka') {
+      this.boss?.destroy();
+      this.boss = new BabushkaBrain(this.bossHost(), germ);
+    }
     if (def.boss) {
       sfx.bossArrives();
       events.emit(GameEvents.BossSpawned, { name: def.name, hp: germ.hp, maxHp: germ.maxHp });
@@ -228,11 +255,29 @@ export class GameScene extends Phaser.Scene {
     return true;
   }
 
+  /** What a boss brain is allowed to touch. */
+  private bossHost(): BossHost {
+    return {
+      scene: this,
+      player: this.player,
+      exit: this.room.exit,
+      spawnMinion: (id, x, y, vx, vy) => {
+        const def = GERMS[id];
+        const germ = this.germs.get() as Germ | null;
+        if (!def || !germ) return;
+        germ.spawn(def, x, y);
+        germ.setVelocity(vx, vy);
+      },
+      damagePlayer: (amount) => this.hurtPlayer(amount, 'babushka'),
+    };
+  }
+
   /** Eugene is down: freeze the room, save the high score, show the game over screen. */
   private endRun(): void {
     this.runOver = true;
     inputState.firing = false;
     this.player.collapse();
+    this.boss?.onPlayerDown();
     for (const g of this.germs.getChildren() as Germ[]) if (g.active) g.freeze();
     sfx.gameOver();
     events.emit(GameEvents.PlayerDied);

@@ -1,5 +1,13 @@
 # Changelog
 
+## v0.3.1: Babushka Bacillus and Noah's M3 playtest
+- First real boss, **Babushka Bacillus** (Noah's design), replaces the placeholder. She has a headscarf and whiny speech bubbles, and three moves:
+  - Homesick Haul: lassos Eugene with yarn and drags him to the EXIT. Spray her to break free.
+  - Little Cousins: sobs out small fast germs as she loses health.
+  - Guilt Trip: wails at low health and knocks Eugene back.
+- Auto-aim locks onto her while she's hauling.
+- Harder start (Noah: round 1 too easy, never lost health): 10 germs in round 1, faster spawns, Basic Germs faster (95 px/s) and hit harder (15). Regen slower (6 HP/s after 6 s).
+
 ## v0.3.0: Milestone 3, waves, health, death, restart
 - Eugene has 100 HP. Germs hurt on contact (Basic 12, Sprinter 8, boss 25), with 0.7 s of invulnerability after a hit and regen after 4.5 s without damage.
 - Wave system (`systems/WaveDirector`, tuned in `data/waves.ts`): escalating rounds, intermissions for refilling, funny round titles.
