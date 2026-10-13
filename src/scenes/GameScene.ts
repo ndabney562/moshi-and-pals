@@ -2,7 +2,7 @@ import Phaser from 'phaser';
 import { BALANCE } from '../config/balance';
 import { CONTROLS } from '../config/controls';
 import { COLORS } from '../config/theme';
-import { events, GameEvents, type RunResult } from '../core/events';
+import { events, GameEvents, type RunResult, type StationPayload } from '../core/events';
 import { inputState } from '../core/inputState';
 import { settings } from '../core/settings';
 import { recordRun } from '../core/save';
@@ -38,6 +38,13 @@ export class GameScene extends Phaser.Scene {
   private kills = 0;
   private score = 0;
   private runOver = false;
+  /** Currency for this run. */
+  private copays = 0;
+  private purgeReadyAt = 0;
+  private lastPurgeProgress = -1;
+  private cart?: Obstacle;
+  private station: StationPayload = { near: false, cost: 0, affordable: false };
+  private lastJugWarningAt = -Infinity;
   /** The current boss's behavior, if a boss with a brain is (or was last) in the room. */
   private boss?: DiamondBrain;
   private readonly mouseWorld = new Phaser.Math.Vector2();
@@ -53,6 +60,13 @@ export class GameScene extends Phaser.Scene {
     this.score = 0;
     this.runOver = false;
     this.boss = undefined;
+    this.copays = 0;
+    this.purgeReadyAt = 0;
+    this.lastPurgeProgress = -1;
+    this.station = { near: false, cost: BALANCE.economy.restockCost, affordable: false };
+    inputState.purgeRequested = false;
+    inputState.restockRequested = false;
+    this.cart = room.obstacles.find((o) => o.kind === 'supplyCart');
     inputState.firing = false;
     inputState.refillRequested = false;
     this.physics.world.setBounds(0, 0, room.width, room.height);
@@ -131,6 +145,9 @@ export class GameScene extends Phaser.Scene {
   broadcastState(): void {
     events.emit(GameEvents.PlayerHealthChanged, { hp: this.player.hp, maxHp: this.player.maxHp });
     events.emit(GameEvents.ScoreChanged, { score: this.score });
+    events.emit(GameEvents.CopaysChanged, { copays: this.copays });
+    events.emit(GameEvents.PurgeChanged, { progress: this.purgeProgress(this.time.now) });
+    events.emit(GameEvents.StationNearby, this.station);
     this.sprayer.emitChanged(this.time.now);
   }
 
@@ -150,14 +167,32 @@ export class GameScene extends Phaser.Scene {
     // Equipment
     if (inputState.refillRequested) {
       inputState.refillRequested = false;
-      this.sprayer.startRefill(time);
+      if (!this.sprayer.startRefill(time) && time - this.lastJugWarningAt > 1500) {
+        this.lastJugWarningAt = time;
+        sfx.denied();
+        this.fx.number(this.player.x, this.player.y - 60, 'JUG EMPTY! Restock at SUPPLIES', '#ffb3b3', 20);
+      }
+    }
+    if (inputState.purgeRequested) {
+      inputState.purgeRequested = false;
+      this.sinusPurge(time);
+    }
+    this.updateStation();
+    if (inputState.restockRequested) {
+      inputState.restockRequested = false;
+      this.restock(time);
+    }
+    const purge = this.purgeProgress(time);
+    if (Math.abs(purge - this.lastPurgeProgress) >= 0.01 || (purge === 1 && this.lastPurgeProgress !== 1)) {
+      this.lastPurgeProgress = purge;
+      events.emit(GameEvents.PurgeChanged, { progress: purge });
     }
     this.sprayer.update(time);
     if (inputState.firing) {
       this.player.nozzle(this.nozzle);
       // Spray where Eugene is actually facing, so the stream follows his turn
       if (this.sprayer.tryFire(this.nozzle.x, this.nozzle.y, this.player.rotation, time) === 'fired') {
-        this.fx.nozzleMist(this.nozzle.x, this.nozzle.y, this.player.rotation);
+        this.fx.nozzleMist(this.nozzle.x, this.nozzle.y, this.player.rotation, this.sprayer.def.spreadDeg);
         sfx.spray();
       }
     }
@@ -199,14 +234,18 @@ export class GameScene extends Phaser.Scene {
 
   private onDropletHit(drop: Droplet, germ: Germ): void {
     if (!drop.active || !germ.active) return;
-    const time = this.time.now;
     const mult = this.sprayer.def.effectiveness[germ.def.tag] ?? 1;
-    const damage = drop.damage * mult;
-    const killed = germ.hurt(damage, drop.rotation, drop.knockback, time);
-    if (this.boss?.germ === germ) this.boss.onHurt(damage, time);
     this.fx.dropletSplash(drop.x, drop.y);
     drop.retire();
     sfx.hit();
+    this.damageGerm(germ, drop.damage * mult, drop.rotation, drop.knockback);
+  }
+
+  /** Every way a germ gets hurt goes through here: numbers, boss bar, kills, score and Copays. */
+  private damageGerm(germ: Germ, damage: number, fromAngle: number, knockback: number): void {
+    const time = this.time.now;
+    const killed = germ.hurt(damage, fromAngle, knockback, time);
+    if (this.boss?.germ === germ) this.boss.onHurt(damage, time);
 
     // Batch damage into one number every ~180 ms per germ so the screen stays readable
     if (killed || time - germ.lastNumberAt > 180) {
@@ -222,6 +261,7 @@ export class GameScene extends Phaser.Scene {
     if (killed) {
       this.kills++;
       this.score += germ.def.points;
+      this.addCopays(germ.def.copays);
       this.fx.germSplat(germ.x, germ.y, germ.def.color);
       this.fx.number(germ.x, germ.y - germ.def.radius - 24, `+${germ.def.points}`, '#ffe66d', germ.def.boss ? 34 : 18);
       sfx.pop();
@@ -231,6 +271,7 @@ export class GameScene extends Phaser.Scene {
           this.fx.germSplat(germ.x + Phaser.Math.Between(-40, 40), germ.y + Phaser.Math.Between(-40, 40), germ.def.color);
         }
         this.cameras.main.shake(300, 0.01);
+        this.fx.number(germ.x, germ.y + germ.def.radius, `+$${germ.def.copays} COPAYS`, '#7fffd4', 28);
         if (this.boss?.germ === germ) this.boss.onDefeated();
         events.emit(GameEvents.BossDefeated, { name: germ.def.name, hp: 0, maxHp: germ.maxHp });
       }
@@ -238,6 +279,70 @@ export class GameScene extends Phaser.Scene {
       events.emit(GameEvents.ScoreChanged, { score: this.score });
       germ.kill();
     }
+  }
+
+  private addCopays(amount: number): void {
+    this.copays += amount;
+    events.emit(GameEvents.CopaysChanged, { copays: this.copays });
+  }
+
+  /** 0..1 while recharging, 1 when ready. */
+  private purgeProgress(time: number): number {
+    const cd = BALANCE.purge.cooldownMs;
+    return time >= this.purgeReadyAt ? 1 : 1 - (this.purgeReadyAt - time) / cd;
+  }
+
+  /** SINUS PURGE: a honking shockwave that hurts and blasts away every germ nearby. */
+  private sinusPurge(time: number): void {
+    if (time < this.purgeReadyAt || this.player.dead) return;
+    const cfg = BALANCE.purge;
+    this.purgeReadyAt = time + cfg.cooldownMs;
+    const { x, y } = this.player;
+    sfx.purge();
+    this.cameras.main.shake(260, 0.012);
+    this.tweens.add({ targets: this.player, scale: 1.3, duration: 90, yoyo: true });
+    this.fx.number(x, y - 70, 'HRRRNNNKKK!', '#c8ff6b', 30);
+    const ring = this.add.circle(x, y, cfg.radius).setStrokeStyle(14, 0xc8ff6b, 0.9).setFillStyle(0xc8ff6b, 0.15).setDepth(13).setScale(0.1);
+    this.tweens.add({ targets: ring, scale: 1, alpha: 0, duration: 420, ease: 'Cubic.out', onComplete: () => ring.destroy() });
+    for (const g of this.germs.getChildren() as Germ[]) {
+      if (!g.active) continue;
+      const d = Phaser.Math.Distance.Between(x, y, g.x, g.y);
+      if (d > cfg.radius + g.def.radius) continue;
+      const angle = Phaser.Math.Angle.Between(x, y, g.x, g.y);
+      this.damageGerm(g, cfg.damage, angle, cfg.knockback);
+      if (g.active) g.stun(time, cfg.stunMs);
+    }
+    events.emit(GameEvents.PurgeUsed);
+  }
+
+  /** Shows the RESTOCK button while Eugene stands at the supply cart. */
+  private updateStation(): void {
+    const c = this.cart;
+    const near = !!c && !this.player.dead &&
+      Phaser.Math.Distance.Between(this.player.x, this.player.y, c.x + c.w / 2, c.y + c.h / 2) < BALANCE.economy.stationRange + c.w / 2;
+    const affordable = this.copays >= BALANCE.economy.restockCost;
+    if (near !== this.station.near || affordable !== this.station.affordable) {
+      this.station = { near, cost: BALANCE.economy.restockCost, affordable };
+      events.emit(GameEvents.StationNearby, this.station);
+    }
+  }
+
+  private restock(time: number): void {
+    if (!this.station.near) return;
+    const cost = BALANCE.economy.restockCost;
+    if (this.sprayer.reserveFull) {
+      this.fx.number(this.player.x, this.player.y - 60, 'JUG ALREADY FULL', '#e8fff9', 20);
+      return;
+    }
+    if (this.copays < cost) {
+      sfx.denied();
+      this.fx.number(this.player.x, this.player.y - 60, `NEED $${cost} COPAYS`, '#ffb3b3', 22);
+      return;
+    }
+    this.addCopays(-cost);
+    this.sprayer.restock(time);
+    sfx.cash();
+    this.fx.number(this.player.x, this.player.y - 60, `JUG RESTOCKED -$${cost}`, '#7fffd4', 22);
   }
 
   private onGermBump(germ: Germ): void {
@@ -291,7 +396,8 @@ export class GameScene extends Phaser.Scene {
   private onPatientCleaned(p: Patient): void {
     const points = BALANCE.patients.cleanPoints;
     this.score += points;
-    this.fx.number(p.x, p.y - 40, `+${points} CLEAN`, '#7fffd4', 22);
+    this.addCopays(BALANCE.economy.cleanPatientCopays);
+    this.fx.number(p.x, p.y - 40, `+${points} CLEAN  +$${BALANCE.economy.cleanPatientCopays}`, '#7fffd4', 22);
     sfx.refill();
     events.emit(GameEvents.ScoreChanged, { score: this.score });
   }
@@ -383,6 +489,20 @@ export class GameScene extends Phaser.Scene {
         g.fillStyle(COLORS.plant).fillCircle(o.x + o.w / 2 - 10, o.y + o.h / 2 - 6, 18)
           .fillCircle(o.x + o.w / 2 + 10, o.y + o.h / 2 - 4, 16).fillCircle(o.x + o.w / 2, o.y + o.h / 2 + 10, 16);
         break;
+      case 'supplyCart': {
+        // A rolling cart of alcohol jugs
+        g.fillStyle(0x8f9ba3).fillRoundedRect(o.x, o.y, o.w, o.h, 6);
+        g.lineStyle(3, outline).strokeRoundedRect(o.x, o.y, o.w, o.h, 6);
+        for (let i = 0; i < 3; i++) {
+          g.fillStyle(0x7fd3ff).fillRoundedRect(o.x + 8 + i * 27, o.y + 8, 20, o.h - 16, 4);
+          g.fillStyle(0x1565c0).fillRect(o.x + 13 + i * 27, o.y + 4, 10, 6);
+        }
+        this.add.text(o.x + o.w / 2, o.y - 6, `🧴 ${o.label ?? ''} $${BALANCE.economy.restockCost}`, {
+          fontFamily: 'system-ui, sans-serif', fontSize: '14px', fontStyle: 'bold', color: '#ffffff',
+          backgroundColor: '#0d2b2ecc', padding: { x: 6, y: 2 },
+        }).setOrigin(0.5, 1).setDepth(6);
+        break;
+      }
       case 'waterCooler':
         g.fillStyle(0xeeeeee).fillRect(o.x, o.y, o.w, o.h);
         g.fillStyle(0x7fd3ff, 0.9).fillCircle(o.x + o.w / 2, o.y + o.h / 2, o.w / 2.8);

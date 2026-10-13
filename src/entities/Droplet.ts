@@ -1,15 +1,21 @@
 import Phaser from 'phaser';
 
-/** One droplet of disinfectant in flight. Pooled by the game scene. */
+/**
+ * One droplet of disinfectant in flight: the hitbox that does the damage.
+ * It is drawn as a faint puff; the mist particles (Fx.nozzleMist) are what
+ * the player actually sees. Pooled by the game scene.
+ */
 export class Droplet extends Phaser.Physics.Arcade.Image {
   damage = 0;
   knockback = 0;
   private expiresAt = 0;
+  private launchedAt = 0;
 
   fire(x: number, y: number, angle: number, speed: number, range: number, damage: number, knockback: number, tint: number): void {
     this.enableBody(true, x, y, true, true);
-    this.setTint(tint).setAlpha(0.95).setScale(Phaser.Math.FloatBetween(0.55, 0.85)).setDepth(11);
-    this.setBlendMode(Phaser.BlendModes.ADD);
+    this.setTexture('puff').setTint(tint).setAlpha(0.25).setScale(0.4).setDepth(11);
+    this.body!.setSize(16, 16).setOffset(16, 16);
+    this.launchedAt = this.scene.time.now;
     this.setVelocity(Math.cos(angle) * speed, Math.sin(angle) * speed);
     this.setRotation(angle);
     this.damage = damage;
@@ -21,8 +27,13 @@ export class Droplet extends Phaser.Physics.Arcade.Image {
   update(time: number): void {
     if (!this.active) return;
     const left = this.expiresAt - time;
-    if (left <= 0) this.retire();
-    else if (left < 120) this.setAlpha(left / 120); // evaporate at the end of its range
+    if (left <= 0) {
+      this.retire();
+      return;
+    }
+    // Spread out and fade like an aerosol
+    const t = (time - this.launchedAt) / (this.expiresAt - this.launchedAt);
+    this.setScale(0.4 + t * 1.2).setAlpha(0.25 * (1 - t));
   }
 
   retire(): void {

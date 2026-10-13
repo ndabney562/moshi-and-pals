@@ -9,11 +9,14 @@ import type { Droplet } from '../entities/Droplet';
  */
 export class Sprayer {
   ammo: number;
+  /** Spare supply in the jug. */
+  reserve: number;
   private nextShotAt = 0;
   private refillStartedAt = -1;
 
   constructor(readonly def: EquipmentDef, private readonly droplets: Phaser.Physics.Arcade.Group) {
     this.ammo = def.capacity;
+    this.reserve = def.reserve;
   }
 
   get refilling(): boolean {
@@ -43,9 +46,22 @@ export class Sprayer {
     return 'fired';
   }
 
-  startRefill(time: number): void {
-    if (this.refilling || this.ammo >= this.def.capacity) return;
+  /** Starts pouring from the jug. Returns false if there is nothing to pour. */
+  startRefill(time: number): boolean {
+    if (this.refilling || this.ammo >= this.def.capacity) return true;
+    if (this.reserve <= 0) return false;
     this.refillStartedAt = time;
+    this.emitChanged(time);
+    return true;
+  }
+
+  get reserveFull(): boolean {
+    return this.reserve >= this.def.reserve;
+  }
+
+  /** Tops the jug back up (bought at the supply cart). */
+  restock(time: number): void {
+    this.reserve = this.def.reserve;
     this.emitChanged(time);
   }
 
@@ -53,7 +69,9 @@ export class Sprayer {
     if (!this.refilling) return;
     if (time - this.refillStartedAt >= this.def.refillMs) {
       this.refillStartedAt = -1;
-      this.ammo = this.def.capacity;
+      const poured = Math.min(this.def.capacity - this.ammo, this.reserve);
+      this.ammo += poured;
+      this.reserve -= poured;
       events.emit(GameEvents.EquipmentRefilled);
     }
     this.emitChanged(time);
@@ -64,6 +82,7 @@ export class Sprayer {
       ammo: this.ammo,
       capacity: this.def.capacity,
       refillProgress: this.refilling ? Math.min(1, (time - this.refillStartedAt) / this.def.refillMs) : -1,
+      reserve: this.reserve,
     });
   }
 }

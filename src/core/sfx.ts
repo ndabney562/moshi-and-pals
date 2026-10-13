@@ -125,4 +125,20 @@ export const sfx = {
     tone(c, o, t, 0.12, 300, 1200, 0.18, 'square');
     noiseBurst(c, o, t, 0.06, 2500, 0.2, 'highpass');
   }),
+  /** SINUS PURGE placeholder: a long, wet HRRRNNNKKK (Noah's real recording replaces this) */
+  purge: () => play('purge', 500, (c, o, t) => {
+    for (let i = 0; i < 6; i++) tone(c, o, t + i * 0.07, 0.12, 95 + (i % 2) * 25, 80, 0.35, 'sawtooth');
+    noiseBurst(c, o, t, 0.5, 700, 0.35, 'bandpass');
+    tone(c, o, t + 0.42, 0.35, 160, 60, 0.4, 'square');
+  }),
+  /** Copays spent: ka-ching */
+  cash: () => play('cash', 150, (c, o, t) => {
+    tone(c, o, t, 0.08, 1500, 1500, 0.15, 'square');
+    tone(c, o, t + 0.08, 0.3, 2000, 2000, 0.15, 'triangle');
+  }),
+  /** Can't afford it / nothing to pour */
+  denied: () => play('denied', 300, (c, o, t) => {
+    tone(c, o, t, 0.12, 200, 200, 0.2, 'square');
+    tone(c, o, t + 0.14, 0.18, 150, 150, 0.2, 'square');
+  }),
 };

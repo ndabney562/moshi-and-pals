@@ -1,5 +1,12 @@
 # Changelog
 
+## v0.4.0: Milestone 4, the MVP
+- **Copays** (Noah named them): earned for every kill (Basic $5, Sprinter $8, Write-Up $2, Diamond $100) and for cleaning up a patient ($10). Shown under the score.
+- The bottle now refills from a limited **jug** (480 mL, shown under the bottle). When the jug runs dry, walk to the **SUPPLIES** cart and tap RESTOCK ($40).
+- **Sinus Purge**: new button left of SPRAY (Q on desktop). A honking shockwave that hurts and blasts away every germ nearby, then recharges for 18 s. Placeholder honk until Noah records the real one.
+- New placeholder sounds: purge honk, ka-ching, denied buzz.
+- Noah: the spray now looks like a mist cloud instead of individual pellets (soft puffs that spread and fade across the spray cone).
+
 ## v0.3.3: Patients with health code violations
 - Noah's idea: from round 2, patients wander into the waiting room. They're solid moving obstacles for Eugene and germs.
 - Every few seconds a patient commits a health code violation (coughing, chin-strap mask, chip fingers, skipping the sanitizer, pen chewing, shoes off, phone licking, bringing the whole family). Each one lets 1-2 germs loose, and Eugene grumbles about it.

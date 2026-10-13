@@ -42,17 +42,23 @@ export class HudButton extends Phaser.GameObjects.Container {
     });
   }
 
+  setLabel(text: string): this {
+    this.label.setText(text);
+    return this;
+  }
+
   /** True while a finger (or mouse) is holding the button down. */
   get held(): boolean {
     return this.holdPointerId !== null;
   }
 
   /** Draws a ring showing 0..1 progress; pass a negative number to hide it. */
-  setProgress(p: number): void {
+  setProgress(p: number): this {
     this.ring.clear();
-    if (p < 0) return;
+    if (p < 0) return this;
     this.ring.lineStyle(6, 0xffffff, 0.9).beginPath()
       .arc(0, 0, this.radius - 3, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * p).strokePath();
+    return this;
   }
 
   /** Throbs to get attention (e.g. "your bottle is empty"). */

@@ -98,5 +98,22 @@ export const BALANCE = {
     /** Eugene only grumbles about violations he can actually see. */
     grumbleRange: 650,
   },
+  /** Copays (currency). Per-germ payouts live in data/germs.ts. */
+  economy: {
+    /** Cost to refill the jug at the supply cart. */
+    restockCost: 40,
+    /** Paid for spraying a health code violator into compliance. */
+    cleanPatientCopays: 10,
+    /** How close Eugene must be to use the supply cart. */
+    stationRange: 120,
+  },
+  /** SINUS PURGE: Eugene's signature honk. A shockwave that damages and blasts germs away. */
+  purge: {
+    cooldownMs: 18000,
+    radius: 240,
+    damage: 35,
+    knockback: 750,
+    /** Germs hit are stunned this long, so the blast buys breathing room. */
+    stunMs: 600,
+  },
 };
-

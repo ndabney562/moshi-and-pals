@@ -19,6 +19,8 @@ export interface GermDef {
   contactDamage: number;
   /** Score awarded on kill. */
   points: number;
+  /** Copays (currency) earned on kill. */
+  copays: number;
   /** Placeholder art style: round blob with cilia, spiky virus, or a sheet of paper. */
   shape: 'blob' | 'spiky' | 'paper';
   /** 0 = full knockback from spray, 1 = immovable. */
@@ -44,6 +46,7 @@ export const GERMS: Record<string, GermDef> = {
     contactBounce: 260,
     contactDamage: 15,
     points: 10,
+    copays: 5,
     shape: 'blob',
     knockbackResist: 0,
   },
@@ -59,6 +62,7 @@ export const GERMS: Record<string, GermDef> = {
     contactBounce: 320,
     contactDamage: 8,
     points: 15,
+    copays: 8,
     shape: 'spiky',
     knockbackResist: 0,
   },
@@ -81,6 +85,7 @@ export const GERMS: Record<string, GermDef> = {
     contactBounce: 110,
     contactDamage: 30,
     points: 300,
+    copays: 100,
     shape: 'blob',
     knockbackResist: 0.92,
     boss: true,
@@ -100,6 +105,7 @@ export const GERMS: Record<string, GermDef> = {
     contactBounce: 320,
     contactDamage: 6,
     points: 5,
+    copays: 2,
     shape: 'paper',
     knockbackResist: 0,
   },

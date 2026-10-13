@@ -3,7 +3,7 @@
  * Every obstacle is a solid rectangle; `kind` decides how it is drawn.
  * When we design the real clinic floor plan, it will live in files like this.
  */
-export type ObstacleKind = 'wall' | 'chairRow' | 'desk' | 'table' | 'plant' | 'waterCooler' | 'door';
+export type ObstacleKind = 'wall' | 'chairRow' | 'desk' | 'table' | 'plant' | 'waterCooler' | 'door' | 'supplyCart';
 
 export interface Obstacle {
   kind: ObstacleKind;
@@ -83,5 +83,8 @@ export const WAITING_ROOM: RoomLayout = {
     { kind: 'plant', x: 1680, y: 980, w: 60, h: 60 },
     { kind: 'plant', x: 60, y: 980, w: 60, h: 60 },
     { kind: 'waterCooler', x: 1680, y: 420, w: 50, h: 50 },
+
+    // Supply cart: restock the alcohol jug for Copays
+    { kind: 'supplyCart', x: 1480, y: 840, w: 90, h: 54, label: 'SUPPLIES' },
   ],
 };

@@ -133,6 +133,52 @@ try {
   check(run.round >= 1 && run.hud === `ROUND ${run.round}`, `wave system running (${run.hud})`);
   check(run.score > 0, `score counts kills (${run.score})`);
 
+  // Copays from kills
+  const money = await page.evaluate(() => ({
+    copays: window.game.scene.getScene('Game').copays,
+    hud: window.game.scene.getScene('Hud').copaysText.text,
+  }));
+  check(money.copays > 0 && money.hud === `$${money.copays} COPAYS`, `kills earn Copays (${money.hud})`);
+
+  // Sinus Purge: tap the button with a germ right next to Eugene
+  const purgeBefore = await page.evaluate(() => {
+    const scene = window.game.scene.getScene('Game');
+    scene.player.hp = 100;
+    scene.spawnGermAt('basic', scene.player.x + 80, scene.player.y);
+    const g = scene.germs.getChildren().filter((c) => c.active).sort((a, b) =>
+      Math.hypot(a.x - scene.player.x, a.y - scene.player.y) - Math.hypot(b.x - scene.player.x, b.y - scene.player.y))[0];
+    window.__purgeTarget = g;
+    return { hp: g.hp, kills: scene.kills };
+  });
+  const purgeAt = await buttonAt('purgeButton');
+  await page.touchscreen.tap(purgeAt.x, purgeAt.y);
+  await page.waitForTimeout(300);
+  const purged = await page.evaluate(() => {
+    const scene = window.game.scene.getScene('Game');
+    const g = window.__purgeTarget;
+    return { hp: g.active ? g.hp : 0, kills: scene.kills, cooling: scene.purgeReadyAt > scene.time.now, dim: window.game.scene.getScene('Hud').purgeButton.alpha < 1 };
+  });
+  await page.screenshot({ path: 'smoke-purge.png' });
+  check(purged.hp < purgeBefore.hp || purged.kills > purgeBefore.kills, `Sinus Purge hurts nearby germs (hp ${purgeBefore.hp} -> ${purged.hp})`);
+  check(purged.cooling && purged.dim, 'Sinus Purge goes on cooldown');
+
+  // Supply cart: empty jug, walk over, buy a restock
+  await page.evaluate(() => {
+    const scene = window.game.scene.getScene('Game');
+    scene.sprayer.reserve = 0;
+    scene.addCopays(100 - scene.copays);
+    scene.player.setPosition(scene.cart.x + scene.cart.w / 2, scene.cart.y - 50);
+  });
+  await page.waitForFunction(() => window.game.scene.getScene('Hud').restockButton.visible, null, { timeout: 3000 });
+  const restockAt = await buttonAt('restockButton');
+  await page.touchscreen.tap(restockAt.x, restockAt.y);
+  await page.waitForTimeout(200);
+  const restocked = await page.evaluate(() => {
+    const scene = window.game.scene.getScene('Game');
+    return { reserve: scene.sprayer.reserve, copays: scene.copays };
+  });
+  check(restocked.reserve === 480 && restocked.copays === 60, `supply cart restocks the jug for Copays (${JSON.stringify(restocked)})`);
+
   // Patients: one walks in, commits a health code violation, and gets sprayed into compliance
   const violation = await page.evaluate(() => {
     const scene = window.game.scene.getScene('Game');
