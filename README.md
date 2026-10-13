@@ -1,4 +1,4 @@
-# Moshi and Pals
+# MoshiMonsters
 
 A comedic wave-survival game for iPhone. Dr. Eugene "Moshi" Moshkovich versus the germs.
 

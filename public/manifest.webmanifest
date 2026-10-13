@@ -1,6 +1,6 @@
 {
-  "name": "Moshi and Pals",
-  "short_name": "Moshi",
+  "name": "MoshiMonsters",
+  "short_name": "MoshiMonsters",
   "start_url": "./",
   "scope": "./",
   "display": "fullscreen",
