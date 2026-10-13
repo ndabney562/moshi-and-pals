@@ -19,13 +19,14 @@ export class Fx {
   private nextNumber = 0;
 
   constructor(private readonly scene: Phaser.Scene) {
-    this.mist = scene.add.particles(0, 0, 'blob', {
-      emitting: false, lifespan: 260, speed: { min: 40, max: 120 }, scale: { start: 0.5, end: 1.4 },
-      alpha: { start: 0.35, end: 0 }, tint: 0xdff6ff, blendMode: 'ADD', maxParticles: 60,
+    // The visible spray: a cone of soft puffs that drift out and spread like an aerosol
+    this.mist = scene.add.particles(0, 0, 'puff', {
+      emitting: false, lifespan: { min: 300, max: 400 }, speed: { min: 300, max: 560 }, scale: { start: 0.4, end: 2.3 },
+      alpha: { start: 0.8, end: 0.05 }, tint: [0xe6f7ff, 0xa8dcff, 0x7cc4f2], rotate: { min: 0, max: 360 }, maxParticles: 220,
     }).setDepth(12);
-    this.splash = scene.add.particles(0, 0, 'blob', {
-      emitting: false, lifespan: 220, speed: { min: 60, max: 160 }, scale: { start: 0.35, end: 0 },
-      alpha: { start: 0.9, end: 0 }, tint: 0x9fe7ff, maxParticles: 80,
+    this.splash = scene.add.particles(0, 0, 'puff', {
+      emitting: false, lifespan: 260, speed: { min: 30, max: 90 }, scale: { start: 0.5, end: 1.2 },
+      alpha: { start: 0.45, end: 0 }, tint: 0xd8f3ff, maxParticles: 60,
     }).setDepth(12);
     this.splat = scene.add.particles(0, 0, 'blob', {
       emitting: false, lifespan: 450, speed: { min: 120, max: 320 }, scale: { start: 0.9, end: 0 },
@@ -43,14 +44,16 @@ export class Fx {
     }
   }
 
-  nozzleMist(x: number, y: number, angle: number): void {
+  /** One burst of mist from the nozzle, fanned across the spray cone. */
+  nozzleMist(x: number, y: number, angle: number, spreadDeg: number): void {
     const deg = Phaser.Math.RadToDeg(angle);
-    this.mist.setEmitterAngle({ min: deg - 25, max: deg + 25 });
-    this.mist.explode(1, x, y);
+    const half = spreadDeg / 2 + 4;
+    this.mist.setEmitterAngle({ min: deg - half, max: deg + half });
+    this.mist.explode(5, x, y);
   }
 
   dropletSplash(x: number, y: number): void {
-    this.splash.explode(3, x, y);
+    this.splash.explode(1, x, y);
   }
 
   germSplat(x: number, y: number, color: number): void {

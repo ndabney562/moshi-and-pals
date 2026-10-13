@@ -192,7 +192,7 @@ export class GameScene extends Phaser.Scene {
       this.player.nozzle(this.nozzle);
       // Spray where Eugene is actually facing, so the stream follows his turn
       if (this.sprayer.tryFire(this.nozzle.x, this.nozzle.y, this.player.rotation, time) === 'fired') {
-        this.fx.nozzleMist(this.nozzle.x, this.nozzle.y, this.player.rotation);
+        this.fx.nozzleMist(this.nozzle.x, this.nozzle.y, this.player.rotation, this.sprayer.def.spreadDeg);
         sfx.spray();
       }
     }

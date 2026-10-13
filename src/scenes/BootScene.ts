@@ -20,6 +20,7 @@ export class BootScene extends Phaser.Scene {
     for (const def of VIOLATIONS) this.makePatient(def);
     this.makeDroplet();
     this.makeSplat();
+    this.makePuff();
     this.scene.start('Title');
   }
 
@@ -259,6 +260,15 @@ export class BootScene extends Phaser.Scene {
     g.fillStyle(COLORS.skin).fillCircle(c + 15, c, 3);
     if (def.id === 'chinMask') g.fillStyle(0x9ad1f5).fillRect(c + 9, c - 8, 5, 16);
     g.generateTexture(`patient-${def.id}`, 64, 64);
+    g.destroy();
+  }
+
+  /** Soft, fuzzy-edged cloud used for the spray mist. */
+  private makePuff(): void {
+    const g = this.add.graphics();
+    const c = 24;
+    for (let i = 12; i >= 1; i--) g.fillStyle(0xffffff, 0.09).fillCircle(c, c, i * 2);
+    g.generateTexture('puff', 48, 48);
     g.destroy();
   }
 

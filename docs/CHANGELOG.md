@@ -5,6 +5,7 @@
 - The bottle now refills from a limited **jug** (480 mL, shown under the bottle). When the jug runs dry, walk to the **SUPPLIES** cart and tap RESTOCK ($40).
 - **Sinus Purge**: new button left of SPRAY (Q on desktop). A honking shockwave that hurts and blasts away every germ nearby, then recharges for 18 s. Placeholder honk until Noah records the real one.
 - New placeholder sounds: purge honk, ka-ching, denied buzz.
+- Noah: the spray now looks like a mist cloud instead of individual pellets (soft puffs that spread and fade across the spray cone).
 
 ## v0.3.3: Patients with health code violations
 - Noah's idea: from round 2, patients wander into the waiting room. They're solid moving obstacles for Eugene and germs.
