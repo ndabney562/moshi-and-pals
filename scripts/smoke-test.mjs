@@ -125,6 +125,43 @@ try {
   check(saved.autoAim === false, `AUTO-AIM toggle turns it off and saves it (${JSON.stringify(saved)})`);
   await page.screenshot({ path: 'smoke-after.png' });
 
+  // Waves and score
+  const run = await page.evaluate(() => {
+    const scene = window.game.scene.getScene('Game');
+    return { round: scene.waves.round, score: scene.score, hud: window.game.scene.getScene('Hud').roundText.text };
+  });
+  check(run.round >= 1 && run.hud === `ROUND ${run.round}`, `wave system running (${run.hud})`);
+  check(run.score > 0, `score counts kills (${run.score})`);
+
+  // Death: drop Eugene to 1 HP and put a germ on top of him
+  await page.evaluate(() => {
+    const scene = window.game.scene.getScene('Game');
+    scene.player.hp = 1;
+    const g = scene.germs.getChildren().find((c) => c.active);
+    g.setPosition(scene.player.x + 5, scene.player.y);
+  });
+  await page.waitForFunction(() => window.game.scene.isActive('GameOver'), null, { timeout: 8000 });
+  await page.waitForTimeout(1200);
+  await page.screenshot({ path: 'smoke-gameover.png' });
+  const saved2 = await page.evaluate(() => JSON.parse(localStorage.getItem('moshi.save.v1') ?? '{}'));
+  check(saved2.bestScore > 0, `high score saved (${JSON.stringify(saved2)})`);
+
+  // Restart from the game over screen
+  const again = await page.evaluate(() => {
+    const scene = window.game.scene.getScene('GameOver');
+    const label = scene.children.list.find((c) => c.text === 'SCRUB IN AGAIN');
+    const canvas = window.game.canvas.getBoundingClientRect();
+    const k = canvas.width / window.game.scale.width;
+    return { x: canvas.left + label.x * k, y: canvas.top + label.y * k };
+  });
+  await page.touchscreen.tap(again.x, again.y);
+  await page.waitForFunction(() => window.game.scene.isActive('Hud') && !window.game.scene.isActive('GameOver'), null, { timeout: 5000 });
+  const fresh = await page.evaluate(() => {
+    const scene = window.game.scene.getScene('Game');
+    return { hp: scene.player.hp, score: scene.score, round: scene.waves.round };
+  });
+  check(fresh.hp === 100 && fresh.score === 0 && fresh.round === 0, `restart gives a fresh run (${JSON.stringify(fresh)})`);
+
   check(end.x > start.x + 20 && end.y < start.y - 20, `Eugene moved up-right (${start.x | 0},${start.y | 0}) -> (${end.x | 0},${end.y | 0})`);
   check(Math.abs(end.rotation - -Math.PI / 4) < 0.3, `Eugene faces where he walks (up-right), rotation ${end.rotation.toFixed(2)}`);
   check(errors.length === 0, `no console errors${errors.length ? ': ' + errors.join(' | ') : ''}`);

@@ -10,6 +10,11 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
   private readonly shadow: Phaser.GameObjects.Image;
   /** Distance walked, used to drive the waddle animation. */
   private stride = 0;
+  readonly maxHp = BALANCE.player.maxHp;
+  hp = BALANCE.player.maxHp;
+  dead = false;
+  private invulnerableUntil = 0;
+  private lastHurtAt = -Infinity;
 
   constructor(scene: Phaser.Scene, x: number, y: number) {
     super(scene, x, y, 'eugene');
@@ -35,14 +40,41 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     return out.set(this.x + fx * c - fy * s, this.y + fx * s + fy * c);
   }
 
-  /** Brief red flash when a germ bumps him. */
-  flashHurt(): void {
-    this.setTint(0xff8080);
+  get invulnerable(): boolean {
+    return this.scene.time.now < this.invulnerableUntil;
+  }
+
+  /** Takes damage unless recently hit. Returns true if this hit landed. */
+  takeDamage(amount: number, time: number): boolean {
+    if (this.dead || time < this.invulnerableUntil) return false;
+    this.hp = Math.max(0, this.hp - amount);
+    this.lastHurtAt = time;
+    this.invulnerableUntil = time + BALANCE.player.invulnerableMs;
+    // Red flash, then blink while invulnerable
+    this.setTint(0xff6060);
     this.scene.time.delayedCall(120, () => this.clearTint());
+    this.scene.tweens.add({ targets: this, alpha: 0.45, duration: 90, yoyo: true, repeat: 3, onComplete: () => this.setAlpha(1) });
+    if (this.hp <= 0) this.dead = true;
+    return true;
+  }
+
+  /** Slowly heals after a while without being hit. Returns true if health changed. */
+  regen(time: number, dtMs: number): boolean {
+    if (this.dead || this.hp >= this.maxHp || time - this.lastHurtAt < BALANCE.player.regenDelayMs) return false;
+    this.hp = Math.min(this.maxHp, this.hp + (BALANCE.player.regenPerSecond * dtMs) / 1000);
+    return true;
+  }
+
+  /** Dramatic collapse. */
+  collapse(): void {
+    this.setVelocity(0, 0);
+    this.setTint(0xb0c4b0);
+    this.scene.tweens.add({ targets: this, angle: this.angle + 540, scale: 0.6, duration: 900, ease: 'Cubic.out' });
   }
 
   /** Called every frame by the game scene with this frame's input. */
   drive(input: InputState, dtMs: number, aimTarget?: { x: number; y: number }): void {
+    if (this.dead) return;
     const speed = BALANCE.player.moveSpeed;
     this.setVelocity(input.moveX * speed, input.moveY * speed);
 

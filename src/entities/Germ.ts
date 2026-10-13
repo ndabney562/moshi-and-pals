@@ -2,6 +2,9 @@ import Phaser from 'phaser';
 import { BALANCE } from '../config/balance';
 import type { GermDef } from '../data/germs';
 
+/** Per-round multipliers applied when a germ spawns. */
+export interface GermScaling { hpMult: number; speedMult: number; }
+
 /**
  * One germ. Pooled: the game reuses dead germs instead of creating new ones,
  * so call `spawn` to bring one to life and `kill` to return it to the pool.
@@ -9,6 +12,8 @@ import type { GermDef } from '../data/germs';
 export class Germ extends Phaser.Physics.Arcade.Sprite {
   def!: GermDef;
   hp = 0;
+  maxHp = 0;
+  private speed = 0;
   /** While stunned (knocked back), the germ stops steering toward Eugene. */
   private stunnedUntil = 0;
   private flashUntil = 0;
@@ -17,20 +22,28 @@ export class Germ extends Phaser.Physics.Arcade.Sprite {
   pendingDamage = 0;
   lastNumberAt = 0;
 
-  spawn(def: GermDef, x: number, y: number): void {
+  spawn(def: GermDef, x: number, y: number, scaling: GermScaling = { hpMult: 1, speedMult: 1 }): void {
     this.def = def;
-    this.hp = def.hp;
+    this.maxHp = this.hp = def.hp * scaling.hpMult;
+    this.speed = def.speed * scaling.speedMult;
     this.pendingDamage = 0;
     this.setTexture(`germ-${def.id}`);
     this.enableBody(true, x, y, true, true);
     const r = def.radius;
     this.setCircle(r, this.width / 2 - r, this.height / 2 - r);
-    this.setDepth(8).clearTint().setAlpha(1);
+    this.setDepth(def.boss ? 9 : 8).clearTint().setAlpha(1);
     this.setBounce(0.2);
+    this.setPushable(!def.boss);
     // Squeeze out of the doorway
     this.setScale(0.1);
-    this.scene.tweens.add({ targets: this, scale: 1, duration: 350, ease: 'Back.out' });
+    this.scene.tweens.add({ targets: this, scale: 1, duration: def.boss ? 900 : 350, ease: 'Back.out' });
     this.stunnedUntil = this.scene.time.now + 350;
+  }
+
+  /** Stops moving (used when the run ends). */
+  freeze(): void {
+    this.setVelocity(0, 0);
+    this.stunnedUntil = Number.MAX_SAFE_INTEGER;
   }
 
   chase(target: { x: number; y: number }, time: number, dtMs: number): void {
@@ -39,8 +52,8 @@ export class Germ extends Phaser.Physics.Arcade.Sprite {
       const angle = Phaser.Math.Angle.Between(this.x, this.y, target.x, target.y);
       const body = this.body as Phaser.Physics.Arcade.Body;
       // Ease toward full chase speed so knockback recovers smoothly
-      body.velocity.x = Phaser.Math.Linear(body.velocity.x, Math.cos(angle) * this.def.speed, 0.1);
-      body.velocity.y = Phaser.Math.Linear(body.velocity.y, Math.sin(angle) * this.def.speed, 0.1);
+      body.velocity.x = Phaser.Math.Linear(body.velocity.x, Math.cos(angle) * this.speed, 0.1);
+      body.velocity.y = Phaser.Math.Linear(body.velocity.y, Math.sin(angle) * this.speed, 0.1);
       this.rotation = Phaser.Math.Angle.RotateTo(this.rotation, angle, 0.08);
     }
     // Jelly wobble
@@ -61,9 +74,10 @@ export class Germ extends Phaser.Physics.Arcade.Sprite {
     this.pendingDamage += amount;
     this.setTintFill(0xffffff);
     this.flashUntil = time + BALANCE.feedback.hitFlashMs;
+    const push = knockback * (1 - this.def.knockbackResist);
     const body = this.body as Phaser.Physics.Arcade.Body;
-    body.velocity.x += Math.cos(fromAngle) * knockback;
-    body.velocity.y += Math.sin(fromAngle) * knockback;
+    body.velocity.x += Math.cos(fromAngle) * push;
+    body.velocity.y += Math.sin(fromAngle) * push;
     return this.hp <= 0;
   }
 

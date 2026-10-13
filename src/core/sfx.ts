@@ -83,6 +83,30 @@ export const sfx = {
     tone(c, o, t + 0.1, 0.09, 260, 390, 0.2);
     tone(c, o, t + 0.22, 0.25, 1320, 1300, 0.12, 'triangle');
   }),
-  /** Germ bumps into Eugene */
+  /** Eugene takes damage: an indignant "oof" */
+  hurt: () => play('hurt', 150, (c, o, t) => {
+    tone(c, o, t, 0.18, 260, 110, 0.35, 'sawtooth');
+    noiseBurst(c, o, t, 0.1, 600, 0.2, 'lowpass');
+  }),
+  /** New round: rising three-note sting */
+  roundStart: () => play('roundStart', 500, (c, o, t) => {
+    [330, 440, 660].forEach((f, i) => tone(c, o, t + i * 0.12, 0.22, f, f, 0.18, 'square'));
+  }),
+  /** Round cleared: bright ding-ding */
+  roundEnd: () => play('roundEnd', 500, (c, o, t) => {
+    tone(c, o, t, 0.25, 880, 880, 0.15, 'triangle');
+    tone(c, o, t + 0.15, 0.4, 1320, 1320, 0.15, 'triangle');
+  }),
+  /** Boss enters: low ominous growl */
+  bossArrives: () => play('boss', 1000, (c, o, t) => {
+    tone(c, o, t, 1.2, 70, 45, 0.45, 'sawtooth');
+    noiseBurst(c, o, t, 0.9, 300, 0.25, 'lowpass');
+  }),
+  /** Eugene goes down: sad trombone-ish slide */
+  gameOver: () => play('gameOver', 1000, (c, o, t) => {
+    [392, 370, 349].forEach((f, i) => tone(c, o, t + i * 0.32, 0.3, f, f * 0.98, 0.22, 'triangle'));
+    tone(c, o, t + 0.96, 0.9, 330, 220, 0.25, 'triangle');
+  }),
+  /** Germ bumps into Eugene (no damage) */
   bump: () => play('bump', 150, (c, o, t) => tone(c, o, t, 0.12, 140, 70, 0.3, 'sawtooth')),
 };

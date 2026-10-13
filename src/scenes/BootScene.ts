@@ -95,11 +95,27 @@ export class BootScene extends Phaser.Scene {
     const size = (r + 10) * 2;
     const c = size / 2;
     const g = this.add.graphics();
-    // Cilia around the edge
-    g.lineStyle(3, def.outline);
-    for (let i = 0; i < 12; i++) {
-      const a = (i / 12) * Math.PI * 2;
-      g.lineBetween(c + Math.cos(a) * r, c + Math.sin(a) * r, c + Math.cos(a) * (r + 8), c + Math.sin(a) * (r + 8));
+    if (def.shape === 'spiky') {
+      // Virus spikes: little triangles all the way round
+      g.fillStyle(def.outline);
+      for (let i = 0; i < 10; i++) {
+        const a = (i / 10) * Math.PI * 2;
+        const w = 0.22;
+        g.fillTriangle(
+          c + Math.cos(a - w) * r * 0.9, c + Math.sin(a - w) * r * 0.9,
+          c + Math.cos(a + w) * r * 0.9, c + Math.sin(a + w) * r * 0.9,
+          c + Math.cos(a) * (r + 9), c + Math.sin(a) * (r + 9),
+        );
+      }
+    } else {
+      // Cilia around the edge
+      g.lineStyle(def.boss ? 5 : 3, def.outline);
+      const n = def.boss ? 20 : 12;
+      const len = def.boss ? 9 : 8;
+      for (let i = 0; i < n; i++) {
+        const a = (i / n) * Math.PI * 2;
+        g.lineBetween(c + Math.cos(a) * r, c + Math.sin(a) * r, c + Math.cos(a) * (r + len), c + Math.sin(a) * (r + len));
+      }
     }
     // Body with lighter belly spots
     g.fillStyle(def.color).fillCircle(c, c, r);
@@ -111,8 +127,12 @@ export class BootScene extends Phaser.Scene {
       g.fillStyle(0xffffff).fillCircle(c + r * 0.38, c + r * dy, r * 0.27);
       g.fillStyle(0x111111).fillCircle(c + r * 0.48, c + r * dy, r * 0.13);
     }
-    // Grin
-    g.lineStyle(2, def.outline).beginPath()
+    // Grin (bosses scowl)
+    if (def.boss) {
+      g.lineStyle(4, def.outline).lineBetween(c + r * 0.15, c - r * 0.55, c + r * 0.5, c - r * 0.2)
+        .lineBetween(c + r * 0.15, c + r * 0.55, c + r * 0.5, c + r * 0.2);
+    }
+    g.lineStyle(def.boss ? 4 : 2, def.outline).beginPath()
       .arc(c + r * 0.2, c, r * 0.55, Phaser.Math.DegToRad(-30), Phaser.Math.DegToRad(30)).strokePath();
     g.generateTexture(`germ-${def.id}`, size, size);
     g.destroy();

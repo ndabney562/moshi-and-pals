@@ -21,6 +21,11 @@ Systems will announce gameplay events on `core/events.ts` (event bus); dialogue,
 - `systems/FlowField` floods a 40 px grid from Eugene every 250 ms; germs step toward the closer neighbor cell, so they route around furniture at a flat cost regardless of germ count.
 - `systems/Fx` owns capped/pooled feedback (particles, stains, damage numbers). `core/sfx` holds placeholder synthesized sounds, one named slot per sound.
 
+## Rounds and the run
+- `systems/WaveDirector` owns round state and the spawn queue (count, mix, max alive, spawn interval, hp/speed scaling, boss rounds; all from `data/waves.ts`). `GameScene` asks it each frame and does the spawning.
+- `Player` owns health, invulnerability and regen. On death `GameScene.endRun` freezes the room, records the score (`core/save.ts`), stops the HUD and launches `GameOverScene`. SCRUB IN AGAIN restarts the Game scene from scratch.
+- The HUD pulls the current state on start via `GameScene.broadcastState()`, then follows events.
+
 ## Settings
 `core/settings.ts` holds player settings saved in localStorage (wrapped in try/catch; falls back to defaults). Currently: `autoAim`.
 
