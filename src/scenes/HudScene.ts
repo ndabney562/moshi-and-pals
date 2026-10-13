@@ -2,8 +2,11 @@ import Phaser from 'phaser';
 import { CONTROLS } from '../config/controls';
 import { DISPLAY } from '../config/display';
 import { COLORS } from '../config/theme';
+import { events, GameEvents, type EquipmentChangedPayload, type GermKilledPayload } from '../core/events';
 import { inputState } from '../core/inputState';
 import { readSafeArea, type Insets } from '../core/safeArea';
+import { BottleMeter } from '../ui/BottleMeter';
+import { HudButton } from '../ui/HudButton';
 import { VirtualJoystick } from '../ui/VirtualJoystick';
 
 /**
@@ -17,7 +20,11 @@ export class HudScene extends Phaser.Scene {
   private fpsText?: Phaser.GameObjects.Text;
   private versionText!: Phaser.GameObjects.Text;
   private roomText!: Phaser.GameObjects.Text;
-  private keys!: Record<'up' | 'down' | 'left' | 'right' | 'w' | 'a' | 's' | 'd', Phaser.Input.Keyboard.Key>;
+  private killText!: Phaser.GameObjects.Text;
+  private refillButton!: HudButton;
+  private bottle!: BottleMeter;
+  private mouseDown = false;
+  private keys!: Record<'up' | 'down' | 'left' | 'right' | 'w' | 'a' | 's' | 'd' | 'r', Phaser.Input.Keyboard.Key>;
   private safe: Insets = { top: 0, right: 0, bottom: 0, left: 0 };
 
   constructor() {
@@ -38,6 +45,25 @@ export class HudScene extends Phaser.Scene {
     const tag = { ...style, backgroundColor: '#0d2b2ecc', padding: { x: 8, y: 4 } };
     this.versionText = this.add.text(0, 0, __APP_VERSION__, { ...tag, fontSize: '14px' }).setOrigin(1, 0);
     if (DISPLAY.showFps) this.fpsText = this.add.text(0, 0, '', { ...tag, fontSize: '16px' });
+    this.killText = this.add.text(0, 0, 'GERMS DISINFECTED: 0', { ...tag, fontSize: '16px' }).setOrigin(0.5, 0);
+
+    this.bottle = new BottleMeter(this);
+    this.refillButton = new HudButton(this, CONTROLS.buttons.refillRadius, 'REFILL', 0x2a9df4, () => {
+      inputState.refillRequested = true;
+    });
+
+    const onEquipment = (p: EquipmentChangedPayload) => {
+      this.bottle.set(p.ammo, p.capacity, p.refillProgress);
+      this.refillButton.setProgress(p.refillProgress);
+      this.refillButton.setUrgent(p.refillProgress < 0 && p.ammo / p.capacity < 0.15);
+    };
+    const onKill = (p: GermKilledPayload) => this.killText.setText(`GERMS DISINFECTED: ${p.totalKills}`);
+    events.on(GameEvents.EquipmentChanged, onEquipment);
+    events.on(GameEvents.GermKilled, onKill);
+    this.events.once('shutdown', () => {
+      events.off(GameEvents.EquipmentChanged, onEquipment);
+      events.off(GameEvents.GermKilled, onKill);
+    });
 
     this.input.on('pointerdown', this.onPointerDown, this);
     this.input.on('pointermove', this.onPointerMove, this);
@@ -47,8 +73,9 @@ export class HudScene extends Phaser.Scene {
 
     const kb = this.input.keyboard!;
     this.keys = kb.addKeys({
-      up: 'UP', down: 'DOWN', left: 'LEFT', right: 'RIGHT', w: 'W', a: 'A', s: 'S', d: 'D',
+      up: 'UP', down: 'DOWN', left: 'LEFT', right: 'RIGHT', w: 'W', a: 'A', s: 'S', d: 'D', r: 'R',
     }) as HudScene['keys'];
+    this.keys.r.on('down', () => (inputState.refillRequested = true));
 
     this.layout();
     this.scale.on('resize', this.layout, this);
@@ -66,9 +93,19 @@ export class HudScene extends Phaser.Scene {
     this.roomText.setPosition(width / 2, this.safe.top + m);
     this.versionText.setPosition(width - this.safe.right - m, this.safe.top + m);
     this.fpsText?.setPosition(this.safe.left + m, this.safe.top + m);
+    this.killText.setPosition(width / 2, this.safe.top + m + 34);
+    const right = width - this.safe.right - m;
+    this.refillButton.setPosition(right - CONTROLS.buttons.refillRadius, height * 0.4);
+    this.bottle.setPosition(right - CONTROLS.buttons.refillRadius * 2 - 44, height * 0.4 - 10);
   }
 
-  private onPointerDown(pointer: Phaser.Input.Pointer): void {
+  private onPointerDown(pointer: Phaser.Input.Pointer, over: Phaser.GameObjects.GameObject[]): void {
+    if (over.length > 0) return; // touched a button, not the floor
+    if (!pointer.wasTouch) {
+      // Desktop testing: hold the mouse to spray toward the cursor
+      this.mouseDown = true;
+      return;
+    }
     // Left half of the screen moves, right half aims
     const stick = pointer.x < this.scale.width / 2 ? this.moveStick : this.aimStick;
     if (!stick.active) stick.start(pointer);
@@ -85,6 +122,7 @@ export class HudScene extends Phaser.Scene {
   }
 
   private onPointerUp(pointer: Phaser.Input.Pointer): void {
+    if (!pointer.wasTouch) this.mouseDown = false;
     if (pointer.id === this.moveStick.pointerId) this.moveStick.release();
     if (pointer.id === this.aimStick.pointerId) this.aimStick.release();
   }
@@ -112,6 +150,8 @@ export class HudScene extends Phaser.Scene {
       inputState.aimY = aim.y / aimLen;
       inputState.mouseActive = false;
     }
+    // Pushing the aim stick sprays; on desktop, holding the mouse does
+    inputState.firing = inputState.aiming || (this.mouseDown && inputState.mouseActive);
 
     this.fpsText?.setText(`${Math.round(this.game.loop.actualFps)} FPS`);
   }

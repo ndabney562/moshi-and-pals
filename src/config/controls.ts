@@ -11,6 +11,9 @@ export const CONTROLS = {
     baseAlpha: 0.35,
     thumbAlpha: 0.8,
   },
+  buttons: {
+    refillRadius: 46,
+  },
   /** The right stick counts as "aiming" only past this fraction of its radius. */
   aimThreshold: 0.3,
   /** Extra space kept clear of the iPhone notch/home bar, on top of the safe area. */

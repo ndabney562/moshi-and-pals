@@ -15,9 +15,15 @@ Fixed logical height of 720 px; width follows the screen's aspect ratio (`src/co
 `Hud` → `core/inputState` → `Game` → `entities/Player`.
 Systems will announce gameplay events on `core/events.ts` (event bus); dialogue, audio, scoring and Easter eggs listen there instead of being wired into combat code.
 
+## Combat (M2)
+- `systems/Sprayer` runs any spray-type equipment from `data/equipment.ts` (supply, fire rate, spread, refill) and fires pooled `entities/Droplet`s.
+- `entities/Germ` is one pooled class configured by `data/germs.ts`; damage = droplet damage × equipment effectiveness for the germ's tag.
+- `systems/FlowField` floods a 40 px grid from Eugene every 250 ms; germs step toward the closer neighbor cell, so they route around furniture at a flat cost regardless of germ count.
+- `systems/Fx` owns capped/pooled feedback (particles, stains, damage numbers). `core/sfx` holds placeholder synthesized sounds, one named slot per sound.
+
 ## Content as data
 - `src/config/`: tuning numbers (balance, controls, display, theme colors).
 - `src/data/`: content (rooms now; germs, equipment, waves, dialogue later).
 
 ## Testing
-`npm run build && npm run smoke` serves the build, opens it in a phone-sized touch browser, drives both sticks, checks Eugene moves and faces the aim direction, and fails on console errors.
+`npm run build && npm run smoke` serves the build, opens it in a phone-sized touch browser, drives both sticks, checks Eugene moves and faces the aim direction, waits for germs, sprays them until some die, taps Refill, and fails on console errors. CI runs it on every pull request.

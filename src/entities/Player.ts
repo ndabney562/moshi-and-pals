@@ -25,6 +25,22 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     this.shadow = scene.add.image(x, y + 18, 'shadow').setDepth(9);
   }
 
+  /** World position of the squirt bottle's nozzle, for spawning spray. */
+  nozzle(out: Phaser.Math.Vector2): Phaser.Math.Vector2 {
+    // Nozzle sits ahead and to Eugene's right in the 96x96 texture
+    const fx = 46 * this.scaleX;
+    const fy = 15 * this.scaleY;
+    const c = Math.cos(this.rotation);
+    const s = Math.sin(this.rotation);
+    return out.set(this.x + fx * c - fy * s, this.y + fx * s + fy * c);
+  }
+
+  /** Brief red flash when a germ bumps him. */
+  flashHurt(): void {
+    this.setTint(0xff8080);
+    this.scene.time.delayedCall(120, () => this.clearTint());
+  }
+
   /** Called every frame by the game scene with this frame's input. */
   drive(input: InputState, dtMs: number, aimTarget?: Phaser.Math.Vector2): void {
     const speed = BALANCE.player.moveSpeed;

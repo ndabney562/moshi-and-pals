@@ -5,5 +5,7 @@
 | Eugene sprite | Placeholder, drawn in code (BootScene) |
 | Floor tile, furniture | Placeholder, drawn in code |
 | App icons | Placeholder (`public/icons/`) |
-| Germs, equipment, FX | Needed from M2 |
-| Audio (all) | Needed from M4 (placeholders) and M8 (Noah's recordings) |
+| Basic Germ | Placeholder, drawn in code |
+| Spray, splat, stain FX | Placeholder particles |
+| Sounds: spray, hit, pop, bump, empty, refill | Synthesized placeholders (`src/core/sfx.ts`) |
+| Voice lines, Sinus Purge, music | Needed from M4 (placeholder) and M8 (Noah's recordings) |
