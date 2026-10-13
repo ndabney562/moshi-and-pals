@@ -64,7 +64,8 @@ export const GERMS: Record<string, GermDef> = {
   },
   /**
    * BOSS #1, designed with Noah: Diamond, the clinic's grouchy practice
-   * manager, who has it out for Moshi. Her moves live in
+   * manager from Trinidad, who has it out for Moshi. A big, heavy, slimy
+   * germ monster (fictional; not based on a real person). Her moves live in
    * systems/DiamondBrain.ts, her lines in data/diamond.ts, her numbers in
    * config/balance.ts (BALANCE.diamond).
    */
@@ -72,16 +73,16 @@ export const GERMS: Record<string, GermDef> = {
     id: 'diamond',
     name: 'Diamond the Practice Manager',
     tag: 'bacteria',
-    hp: 700,
-    speed: 62,
-    radius: 50,
-    color: 0x8f7ac8,
-    outline: 0x2b1d4d,
-    contactBounce: 140,
-    contactDamage: 25,
+    hp: 850,
+    speed: 55,
+    radius: 62,
+    color: 0x9bc53d,
+    outline: 0x2f4a12,
+    contactBounce: 110,
+    contactDamage: 30,
     points: 300,
     shape: 'blob',
-    knockbackResist: 0.85,
+    knockbackResist: 0.92,
     boss: true,
     look: 'manager',
     brain: 'diamond',

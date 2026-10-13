@@ -9,13 +9,16 @@ import { recordRun } from '../core/save';
 import { initSfx, sfx } from '../core/sfx';
 import { EQUIPMENT, STARTING_EQUIPMENT } from '../data/equipment';
 import { GERMS } from '../data/germs';
+import { WAVES } from '../data/waves';
 import { WAITING_ROOM, type Obstacle, type RoomLayout } from '../data/rooms';
 import { Droplet } from '../entities/Droplet';
 import { Germ, type GermScaling } from '../entities/Germ';
+import type { Patient } from '../entities/Patient';
 import { Player } from '../entities/Player';
 import { FlowField } from '../systems/FlowField';
 import { Fx } from '../systems/Fx';
 import { DiamondBrain, type BossHost } from '../systems/DiamondBrain';
+import { PatientDirector } from '../systems/PatientDirector';
 import { Sprayer } from '../systems/Sprayer';
 import { WaveDirector } from '../systems/WaveDirector';
 
@@ -31,6 +34,7 @@ export class GameScene extends Phaser.Scene {
   private nextFlowAt = 0;
   private readonly step = new Phaser.Math.Vector2();
   private waves!: WaveDirector;
+  private patients!: PatientDirector;
   private kills = 0;
   private score = 0;
   private runOver = false;
@@ -70,6 +74,13 @@ export class GameScene extends Phaser.Scene {
     this.germs = this.physics.add.group({ classType: Germ, maxSize: 60, defaultKey: 'germ-basic' });
     this.sprayer = new Sprayer(EQUIPMENT[STARTING_EQUIPMENT], this.droplets);
     this.waves = new WaveDirector(this.time.now);
+    this.patients = new PatientDirector({
+      scene: this,
+      player: this.player,
+      room,
+      spawnGermAt: (id, x, y) => this.spawnGermAt(id, x, y),
+      onCleaned: (p) => this.onPatientCleaned(p),
+    });
 
     this.physics.add.collider(this.player, solids);
     this.physics.add.collider(this.germs, solids);
@@ -81,6 +92,18 @@ export class GameScene extends Phaser.Scene {
     });
     this.physics.add.overlap(this.droplets, this.germs, (d, g) => this.onDropletHit(d as Droplet, g as Germ));
     this.physics.add.overlap(this.player, this.germs, (_p, g) => this.onGermBump(g as Germ));
+    // Patients are moving obstacles: solid to everyone, and they can be sprayed
+    const patients = this.patients.group;
+    this.physics.add.collider(patients, solids);
+    this.physics.add.collider(this.player, patients);
+    this.physics.add.collider(this.germs, patients);
+    this.physics.add.overlap(this.droplets, patients, (d, p) => {
+      const drop = d as Droplet;
+      if (!drop.active) return;
+      this.fx.dropletSplash(drop.x, drop.y);
+      drop.retire();
+      this.patients.sprayed(p as Patient);
+    });
 
     const cam = this.cameras.main;
     cam.setBounds(0, 0, room.width, room.height);
@@ -117,7 +140,7 @@ export class GameScene extends Phaser.Scene {
     if (inputState.mouseActive) {
       aimTarget = this.cameras.main.getWorldPoint(inputState.mouseX, inputState.mouseY, this.mouseWorld);
     } else if (CONTROLS.scheme === 'sprayButton' && settings.autoAim) {
-      aimTarget = this.nearestGerm(CONTROLS.autoAimRange);
+      aimTarget = this.nearestGerm(CONTROLS.autoAimRange) ?? this.patients.nearestViolator(this.player.x, this.player.y, CONTROLS.autoAimRange);
     }
     this.player.drive(inputState, delta, aimTarget);
     if (this.player.regen(time, delta)) {
@@ -157,6 +180,7 @@ export class GameScene extends Phaser.Scene {
       g.chase(near || !this.flow.nextStep(g.x, g.y, this.step) ? this.player : this.step, time, delta);
     }
     this.waves.update(time, this.germs.countActive(true), (id, scaling) => this.spawnGerm(id, scaling));
+    this.patients.update(time, delta, this.waves.round, this.waves.roundActive, this.waves.isBossRound);
   }
 
   /** Auto-aim: the closest living germ within `range`, if any. */
@@ -253,6 +277,23 @@ export class GameScene extends Phaser.Scene {
       events.emit(GameEvents.BossSpawned, { name: def.name, hp: germ.hp, maxHp: germ.maxHp });
     }
     return true;
+  }
+
+  /** A germ let loose by a patient's health code violation, at this round's toughness. */
+  private spawnGermAt(id: string, x: number, y: number): void {
+    const def = GERMS[id];
+    const germ = this.germs.get() as Germ | null;
+    if (!def || !germ) return;
+    const r = Math.max(1, this.waves.round);
+    germ.spawn(def, x, y, { hpMult: WAVES.hpMult(r), speedMult: WAVES.speedMult(r) });
+  }
+
+  private onPatientCleaned(p: Patient): void {
+    const points = BALANCE.patients.cleanPoints;
+    this.score += points;
+    this.fx.number(p.x, p.y - 40, `+${points} CLEAN`, '#7fffd4', 22);
+    sfx.refill();
+    events.emit(GameEvents.ScoreChanged, { score: this.score });
   }
 
   /** What a boss brain is allowed to touch. */

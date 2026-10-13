@@ -22,6 +22,11 @@ export class WaveDirector {
     this.nextRoundAt = startTime + WAVES.firstRoundDelayMs;
   }
 
+  /** True while germs are spawning or still alive this round (not during the break). */
+  get roundActive(): boolean {
+    return this.phase === 'active';
+  }
+
   get isBossRound(): boolean {
     return this.round > 0 && this.round % WAVES.bossEvery === 0;
   }

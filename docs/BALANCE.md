@@ -16,15 +16,18 @@ Values live in `src/config/balance.ts` and `src/config/controls.ts`.
 | Basic Germ HP / speed | 40 / 95 px/s | Was 75; Noah: round 1 too easy |
 | Eugene HP / invulnerability | 100 / 0.7 s | |
 | Regen | 6 HP/s after 6 s unhurt | Was 12/s after 4.5 s; Noah never lost health |
-| Contact damage | Basic 15, Sprinter 8, Write-Up 6, Diamond 25 | |
+| Contact damage | Basic 15, Sprinter 8, Write-Up 6, Diamond 30 | |
 | Viral Sprinter | 16 HP, 165 px/s | From round 3; up to 50% of a round's mix |
 | Round size | 10, 13, 16, 20, 23... | `10 + 3(r-1) + 0.15(r-1)²` (was 6 + ...) |
 | Max alive | 10 at r1, up to 28 | Readability + iPhone performance |
 | HP / speed scaling per round | +10% / +3.5% (speed capped 1.6×) | |
 | Spawn interval | 750 ms at r1, -50 ms/round, min 260 | Was 940 ms at r1 |
 | Boss rounds | every 5th, boss + 50% escort | |
-| Diamond | 700 HP, 62 px/s, 85% knockback resist | Tuning in `BALANCE.diamond` |
+| Diamond | 850 HP, 55 px/s, 92% knockback resist, radius 62 | Tuning in `BALANCE.diamond` |
 | Mandatory Meeting | every 10 s within 320 px; pull 150 px/s, Eugene walks at 35% | Break free with 80 damage; door = 30 damage + shove |
 | Write-Ups | 3 per 20% of her health lost | 10 HP, 170 px/s |
 | Policy Tantrum | below 40% health, every 7 s, 280 px stomp | 8 damage + knockback |
 | Intermission | 5 s | Time to refill |
+| Patients | from round 2, max 1 + round/3 (cap 3), every 9-16 s | None in boss rounds; leave after 30 s |
+| Violations | every 5-8.5 s while a round is active | 1-2 germs each (Basic or Sprinter) |
+| Cleaning a patient | 8 droplet hits | +25 points |
