@@ -82,6 +82,11 @@ export class Germ extends Phaser.Physics.Arcade.Sprite {
     return this.hp <= 0;
   }
 
+  /** Stops steering for `ms` (it keeps sliding from whatever hit it). */
+  stun(time: number, ms: number): void {
+    this.stunnedUntil = Math.max(this.stunnedUntil, time + ms);
+  }
+
   /** Shoves the germ away from a point and stuns it briefly (used when it bumps Eugene). */
   bounceFrom(x: number, y: number, time: number): void {
     const angle = Phaser.Math.Angle.Between(x, y, this.x, this.y);

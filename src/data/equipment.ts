@@ -24,8 +24,8 @@ export interface EquipmentDef {
   /** Push applied to a germ per droplet hit. */
   knockback: number;
   refillMs: number;
-  /** Currency cost to refill (economy arrives in Milestone 4). */
-  refillCost: number;
+  /** Spare supply carried in the jug. REFILL pours from it; the supply cart restocks it for Copays. */
+  reserve: number;
   /** Droplet tint. */
   color: number;
 }
@@ -45,7 +45,7 @@ export const EQUIPMENT: Record<string, EquipmentDef> = {
     effectiveness: { bacteria: 1, virus: 1.2, spore: 0.25, biofilm: 0.5 },
     knockback: 18,
     refillMs: 1100,
-    refillCost: 0,
+    reserve: 480,
     color: 0x9fe7ff,
   },
 };

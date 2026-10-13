@@ -28,9 +28,17 @@ export const GameEvents = {
   BossSpawned: 'boss.spawned',
   BossHealth: 'boss.health',
   BossDefeated: 'boss.defeated',
+  /** { copays } */
+  CopaysChanged: 'copays.changed',
+  /** { progress } 0..1 while recharging, 1 when ready */
+  PurgeChanged: 'purge.changed',
+  PurgeUsed: 'purge.used',
+  /** { near, cost, affordable } whether Eugene is at the supply cart */
+  StationNearby: 'station.nearby',
 } as const;
 
-export interface EquipmentChangedPayload { ammo: number; capacity: number; refillProgress: number; }
+export interface EquipmentChangedPayload { ammo: number; capacity: number; refillProgress: number; reserve: number; }
+export interface StationPayload { near: boolean; cost: number; affordable: boolean; }
 export interface GermKilledPayload { germId: string; x: number; y: number; totalKills: number; }
 
 export interface HealthPayload { hp: number; maxHp: number; }

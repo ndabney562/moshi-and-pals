@@ -12,7 +12,10 @@ Values live in `src/config/balance.ts` and `src/config/controls.ts`.
 | Droplet damage | 4 × 2 per shot | ~88 DPS if every droplet lands |
 | Spray range / spread | 200 px / 14° | Was 300; Noah: too long |
 | Auto-aim range | 240 px | Slightly beyond spray range so Eugene turns before germs arrive |
-| Refill time | 1.1 s | Free for now; costs currency from M4 |
+| Refill time | 1.1 s | Pours from the jug |
+| Jug (reserve) | 480 mL (4 refills) | Restock at SUPPLIES cart for $40 Copays |
+| Copays per kill | Basic 5, Sprinter 8, Write-Up 2, Diamond 100 | Cleaning a patient: 10 |
+| Sinus Purge | 240 px, 35 damage, big knockback, 0.6 s stun | 18 s cooldown; ready at start |
 | Basic Germ HP / speed | 40 / 95 px/s | Was 75; Noah: round 1 too easy |
 | Eugene HP / invulnerability | 100 / 0.7 s | |
 | Regen | 6 HP/s after 6 s unhurt | Was 12/s after 4.5 s; Noah never lost health |

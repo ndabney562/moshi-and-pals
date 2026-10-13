@@ -19,18 +19,19 @@ export class BottleMeter extends Phaser.GameObjects.Container {
     const glass = scene.add.graphics();
     glass.lineStyle(3, 0xe8fff9, 0.9).strokeRoundedRect(-W / 2, -H / 2, W, H, 8);
     this.text = scene.add.text(0, H / 2 + 8, '', {
-      fontFamily: 'system-ui, sans-serif', fontSize: '16px', fontStyle: 'bold', color: '#e8fff9',
+      fontFamily: 'system-ui, sans-serif', fontSize: '15px', fontStyle: 'bold', color: '#e8fff9', align: 'center',
       backgroundColor: '#0d2b2ecc', padding: { x: 6, y: 3 },
     }).setOrigin(0.5, 0);
     this.add([g, this.liquid, glass, this.text]);
     scene.add.existing(this);
   }
 
-  set(ammo: number, capacity: number, refillProgress: number): void {
+  set(ammo: number, capacity: number, refillProgress: number, reserve: number): void {
     const frac = refillProgress >= 0 ? refillProgress : ammo / capacity;
     this.liquid.height = (BottleMeter.H - 8) * frac;
     // Shift toward orange then red as it runs low
     this.liquid.fillColor = frac > 0.3 ? 0x7fd3ff : frac > 0.12 ? 0xffb347 : 0xff5a5a;
-    this.text.setText(refillProgress >= 0 ? 'REFILLING…' : `${Math.ceil(ammo)} mL`);
+    const main = refillProgress >= 0 ? 'REFILLING…' : `${Math.ceil(ammo)} mL`;
+    this.text.setText(`${main}\nJUG ${Math.ceil(reserve)}`).setColor(reserve <= 0 ? '#ffb3b3' : '#e8fff9');
   }
 }
