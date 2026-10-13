@@ -1,5 +1,8 @@
 # Changelog
 
+## v0.5.4: Title fills the screen
+- Noah: the title poster didn't fill his screen. It now re-fits whenever the screen changes shape (rotating, Safari's toolbars showing or hiding). Very wide screens, like Safari in landscape with its toolbars, no longer get dark bars at the sides (widest supported shape raised from 2.4:1 to 3.2:1).
+
 ## v0.5.3: MoshiMonsters
 - Noah renamed the game **MoshiMonsters** (from his title poster). The home screen icon, browser tab and docs use the new name. The repo and web address stay `moshi-and-pals` so existing links and home screen icons keep working.
 - The title screen now uses Noah's landscape poster, filling the whole screen with TAP TO START over the bottom.
