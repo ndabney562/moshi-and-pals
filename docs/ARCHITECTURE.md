@@ -23,7 +23,7 @@ Systems will announce gameplay events on `core/events.ts` (event bus); dialogue,
 
 ## Rounds and the run
 - `systems/WaveDirector` owns round state and the spawn queue (count, mix, max alive, spawn interval, hp/speed scaling, boss rounds; all from `data/waves.ts`). `GameScene` asks it each frame and does the spawning.
-- `systems/BabushkaBrain` steers the boss germ (a normal pooled `Germ` whose def has `brain: 'babushka'`): speech bubbles (`ui/SpeechBubble`), haul, cousins, guilt trip. It talks to the scene through a small `BossHost` interface; lines live in `data/babushka.ts`, numbers in `BALANCE.babushka`.
+- `systems/DiamondBrain` steers the boss germ (a normal pooled `Germ` whose def has `brain: 'diamond'`): speech bubbles (`ui/SpeechBubble`), Mandatory Meeting, Write-Ups, Policy Tantrum. It talks to the scene through a small `BossHost` interface; lines live in `data/diamond.ts`, numbers in `BALANCE.diamond`.
 - `Player` owns health, invulnerability and regen. On death `GameScene.endRun` freezes the room, records the score (`core/save.ts`), stops the HUD and launches `GameOverScene`. SCRUB IN AGAIN restarts the Game scene from scratch.
 - The HUD pulls the current state on start via `GameScene.broadcastState()`, then follows events.
 

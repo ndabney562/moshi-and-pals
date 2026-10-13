@@ -19,16 +19,16 @@ export interface GermDef {
   contactDamage: number;
   /** Score awarded on kill. */
   points: number;
-  /** Placeholder art style: round blob with cilia, or spiky virus. */
-  shape: 'blob' | 'spiky';
+  /** Placeholder art style: round blob with cilia, spiky virus, or a sheet of paper. */
+  shape: 'blob' | 'spiky' | 'paper';
   /** 0 = full knockback from spray, 1 = immovable. */
   knockbackResist: number;
   /** Bosses get a health bar and their own round. */
   boss?: boolean;
-  /** Optional headscarf color (Babushka and family). */
-  headscarf?: number;
+  /** Extra costume drawn on top of the body. */
+  look?: 'manager';
   /** Special behavior controller. Germs without one simply chase Eugene. */
-  brain?: 'babushka';
+  brain?: 'diamond';
 }
 
 export const GERMS: Record<string, GermDef> = {
@@ -63,44 +63,43 @@ export const GERMS: Record<string, GermDef> = {
     knockbackResist: 0,
   },
   /**
-   * BOSS #1, designed with Noah: a whiny, guilt-tripping grandmother germ who
-   * wants to take Eugene back to Mother Russia. Her moves live in
-   * systems/BabushkaBrain.ts, her lines in data/babushka.ts, her numbers in
-   * config/balance.ts (BALANCE.babushka).
+   * BOSS #1, designed with Noah: Diamond, the clinic's grouchy practice
+   * manager, who has it out for Moshi. Her moves live in
+   * systems/DiamondBrain.ts, her lines in data/diamond.ts, her numbers in
+   * config/balance.ts (BALANCE.diamond).
    */
-  babushka: {
-    id: 'babushka',
-    name: 'Babushka Bacillus',
+  diamond: {
+    id: 'diamond',
+    name: 'Diamond the Practice Manager',
     tag: 'bacteria',
     hp: 700,
     speed: 62,
     radius: 50,
-    color: 0xc98bb9,
-    outline: 0x5a2350,
+    color: 0x8f7ac8,
+    outline: 0x2b1d4d,
     contactBounce: 140,
-    contactDamage: 22,
+    contactDamage: 25,
     points: 300,
     shape: 'blob',
     knockbackResist: 0.85,
     boss: true,
-    headscarf: 0xd7263d,
-    brain: 'babushka',
+    look: 'manager',
+    brain: 'diamond',
   },
-  /** Babushka's little cousins: sobbed out when she gets hurt. Tiny, quick, fragile. */
-  cousin: {
-    id: 'cousin',
-    name: 'Little Cousin',
+  /** Diamond's write-ups: angry pink slips she flings when she gets hurt. Tiny, quick, fragile. */
+  writeUp: {
+    id: 'writeUp',
+    name: 'Write-Up',
     tag: 'bacteria',
     hp: 10,
     speed: 170,
     radius: 12,
-    color: 0xe8a7d4,
-    outline: 0x5a2350,
+    color: 0xff9ec7,
+    outline: 0x7a1f4a,
     contactBounce: 320,
     contactDamage: 6,
     points: 5,
-    shape: 'blob',
+    shape: 'paper',
     knockbackResist: 0,
-    headscarf: 0xd7263d,
   },
 };

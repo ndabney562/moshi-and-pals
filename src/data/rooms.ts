@@ -24,7 +24,7 @@ export interface RoomLayout {
   /** Where germs enter the room (just inside doors and vents). */
   germSpawns: { x: number; y: number }[];
   obstacles: Obstacle[];
-  /** The way out. Babushka Bacillus tries to drag Eugene here. */
+  /** The way out. Diamond tries to drag Eugene out here for a "quick meeting". */
   exit: { x: number; y: number };
 }
 

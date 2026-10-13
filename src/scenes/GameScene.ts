@@ -15,7 +15,7 @@ import { Germ, type GermScaling } from '../entities/Germ';
 import { Player } from '../entities/Player';
 import { FlowField } from '../systems/FlowField';
 import { Fx } from '../systems/Fx';
-import { BabushkaBrain, type BossHost } from '../systems/BabushkaBrain';
+import { DiamondBrain, type BossHost } from '../systems/DiamondBrain';
 import { Sprayer } from '../systems/Sprayer';
 import { WaveDirector } from '../systems/WaveDirector';
 
@@ -35,7 +35,7 @@ export class GameScene extends Phaser.Scene {
   private score = 0;
   private runOver = false;
   /** The current boss's behavior, if a boss with a brain is (or was last) in the room. */
-  private boss?: BabushkaBrain;
+  private boss?: DiamondBrain;
   private readonly mouseWorld = new Phaser.Math.Vector2();
   private readonly nozzle = new Phaser.Math.Vector2();
 
@@ -244,9 +244,9 @@ export class GameScene extends Phaser.Scene {
     );
     const spot = Phaser.Utils.Array.GetRandom(far.length ? far : this.room.germSpawns);
     germ.spawn(def, spot.x, spot.y, scaling);
-    if (def.brain === 'babushka') {
+    if (def.brain === 'diamond') {
       this.boss?.destroy();
-      this.boss = new BabushkaBrain(this.bossHost(), germ);
+      this.boss = new DiamondBrain(this.bossHost(), germ);
     }
     if (def.boss) {
       sfx.bossArrives();
@@ -268,7 +268,7 @@ export class GameScene extends Phaser.Scene {
         germ.spawn(def, x, y);
         germ.setVelocity(vx, vy);
       },
-      damagePlayer: (amount) => this.hurtPlayer(amount, 'babushka'),
+      damagePlayer: (amount) => this.hurtPlayer(amount, 'diamond'),
     };
   }
 

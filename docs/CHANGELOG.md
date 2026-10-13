@@ -1,5 +1,12 @@
 # Changelog
 
+## v0.3.2: Diamond the Practice Manager
+- Noah's call: the boss is now **Diamond**, a grouchy practice manager germ (bun, pencil, clipboard, furious eyebrows) instead of Babushka Bacillus. Same fight shape, new personality:
+  - Mandatory Meeting: ties Eugene up in red tape and drags him to the EXIT. Spray her to break free.
+  - Write-Ups: flings angry pink slips (small, fast) as she loses health.
+  - Policy Tantrum: slams her clipboard at low health, knocking Eugene back.
+- She hits harder on contact (25, was 22). New grumble and clipboard-slam sounds.
+
 ## v0.3.1: Babushka Bacillus and Noah's M3 playtest
 - First real boss, **Babushka Bacillus** (Noah's design), replaces the placeholder. She has a headscarf and whiny speech bubbles, and three moves:
   - Homesick Haul: lassos Eugene with yarn and drags him to the EXIT. Spray her to break free.

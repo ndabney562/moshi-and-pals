@@ -133,35 +133,35 @@ try {
   check(run.round >= 1 && run.hud === `ROUND ${run.round}`, `wave system running (${run.hud})`);
   check(run.score > 0, `score counts kills (${run.score})`);
 
-  // Babushka Bacillus: spawn her near Eugene and walk her through every move
+  // Diamond the Practice Manager: spawn her near Eugene and walk her through every move
   await page.evaluate(() => {
     const scene = window.game.scene.getScene('Game');
     for (const g of scene.germs.getChildren()) if (g.active) g.kill();
     scene.player.hp = 100;
     scene.player.setPosition(640, 460);
-    scene.spawnGerm('babushka', { hpMult: 1, speedMult: 1 });
+    scene.spawnGerm('diamond', { hpMult: 1, speedMult: 1 });
     scene.boss.germ.setPosition(860, 460);
-    scene.boss.nextHaulAt = 0;
+    scene.boss.nextMeetingAt = 0;
   });
   await page.waitForTimeout(1000);
   const intro = await page.evaluate(() => {
     const scene = window.game.scene.getScene('Game');
     return { said: scene.boss.bubble.text, bar: window.game.scene.getScene('Hud').bossBar?.visible };
   });
-  check(intro.said.length > 0, `Babushka talks ("${intro.said}")`);
-  await page.waitForFunction(() => window.game.scene.getScene('Game').boss.mode === 'haul', null, { timeout: 4000 });
-  const haulStart = await page.evaluate(() => window.game.scene.getScene('Game').player.y);
+  check(intro.said.length > 0, `Diamond talks ("${intro.said}")`);
+  await page.waitForFunction(() => window.game.scene.getScene('Game').boss.mode === 'meeting', null, { timeout: 4000 });
+  const meetingStart = await page.evaluate(() => window.game.scene.getScene('Game').player.y);
   // Headless frame rates are low, so wait for progress instead of a fixed time
-  await page.waitForFunction((y0) => window.game.scene.getScene('Game').player.y > y0 + 30, haulStart, { timeout: 6000 }).catch(() => {});
+  await page.waitForFunction((y0) => window.game.scene.getScene('Game').player.y > y0 + 30, meetingStart, { timeout: 6000 }).catch(() => {});
   await page.screenshot({ path: 'smoke-boss.png' });
-  const haul = await page.evaluate(() => {
+  const meeting = await page.evaluate(() => {
     const scene = window.game.scene.getScene('Game');
     return { y: scene.player.y, pull: scene.player.pull.length(), aim: scene.nearestGerm(240) === scene.boss.germ };
   });
-  check(haul.pull > 0 && haul.y > haulStart + 30, `Homesick Haul drags Eugene toward the exit (y ${haulStart | 0} -> ${haul.y | 0})`);
-  check(haul.aim, 'auto-aim locks onto Babushka during the haul');
+  check(meeting.pull > 0 && meeting.y > meetingStart + 30, `Mandatory Meeting drags Eugene toward the exit (y ${meetingStart | 0} -> ${meeting.y | 0})`);
+  check(meeting.aim, 'auto-aim locks onto Diamond during the meeting');
 
-  // Spray her hard enough to snap the yarn (also costs her enough health to sob out cousins)
+  // Spray her hard enough to rip the red tape (also costs her enough health to fling write-ups)
   const hitBoss = (amount) => page.evaluate((n) => {
     const scene = window.game.scene.getScene('Game');
     const d = scene.droplets.get();
@@ -171,21 +171,21 @@ try {
   await hitBoss(200);
   const freed = await page.evaluate(() => {
     const scene = window.game.scene.getScene('Game');
-    return { mode: scene.boss.mode, pull: scene.player.pull.length(), cousins: scene.germs.getChildren().filter((g) => g.active && g.def.id === 'cousin').length };
+    return { mode: scene.boss.mode, pull: scene.player.pull.length(), writeUps: scene.germs.getChildren().filter((g) => g.active && g.def.id === 'writeUp').length };
   });
   check(freed.mode === 'chase' && freed.pull === 0, `spraying her breaks Eugene free (${JSON.stringify(freed)})`);
-  check(freed.cousins >= 1, `Little Cousins spawn when she is hurt (${freed.cousins})`);
+  check(freed.writeUps >= 1, `Write-Ups fly when she is hurt (${freed.writeUps})`);
 
-  // Guilt Trip at low health
+  // Policy Tantrum at low health
   await page.evaluate(() => {
     const scene = window.game.scene.getScene('Game');
-    for (const g of scene.germs.getChildren()) if (g.active && g.def.id === 'cousin') g.kill();
+    for (const g of scene.germs.getChildren()) if (g.active && g.def.id === 'writeUp') g.kill();
     scene.player.hp = 100;
   });
   await hitBoss(260);
-  await page.waitForFunction(() => window.game.scene.getScene('Game').boss.mode === 'guiltWindup', null, { timeout: 3000 });
-  await page.waitForFunction(() => window.game.scene.getScene('Game').boss.nextGuiltAt > 0, null, { timeout: 3000 });
-  check(true, 'Guilt Trip winds up and wails at low health');
+  await page.waitForFunction(() => window.game.scene.getScene('Game').boss.mode === 'tantrumWindup', null, { timeout: 3000 });
+  await page.waitForFunction(() => window.game.scene.getScene('Game').boss.nextTantrumAt > 0, null, { timeout: 3000 });
+  check(true, 'Policy Tantrum winds up and stomps at low health');
 
   // Finish her off
   await page.evaluate(() => { window.game.scene.getScene('Game').player.hp = 100; });
@@ -194,7 +194,7 @@ try {
     const scene = window.game.scene.getScene('Game');
     return { active: scene.boss.active, said: scene.boss.bubble.text };
   });
-  check(!beaten.active && beaten.said.length > 0, `Babushka can be defeated ("${beaten.said}")`);
+  check(!beaten.active && beaten.said.length > 0, `Diamond can be defeated ("${beaten.said}")`);
 
   // Death: drop Eugene to 1 HP and put a germ on top of him
   await page.evaluate(() => {
