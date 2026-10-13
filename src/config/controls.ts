@@ -1,5 +1,12 @@
 /** Touch control tuning. All sizes are in logical game pixels (see display.ts). */
 export const CONTROLS = {
+  /**
+   * 'sprayButton': left stick moves, hold SPRAY to spray, Eugene auto-aims at the nearest germ.
+   * 'twinStick': right stick aims and sprays (original Milestone 2 scheme).
+   */
+  scheme: 'sprayButton' as 'sprayButton' | 'twinStick',
+  /** Auto-aim locks onto germs within this distance (sprayButton scheme). */
+  autoAimRange: 240,
   joystick: {
     /** How far the thumb can travel from the joystick's center. */
     radius: 80,
@@ -12,7 +19,8 @@ export const CONTROLS = {
     thumbAlpha: 0.8,
   },
   buttons: {
-    refillRadius: 46,
+    refillRadius: 44,
+    sprayRadius: 70,
   },
   /** The right stick counts as "aiming" only past this fraction of its radius. */
   aimThreshold: 0.3,
