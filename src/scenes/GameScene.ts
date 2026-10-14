@@ -277,6 +277,7 @@ export class GameScene extends Phaser.Scene {
       area: room.rooms.filter((r) => r.start).sort((a, b) => b.w * b.h - a.w * a.h)[0] ?? room.rooms[0],
       spawnGermAt: (id, x, y) => this.spawnGermAt(id, x, y),
       onCleaned: (p) => this.onPatientCleaned(p),
+      doctor: this.character.id,
     });
 
     this.physics.add.collider(this.player, solids);
