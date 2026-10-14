@@ -20,6 +20,14 @@ const context = await browser.newContext({
   viewport: { width: 852, height: 393 }, deviceScaleFactor: 3, isMobile: true, hasTouch: true,
 });
 const page = await context.newPage();
+/** Timeouts say what they were waiting for (CI logs aren't readable, only the failure message). */
+const labelWaits = (p) => {
+  const wait = p.waitForFunction.bind(p);
+  p.waitForFunction = (fn, arg, opts) => wait(fn, arg, opts).catch((e) => {
+    throw new Error(`${e.message.split('\n')[0]} waiting for: ${String(fn).replace(/\s+/g, ' ').slice(0, 160)}`);
+  });
+};
+labelWaits(page);
 const errors = [];
 page.on('pageerror', (e) => errors.push(e.message));
 page.on('console', (m) => m.type() === 'error' && errors.push(m.text()));
@@ -790,6 +798,7 @@ try {
 
   // Debug/stress switches: ?round=6&copays=999&god&fps=30
   const dbg = await context.newPage();
+  labelWaits(dbg);
   const dbgErrors = [];
   dbg.on('pageerror', (e) => dbgErrors.push(e.message));
   await dbg.goto(url + '?round=6&copays=999&god&fps=30');
@@ -814,6 +823,7 @@ try {
   // Phone held upright: the game still plays in landscape, turned sideways, and touches land where they look
   const tall = await browser.newContext({ viewport: { width: 393, height: 852 }, deviceScaleFactor: 3, isMobile: true, hasTouch: true });
   const pp = await tall.newPage();
+  labelWaits(pp);
   const tallErrors = [];
   pp.on('pageerror', (e) => tallErrors.push(e.message));
   await pp.goto(url);
