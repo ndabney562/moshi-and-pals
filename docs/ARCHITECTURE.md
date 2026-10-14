@@ -21,6 +21,11 @@ Systems will announce gameplay events on `core/events.ts` (event bus); dialogue,
 - `systems/FlowField` floods a 40 px grid from Eugene every 250 ms; germs step toward the closer neighbor cell, so they route around furniture at a flat cost regardless of germ count.
 - `systems/Fx` owns capped/pooled feedback (particles, stains, damage numbers). `core/sfx` holds placeholder synthesized sounds, one named slot per sound.
 
+## Special germs (M7)
+- `GermDef.armor` (Spore Pod): `GameScene.armorMult` scales droplet damage by hit direction vs the germ's facing; `Germ.flip` (Sinus Purge) disables it. Armored germs turn at `turnDegPerSec`.
+- `GermDef.spit` (Sneezer): `systems/GermBehaviors.steerSpitter` keeps distance, circles, winds up and calls `fireGlob`; `entities/Glob` (pooled) and `systems/Puddles` (pooled) handle the mucus. Puddles slow Eugene through `Player.setSpeedMod` (a per-source multiplier stack, also used by Diamond's meeting).
+- `WAVES.aliveLimit` caps how many of a type are alive; `WaveDirector` lets other germs go first when one is capped.
+
 ## Rounds and the run
 - `systems/WaveDirector` owns round state and the spawn queue (count, mix, max alive, spawn interval, hp/speed scaling, boss rounds; all from `data/waves.ts`). `GameScene` asks it each frame and does the spawning.
 - `systems/DiamondBrain` steers the boss germ (a normal pooled `Germ` whose def has `brain: 'diamond'`): speech bubbles (`ui/SpeechBubble`), Mandatory Meeting, Write-Ups, Policy Tantrum. It talks to the scene through a small `BossHost` interface; lines live in `data/diamond.ts`, numbers in `BALANCE.diamond`.

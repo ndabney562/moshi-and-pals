@@ -48,3 +48,5 @@ Values live in `src/config/balance.ts` and `src/config/controls.ts`.
 | Sanitation Streak | kills within 2 s chain; +5% Copays per 5 kills, max 1.5× | `BALANCE.streak` |
 | Spotless round | $10 × round number if Eugene isn't hurt | `BALANCE.economy.spotlessPerRound` |
 | Perfect Pour | sweet spot 45-65% of the refill; +20% damage for 4 s; miss = +0.5 s once | `BALANCE.pour` |
+| Spore Pod | 50 HP, 70 px/s, 18 contact, $15 | Front 120° ×0.25, back 120° ×1.5, turns 70°/s; Purge flips 2 s; from r6, 2-5 alive |
+| Sneezer | 24 HP, 110 px/s, 8 contact, $10 | Keeps 260 ± 60 px; 0.7 s wind-up; glob 10 dmg, 300 px/s, 420 px; puddle 52 px, 2.5 s, Eugene ×0.55; from r4, 2-4 alive |

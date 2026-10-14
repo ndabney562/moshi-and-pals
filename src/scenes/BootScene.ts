@@ -28,6 +28,7 @@ export class BootScene extends Phaser.Scene {
     this.makePuff();
     this.makeHalo();
     this.makeArrow();
+    this.makeGlob();
     this.scene.start('Title');
   }
 
@@ -120,6 +121,14 @@ export class BootScene extends Phaser.Scene {
     }
     if (def.look === 'manager') {
       this.makeManagerMonster(def);
+      return;
+    }
+    if (def.shape === 'shell') {
+      this.makeSporePod(def);
+      return;
+    }
+    if (def.shape === 'sneezer') {
+      this.makeSneezer(def);
       return;
     }
     const g = this.add.graphics();
@@ -240,6 +249,67 @@ export class BootScene extends Phaser.Scene {
     g.destroy();
   }
 
+  /**
+   * Spore Pod: a hexagonal shell with thick armor plates across its front (+x, the way it faces),
+   * beady eyes peeking out between the plates, and a soft, lighter back: the weak spot.
+   */
+  private makeSporePod(def: GermDef): void {
+    const r = def.radius;
+    const size = (r + 12) * 2;
+    const c = size / 2;
+    const g = this.add.graphics();
+    const hex = (rad: number) => Array.from({ length: 6 }, (_, i) => {
+      const a = (i / 6) * Math.PI * 2 + Math.PI / 6;
+      return new Phaser.Math.Vector2(c + Math.cos(a) * rad, c + Math.sin(a) * rad);
+    });
+    // Soft back half (lighter, squishy)
+    g.fillStyle(0xf2c98a).fillPoints(hex(r), true);
+    g.lineStyle(3, def.outline).strokePoints(hex(r), true);
+    g.fillStyle(0xffffff, 0.3).fillCircle(c - r * 0.45, c, r * 0.25);
+    // Armor: three heavy plates over the front 120°
+    for (let i = -1; i <= 1; i++) {
+      const a = i * (Math.PI / 3);
+      g.fillStyle(def.color).slice(c, c, r + 8, a - 0.5, a + 0.5, false).fillPath();
+      g.lineStyle(3, def.outline).slice(c, c, r + 8, a - 0.5, a + 0.5, false).strokePath();
+      g.fillStyle(0xffffff, 0.25).fillCircle(c + Math.cos(a) * (r * 0.95), c + Math.sin(a) * (r * 0.95), 3);
+    }
+    // Eyes in the slit between plates
+    g.fillStyle(0x1a0e04).fillEllipse(c + r * 0.25, c, r * 0.4, r * 0.9);
+    for (const dy of [-0.22, 0.22]) {
+      g.fillStyle(0xffe066).fillCircle(c + r * 0.3, c + r * dy, r * 0.12);
+      g.fillStyle(0x111111).fillCircle(c + r * 0.34, c + r * dy, r * 0.06);
+    }
+    g.generateTexture(`germ-${def.id}`, size, size);
+    g.destroy();
+  }
+
+  /** Sneezer: a droopy, runny blob with a huge red nose out front and watery half-closed eyes. */
+  private makeSneezer(def: GermDef): void {
+    const r = def.radius;
+    const size = (r + 14) * 2;
+    const c = size / 2;
+    const g = this.add.graphics();
+    // Droopy drips around the back
+    g.fillStyle(def.color);
+    for (const a of [2.3, 2.8, 3.3, 3.8]) g.fillEllipse(c + Math.cos(a) * r * 0.9, c + Math.sin(a) * r * 0.9, r * 0.5, r * 0.36);
+    g.fillCircle(c, c, r);
+    g.lineStyle(3, def.outline).strokeCircle(c, c, r);
+    g.fillStyle(0xffffff, 0.25).fillCircle(c - r * 0.35, c - r * 0.35, r * 0.28);
+    // Sleepy, watery eyes
+    for (const dy of [-0.38, 0.38]) {
+      g.fillStyle(0xffffff).fillCircle(c + r * 0.2, c + r * dy, r * 0.24);
+      g.fillStyle(def.color).fillRect(c + r * 0.2 - r * 0.26, c + r * dy - r * 0.26, r * 0.52, r * 0.13); // droopy lids
+      g.fillStyle(0x111111).fillCircle(c + r * 0.28, c + r * dy + r * 0.06, r * 0.1);
+      g.fillStyle(0x7fd3ff).fillCircle(c + r * 0.05, c + r * dy + r * 0.25, r * 0.07); // tear
+    }
+    // The nose: big, red, shiny
+    g.fillStyle(0xe5383b).fillCircle(c + r * 0.85, c, r * 0.42);
+    g.lineStyle(2, 0x7a1012).strokeCircle(c + r * 0.85, c, r * 0.42);
+    g.fillStyle(0xffffff, 0.6).fillCircle(c + r * 0.95, c - r * 0.14, r * 0.1);
+    g.generateTexture(`germ-${def.id}`, size, size);
+    g.destroy();
+  }
+
   /** A crumpled pink slip with angry eyes. */
   private makePaperGerm(def: GermDef): void {
     const r = def.radius;
@@ -294,6 +364,17 @@ export class BootScene extends Phaser.Scene {
     g.fillStyle(0xffffff, 0.35).fillCircle(8, 8, 8);
     g.fillStyle(0xffffff).fillCircle(8, 8, 4.5);
     g.generateTexture('droplet', 16, 16);
+    g.destroy();
+  }
+
+  /** Sneezer mucus glob: a gooey green droplet with a shine. */
+  private makeGlob(): void {
+    const g = this.add.graphics();
+    g.fillStyle(0x9bbf3a).fillCircle(12, 12, 10);
+    g.fillStyle(0xc8e66b).fillCircle(10, 10, 6);
+    g.fillStyle(0xffffff, 0.7).fillCircle(8, 8, 2.5);
+    g.lineStyle(2, 0x4f5e14).strokeCircle(12, 12, 10);
+    g.generateTexture('glob', 24, 24);
     g.destroy();
   }
 

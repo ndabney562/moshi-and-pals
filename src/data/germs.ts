@@ -21,8 +21,8 @@ export interface GermDef {
   points: number;
   /** Copays (currency) earned on kill. */
   copays: number;
-  /** Placeholder art style: round blob with cilia, spiky virus, or a sheet of paper. */
-  shape: 'blob' | 'spiky' | 'paper';
+  /** Placeholder art style: round blob with cilia, spiky virus, sheet of paper, armored hex shell, or droopy sneezer. */
+  shape: 'blob' | 'spiky' | 'paper' | 'shell' | 'sneezer';
   /** 0 = full knockback from spray, 1 = immovable. */
   knockbackResist: number;
   /** Bosses get a health bar and their own round. */
@@ -31,6 +31,21 @@ export interface GermDef {
   look?: 'manager';
   /** Special behavior controller. Germs without one simply chase Eugene. */
   brain?: 'diamond';
+  /**
+   * Armored shell (Spore Pod): hits on the front arc are mostly blocked, hits from behind hurt extra.
+   * It turns slowly (`turnDegPerSec`), so circling it works. Piercing tools (UV) ignore the shell;
+   * Sinus Purge flips it onto its back for `flipMs` (no armor, can't move).
+   */
+  armor?: { frontArcDeg: number; front: number; back: number; turnDegPerSec: number; flipMs: number };
+  /**
+   * Ranged spitter (Sneezer): keeps about `keepAway` px from Eugene, winds up for `windupMs`,
+   * then fires a mucus glob that hurts on hit and leaves a slowing puddle.
+   */
+  spit?: {
+    keepAway: number; band: number; windupMs: number; cooldownMs: [number, number];
+    globSpeed: number; globRange: number; damage: number;
+    puddleMs: number; puddleRadius: number; puddleSlow: number;
+  };
 }
 
 export const GERMS: Record<string, GermDef> = {
@@ -65,6 +80,52 @@ export const GERMS: Record<string, GermDef> = {
     copays: 8,
     shape: 'spiky',
     knockbackResist: 0,
+  },
+  /**
+   * SPORE POD: a slow, armored hexagonal shell. Spraying its face is nearly useless; get behind it,
+   * use the UV Wand (pierces the shell, ×1.5 vs spores), or Sinus Purge to flip it over. From round 6.
+   */
+  sporePod: {
+    id: 'sporePod',
+    name: 'Spore Pod',
+    tag: 'spore',
+    hp: 50,
+    speed: 70,
+    radius: 26,
+    color: 0xc98b3a,
+    outline: 0x4a2e0e,
+    contactBounce: 220,
+    contactDamage: 18,
+    points: 30,
+    copays: 15,
+    shape: 'shell',
+    knockbackResist: 0.6,
+    armor: { frontArcDeg: 120, front: 0.25, back: 1.5, turnDegPerSec: 70, flipMs: 2000 },
+  },
+  /**
+   * SNEEZER: a droopy rhinovirus with a huge red nose. Hangs back, goes "AH... AH..." and sneezes a
+   * mucus glob that leaves a slippery puddle (slows Eugene). Fragile; long-range tools out-range it. From round 4.
+   */
+  sneezer: {
+    id: 'sneezer',
+    name: 'Sneezer',
+    tag: 'virus',
+    hp: 24,
+    speed: 110,
+    radius: 18,
+    color: 0xd7e88a,
+    outline: 0x4f5e14,
+    contactBounce: 300,
+    contactDamage: 8,
+    points: 20,
+    copays: 10,
+    shape: 'sneezer',
+    knockbackResist: 0,
+    spit: {
+      keepAway: 260, band: 60, windupMs: 700, cooldownMs: [2400, 3400],
+      globSpeed: 300, globRange: 420, damage: 10,
+      puddleMs: 2500, puddleRadius: 52, puddleSlow: 0.55,
+    },
   },
   /**
    * BOSS #1, designed with Noah: Diamond, the clinic's grouchy practice

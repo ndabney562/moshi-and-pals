@@ -19,6 +19,9 @@
 - **Perfect Pour.** While the bottle refills, a gold arc shows on the REFILL ring. Tap REFILL again while the ring is in the gold: the bottle fills instantly and FRESH BOTTLE gives +20% damage for 4 s (the tool label says FRESH!). Tap too early or late and it SPILLS: the pour takes half a second longer.
 - **Auto-refill** (on by default, in the pause menu): spraying an empty bottle starts the refill by itself. Perfect Pour still needs the second tap.
 - **Off-screen threat arrows.** Germs that are off screen but within ~900 px get an arrow at the screen edge pointing at them, tinted like the germ (bigger for bosses, brighter the closer they are). Up to 8 at once.
+- **New germ: Spore Pod** (from round 6). A slow hexagonal shell with armor plates across its face: spray from the front mostly bounces off ("TINK! GET BEHIND IT"), spray from behind does 1.5×. It turns slowly, so circle it. The UV Wand shines right through the shell, and Sinus Purge flips it onto its back for 2 s (no armor, can't move).
+- **New germ: Sneezer** (from round 4). A droopy, runny virus with a huge red nose. It hangs back about 260 px, circles you, then flashes red and goes "AH... AH..." before a "CHOO!": a mucus glob that hurts and leaves a slippery puddle that slows Eugene for a few seconds. Only 24 HP: rush it, or out-range it with the Bleach Super Soaker.
+- At most a few of each new germ are alive at once (more in later rounds), so they spice up rounds rather than take them over.
 
 ## v0.6.0: Milestone 6, supply crates
 - **Supply crates** (📦 with a big "?") in the waiting room, exam rooms, staff break room, lab and X-ray. Walk up and tap USE ($250 Copays) for a random new tool you don't already have.

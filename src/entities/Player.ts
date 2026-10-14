@@ -16,9 +16,10 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
   dead = false;
   private invulnerableUntil = 0;
   private lastHurtAt = -Infinity;
-  /** Outside forces, e.g. a boss dragging him: extra velocity, and a cap on his own walking speed. */
+  /** Outside forces, e.g. a boss dragging him: extra velocity. */
   readonly pull = new Phaser.Math.Vector2();
-  moveScale = 1;
+  /** Things slowing (or speeding) his walk, by source (Diamond's meeting, a mucus puddle...). They multiply. */
+  private readonly speedMods = new Map<string, number>();
   /** While shoved, Eugene slides and can't steer. */
   private shovedUntil = 0;
 
@@ -44,6 +45,19 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     const c = Math.cos(this.rotation);
     const s = Math.sin(this.rotation);
     return out.set(this.x + fx * c - fy * s, this.y + fx * s + fy * c);
+  }
+
+  /** Sets (or with `null` clears) one source's multiplier on Eugene's walking speed. */
+  setSpeedMod(source: string, scale: number | null): void {
+    if (scale === null) this.speedMods.delete(source);
+    else this.speedMods.set(source, scale);
+  }
+
+  /** All speed modifiers combined. */
+  get moveScale(): number {
+    let k = 1;
+    for (const v of this.speedMods.values()) k *= v;
+    return k;
   }
 
   get invulnerable(): boolean {

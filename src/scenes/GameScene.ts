@@ -15,10 +15,13 @@ import { GERMS } from '../data/germs';
 import { WAVES } from '../data/waves';
 import { MOSHILAND, type Obstacle, type RoomArea, type RoomLayout } from '../data/rooms';
 import { Droplet } from '../entities/Droplet';
+import { Glob } from '../entities/Glob';
 import { Germ, type GermScaling } from '../entities/Germ';
 import type { Patient } from '../entities/Patient';
 import { Player } from '../entities/Player';
 import { FlowField } from '../systems/FlowField';
+import { steerSpitter, type BehaviorHost } from '../systems/GermBehaviors';
+import { Puddles } from '../systems/Puddles';
 import { Fx } from '../systems/Fx';
 import { DiamondBrain, type BossHost } from '../systems/DiamondBrain';
 import { PatientDirector } from '../systems/PatientDirector';
@@ -54,6 +57,10 @@ export class GameScene extends Phaser.Scene {
   private interactTarget?: Interactable;
   private germs!: Phaser.Physics.Arcade.Group;
   private droplets!: Phaser.Physics.Arcade.Group;
+  /** Sneezer mucus globs in flight, and the puddles they leave. */
+  private globs!: Phaser.Physics.Arcade.Group;
+  private puddles!: Puddles;
+  private behaviorHost!: BehaviorHost;
   /** Tools carried: the bottle, plus one from a supply crate. */
   private loadout: Sprayer[] = [];
   private slot = 0;
@@ -140,6 +147,17 @@ export class GameScene extends Phaser.Scene {
     // Pools: created once, reused all game
     this.droplets = this.physics.add.group({ classType: Droplet, maxSize: 90, runChildUpdate: true, defaultKey: 'droplet' });
     this.germs = this.physics.add.group({ classType: Germ, maxSize: 60, defaultKey: 'germ-basic' });
+    this.globs = this.physics.add.group({ classType: Glob, maxSize: 16, defaultKey: 'glob' });
+    this.puddles = new Puddles(this);
+    this.behaviorHost = {
+      player: this.player,
+      flow: this.flow,
+      telegraphSneeze: (g) => {
+        sfx.sneezeWindup();
+        this.fx.number(g.x, g.y - g.def.radius - 14, 'AH... AH...', '#ffb3b3', 16);
+      },
+      fireGlob: (g, angle) => this.fireGlob(g, angle),
+    };
     this.loadout = [new Sprayer(EQUIPMENT[STARTING_EQUIPMENT], this.droplets)];
     this.slot = 0;
     this.waves = new WaveDirector(this.time.now, DEBUG.startRound);
@@ -162,6 +180,13 @@ export class GameScene extends Phaser.Scene {
     });
     this.physics.add.overlap(this.droplets, this.germs, (d, g) => this.onDropletHit(d as Droplet, g as Germ));
     this.physics.add.overlap(this.player, this.germs, (_p, g) => this.onGermBump(g as Germ));
+    this.physics.add.collider(this.globs, solids, (gl) => this.globLands(gl as Glob));
+    this.physics.add.overlap(this.player, this.globs, (_p, gl) => {
+      const glob = gl as Glob;
+      if (!glob.active) return;
+      this.hurtPlayer(glob.damage, 'sneezer');
+      this.globLands(glob, this.player.x, this.player.y);
+    });
     // Patients are moving obstacles: solid to everyone, and they can be sprayed
     const patients = this.patients.group;
     this.physics.add.collider(patients, solids);
@@ -291,13 +316,67 @@ export class GameScene extends Phaser.Scene {
         g.chase(override.target, time, delta, override.speed);
         continue;
       }
+      if (g.def.spit) {
+        steerSpitter(g, this.behaviorHost, time, delta, this.step);
+        continue;
+      }
       // Close in directly when near; otherwise follow the path around furniture
       const near = Phaser.Math.Distance.Between(g.x, g.y, this.player.x, this.player.y) < BALANCE.germs.directChaseDistance;
       g.chase(near || !this.flow.nextStep(g.x, g.y, this.step) ? this.player : this.step, time, delta);
     }
-    this.waves.update(time, this.germs.countActive(true), (id, scaling) => this.spawnGerm(id, scaling));
+    this.waves.update(time, this.germs.countActive(true), (id, scaling) => this.spawnGerm(id, scaling), (id) => this.aliveOf(id));
+    // Globs that fly their full range splat where they stop; puddles slow Eugene
+    for (const gl of this.globs.getChildren() as Glob[]) if (gl.active && time >= gl.expiresAt) this.globLands(gl);
+    const slow = this.puddles.update(time, this.player.x, this.player.y);
+    this.player.setSpeedMod('puddle', slow < 1 ? slow : null);
     this.patients.update(time, delta, this.waves.round, this.waves.spawning, this.waves.isBossRound);
     this.updateStreak(time);
+  }
+
+  /** Living germs of one type (for WAVES.aliveLimit). */
+  private aliveOf(id: string): number {
+    let n = 0;
+    for (const g of this.germs.getChildren() as Germ[]) if (g.active && g.def.id === id) n++;
+    return n;
+  }
+
+  /** CHOO! A Sneezer launches a mucus glob. */
+  private fireGlob(g: Germ, angle: number): void {
+    const s = g.def.spit;
+    const glob = this.globs.get() as Glob | null;
+    if (!s || !glob) return;
+    const r = g.def.radius + 10;
+    glob.fire(g.x + Math.cos(angle) * r, g.y + Math.sin(angle) * r, angle, s.globSpeed, s.globRange, this.time.now);
+    glob.damage = s.damage;
+    glob.puddleMs = s.puddleMs;
+    glob.puddleRadius = s.puddleRadius;
+    glob.puddleSlow = s.puddleSlow;
+    sfx.sneeze();
+    this.fx.number(g.x, g.y - g.def.radius - 14, 'CHOO!', '#d7e88a', 22);
+  }
+
+  /** A glob hits something (or runs out of range) and leaves a slippery puddle. */
+  private globLands(glob: Glob, x = glob.x, y = glob.y): void {
+    if (!glob.active) return;
+    glob.retire();
+    this.puddles.add(x, y, glob.puddleRadius, glob.puddleMs, glob.puddleSlow, this.time.now);
+    this.fx.germSplat(x, y, 0xa8c94a);
+    sfx.splat();
+  }
+
+  /**
+   * Armor (Spore Pod): damage multiplier for a hit travelling at `travelAngle`. Hits on its front arc
+   * are mostly blocked, hits on its back hurt extra. Piercing tools (UV) and a flipped pod ignore the armor.
+   */
+  armorMult(germ: Germ, travelAngle: number, piercing: boolean, time: number): number {
+    const a = germ.def.armor;
+    if (!a || piercing) return 1;
+    if (germ.isFlipped(time)) return a.back;
+    // Direction from the germ back toward whoever sprayed it, compared with the way it faces
+    const diff = Math.abs(Phaser.Math.Angle.Wrap(travelAngle + Math.PI - germ.rotation));
+    if (diff <= Phaser.Math.DegToRad(a.frontArcDeg / 2)) return a.front;
+    if (diff >= Math.PI - Phaser.Math.DegToRad(60)) return a.back;
+    return 1;
   }
 
   /** Copay multiplier from the current Sanitation Streak. */
@@ -426,7 +505,14 @@ export class GameScene extends Phaser.Scene {
       sfx.hit();
     }
     if (def.slow && !germ.def.boss) germ.slow(this.time.now, def.slow.factor, def.slow.ms);
-    this.damageGerm(germ, drop.damage * mult * (crit ? fb.critMult : 1), drop.rotation, drop.knockback);
+    const time = this.time.now;
+    const armor = this.armorMult(germ, drop.rotation, (def.pierce ?? 0) > 0, time);
+    if (armor < 1 && time - germ.lastBlockAt > 350) {
+      germ.lastBlockAt = time;
+      sfx.tink();
+      this.fx.number(germ.x, germ.y - germ.def.radius - 10, 'TINK! GET BEHIND IT', '#c8d6e5', 15);
+    }
+    this.damageGerm(germ, drop.damage * mult * armor * (crit ? fb.critMult : 1), drop.rotation, drop.knockback * (armor < 1 ? 0.3 : 1));
   }
 
   /** Every way a germ gets hurt goes through here: numbers, boss bar, kills, score and Copays. */
@@ -508,6 +594,12 @@ export class GameScene extends Phaser.Scene {
       const angle = Phaser.Math.Angle.Between(x, y, g.x, g.y);
       this.damageGerm(g, cfg.damage, angle, cfg.knockback);
       if (g.active) g.stun(time, cfg.stunMs);
+      // Spore Pods get knocked onto their backs: no armor, no moving
+      if (g.active && g.def.armor) {
+        g.flip(time, g.def.armor.flipMs);
+        sfx.flip();
+        this.fx.number(g.x, g.y - g.def.radius - 10, 'FLIPPED!', '#ffe66d', 18);
+      }
     }
     events.emit(GameEvents.PurgeUsed);
   }
@@ -751,6 +843,7 @@ export class GameScene extends Phaser.Scene {
     this.player.collapse();
     this.boss?.onPlayerDown();
     for (const g of this.germs.getChildren() as Germ[]) if (g.active) g.freeze();
+    for (const gl of this.globs.getChildren() as Glob[]) if (gl.active) gl.retire();
     sfx.gameOver();
     events.emit(GameEvents.PlayerDied);
 

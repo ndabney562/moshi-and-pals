@@ -29,6 +29,15 @@ export class Germ extends Phaser.Physics.Arcade.Sprite {
   pendingCrit = false;
   /** 1 right after a hit, easing to 0: the jelly squash. */
   private squash = 0;
+  /** Sneezer: when it may sneeze next, and the end of its "AH... AH..." wind-up (0 = not winding up). */
+  nextSpitAt = 0;
+  windupUntil = 0;
+  /** Sneezer: which way it circles Eugene (+1 / -1). */
+  strafe = 1;
+  /** Spore Pod: on its back (no armor, can't move) until then. */
+  flippedUntil = 0;
+  /** Last "TINK" when spray bounced off armor (throttles the feedback). */
+  lastBlockAt = 0;
 
   spawn(def: GermDef, x: number, y: number, scaling: GermScaling = { hpMult: 1, speedMult: 1 }): void {
     this.def = def;
@@ -37,6 +46,12 @@ export class Germ extends Phaser.Physics.Arcade.Sprite {
     this.pendingDamage = 0;
     this.pendingCrit = false;
     this.squash = 0;
+    const now = this.scene.time.now;
+    this.nextSpitAt = now + Phaser.Math.Between(1200, 2200);
+    this.windupUntil = 0;
+    this.strafe = Math.random() < 0.5 ? -1 : 1;
+    this.flippedUntil = 0;
+    this.lastBlockAt = 0;
     this.slowUntil = 0;
     this.setTexture(`germ-${def.id}`);
     this.enableBody(true, x, y, true, true);
@@ -61,16 +76,25 @@ export class Germ extends Phaser.Physics.Arcade.Sprite {
   chase(target: { x: number; y: number }, time: number, dtMs: number, speed = this.speed): void {
     if (!this.active) return;
     if (time < this.slowUntil) speed *= this.slowFactor;
-    if (time >= this.stunnedUntil) {
+    if (time < this.flippedUntil) {
+      // On its back: spins helplessly
+      this.rotation += dtMs * 0.012;
+    } else if (time >= this.stunnedUntil) {
       const angle = Phaser.Math.Angle.Between(this.x, this.y, target.x, target.y);
       const body = this.body as Phaser.Physics.Arcade.Body;
       // Ease toward full chase speed so knockback recovers smoothly
       const steer = damp(0.1, dtMs);
       body.velocity.x = Phaser.Math.Linear(body.velocity.x, Math.cos(angle) * speed, steer);
       body.velocity.y = Phaser.Math.Linear(body.velocity.y, Math.sin(angle) * speed, steer);
-      // RotateTo's step is radians per call: scale it by frame time
-      this.rotation = Phaser.Math.Angle.RotateTo(this.rotation, angle, 0.08 * (dtMs / (1000 / 60)));
+      // RotateTo's step is radians per call: scale it by frame time. Armored germs turn slowly (circle them!)
+      const turn = this.def.armor
+        ? Phaser.Math.DegToRad(this.def.armor.turnDegPerSec) * (dtMs / 1000)
+        : 0.08 * (dtMs / (1000 / 60));
+      this.rotation = Phaser.Math.Angle.RotateTo(this.rotation, angle, turn);
     }
+    // Wind-up telegraph: flashes red before a sneeze; a flipped Spore Pod blushes
+    if (this.windupUntil > time) this.setTint(Math.sin(time / 45) > 0 ? 0xff6b6b : 0xffd0d0);
+    else if (this.flippedUntil > time) this.setTint(0xffc9a8);
     // Jelly wobble, plus a squash right after each hit (no tweens: cheap with many germs)
     this.wobble += dtMs / 140;
     if (this.squash > 0) this.squash = Math.max(0, this.squash - dtMs / BALANCE.feedback.squashMs);
@@ -81,6 +105,10 @@ export class Germ extends Phaser.Physics.Arcade.Sprite {
     }
     if (this.flashUntil && time >= this.flashUntil) {
       this.flashUntil = 0;
+      this.clearTint();
+    }
+    if (this.flippedUntil > 0 && time >= this.flippedUntil) {
+      this.flippedUntil = 0;
       this.clearTint();
     }
   }
@@ -103,6 +131,16 @@ export class Germ extends Phaser.Physics.Arcade.Sprite {
   slow(time: number, factor: number, ms: number): void {
     this.slowFactor = Math.min(time < this.slowUntil ? this.slowFactor : 1, factor);
     this.slowUntil = Math.max(this.slowUntil, time + ms);
+  }
+
+  /** Spore Pod knocked onto its back (Sinus Purge): no armor and no moving for `ms`. */
+  flip(time: number, ms: number): void {
+    this.flippedUntil = Math.max(this.flippedUntil, time + ms);
+    this.stun(time, ms);
+  }
+
+  isFlipped(time: number): boolean {
+    return time < this.flippedUntil;
   }
 
   /** Stops steering for `ms` (it keeps sliding from whatever hit it). */

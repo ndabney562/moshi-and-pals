@@ -384,6 +384,46 @@ try {
   });
   check(spotless === 40, `a spotless round 4 pays $40 (${spotless})`);
 
+  // SPORE POD: front armor blocks, the back takes extra, UV pierces it, Sinus Purge flips it over
+  const pod = await page.evaluate(() => {
+    const scene = window.game.scene.getScene('Game');
+    for (const g of scene.germs.getChildren()) if (g.active) g.kill();
+    scene.spawnGerm('sporePod', { hpMult: 1, speedMult: 1 });
+    const g = scene.germs.getChildren().find((c) => c.active && c.def.id === 'sporePod');
+    g.setPosition(scene.player.x + 120, scene.player.y);
+    g.rotation = Math.PI; // facing Eugene (to its left)
+    const now = scene.time.now;
+    const front = scene.armorMult(g, 0, false, now); // spray travelling right, into its face
+    const back = scene.armorMult(g, Math.PI, false, now); // travelling left, into its back
+    const uv = scene.armorMult(g, 0, true, now);
+    scene.purgeReadyAt = 0;
+    scene.sinusPurge(now);
+    return { front, back, uv, flipped: g.active && g.isFlipped(scene.time.now + 1), alive: g.active };
+  });
+  check(pod.front === 0.25 && pod.back === 1.5 && pod.uv === 1, `Spore Pod armor: front ×0.25, back ×1.5, UV ignores it (${JSON.stringify(pod)})`);
+  check(pod.flipped, 'Sinus Purge flips a Spore Pod onto its back');
+
+  // SNEEZER: winds up and sneezes a glob that leaves a puddle; puddles slow Eugene
+  await page.evaluate(() => {
+    const scene = window.game.scene.getScene('Game');
+    for (const g of scene.germs.getChildren()) if (g.active) g.kill();
+    scene.player.setPosition(1500, 1700);
+    scene.spawnGerm('sneezer', { hpMult: 1, speedMult: 1 });
+    const g = scene.germs.getChildren().find((c) => c.active && c.def.id === 'sneezer');
+    g.setPosition(1250, 1800);
+    g.nextSpitAt = 0;
+  });
+  const sneezed = await page.waitForFunction(() => window.game.scene.getScene('Game').puddles.count > 0, null, { timeout: 20000 }).then(() => true, () => false);
+  check(sneezed, 'a Sneezer winds up, sneezes, and its glob leaves a puddle');
+  const slowed = await page.evaluate(async () => {
+    const scene = window.game.scene.getScene('Game');
+    scene.puddles.add(scene.player.x, scene.player.y, 60, 3000, 0.55, scene.time.now);
+    await new Promise((r) => setTimeout(r, 400));
+    return scene.player.moveScale;
+  });
+  check(slowed < 1, `standing in a puddle slows Eugene (speed ×${slowed.toFixed(2)})`);
+  await page.evaluate(() => window.game.scene.getScene('Game').germs.getChildren().forEach((g) => g.active && g.kill()));
+
   // Patients: one walks in, commits a health code violation, and gets sprayed into compliance
   const violation = await page.evaluate(() => {
     const scene = window.game.scene.getScene('Game');
