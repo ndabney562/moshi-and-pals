@@ -1,6 +1,6 @@
 # Changelog
 
-## v0.7.0 (in progress): Milestone 7, feel and fairness
+## v0.7.0: Milestone 7, feel and fairness
 - **New app icon:** Noah's Moshi and Pals icon (germ splash logo). Already added to your Home Screen? Delete the icon and add it again to see the new one; iOS caches the old icon.
 - **Testing switches** for playtesting on the phone, added to the address: `?round=12` starts at round 12, `?copays=2000` starts with Copays, `?god` makes Eugene unhurtable, `?fps=30` caps the frame rate like Low Power Mode, `?debug` shows a perf overlay (frame time, germ/droplet/particle counts). Combine them: `?round=15&god&debug`. Normal play is unchanged.
 - **Fix: no more endless rounds or Copay farming.** Patients only commit violations while the round still has germs left to send in, and their germs count toward the on-screen limit. Before, leaving one germ alive let patients spawn germs (and Copays) forever.

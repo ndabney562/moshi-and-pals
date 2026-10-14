@@ -256,7 +256,7 @@ On a phone screen the map stays readable thanks to **off-screen threat arrows** 
 
 ---
 
-## 4. Proposed sprint: M7 "Feel & Fairness"
+## 4. Sprint M7 "Feel & Fairness": DONE (v0.7.0, Oct 14 2026; PRs #18–#26)
 
 Built and shipped one item at a time, in this order. Each item: build → `npm run build && npm run smoke` → changelog/balance notes → you playtest.
 
@@ -315,4 +315,4 @@ Built and shipped one item at a time, in this order. Each item: build → `npm r
 - **Risks:** speed modifiers stacking with Diamond's meeting slow (hence the stack), germs that keep their distance getting stuck on furniture (strafe using the flow field), the 60-germ pool, and auto-aim wasting spray on a shell's front (S5's priority handles it).
 - **Test:** `?round=4` and `?round=6` with no console errors in smoke. Manual: flanking a Spore Pod works, UV pierces the shell, Purge flips it, Sneezer warnings are readable, puddles show clearly.
 
-**Next sprint preview (M8):** A1 refactor → Compounding Station → Wave Director v2 → Purge depth → elites + the first 6 power-ups.
+**Next (M8), agreed with Noah:** rebuild MoshiLand as a faithful version of the real clinic's floor plan (Noah's photos of the ground floor and upstairs; keep the photos out of the repo). Ground floor: waiting room on the street side, reception and manager's office, central lab island with a corridor loop around it, exam rooms 1–7 on the edges, two bathrooms, X-ray, elevator and egress stairs. Upstairs (bought via the stairs): exam rooms 8–15, the MA station island with its own loop, bathrooms, supply closets. Then: A1 refactor → Compounding Station → Wave Director v2 → Purge depth → elites + the first 6 power-ups.
