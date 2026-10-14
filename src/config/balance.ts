@@ -216,4 +216,15 @@ export const BALANCE = {
     /** Germs hit are stunned this long, so the blast buys breathing room. */
     stunMs: 600,
   },
+  /** M14: the clinic fights back. Room traps are used at their station (USE) and then recharge. */
+  traps: {
+    /** BATHROOM jet hand dryer: free, blasts every germ nearby back out of the room. */
+    dryer: { cost: 0, cooldownMs: 20000, radius: 240, damage: 20, knockback: 950, stunMs: 900 },
+    /** LAB autoclave: after a hiss, a steam cycle cooks everything around it (ignores armor). */
+    autoclave: { cost: 25, cooldownMs: 30000, windupMs: 1200, radius: 175, damage: 140 },
+    /** X-RAY: a pulse from the machine through walls and all (Eugene's behind the lead partition). */
+    xray: { cost: 40, cooldownMs: 25000, radius: 520, damage: 60 },
+  },
+  /** Break-time snacks from the waiting-room vending machine: three random choices, each once, a few per run. */
+  vending: { maxPerRun: 3, choices: 3 },
 };

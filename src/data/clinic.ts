@@ -142,6 +142,7 @@ const FURNITURE: Obstacle[] = [
   ob('chairRow', 'g', [228, 1160, 352, 1176]), ob('chairRow', 'g', [228, 1210, 352, 1226]),
   ob('chairRow', 'g', [228, 1330, 352, 1346]), ob('chairRow', 'g', [228, 1380, 352, 1396]),
   ob('bench', 'g', [228, 1552, 330, 1588]), ob('bench', 'g', [338, 1552, 440, 1588]),
+  ob('vending', 'g', [178, 1250, 212, 1300], { label: 'SNACKS' }),
   ob('plant', 'g', [180, 1555, 205, 1580]), ob('plant', 'g', [400, 995, 425, 1020]), ob('plant', 'g', [760, 1560, 785, 1585]),
   // Reception: the curved front desk and the long back counter, and the manager's desk
   ob('desk', 'g', [488, 1122, 535, 1250], { label: 'RECEPTION' }),
@@ -163,16 +164,18 @@ const FURNITURE: Obstacle[] = [
   ob('cabinet', 'g', [300, 660, 395, 680]),
   ob('stall', 'g', [255, 800, 300, 878]), ob('sink', 'g', [340, 850, 395, 878]),
   ob('stall', 'g', [830, 1190, 880, 1255]), ob('sink', 'g', [850, 1118, 905, 1140]),
+  ob('handDryer', 'g', [340, 772, 378, 784]), ob('handDryer', 'g', [821, 1150, 833, 1188]),
   // Lab: benches round the walls and down the middle
   ob('counter', 'g', [520, 780, 560, 1000]), ob('counter', 'g', [628, 782, 825, 832]), ob('counter', 'g', [880, 785, 940, 990]),
   ob('counter', 'g', [638, 940, 810, 985]), ob('counter', 'g', [530, 1062, 780, 1106]), ob('counter', 'g', [880, 1000, 920, 1075]),
   ob('supplyCart', 'g', [735, 1010, 770, 1030], { label: 'SUPPLIES' }),
   ob('compounder', 'g', [585, 1005, 640, 1040], { label: 'COMPOUNDING' }),
+  ob('autoclave', 'g', [830, 785, 876, 830], { label: 'AUTOCLAVE' }),
   ob('crate', 'g', [600, 880, 624, 900]),
   // X-ray: the machine, a lead partition and the controls
   ob('xray', 'g', [860, 1340, 1000, 1420], { label: 'X-RAY' }),
   ob('wall', 'g', [960, 1525, 1078, 1535]),
-  ob('counter', 'g', [1000, 1540, 1075, 1570], { label: 'CONTROLS' }),
+  ob('xrayControls', 'g', [1000, 1540, 1075, 1570], { label: 'CONTROLS' }),
   ob('crate', 'g', [830, 1450, 854, 1470]),
   ob('cabinet', 'g', [1020, 1208, 1078, 1258]), // janitor's closet
   // Egress: the stairwell (stairs themselves are walkable; they're the way up)
@@ -192,6 +195,7 @@ const FURNITURE: Obstacle[] = [
   ob('supplyCart', 'u', [835, 1020, 870, 1040], { label: 'SUPPLIES' }),
   ob('stall', 'u', [250, 650, 300, 720]), ob('sink', 'u', [250, 740, 320, 770]),
   ob('stall', 'u', [835, 1150, 880, 1215]), ob('sink', 'u', [835, 1070, 900, 1092]),
+  ob('handDryer', 'u', [310, 644, 348, 656]), ob('handDryer', 'u', [828, 1100, 840, 1138]),
 ];
 
 /** The two staircases. The west stairs are the way up; the egress stairs join once both ends are open. */

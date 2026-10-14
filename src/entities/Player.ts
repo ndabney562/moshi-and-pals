@@ -11,7 +11,8 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
   private readonly shadow: Phaser.GameObjects.Image;
   /** Distance walked, used to drive the waddle animation. */
   private stride = 0;
-  readonly maxHp = BALANCE.player.maxHp;
+  /** Max health (a Protein Bar raises it for the run). */
+  maxHp = BALANCE.player.maxHp;
   hp = BALANCE.player.maxHp;
   dead = false;
   private invulnerableUntil = 0;

@@ -52,6 +52,9 @@ Every tool is a `Sprayer` (supply, fire rate, refills, upgrades). Spray tools la
 - `public/sw.js` (hand-written): network-first for the page, cache-first for everything else, one cache per build (`sw.js?v=<build>`). The title screen hands it everything already loaded (`offerFilesToCache`), so the next launch works offline. Test browsers skip the worker unless the URL has `?sw`.
 - The build writes `version.json`; `core/updates.ts` checks it at launch and whenever the app returns to the foreground, and the title screen offers UPDATE READY (the pause menu mentions it).
 
+## Room traps and vending (M14)
+Traps are stations (`GameScene.buildStations`, kinds `handDryer`, `autoclave`, `xrayControls` in `data/clinic.ts`): `useTrap` pays, starts the recharge (`trapReadyAt`), and fires the effect; numbers in `BALANCE.traps`. The vending machine (`vending`) uses the same `ui/ChoicePanel` as the Supply Requisition (`VendingOpened` / `VendingPicked` / `VendingDone` / `VendingCancelled`); snacks in `data/vending.ts` set run perks (`perks`, `player.maxHp`, a `snack` speed mod).
+
 ## Content as data
 - `src/config/`: tuning numbers (balance, controls, display, theme colors).
 - `src/data/`: content (rooms now; germs, equipment, waves, dialogue later).

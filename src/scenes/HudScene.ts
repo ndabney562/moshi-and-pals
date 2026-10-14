@@ -4,7 +4,7 @@ import { DISPLAY } from '../config/display';
 import { COLORS } from '../config/theme';
 import { BALANCE } from '../config/balance';
 import {
-  events, GameEvents, type BossPayload, type EquipmentChangedPayload, type HealthPayload, type RequisitionPayload, type RoomPayload, type RoundPayload, type StationPayload, type StreakPayload,
+  events, GameEvents, type BossPayload, type EquipmentChangedPayload, type HealthPayload, type RequisitionPayload, type RoomPayload, type VendingPayload, type RoundPayload, type StationPayload, type StreakPayload,
 } from '../core/events';
 import { DEBUG } from '../core/debug';
 import { inputState } from '../core/inputState';
@@ -15,7 +15,7 @@ import { readSafeArea, type Insets } from '../core/safeArea';
 import { saveSettings, settings } from '../core/settings';
 import { Bar } from '../ui/Bar';
 import { BottleMeter } from '../ui/BottleMeter';
-import { RequisitionPanel } from '../ui/RequisitionPanel';
+import { ChoicePanel } from '../ui/ChoicePanel';
 import { AchievementList } from '../ui/AchievementList';
 import { achievementList } from '../core/achievements';
 import { isUpdateReady } from '../core/updates';
@@ -76,8 +76,13 @@ export class HudScene extends Phaser.Scene {
   private quitArmedUntil = 0;
   private paused = false;
   /** The Supply Requisition form is up (the game waits for a pick). */
-  private requisitioning = false;
-  private requisitionPanel!: RequisitionPanel;
+  /** A choice form is up (Supply Requisition or vending machine); the game waits for it. */
+  private choosing?: 'requisition' | 'vending';
+  private choicePanel!: ChoicePanel;
+  /** The Supply Requisition form is up (tests). */
+  get requisitioning(): boolean {
+    return this.choosing === 'requisition';
+  }
   private achievementsItem!: Phaser.GameObjects.Text;
   private achievementList!: AchievementList;
   /** ACHIEVEMENT toast (top centre) and the ones waiting their turn. */
@@ -174,14 +179,19 @@ export class HudScene extends Phaser.Scene {
     ]).setDepth(60).setVisible(false);
     this.toastQueue = [];
     this.toastBusy = false;
-    this.requisitioning = false;
-    this.requisitionPanel = new RequisitionPanel(this, (id) => {
-      this.requisitionPanel.hide();
-      this.requisitioning = false;
+    this.choosing = undefined;
+    this.choicePanel = new ChoicePanel(this, (id) => {
+      if (this.choosing === 'vending') {
+        // The machine decides (it may be out of your price range); it answers with VendingDone or VendingOpened
+        events.emit(GameEvents.VendingPicked, { id });
+        return;
+      }
+      this.closeChoice();
       events.emit(GameEvents.RequisitionPicked, { id });
-      resumeAudio();
-      this.scene.resume('Game');
-    }, () => events.emit(GameEvents.RequisitionAppealed));
+    }, () => events.emit(GameEvents.RequisitionAppealed), () => {
+      this.closeChoice();
+      events.emit(GameEvents.VendingCancelled);
+    });
 
     this.hintText = this.add.text(0, 0, '', {
       ...style, fontSize: '22px', fontStyle: '900', color: '#0d2b2e', backgroundColor: '#ffe66d', padding: { x: 14, y: 8 }, align: 'center',
@@ -262,14 +272,17 @@ export class HudScene extends Phaser.Scene {
     };
     const onRoomEntered = (p: RoomPayload) => this.roomText.setText(`📍 ${p.name.toUpperCase()}`);
     const onRequisition = (p: RequisitionPayload) => {
-      if (!this.requisitioning) {
-        if (this.paused) this.resume();
-        this.requisitioning = true;
-        this.releaseInputs();
-        this.scene.pause('Game');
-      }
-      this.requisitionPanel.show(p);
+      this.openChoice('requisition');
+      this.choicePanel.show({
+        title: 'SUPPLY REQUISITION', note: p.note || 'Pick one. Your plan covers exactly one (1) tool.', options: p.options,
+        extra: { label: `APPEAL THE DECISION  $${p.appealCost}`, enabled: p.canAffordAppeal },
+      });
     };
+    const onVending = (p: VendingPayload) => {
+      this.openChoice('vending');
+      this.choicePanel.show({ title: 'SNACKS', note: p.note, options: p.options, cancel: 'WALK AWAY' });
+    };
+    const onVendingDone = () => this.closeChoice();
     const onAchievement = (def: AchievementDef) => {
       this.toastQueue.push(def);
       this.nextToast();
@@ -312,6 +325,8 @@ export class HudScene extends Phaser.Scene {
       [GameEvents.ToolUnlocked, onTool],
       [GameEvents.RequisitionOpened, onRequisition],
       [GameEvents.ClaimDenied, onDenied],
+      [GameEvents.VendingOpened, onVending],
+      [GameEvents.VendingDone, onVendingDone],
       [GameEvents.AchievementUnlocked, onAchievement],
     ];
     for (const [name, fn] of listeners) events.on(name, fn);
@@ -594,7 +609,7 @@ export class HudScene extends Phaser.Scene {
     this.fpsText?.setOrigin(1, 0).setPosition(infoX, this.safe.top + m + 30);
     this.roomText.setPosition(infoX, this.safe.top + m + (DEBUG.overlay ? 110 : 8));
     this.layoutPauseMenu(width, height);
-    this.requisitionPanel.layout(width, height);
+    this.choicePanel.layout(width, height);
     this.achievementList.layout(width, height);
     this.toast.setPosition(width / 2, this.safe.top + m + 172);
     const right = width - this.safe.right - m;
@@ -728,7 +743,7 @@ export class HudScene extends Phaser.Scene {
   /** Freezes the game and shows the pause menu. Safe to call any time (ignored if already paused or the run is over). */
   pause(): void {
     const game = this.scene.get('Game') as GameScene;
-    if (this.paused || this.requisitioning || !this.scene.isActive('Game') || game.isRunOver) return;
+    if (this.paused || this.choosing || !this.scene.isActive('Game') || game.isRunOver) return;
     this.paused = true;
     this.releaseInputs();
     this.scene.pause('Game');
@@ -740,6 +755,23 @@ export class HudScene extends Phaser.Scene {
     const list = achievementList();
     this.achievementsItem.setText(`ACHIEVEMENTS ${list.filter((a) => a.unlocked).length}/${list.length}`);
     this.pauseMenu.setVisible(true);
+  }
+
+  /** Puts up a choice form: the game waits until it's closed. */
+  private openChoice(mode: 'requisition' | 'vending'): void {
+    if (this.choosing) return;
+    if (this.paused) this.resume();
+    this.choosing = mode;
+    this.releaseInputs();
+    this.scene.pause('Game');
+  }
+
+  private closeChoice(): void {
+    if (!this.choosing) return;
+    this.choicePanel.hide();
+    this.choosing = undefined;
+    resumeAudio();
+    this.scene.resume('Game');
   }
 
   /** Lets go of everything, so nothing is stuck "held" when play resumes. */
