@@ -35,8 +35,9 @@ export class Droplet extends Phaser.Physics.Arcade.Image {
   }
 
   /** Called by the pooled group each frame (runChildUpdate). */
-  update(time: number): void {
+  update(): void {
     if (!this.active) return;
+    const time = this.scene.time.now; // game time, which pauses with the game
     const left = this.expiresAt - time;
     if (left <= 0) {
       this.retire();

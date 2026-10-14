@@ -29,8 +29,11 @@ Systems will announce gameplay events on `core/events.ts` (event bus); dialogue,
 - `Player` owns health, invulnerability and regen. On death `GameScene.endRun` freezes the room, records the score (`core/save.ts`), stops the HUD and launches `GameOverScene`. SCRUB IN AGAIN restarts the Game scene from scratch.
 - The HUD pulls the current state on start via `GameScene.broadcastState()`, then follows events.
 
+## Pause and game time
+The HUD owns pause (`HudScene.pause/resume`): it releases all touches, clears `inputState` and pauses the Game scene; it also auto-pauses on Phaser's `hidden`/`blur` events. `core/gameClock.useGameTime` makes the Game scene's `time.now` advance only by frame deltas while it runs, so every `time.now + ms` timer freezes with the game. Game code must use `this.time.now` (or the `time` GameScene.update passes along), never the loop's wall-clock time. Any touch calls `sfx.resumeAudio()` because iOS suspends audio after interruptions.
+
 ## Settings
-`core/settings.ts` holds player settings saved in localStorage (wrapped in try/catch; falls back to defaults). Currently: `autoAim`.
+`core/settings.ts` holds player settings saved in localStorage (wrapped in try/catch; falls back to defaults). Currently: `autoAim`, `sound` (both in the pause menu).
 
 ## Content as data
 - `src/config/`: tuning numbers (balance, controls, display, theme colors).

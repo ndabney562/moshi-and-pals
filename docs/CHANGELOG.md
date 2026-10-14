@@ -3,6 +3,10 @@
 ## v0.7.0 (in progress): Milestone 7, feel and fairness
 - **Testing switches** for playtesting on the phone, added to the address: `?round=12` starts at round 12, `?copays=2000` starts with Copays, `?god` makes Eugene unhurtable, `?fps=30` caps the frame rate like Low Power Mode, `?debug` shows a perf overlay (frame time, germ/droplet/particle counts). Combine them: `?round=15&god&debug`. Normal play is unchanged.
 - **Fix: no more endless rounds or Copay farming.** Patients only commit violations while the round still has germs left to send in, and their germs count toward the on-screen limit. Before, leaving one germ alive let patients spawn germs (and Copays) forever.
+- **Pause.** A II button in the top-right corner (P or Esc on desktop) freezes the game and opens a menu: RESUME, SOUND ON/OFF, AUTO-AIM ON/OFF (moved here from the top-left, away from your thumb) and QUIT TO MENU (tap twice). Every pause shows a tip.
+- **Auto-pause** when you leave the game: home screen, app switcher, a call, notification center.
+- **Fix: sound dying for good after a call or app switch.** Any touch now wakes iOS audio back up.
+- **Fix: paused or backgrounded time no longer counts.** Before, cooldowns, refills, intermissions and Diamond's timers all ran out while the game was hidden. Game time now only moves while you're playing.
 
 ## v0.6.0: Milestone 6, supply crates
 - **Supply crates** (📦 with a big "?") in the waiting room, exam rooms, staff break room, lab and X-ray. Walk up and tap USE ($250 Copays) for a random new tool you don't already have.

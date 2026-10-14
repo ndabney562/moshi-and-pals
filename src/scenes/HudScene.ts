@@ -8,6 +8,8 @@ import {
 } from '../core/events';
 import { DEBUG } from '../core/debug';
 import { inputState } from '../core/inputState';
+import { resumeAudio, setSfxMuted } from '../core/sfx';
+import { TIPS } from '../data/tips';
 import { readSafeArea, type Insets } from '../core/safeArea';
 import { saveSettings, settings } from '../core/settings';
 import { Bar } from '../ui/Bar';
@@ -37,7 +39,18 @@ export class HudScene extends Phaser.Scene {
   /** Red screen-edge flash on damage; pulses when health is low. */
   private vignette!: Phaser.GameObjects.Graphics;
   private lowHealthPulse?: Phaser.Tweens.Tween;
+  /** AUTO-AIM ON/OFF, in the pause menu (SPRAY-button scheme only). */
   private autoAimToggle?: Phaser.GameObjects.Text;
+  private pauseButton!: HudButton;
+  private pauseMenu!: Phaser.GameObjects.Container;
+  private pauseDim!: Phaser.GameObjects.Rectangle;
+  private pauseTitle!: Phaser.GameObjects.Text;
+  private pauseTip!: Phaser.GameObjects.Text;
+  private resumeItem!: Phaser.GameObjects.Text;
+  private soundToggle!: Phaser.GameObjects.Text;
+  private quitItem!: Phaser.GameObjects.Text;
+  private quitArmedUntil = 0;
+  private paused = false;
   private refillButton!: HudButton;
   private purgeButton!: HudButton;
   private interactButton!: HudButton;
@@ -88,17 +101,9 @@ export class HudScene extends Phaser.Scene {
     this.bannerSub = this.add.text(0, 0, '', { ...style, fontSize: '26px', fontStyle: 'italic', color: COLORS.uiAccent })
       .setOrigin(0.5).setShadow(0, 3, '#000', 6).setAlpha(0);
 
-    // Auto-aim on/off, remembered on this device (only meaningful with the SPRAY button)
-    if (this.sprayButton) {
-      this.autoAimToggle = this.add.text(0, 0, '', { ...tag, fontSize: '16px', padding: { x: 10, y: 8 } })
-        .setInteractive({ useHandCursor: true })
-        .on('pointerdown', () => {
-          settings.autoAim = !settings.autoAim;
-          saveSettings();
-          this.refreshAutoAimToggle();
-        });
-      this.refreshAutoAimToggle();
-    }
+    // Pause: top-right corner, away from both thumbs. Settings live in the pause menu.
+    this.pauseButton = new HudButton(this, CONTROLS.buttons.pauseRadius, 'II', 0xe8fff9, () => this.pause());
+    this.buildPauseMenu(style);
 
     this.bottle = new BottleMeter(this);
     this.refillButton = new HudButton(this, CONTROLS.buttons.refillRadius, 'REFILL', 0x2a9df4, () => {
@@ -180,6 +185,15 @@ export class HudScene extends Phaser.Scene {
     this.input.on('pointerupoutside', this.onPointerUp, this);
     this.input.on('gameout', () => (inputState.mouseActive = false));
 
+    // Auto-pause when the app is hidden (home screen, app switcher, a call) or loses focus
+    const autoPause = () => this.pause();
+    this.game.events.on(Phaser.Core.Events.HIDDEN, autoPause);
+    this.game.events.on(Phaser.Core.Events.BLUR, autoPause);
+    this.events.once('shutdown', () => {
+      this.game.events.off(Phaser.Core.Events.HIDDEN, autoPause);
+      this.game.events.off(Phaser.Core.Events.BLUR, autoPause);
+    });
+
     const kb = this.input.keyboard!;
     this.keys = kb.addKeys({
       up: 'UP', down: 'DOWN', left: 'LEFT', right: 'RIGHT', w: 'W', a: 'A', s: 'S', d: 'D', r: 'R', q: 'Q', e: 'E', x: 'X',
@@ -188,6 +202,9 @@ export class HudScene extends Phaser.Scene {
     this.keys.q.on('down', () => (inputState.purgeRequested = true));
     this.keys.e.on('down', () => (inputState.interactRequested = true));
     this.keys.x.on('down', () => (inputState.swapRequested = true));
+    const togglePause = () => (this.paused ? this.resume() : this.pause());
+    kb.addKey('P').on('down', togglePause);
+    kb.addKey('ESC').on('down', togglePause);
     this.input.keyboard!.addKey('SPACE').on('down', () => (this.spaceDown = true)).on('up', () => (this.spaceDown = false));
 
     this.layout();
@@ -254,10 +271,13 @@ export class HudScene extends Phaser.Scene {
     this.banner.setPosition(width / 2, height * 0.38);
     this.bannerSub.setPosition(width / 2, height * 0.38 + 60);
     this.health.setPosition(this.safe.left + m, this.safe.top + m);
-    this.autoAimToggle?.setPosition(this.safe.left + m, this.safe.top + m + this.health.outerHeight + 10);
-    this.versionText.setPosition(width - this.safe.right - m, this.safe.top + m);
-    this.fpsText?.setOrigin(1, 0).setPosition(width - this.safe.right - m, this.safe.top + m + 30);
-    this.roomText.setPosition(width - this.safe.right - m, this.safe.top + m + (DEBUG.overlay ? 110 : this.fpsText ? 64 : 34));
+    const pr = CONTROLS.buttons.pauseRadius;
+    this.pauseButton.setPosition(width - this.safe.right - m - pr, this.safe.top + m + pr);
+    const infoX = width - this.safe.right - m - pr * 2 - 14;
+    this.versionText.setPosition(infoX, this.safe.top + m);
+    this.fpsText?.setOrigin(1, 0).setPosition(infoX, this.safe.top + m + 30);
+    this.roomText.setPosition(infoX, this.safe.top + m + (DEBUG.overlay ? 110 : this.fpsText ? 64 : 34));
+    this.layoutPauseMenu(width, height);
     const right = width - this.safe.right - m;
     const refillY = rightY - CONTROLS.buttons.sprayRadius - CONTROLS.buttons.refillRadius - 24;
     this.refillButton.setPosition(right - CONTROLS.buttons.refillRadius, refillY);
@@ -303,8 +323,98 @@ export class HudScene extends Phaser.Scene {
       .setColor(settings.autoAim ? COLORS.uiAccent : '#ffb3b3');
   }
 
+  private refreshSoundToggle(): void {
+    this.soundToggle.setText(`SOUND: ${settings.sound ? 'ON' : 'OFF'}`).setColor(settings.sound ? COLORS.uiAccent : '#ffb3b3');
+  }
+
+  /** The pause screen: dims the game and offers resume, sound, auto-aim and quit. Hidden until paused. */
+  private buildPauseMenu(style: Phaser.Types.GameObjects.Text.TextStyle): void {
+    // Swallows touches so nothing underneath (sticks, buttons) reacts while paused
+    this.pauseDim = this.add.rectangle(0, 0, 10, 10, 0x0d2b2e, 0.82).setOrigin(0).setInteractive();
+    this.pauseTitle = this.add.text(0, 0, 'PAUSED', { ...style, fontSize: '64px', fontStyle: '900' }).setOrigin(0.5).setShadow(0, 5, '#000', 8);
+    this.pauseTip = this.add.text(0, 0, '', { ...style, fontSize: '20px', fontStyle: 'italic', color: COLORS.uiAccent, align: 'center', wordWrap: { width: 700 } }).setOrigin(0.5);
+    const item = (label: string, onTap: () => void) => this.add.text(0, 0, label, {
+      ...style, fontSize: '26px', fontStyle: 'bold', backgroundColor: '#1f4f55', padding: { x: 22, y: 12 }, align: 'center', fixedWidth: 340,
+    }).setOrigin(0.5).setInteractive({ useHandCursor: true }).on('pointerup', onTap);
+    this.resumeItem = item('RESUME', () => this.resume());
+    this.soundToggle = item('', () => {
+      settings.sound = !settings.sound;
+      saveSettings();
+      setSfxMuted(!settings.sound);
+      this.refreshSoundToggle();
+    });
+    const items: Phaser.GameObjects.Text[] = [this.resumeItem, this.soundToggle];
+    if (this.sprayButton) {
+      this.autoAimToggle = item('', () => {
+        settings.autoAim = !settings.autoAim;
+        saveSettings();
+        this.refreshAutoAimToggle();
+      });
+      items.push(this.autoAimToggle);
+    }
+    // Quitting throws the run away, so it takes a second tap
+    this.quitItem = item('QUIT TO MENU', () => {
+      if (this.time.now > this.quitArmedUntil) {
+        this.quitArmedUntil = this.time.now + 2500;
+        this.quitItem.setText('TAP AGAIN TO QUIT').setColor('#ffb3b3');
+        return;
+      }
+      this.paused = false;
+      this.scene.stop('Game');
+      this.scene.start('Title');
+    });
+    items.push(this.quitItem);
+    this.pauseMenu = this.add.container(0, 0, [this.pauseDim, this.pauseTitle, this.pauseTip, ...items]).setDepth(100).setVisible(false);
+    this.refreshSoundToggle();
+    this.refreshAutoAimToggle();
+  }
+
+  private layoutPauseMenu(width: number, height: number): void {
+    this.pauseDim.setSize(width, height);
+    this.pauseDim.input?.hitArea.setSize(width, height);
+    this.pauseTitle.setPosition(width / 2, height * 0.15);
+    this.pauseTip.setPosition(width / 2, height * 0.15 + 58);
+    const items = [this.resumeItem, this.soundToggle, this.autoAimToggle, this.quitItem].filter((t): t is Phaser.GameObjects.Text => !!t);
+    const top = height * 0.36;
+    const gap = Math.min(76, (height * 0.6) / items.length);
+    items.forEach((t, i) => t.setPosition(width / 2, top + i * gap));
+  }
+
+  /** Freezes the game and shows the pause menu. Safe to call any time (ignored if already paused or the run is over). */
+  pause(): void {
+    const game = this.scene.get('Game') as GameScene;
+    if (this.paused || !this.scene.isActive('Game') || game.isRunOver) return;
+    this.paused = true;
+    // Let go of everything, so nothing is stuck "held" when play resumes
+    this.moveStick.release();
+    this.aimStick?.release();
+    for (const b of [this.sprayButton, this.refillButton, this.purgeButton, this.interactButton, this.swapButton]) b?.release();
+    this.mouseDown = false;
+    this.spaceDown = false;
+    Object.assign(inputState, {
+      moveX: 0, moveY: 0, aiming: false, firing: false,
+      refillRequested: false, purgeRequested: false, interactRequested: false, swapRequested: false,
+    });
+    this.scene.pause('Game');
+    this.quitArmedUntil = 0;
+    this.quitItem.setText('QUIT TO MENU').setColor(COLORS.uiText);
+    this.pauseTip.setText(`Tip: ${Phaser.Utils.Array.GetRandom(TIPS)}`);
+    this.refreshSoundToggle();
+    this.refreshAutoAimToggle();
+    this.pauseMenu.setVisible(true);
+  }
+
+  resume(): void {
+    if (!this.paused) return;
+    this.paused = false;
+    this.pauseMenu.setVisible(false);
+    resumeAudio();
+    this.scene.resume('Game');
+  }
+
   private onPointerDown(pointer: Phaser.Input.Pointer, over: Phaser.GameObjects.GameObject[]): void {
-    if (over.length > 0) return; // touched a button, not the floor
+    resumeAudio();
+    if (this.paused || over.length > 0) return; // paused, or touched a button rather than the floor
     if (!pointer.wasTouch) {
       // Desktop testing: hold the mouse to spray toward the cursor
       this.mouseDown = true;
@@ -332,6 +442,10 @@ export class HudScene extends Phaser.Scene {
   }
 
   update(): void {
+    if (this.paused) {
+      this.updateFps();
+      return;
+    }
     // Movement: touch stick, or keyboard when the stick is idle
     let mx = this.moveStick.value.x;
     let my = this.moveStick.value.y;

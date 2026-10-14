@@ -109,20 +109,43 @@ try {
   // Tap the Refill button
   const refillAt = await buttonAt('refillButton');
   await page.touchscreen.tap(refillAt.x, refillAt.y);
-  await page.waitForTimeout(1400);
+  // Refill takes 1.1 s of game time (which runs slower than real time when frames drop)
+  await page.waitForFunction(() => window.game.scene.getScene('Game').sprayer.ammo === 120, null, { timeout: 8000 }).catch(() => {});
   const refilled = await game();
   check(refilled.ammo === 120, `Refill button refilled the bottle (${refilled.ammo} mL)`);
+  // Pause: the button freezes the game and opens the menu; AUTO-AIM lives there now
+  const pauseAt = await buttonAt('pauseButton');
+  await page.touchscreen.tap(pauseAt.x, pauseAt.y);
+  await page.waitForTimeout(250);
+  const pausedState = await page.evaluate(() => {
+    const hud = window.game.scene.getScene('Hud');
+    const scene = window.game.scene.getScene('Game');
+    return { paused: window.game.scene.isPaused('Game'), menu: hud.pauseMenu.visible, t: scene.time.now, tip: hud.pauseTip.text };
+  });
+  await page.waitForTimeout(400);
+  const frozenT = await page.evaluate(() => window.game.scene.getScene('Game').time.now);
+  check(pausedState.paused && pausedState.menu && frozenT === pausedState.t, `PAUSE button freezes the game and shows the menu ("${pausedState.tip}")`);
+  await page.screenshot({ path: 'smoke-paused.png' });
   // Tap AUTO-AIM to turn it off; it should be saved for next time
   const toggle = await buttonAt('autoAimToggle');
-  const t = await page.evaluate(() => {
-    const b = window.game.scene.getScene('Hud').autoAimToggle;
-    return { w: b.width, h: b.height };
-  });
-  const k = await page.evaluate(() => window.game.canvas.getBoundingClientRect().width / window.game.scale.width);
-  await page.touchscreen.tap(toggle.x + (t.w / 2) * k, toggle.y + (t.h / 2) * k);
+  await page.touchscreen.tap(toggle.x, toggle.y);
   await page.waitForTimeout(200);
   const saved = await page.evaluate(() => JSON.parse(localStorage.getItem('moshi.settings.v1') ?? '{}'));
   check(saved.autoAim === false, `AUTO-AIM toggle turns it off and saves it (${JSON.stringify(saved)})`);
+  // SOUND toggles and saves too (turn it back on afterwards)
+  const soundAt = await buttonAt('soundToggle');
+  await page.touchscreen.tap(soundAt.x, soundAt.y);
+  await page.waitForTimeout(200);
+  const muted = await page.evaluate(() => JSON.parse(localStorage.getItem('moshi.settings.v1') ?? '{}').sound);
+  await page.touchscreen.tap(soundAt.x, soundAt.y);
+  await page.waitForTimeout(200);
+  check(muted === false, 'SOUND toggle mutes and saves');
+  // RESUME
+  const resumeAt = await buttonAt('resumeItem');
+  await page.touchscreen.tap(resumeAt.x, resumeAt.y);
+  await page.waitForTimeout(300);
+  const resumed = await page.evaluate(() => !window.game.scene.isPaused('Game') && !window.game.scene.getScene('Hud').pauseMenu.visible);
+  check(resumed, 'RESUME unpauses the game');
   await page.screenshot({ path: 'smoke-after.png' });
 
   // Waves and score
@@ -246,7 +269,8 @@ try {
     p.setPosition(scene.player.x + 150, scene.player.y);
     p.nextViolationAt = 0;
     p.leaveAt = Number.MAX_SAFE_INTEGER; // stay put for the test, however slow the frame rate
-    // Violations only happen while the round still has germs to send in
+    // Violations only happen while the round still has germs to send in, and below the on-screen germ cap
+    scene.germs.getChildren().filter((g) => g.active).slice(4).forEach((g) => g.kill());
     while (scene.waves.queue.length < 4) scene.waves.queue.push('basic');
     return { germsBefore: scene.germs.countActive(true), id: p.def.id };
   });
@@ -381,6 +405,28 @@ try {
   });
   check(fresh.hp === 100 && fresh.score === 0 && fresh.round === 0, `restart gives a fresh run (${JSON.stringify(fresh)})`);
 
+  // Leaving the app (page hidden) pauses by itself, and stays paused when you come back
+  await page.evaluate(() => {
+    Object.defineProperty(document, 'hidden', { configurable: true, get: () => true });
+    document.dispatchEvent(new Event('visibilitychange'));
+    Object.defineProperty(document, 'hidden', { configurable: true, get: () => false });
+    document.dispatchEvent(new Event('visibilitychange'));
+  });
+  await page.waitForTimeout(300);
+  const autoPaused = await page.evaluate(() => window.game.scene.isPaused('Game') && window.game.scene.getScene('Hud').pauseMenu.visible);
+  check(autoPaused, 'switching away from the app auto-pauses');
+  await page.evaluate(() => window.game.scene.getScene('Hud').resume());
+  await page.waitForTimeout(300);
+  // Paused time doesn't count: cooldowns, refills and rounds don't tick over while the menu is up
+  const t0 = await page.evaluate(() => { const hud = window.game.scene.getScene('Hud'); hud.pause(); return window.game.scene.getScene('Game').time.now; });
+  await page.waitForTimeout(2000);
+  const t1 = await page.evaluate(async () => {
+    window.game.scene.getScene('Hud').resume();
+    await new Promise((r) => setTimeout(r, 150));
+    return window.game.scene.getScene('Game').time.now;
+  });
+  check(t1 - t0 < 1000, `game time stands still while paused (${Math.round(t1 - t0)} ms passed over a 2 s pause)`);
+
   check(end.x > start.x + 20 && end.y < start.y - 20, `Eugene moved up-right (${start.x | 0},${start.y | 0}) -> (${end.x | 0},${end.y | 0})`);
   check(Math.abs(end.rotation - -Math.PI / 4) < 0.3, `Eugene faces where he walks (up-right), rotation ${end.rotation.toFixed(2)}`);
   check(errors.length === 0, `no console errors${errors.length ? ': ' + errors.join(' | ') : ''}`);
@@ -392,7 +438,7 @@ try {
   await dbg.goto(url + '?round=6&copays=999&god&fps=30');
   await dbg.waitForFunction(() => window.game?.scene.isActive('Title'));
   await dbg.touchscreen.tap(426, 200);
-  await dbg.waitForFunction(() => window.game.scene.getScene('Game')?.waves?.round === 6, null, { timeout: 8000 });
+  await dbg.waitForFunction(() => window.game.scene.getScene('Game')?.waves?.round === 6, null, { timeout: 30000 });
   await dbg.waitForTimeout(6000); // germs reach Eugene and bump him
   const dbgState = await dbg.evaluate(() => {
     const scene = window.game.scene.getScene('Game');
