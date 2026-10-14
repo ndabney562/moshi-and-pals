@@ -29,7 +29,9 @@ const labelWaits = (p) => {
 };
 labelWaits(page);
 const errors = [];
-page.on('pageerror', (e) => errors.push(e.message));
+// Page errors say where they came from (the top stack frame), so a CI annotation is enough to find them
+const where = (e) => `${e.message} @ ${(e.stack ?? '').split('\n')[1]?.trim() ?? '?'}`;
+page.on('pageerror', (e) => errors.push(where(e)));
 page.on('console', (m) => m.type() === 'error' && errors.push(m.text()));
 
 let failed = false;
@@ -899,7 +901,7 @@ try {
   const dbg = await context.newPage();
   labelWaits(dbg);
   const dbgErrors = [];
-  dbg.on('pageerror', (e) => dbgErrors.push(e.message));
+  dbg.on('pageerror', (e) => dbgErrors.push(where(e)));
   await dbg.goto(url + '?round=6&copays=999&god&fps=30');
   await dbg.waitForFunction(() => window.game?.scene.isActive('Title'));
   await dbg.touchscreen.tap(426, 200);
@@ -924,7 +926,7 @@ try {
   const pp = await tall.newPage();
   labelWaits(pp);
   const tallErrors = [];
-  pp.on('pageerror', (e) => tallErrors.push(e.message));
+  pp.on('pageerror', (e) => tallErrors.push(where(e)));
   await pp.goto(url);
   await pp.waitForFunction(() => window.game?.scene.isActive('Title'));
   await pp.touchscreen.tap(196, 426);

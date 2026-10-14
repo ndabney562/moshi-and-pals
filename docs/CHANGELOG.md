@@ -8,7 +8,7 @@ Six new germs, each asking for a different answer than "spray harder":
 - **Mother Culture** (round 9+): a petri dish that keeps its distance and heals every germ inside its pulsing green aura. Kill it first.
 - **Colony** (round 10+): a flock of eight tiny Specks arriving together. A fogger's dream.
 - **Mold Spot** (round 11+): rooted to the floor where you aren't (the farthest open door), letting out a spore every 6 s. It's a fungus: **bleach does double**, the bottle only 60%.
-- Fix: germs frozen by PRIOR AUTHORIZATION can no longer finish a sneeze wind-up.
+- Fixes: germs frozen by PRIOR AUTHORIZATION can no longer finish a sneeze wind-up; a boss replaced before its first line no longer crashes the game when that line comes due.
 
 ## v0.10.0: Milestone 10, outbreak
 - **RESISTANT elites** (from round 8, more often later): a tougher (×2.5 health), bigger version of a normal germ with a spiky aura and a label naming its trait:
