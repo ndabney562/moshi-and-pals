@@ -22,7 +22,7 @@ import { Germ, type GermScaling } from '../entities/Germ';
 import type { Patient } from '../entities/Patient';
 import { Player } from '../entities/Player';
 import { FlowField } from '../systems/FlowField';
-import { steerSpitter, type BehaviorHost } from '../systems/GermBehaviors';
+import { steerCharger, steerHealer, steerSpitter, type BehaviorHost } from '../systems/GermBehaviors';
 import { Puddles } from '../systems/Puddles';
 import { Powerups } from '../systems/Powerups';
 import { ELITE_AFFIXES, type EliteAffix, type PowerupDef } from '../data/powerups';
@@ -193,9 +193,17 @@ export class GameScene extends Phaser.Scene {
     this.globs = this.physics.add.group({ classType: Glob, maxSize: 16, defaultKey: 'glob' });
     this.puddles = new Puddles(this);
     this.powerups = new Powerups(this, (def, t) => this.onPowerup(def, t));
+    const telegraphs = this.add.graphics().setDepth(7);
     this.behaviorHost = {
       player: this.player,
       flow: this.flow,
+      telegraphs,
+      germs: () => (this.germs.getChildren() as Germ[]).filter((c) => c.active),
+      chargeHitWall: (g) => {
+        sfx.tantrum();
+        this.cameras.main.shake(120, 0.004);
+        this.fx.number(g.x, g.y - g.def.radius - 12, 'DAZED! ×2 DAMAGE', '#ffe66d', 16);
+      },
       telegraphSneeze: (g) => {
         sfx.sneezeWindup();
         this.fx.number(g.x, g.y - g.def.radius - 14, 'AH... AH...', '#ffb3b3', 16);
@@ -364,6 +372,7 @@ export class GameScene extends Phaser.Scene {
       this.nextFlowAt = time + BALANCE.germs.pathRefreshMs;
     }
     this.boss?.update(time);
+    this.behaviorHost.telegraphs.clear();
     for (const g of this.germs.getChildren() as Germ[]) {
       if (!g.active) continue;
       const override = this.boss?.germ === g ? this.boss.movement() : undefined;
@@ -373,6 +382,27 @@ export class GameScene extends Phaser.Scene {
       }
       if (g.def.spit) {
         steerSpitter(g, this.behaviorHost, time, delta, this.step);
+        continue;
+      }
+      if (g.def.charge) {
+        steerCharger(g, this.behaviorHost, time, delta, this.step);
+        continue;
+      }
+      if (g.def.heal) {
+        steerHealer(g, this.behaviorHost, time, delta, this.step);
+        continue;
+      }
+      if (g.def.spawner) {
+        // MOLD SPOT: stays put and lets out spores
+        g.setVelocity(0, 0);
+        g.chase(g, time, delta, 0);
+        const sp = g.def.spawner;
+        if (time >= g.nextSpawnAt && time >= g.frozenUntil && this.aliveOf(sp.id) < sp.max * Math.max(1, this.aliveOf(g.def.id))) {
+          g.nextSpawnAt = time + sp.everyMs;
+          const a = Math.random() * Math.PI * 2;
+          this.spawnGermAt(sp.id, g.x + Math.cos(a) * (g.def.radius + 16), g.y + Math.sin(a) * (g.def.radius + 16), true);
+          this.fx.germSplat(g.x, g.y, g.def.color);
+        }
         continue;
       }
       // Close in directly when near; otherwise follow the path around furniture
@@ -395,6 +425,9 @@ export class GameScene extends Phaser.Scene {
 
   /** Living germs of one type (for WAVES.aliveLimit). */
   private aliveOf(id: string): number {
+    // A Colony counts as one per flock of specks still flying
+    const as = GERMS[id]?.spawnAs;
+    if (as) return Math.ceil(this.aliveOf(as.id) / as.count);
     let n = 0;
     for (const g of this.germs.getChildren() as Germ[]) if (g.active && g.def.id === id) n++;
     return n;
@@ -610,6 +643,7 @@ export class GameScene extends Phaser.Scene {
   private damageGerm(germ: Germ, damage: number, fromAngle: number, knockback: number): void {
     const time = this.time.now;
     if (this.boss?.germ === germ) damage *= this.boss.damageTaken ?? 1;
+    if (germ.chargeState === 'dazed' && germ.def.charge) damage *= germ.def.charge.stunnedDamageTaken;
     const killed = germ.hurt(damage, fromAngle, knockback, time);
     if (this.boss?.germ === germ) this.boss.onHurt(damage, time);
 
@@ -645,6 +679,13 @@ export class GameScene extends Phaser.Scene {
       if (germ.elite) this.score += germ.def.points * (el.pointsMult - 1);
       // Power-ups: elites always drop one; any other germ now and then
       if (germ.elite || (!germ.def.boss && Math.random() < BALANCE.powerups.dropChance)) this.powerups.drop(germ.x, germ.y, time);
+      if (germ.def.splitInto) {
+        const s = germ.def.splitInto;
+        for (let i = 0; i < s.count; i++) {
+          const a = (i / s.count) * Math.PI * 2 + Math.random();
+          this.spawnGermAt(s.id, germ.x + Math.cos(a) * germ.def.radius, germ.y + Math.sin(a) * germ.def.radius, true);
+        }
+      }
       if (germ.elite === 'splitting') {
         for (let i = 0; i < el.splitInto; i++) {
           const a = Math.random() * Math.PI * 2;
@@ -1005,6 +1046,16 @@ export class GameScene extends Phaser.Scene {
     if (this.runOver) return;
     const time = this.time.now;
     if (this.boss?.germ === germ && this.boss.ignoresContact) return;
+    if (germ.chargeState === 'charging' && germ.def.charge) {
+      // Run over by a Bulldozer: a big hit and a shove along its path
+      const c = germ.def.charge;
+      germ.chargeState = 'none';
+      germ.nextChargeAt = time + Phaser.Math.Between(...c.cooldownMs);
+      germ.setVelocity(0, 0);
+      this.player.shove(Math.cos(germ.chargeAngle) * 650, Math.sin(germ.chargeAngle) * 650, 300);
+      this.hurtPlayer(c.damage, germ.def.id);
+      return;
+    }
     germ.bounceFrom(this.player.x, this.player.y, time);
     this.hurtPlayer(germ.def.contactDamage, germ.def.id);
   }
@@ -1036,7 +1087,21 @@ export class GameScene extends Phaser.Scene {
     const dist = (p: { x: number; y: number }) => Phaser.Math.Distance.Between(p.x, p.y, this.player.x, this.player.y);
     const far = spots.filter((p) => dist(p) >= minSpawnDistance);
     const ideal = far.filter((p) => dist(p) <= maxSpawnDistance);
-    const spot = Phaser.Utils.Array.GetRandom(ideal.length ? ideal : far.length ? far : spots);
+    // Mold grows where Eugene isn't: the farthest open spawn point
+    const spot = def.spawner ? spots.reduce((a, b) => (dist(b) > dist(a) ? b : a))
+      : Phaser.Utils.Array.GetRandom(ideal.length ? ideal : far.length ? far : spots);
+    if (def.spawnAs) {
+      // COLONY: a flock of specks instead of one germ
+      const s = def.spawnAs;
+      for (let i = 0; i < s.count; i++) {
+        const speck = i === 0 ? germ : (this.germs.get() as Germ | null);
+        if (!speck) break;
+        const a = (i / s.count) * Math.PI * 2;
+        speck.spawn(GERMS[s.id], spot.x + Math.cos(a) * 26, spot.y + Math.sin(a) * 26, scaling);
+        this.applyOngoingPowerups(speck);
+      }
+      return true;
+    }
     germ.spawn(def, spot.x, spot.y, scaling);
     this.maybeElite(germ);
     this.applyOngoingPowerups(germ);

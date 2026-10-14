@@ -58,12 +58,22 @@ export const WAVES = {
     if (r >= 3) mix.sprinter = Math.min(0.15 + 0.06 * (r - 3), 0.5);
     if (r >= 4) mix.sneezer = Math.min(0.1 + 0.02 * (r - 4), 0.2);
     if (r >= 6) mix.sporePod = Math.min(0.12 + 0.02 * (r - 6), 0.25);
+    if (r >= 7) mix.duo = Math.min(0.1 + 0.02 * (r - 7), 0.2);
+    if (r >= 8) { mix.charger = Math.min(0.07 + 0.01 * (r - 8), 0.14); mix.chonk = 0.025; }
+    if (r >= 9) mix.healer = 0.05;
+    if (r >= 10) mix.colony = 0.05;
+    if (r >= 11) mix.moldSpot = 0.035;
     return mix;
   },
   /** Most of a germ type alive at once, so special germs stay a spice, not the meal. Others are unlimited. */
   aliveLimit: {
     sneezer: (r: number) => Math.min(2 + Math.floor((r - 4) / 3), 4),
     sporePod: (r: number) => Math.min(2 + Math.floor((r - 6) / 2), 5),
+    charger: (r: number) => Math.min(2 + Math.floor((r - 8) / 3), 4),
+    healer: (r: number) => (r < 14 ? 1 : 2),
+    chonk: () => 1,
+    colony: () => 2,
+    moldSpot: () => 2,
   } as Record<string, (r: number) => number>,
 
   /**

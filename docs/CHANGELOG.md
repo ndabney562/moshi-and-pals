@@ -1,5 +1,15 @@
 # Changelog
 
+## v0.11.0: Milestone 11, ecology
+Six new germs, each asking for a different answer than "spray harder":
+- **Diplococcus Duo** (round 7+): two germs stuck together. Disinfect it and it splits into two quick **Monococci**.
+- **Bacillus Bulldozer** (round 8+): a rod that plants itself, shows a red lane where it's going, then charges straight down it (24 damage and a shove). Step out of the lane. If it slams into a wall it's **dazed** for 1.5 s and takes **double damage**: bait it into walls.
+- **Chonk Coccus** (round 8+, one at a time): 380 health, can't be pushed, and bursts into six Basic Germs. Clear some room before you pop it.
+- **Mother Culture** (round 9+): a petri dish that keeps its distance and heals every germ inside its pulsing green aura. Kill it first.
+- **Colony** (round 10+): a flock of eight tiny Specks arriving together. A fogger's dream.
+- **Mold Spot** (round 11+): rooted to the floor where you aren't (the farthest open door), letting out a spore every 6 s. It's a fungus: **bleach does double**, the bottle only 60%.
+- Fix: germs frozen by PRIOR AUTHORIZATION can no longer finish a sneeze wind-up.
+
 ## v0.10.0: Milestone 10, outbreak
 - **RESISTANT elites** (from round 8, more often later): a tougher (×2.5 health), bigger version of a normal germ with a spiky aura and a label naming its trait:
   - **Shielded:** a bubble soaks the first half of its health in damage.
