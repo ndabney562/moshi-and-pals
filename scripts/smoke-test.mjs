@@ -87,7 +87,8 @@ try {
       ammo: scene.sprayer.ammo, kills: scene.kills, germs: germs.length,
       dist: g ? Math.hypot(g.x - eugene.x, g.y - eugene.y) : Infinity,
       facing: eugene.rotation,
-      aim: g ? Math.atan2(g.y - eugene.y, g.x - eugene.x) : 0,
+      // Auto-aim sticks with its current target (scene.aimLock) until another is clearly closer, so check against that
+      aim: (() => { const t = scene.aimLock?.active ? scene.aimLock : g; return t ? Math.atan2(t.y - eugene.y, t.x - eugene.x) : 0; })(),
     };
   });
   // Let the germs come to Eugene (within spray range) before spraying
@@ -112,7 +113,7 @@ try {
       if (Math.abs(Math.atan2(Math.sin(facing - aim), Math.cos(facing - aim))) < 0.5) aimHits++;
     }
   }
-  check(aimSamples > 0 && aimHits / aimSamples >= 0.6, `auto-aim faces the nearest germ (${aimHits}/${aimSamples} samples)`);
+  check(aimSamples > 0 && aimHits / aimSamples >= 0.6, `auto-aim faces its target germ (${aimHits}/${aimSamples} samples)`);
   await touch('touchEnd', []);
   const after = await game();
   check(after.ammo < before.ammo, `spraying used alcohol (${before.ammo} -> ${after.ammo} mL)`);
