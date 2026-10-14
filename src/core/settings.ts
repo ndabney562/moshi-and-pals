@@ -5,10 +5,12 @@
  */
 export interface Settings {
   autoAim: boolean;
+  /** Sound effects on/off (pause menu). */
+  sound: boolean;
 }
 
 const KEY = 'moshi.settings.v1';
-const DEFAULTS: Settings = { autoAim: true };
+const DEFAULTS: Settings = { autoAim: true, sound: true };
 
 function load(): Settings {
   try {

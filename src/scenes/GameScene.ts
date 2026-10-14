@@ -3,6 +3,7 @@ import { BALANCE } from '../config/balance';
 import { CONTROLS } from '../config/controls';
 import { COLORS } from '../config/theme';
 import { DEBUG } from '../core/debug';
+import { useGameTime } from '../core/gameClock';
 import { events, GameEvents, type RoomPayload, type RunResult, type StationPayload } from '../core/events';
 import { inputState } from '../core/inputState';
 import { settings } from '../core/settings';
@@ -82,6 +83,8 @@ export class GameScene extends Phaser.Scene {
   }
 
   create(): void {
+    // time.now stops while paused, so cooldowns and timers don't run out in the background
+    useGameTime(this);
     const room = this.room;
     this.kills = 0;
     this.score = 0;
@@ -180,6 +183,11 @@ export class GameScene extends Phaser.Scene {
     events.emit(GameEvents.RunStarted, { roomId: room.id });
   }
 
+  /** Eugene is down and the game over screen is on its way. */
+  get isRunOver(): boolean {
+    return this.runOver;
+  }
+
   /** Re-sends current health, score and equipment so a freshly started HUD can draw them. */
   broadcastState(): void {
     events.emit(GameEvents.PlayerHealthChanged, { hp: this.player.hp, maxHp: this.player.maxHp });
@@ -191,8 +199,10 @@ export class GameScene extends Phaser.Scene {
     this.sprayer.emitChanged(this.time.now);
   }
 
-  update(time: number, delta: number): void {
+  update(_loopTime: number, delta: number): void {
     if (this.runOver) return;
+    // Game time (excludes pauses), not the loop's wall-clock time; see core/gameClock
+    const time = this.time.now;
     let aimTarget: { x: number; y: number } | undefined;
     if (inputState.mouseActive) {
       aimTarget = this.cameras.main.getWorldPoint(inputState.mouseX, inputState.mouseY, this.mouseWorld);

@@ -42,6 +42,13 @@ export class HudButton extends Phaser.GameObjects.Container {
     });
   }
 
+  /** Lets go as if the finger lifted (used when the game pauses mid-hold). */
+  release(): void {
+    this.holdPointerId = null;
+    this.disc.setFillStyle(this.color, 0.35);
+    this.setScale(1);
+  }
+
   setLabel(text: string): this {
     this.label.setText(text);
     return this;

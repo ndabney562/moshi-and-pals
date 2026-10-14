@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import { DISPLAY } from './config/display';
 import { DEBUG } from './core/debug';
+import { resumeAudio } from './core/sfx';
 import { applyOrientation, isPortrait, patchForPortrait } from './core/orientation';
 import { BootScene } from './scenes/BootScene';
 import { GameOverScene } from './scenes/GameOverScene';
@@ -51,6 +52,10 @@ window.addEventListener('resize', resize);
 // Phaser may have measured the page before the portrait patch was in place
 resize();
 window.addEventListener('orientationchange', () => setTimeout(resize, 300));
+
+// iOS silences audio after calls, Siri or app switches; any touch brings it back.
+document.addEventListener('touchend', resumeAudio, { passive: true });
+document.addEventListener('pointerdown', resumeAudio, { passive: true });
 
 // Stop iOS pinch-zoom and double-tap gestures from hijacking the game.
 document.addEventListener('gesturestart', (e) => e.preventDefault());

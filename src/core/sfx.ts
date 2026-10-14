@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import { settings } from './settings';
 
 /**
  * Placeholder sound effects synthesized on the fly, so the game has feedback
@@ -7,6 +8,7 @@ import Phaser from 'phaser';
  */
 type Voice = (ctx: AudioContext, out: AudioNode, t: number) => void;
 
+const VOLUME = 0.5;
 let ctx: AudioContext | null = null;
 let master: GainNode | null = null;
 let noise: AudioBuffer | null = null;
@@ -18,7 +20,7 @@ export function initSfx(scene: Phaser.Scene): void {
   if (!manager.context || ctx) return;
   ctx = manager.context;
   master = ctx.createGain();
-  master.gain.value = 0.5;
+  master.gain.value = settings.sound ? VOLUME : 0;
   master.connect(ctx.destination);
   noise = ctx.createBuffer(1, ctx.sampleRate, ctx.sampleRate);
   const data = noise.getChannelData(0);
@@ -26,7 +28,16 @@ export function initSfx(scene: Phaser.Scene): void {
 }
 
 export function setSfxMuted(muted: boolean): void {
-  if (master) master.gain.value = muted ? 0 : 0.5;
+  if (master) master.gain.value = muted ? 0 : VOLUME;
+}
+
+/**
+ * iOS suspends (or "interrupts") audio after a phone call, Siri, or switching
+ * apps, and it stays silent until resumed from a touch. Call this from touch
+ * handlers; it does nothing when audio is already running.
+ */
+export function resumeAudio(): void {
+  if (ctx && ctx.state !== 'running') ctx.resume().catch(() => {});
 }
 
 /** Plays a voice unless the same one played within `minGapMs` (avoids audio pile-ups). */
