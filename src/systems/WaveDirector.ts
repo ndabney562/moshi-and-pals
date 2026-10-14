@@ -29,6 +29,11 @@ export class WaveDirector {
     return this.phase === 'active';
   }
 
+  /** True while this round still has germs left to send in. Patients only commit violations then (see PatientDirector). */
+  get spawning(): boolean {
+    return this.phase === 'active' && this.queue.length > 0;
+  }
+
   get isBossRound(): boolean {
     return this.round > 0 && this.round % WAVES.bossEvery === 0;
   }

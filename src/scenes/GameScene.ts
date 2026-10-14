@@ -261,7 +261,7 @@ export class GameScene extends Phaser.Scene {
       g.chase(near || !this.flow.nextStep(g.x, g.y, this.step) ? this.player : this.step, time, delta);
     }
     this.waves.update(time, this.germs.countActive(true), (id, scaling) => this.spawnGerm(id, scaling));
-    this.patients.update(time, delta, this.waves.round, this.waves.roundActive, this.waves.isBossRound);
+    this.patients.update(time, delta, this.waves.round, this.waves.spawning, this.waves.isBossRound);
   }
 
   /** Live entity counts for the debug perf overlay. */
@@ -568,10 +568,12 @@ export class GameScene extends Phaser.Scene {
 
   /** A germ let loose by a patient's health code violation, at this round's toughness. */
   private spawnGermAt(id: string, x: number, y: number): void {
+    const r = Math.max(1, this.waves.round);
+    // Same on-screen cap as wave spawns, so violations can't flood the room
+    if (this.germs.countActive(true) >= WAVES.maxAlive(r)) return;
     const def = GERMS[id];
     const germ = this.germs.get() as Germ | null;
     if (!def || !germ) return;
-    const r = Math.max(1, this.waves.round);
     germ.spawn(def, x, y, { hpMult: WAVES.hpMult(r), speedMult: WAVES.speedMult(r) });
   }
 

@@ -246,6 +246,8 @@ try {
     p.setPosition(scene.player.x + 150, scene.player.y);
     p.nextViolationAt = 0;
     p.leaveAt = Number.MAX_SAFE_INTEGER; // stay put for the test, however slow the frame rate
+    // Violations only happen while the round still has germs to send in
+    while (scene.waves.queue.length < 4) scene.waves.queue.push('basic');
     return { germsBefore: scene.germs.countActive(true), id: p.def.id };
   });
   await page.waitForFunction(() => window.game.scene.getScene('Game').patients.eugeneBubble.text.length > 0, null, { timeout: 4000 }).catch(() => {});
@@ -265,6 +267,26 @@ try {
     return { state: p.state, gained: scene.score - before };
   });
   check(cleaned.state === 'leaving' && cleaned.gained > 0, `spraying a patient cleans them up and sends them home (${JSON.stringify(cleaned)})`);
+
+  // No Copay farming: once a round has sent in all its germs, patients stop letting more loose and the round can end
+  const farm = await page.evaluate(() => {
+    const scene = window.game.scene.getScene('Game');
+    scene.waves.queue.length = 0;
+    const alive = scene.germs.getChildren().filter((g) => g.active);
+    alive.slice(1).forEach((g) => g.kill());
+    if (alive[0]) alive[0].freeze();
+    const p = scene.patients.group.getChildren().find((c) => c.active) ?? (scene.patients.spawn(scene.time.now), scene.patients.group.getChildren().find((c) => c.active));
+    if (p) { p.state = 'wander'; p.nextViolationAt = 0; p.leaveAt = Number.MAX_SAFE_INTEGER; }
+    return { before: scene.germs.countActive(true), round: scene.waves.round };
+  });
+  await page.waitForTimeout(2500);
+  const farmed = await page.evaluate(() => window.game.scene.getScene('Game').germs.countActive(true));
+  check(farmed <= farm.before, `no violations once the round's germs are all in (${farm.before} -> ${farmed} germs)`);
+  await page.evaluate(() => window.game.scene.getScene('Game').germs.getChildren().forEach((g) => g.active && g.kill()));
+  await page.waitForTimeout(500);
+  const ended = await page.evaluate(() => !window.game.scene.getScene('Game').waves.roundActive);
+  check(ended, `the round ends once the last germ is gone (round ${farm.round})`);
+
 
   // Diamond the Practice Manager: spawn her near Eugene and walk her through every move
   await page.evaluate(() => {
