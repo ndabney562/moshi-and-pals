@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 import { DISPLAY } from './config/display';
+import { DEBUG } from './core/debug';
 import { applyOrientation, isPortrait, patchForPortrait } from './core/orientation';
 import { BootScene } from './scenes/BootScene';
 import { GameOverScene } from './scenes/GameOverScene';
@@ -29,6 +30,8 @@ const game = new Phaser.Game({
     width: logicalWidth(),
     height: DISPLAY.logicalHeight,
   },
+  // ?fps=30 caps the frame rate, like iPhone Low Power Mode does
+  ...(DEBUG.fpsLimit ? { fps: { limit: DEBUG.fpsLimit } } : {}),
   physics: { default: 'arcade', arcade: { debug: false } },
   input: { activePointers: 3 },
   render: { antialias: true, powerPreference: 'high-performance' },

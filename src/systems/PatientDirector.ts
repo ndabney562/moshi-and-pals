@@ -36,8 +36,12 @@ export class PatientDirector {
     this.nextSpawnAt = host.scene.time.now + Phaser.Math.Between(...this.cfg.spawnEveryMs) / 2;
   }
 
-  /** `round` and `roundActive` come from the wave director; `bossRound` keeps the room clear for the boss. */
-  update(time: number, dtMs: number, round: number, roundActive: boolean, bossRound: boolean): void {
+  /**
+   * `round` comes from the wave director; `bossRound` keeps the room clear for the boss.
+   * `violating`: whether violations can happen now. The game passes "the round still has germs to spawn", so
+   * once the last germs are in, patients stop adding more and the round can end (no farming, no endless rounds).
+   */
+  update(time: number, dtMs: number, round: number, violating: boolean, bossRound: boolean): void {
     this.eugeneBubble.follow();
     const patients = this.group.getChildren() as Patient[];
     const active = patients.filter((p) => p.active);
@@ -52,7 +56,7 @@ export class PatientDirector {
       p.walk(time, dtMs, spot);
       if (p.state === 'wander') {
         if (time >= p.leaveAt) this.sendHome(p, time);
-        else if (roundActive && time >= p.nextViolationAt) this.violate(p, time);
+        else if (violating && time >= p.nextViolationAt) this.violate(p, time);
       } else if (p.home || time - (this.leftAt.get(p) ?? time) > 8000) {
         // Home, or stuck behind a chair: slip out quietly
         this.leftAt.delete(p);

@@ -246,6 +246,8 @@ try {
     p.setPosition(scene.player.x + 150, scene.player.y);
     p.nextViolationAt = 0;
     p.leaveAt = Number.MAX_SAFE_INTEGER; // stay put for the test, however slow the frame rate
+    // Violations only happen while the round still has germs to send in
+    while (scene.waves.queue.length < 4) scene.waves.queue.push('basic');
     return { germsBefore: scene.germs.countActive(true), id: p.def.id };
   });
   await page.waitForFunction(() => window.game.scene.getScene('Game').patients.eugeneBubble.text.length > 0, null, { timeout: 4000 }).catch(() => {});
@@ -265,6 +267,26 @@ try {
     return { state: p.state, gained: scene.score - before };
   });
   check(cleaned.state === 'leaving' && cleaned.gained > 0, `spraying a patient cleans them up and sends them home (${JSON.stringify(cleaned)})`);
+
+  // No Copay farming: once a round has sent in all its germs, patients stop letting more loose and the round can end
+  const farm = await page.evaluate(() => {
+    const scene = window.game.scene.getScene('Game');
+    scene.waves.queue.length = 0;
+    const alive = scene.germs.getChildren().filter((g) => g.active);
+    alive.slice(1).forEach((g) => g.kill());
+    if (alive[0]) alive[0].freeze();
+    const p = scene.patients.group.getChildren().find((c) => c.active) ?? (scene.patients.spawn(scene.time.now), scene.patients.group.getChildren().find((c) => c.active));
+    if (p) { p.state = 'wander'; p.nextViolationAt = 0; p.leaveAt = Number.MAX_SAFE_INTEGER; }
+    return { before: scene.germs.countActive(true), round: scene.waves.round };
+  });
+  await page.waitForTimeout(2500);
+  const farmed = await page.evaluate(() => window.game.scene.getScene('Game').germs.countActive(true));
+  check(farmed <= farm.before, `no violations once the round's germs are all in (${farm.before} -> ${farmed} germs)`);
+  await page.evaluate(() => window.game.scene.getScene('Game').germs.getChildren().forEach((g) => g.active && g.kill()));
+  await page.waitForTimeout(500);
+  const ended = await page.evaluate(() => !window.game.scene.getScene('Game').waves.roundActive);
+  check(ended, `the round ends once the last germ is gone (round ${farm.round})`);
+
 
   // Diamond the Practice Manager: spawn her near Eugene and walk her through every move
   await page.evaluate(() => {
@@ -362,6 +384,29 @@ try {
   check(end.x > start.x + 20 && end.y < start.y - 20, `Eugene moved up-right (${start.x | 0},${start.y | 0}) -> (${end.x | 0},${end.y | 0})`);
   check(Math.abs(end.rotation - -Math.PI / 4) < 0.3, `Eugene faces where he walks (up-right), rotation ${end.rotation.toFixed(2)}`);
   check(errors.length === 0, `no console errors${errors.length ? ': ' + errors.join(' | ') : ''}`);
+
+  // Debug/stress switches: ?round=6&copays=999&god&fps=30
+  const dbg = await context.newPage();
+  const dbgErrors = [];
+  dbg.on('pageerror', (e) => dbgErrors.push(e.message));
+  await dbg.goto(url + '?round=6&copays=999&god&fps=30');
+  await dbg.waitForFunction(() => window.game?.scene.isActive('Title'));
+  await dbg.touchscreen.tap(426, 200);
+  await dbg.waitForFunction(() => window.game.scene.getScene('Game')?.waves?.round === 6, null, { timeout: 8000 });
+  await dbg.waitForTimeout(6000); // germs reach Eugene and bump him
+  const dbgState = await dbg.evaluate(() => {
+    const scene = window.game.scene.getScene('Game');
+    return {
+      round: scene.waves.round, copays: scene.copays, hp: scene.player.hp,
+      fps: Math.round(window.game.loop.actualFps), overlay: window.game.scene.getScene('Hud').fpsText.text,
+    };
+  });
+  check(dbgState.round === 6 && dbgState.copays === 999, `?round=6&copays=999 starts at round 6 with $999 (${dbgState.round}, $${dbgState.copays})`);
+  check(dbgState.hp === 100, `?god keeps Eugene at full health (${dbgState.hp})`);
+  check(dbgState.fps <= 34, `?fps=30 caps the frame rate (${dbgState.fps} FPS)`);
+  check(/p95/.test(dbgState.overlay) && /germs \d+/.test(dbgState.overlay), `debug overlay shows frame times and counts (${dbgState.overlay.split('\n')[0]})`);
+  check(dbgErrors.length === 0, `no errors in debug mode${dbgErrors.length ? ': ' + dbgErrors.join(' | ') : ''}`);
+  await dbg.close();
 
   // Phone held upright: the game still plays in landscape, turned sideways, and touches land where they look
   const tall = await browser.newContext({ viewport: { width: 393, height: 852 }, deviceScaleFactor: 3, isMobile: true, hasTouch: true });

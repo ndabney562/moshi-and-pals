@@ -18,13 +18,20 @@ export class WaveDirector {
   private queue: string[] = [];
   private scaling: GermScaling = { hpMult: 1, speedMult: 1 };
 
-  constructor(startTime: number) {
+  /** `firstRound` > 1 skips ahead (debug/stress testing). */
+  constructor(startTime: number, firstRound = 1) {
     this.nextRoundAt = startTime + WAVES.firstRoundDelayMs;
+    this.round = Math.max(0, firstRound - 1);
   }
 
   /** True while germs are spawning or still alive this round (not during the break). */
   get roundActive(): boolean {
     return this.phase === 'active';
+  }
+
+  /** True while this round still has germs left to send in. Patients only commit violations then (see PatientDirector). */
+  get spawning(): boolean {
+    return this.phase === 'active' && this.queue.length > 0;
   }
 
   get isBossRound(): boolean {
