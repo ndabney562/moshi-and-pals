@@ -18,6 +18,8 @@ export interface BossHost {
   damagePlayer(amount: number): void;
   /** Whether Eugene is somewhere she can drag him to the exit from (the waiting room). */
   canMeet(): boolean;
+  /** What she yells (whoever's on shift). */
+  readonly surname?: string;
 }
 
 type Mode = 'chase' | 'meetingWindup' | 'meeting' | 'tantrumWindup';
@@ -183,7 +185,7 @@ export class DiamondBrain {
 
   private say(line: string, ms: number = this.cfg.speechMs): void {
     if (!this.bubble.scene) return; // replaced by a newer boss before a delayed line came due
-    this.bubble.say(line, this.germ, this.germ.def.radius + 18, ms);
+    this.bubble.say(line.replace('{SURNAME}', this.host.surname ?? 'MOSHKOVICH'), this.germ, this.germ.def.radius + 18, ms);
     this.nextChatterAt = this.host.scene.time.now + ms + Phaser.Math.Between(...this.cfg.chatterMs);
   }
 

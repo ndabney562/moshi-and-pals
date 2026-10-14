@@ -5,7 +5,7 @@
  */
 export const DIAMOND_LINES = {
   arrive: [
-    'MOSHKOVICH! My office. Now.',
+    '{SURNAME}! My office. Now.',
     'Who approved all this overtime?!',
   ],
   chatter: [

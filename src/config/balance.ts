@@ -227,4 +227,8 @@ export const BALANCE = {
   },
   /** Break-time snacks from the waiting-room vending machine: three random choices, each once, a few per run. */
   vending: { maxPerRun: 3, choices: 3 },
+  /** DR. KAYA's signature: a sprint that bowls over every germ in his lane (he can't be hurt mid-sprint). */
+  codeBlue: { cooldownMs: 9000, distance: 320, ms: 230, guardMs: 250, width: 90, damage: 30, knockback: 650, stunMs: 700 },
+  /** PA LUCIEN's signature: a sterile zone where he stands; germs inside are slowed and take damage. */
+  cleanField: { cooldownMs: 20000, ms: 6000, radius: 180, slow: 0.4, dps: 22 },
 };

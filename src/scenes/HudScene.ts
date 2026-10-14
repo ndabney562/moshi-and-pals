@@ -152,7 +152,8 @@ export class HudScene extends Phaser.Scene {
     for (let i = 0; i < CONTROLS.maxThreatArrows; i++) {
       this.arrows.push(this.add.image(0, 0, 'threat-arrow').setVisible(false).setDepth(-0.5));
     }
-    this.health = new Bar(this, 240, 22, 0x4cd964, 'EUGENE');
+    const who = (this.scene.get('Game') as GameScene).character;
+    this.health = new Bar(this, 240, 22, 0x4cd964, who.short);
     this.powerRows.length = 0;
     for (let i = 0; i < 4; i++) {
       this.powerRows.push({
@@ -203,7 +204,7 @@ export class HudScene extends Phaser.Scene {
       inputState.refillRequested = true;
     });
 
-    this.purgeButton = new HudButton(this, CONTROLS.buttons.purgeRadius, 'SINUS\nPURGE', 0xc8ff6b, () => {
+    this.purgeButton = new HudButton(this, CONTROLS.buttons.purgeRadius, who.button, 0xc8ff6b, () => {
       inputState.purgeRequested = true;
     });
     // SWAP appears once a crate has given Eugene a second tool
@@ -427,7 +428,8 @@ export class HudScene extends Phaser.Scene {
       refill: this.refillButton, purge: this.purgeButton, interact: this.interactButton,
     }[h.near];
     const { width } = this.scale;
-    this.hintText.setText(`${h.text}  ${h.near === 'moveStick' ? '↓' : h.near === 'interact' ? '↘' : '↓'}`);
+    const move = (this.scene.get('Game') as GameScene).character.button.replace('\n', ' ');
+    this.hintText.setText(`${h.id === 'purge' ? `SURROUNDED? ${move}!` : h.text}  ${h.near === 'moveStick' ? '↓' : h.near === 'interact' ? '↘' : '↓'}`);
     const half = this.hintText.width / 2 + 12;
     this.hintText.setPosition(Phaser.Math.Clamp(anchor.x, half, width - half), Math.max(this.safe.top + 150, anchor.y - 120));
   }
@@ -525,7 +527,7 @@ export class HudScene extends Phaser.Scene {
   }
 
   private showHealth(p: HealthPayload): void {
-    this.health.setValue(p.hp, p.maxHp, `EUGENE ${Math.ceil(p.hp)}`);
+    this.health.setValue(p.hp, p.maxHp, `${(this.scene.get('Game') as GameScene).character.short} ${Math.ceil(p.hp)}`);
     const low = p.hp / p.maxHp < BALANCE.player.lowHealth;
     this.health.setColor(low ? 0xff5a5a : p.hp / p.maxHp < 0.6 ? 0xffc145 : 0x4cd964);
     if (low && p.hp > 0 && !this.lowHealthPulse) {

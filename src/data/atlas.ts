@@ -16,7 +16,7 @@ export const ATLAS: { id: string; note: string }[] = [
   { id: 'healer', note: 'A petri dish that believes in its colony. Keeps everyone nearby alive. Treat first.' },
   { id: 'speck', note: 'One of eight. Individually harmless. Collectively a lawsuit.' },
   { id: 'moldSpot', note: 'Fungus. Grows where nobody looks. Fears bleach and nothing else.' },
-  { id: 'spore', note: "Mold's flying children. This is why Eugene wears the mask." },
+  { id: 'spore', note: "Mold's flying children. This is why everyone wears the mask." },
   { id: 'writeUp', note: 'A pink slip with teeth. Filed in triplicate, delivered at speed.' },
   { id: 'diamond', note: 'Practice Manager. Leads with policy. Most vulnerable during her own meetings.' },
   { id: 'patientZero', note: 'Nine hours in the waiting room. Contagious, impatient, and finally being seen.' },

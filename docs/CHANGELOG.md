@@ -1,5 +1,13 @@
 # Changelog
 
+## v0.16.0: Milestone 16, the Pals
+- **Three playable doctors.** Pick who's on shift on the title screen (bottom right). Everyone uses the same tools; what changes is a small passive and the move on the big green button.
+  - **Dr. Moshkovich:** SINUS PURGE, the honk that blasts germs away.
+  - **Dr. Kaya:** CODE BLUE, a flat-out sprint where he's headed. He can't be hurt mid-sprint, and every germ in his lane is bowled aside and stunned. Recharges in 9 s. Passive: 8% faster.
+  - **PA Lucien:** CLEAN FIELD, a sterile zone where he stands for 6 s. Germs inside slow to 40% and take steady damage. Recharges in 20 s. Passive: +20 health.
+- Each has their own top-down look: Kaya in a black cap, sunglasses and beard; Lucien in glasses, mustache and goatee, with a shirt and tie under the coat. The health bar, the hints, the Discharge Summary and Diamond's yelling all use whoever is on shift.
+- The Menthol Lozenge now speeds up any signature move.
+
 ## v0.15.0: Milestone 15, residency
 - **CME Credits.** Every shift earns Continuing Medical Education credits: 1 per two rounds reached, 3 per new achievement and 2 per boss defeated. The Discharge Summary shows what you earned.
 - **The Residency Board** (🎓 on the title screen) spends them. It sells options, not raw power:
