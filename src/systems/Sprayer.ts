@@ -1,6 +1,6 @@
 import Phaser from 'phaser';
 import { BALANCE } from '../config/balance';
-import type { EquipmentDef } from '../data/equipment';
+import type { EquipmentDef, ToolTier } from '../data/equipment';
 import { events, GameEvents } from '../core/events';
 import type { Droplet } from '../entities/Droplet';
 
@@ -23,9 +23,15 @@ export class Sprayer {
   /** This refill already got the spill penalty. */
   private spilled = false;
 
-  constructor(readonly def: EquipmentDef, private readonly droplets: Phaser.Physics.Arcade.Group) {
-    this.ammo = def.capacity;
-    this.reserve = def.reserve;
+  /** Compounding Station upgrades bought for this tool (0 = generic). */
+  tier = 0;
+  /** The tool's current numbers (its base definition plus any upgrades). */
+  def: EquipmentDef;
+
+  constructor(private readonly base: EquipmentDef, private readonly droplets: Phaser.Physics.Arcade.Group) {
+    this.def = base;
+    this.ammo = base.capacity;
+    this.reserve = base.reserve;
   }
 
   get refilling(): boolean {
@@ -66,6 +72,24 @@ export class Sprayer {
     this.spilled = false;
     this.emitChanged(time);
     return true;
+  }
+
+  /** The next upgrade for this tool, if there is one. */
+  get nextTier(): ToolTier | undefined {
+    return this.base.tiers?.[this.tier];
+  }
+
+  /** Applies the next Compounding Station upgrade. Supply keeps the same fraction of the (maybe bigger) tank. */
+  upgrade(time: number): ToolTier | undefined {
+    const next = this.nextTier;
+    if (!next) return undefined;
+    const old = this.def;
+    this.tier++;
+    this.def = { ...old, ...next.mods };
+    this.ammo = Math.min(this.def.capacity, (this.ammo / old.capacity) * this.def.capacity);
+    if (old.reserve > 0) this.reserve = Math.min(this.def.reserve, (this.reserve / old.reserve) * this.def.reserve);
+    this.emitChanged(time);
+    return next;
   }
 
   /** 0..1 through the current refill, or -1 when not refilling. */
@@ -136,7 +160,7 @@ export class Sprayer {
       capacity: this.def.capacity,
       refillProgress: this.refillProgress(time),
       reserve: this.reserve,
-      name: this.def.name,
+      name: this.tier > 0 ? `${this.def.name} ${'I'.repeat(this.tier + 1)}` : this.def.name,
       unit: this.def.unit,
       selfCharging: !!this.def.rechargePerSecond,
       slots: this.slots,

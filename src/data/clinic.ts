@@ -167,6 +167,7 @@ const FURNITURE: Obstacle[] = [
   ob('counter', 'g', [520, 780, 560, 1000]), ob('counter', 'g', [628, 782, 825, 832]), ob('counter', 'g', [880, 785, 940, 990]),
   ob('counter', 'g', [638, 940, 810, 985]), ob('counter', 'g', [530, 1062, 780, 1106]), ob('counter', 'g', [880, 1000, 920, 1075]),
   ob('supplyCart', 'g', [735, 1010, 770, 1030], { label: 'SUPPLIES' }),
+  ob('compounder', 'g', [585, 1005, 640, 1040], { label: 'COMPOUNDING' }),
   ob('crate', 'g', [600, 880, 624, 900]),
   // X-ray: the machine, a lead partition and the controls
   ob('xray', 'g', [860, 1340, 1000, 1420], { label: 'X-RAY' }),

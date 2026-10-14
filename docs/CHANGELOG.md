@@ -1,5 +1,17 @@
 # Changelog
 
+## v0.9.0 (in progress): Milestone 9, grow and learn
+- **Compounding Station** in the Lab (⚗️ UPGRADES): hold USE to upgrade the tool in your hands. Two upgrades per tool, $300 then $700, and each changes how it plays:
+  - Squirt Bottle: **Pressure Nozzle** (40% farther), then **Industrial Trigger** (faster, pierces a germ, bigger bottle)
+  - Lysol Fogger: **Atomizer** (much wider cloud), then **Double Tank** (twice the tank, harder hits)
+  - Bleach Super Soaker: **High-Pressure Hose** (harder, shoves farther), then **Splash Zone** (twin streams)
+  - UV Wand: **Wide Lens** (through 6 germs), then **Overclocked** (charges twice as fast, burns hotter)
+  - Peroxide Foamer: **Extra Fizz** (slows to a crawl), then **Foam Party** (a wide wall of foam)
+  The tool name gets a II or III.
+- **Exam tables:** walk up to any exam table and tap USE to lie down: +50 health for $40. Each table works once per round, so the exam rooms are worth opening now.
+- Only the floor you're on is drawn (the other floor is hidden), roughly halving the map's drawing work.
+- The FPS counter and build label only show with `?debug`; the build label is at the bottom of the pause menu.
+
 ## v0.8.0: Milestone 8, the real clinic
 - **MoshiLand now follows the real clinic's floor plan** (Noah's photos of the posted plans; the photos aren't in the repo). Two floors:
   - **Ground floor:** you start in the waiting room (lounges, two blocks of seats, the big sofa, benches) with reception and its supply cart. Buy the **HALLWAYS** gate ($250) to open the loop around the lab, which reaches **Exam Rooms 1–7** ($150–200 each), the **Supply Closet** (supply cart), **Bathrooms 1 and 2** ($100), the **Lab** ($500, supply cart and crate), **X-Ray** ($600), and the **Egress Stairs** ($200). The **Manager's Office** ($150) opens off reception. Germs come in through the front doors, the side door, the staff door, the egress and the elevator.

@@ -50,3 +50,5 @@ Values live in `src/config/balance.ts` and `src/config/controls.ts`.
 | Perfect Pour | sweet spot 45-65% of the refill; +20% damage for 4 s; miss = +0.5 s once | `BALANCE.pour` |
 | Spore Pod | 50 HP, 70 px/s, 18 contact, $15 | Front 120° ×0.25, back 120° ×1.5, turns 70°/s; Purge flips 2 s; from r6, 2-5 alive |
 | Sneezer | 24 HP, 110 px/s, 8 contact, $10 | Keeps 260 ± 60 px; 0.7 s wind-up; glob 10 dmg, 300 px/s, 420 px; puddle 52 px, 2.5 s, Eugene ×0.55; from r4, 2-4 alive |
+| Compounding Station | tier II $300, tier III $700, per tool | `tiers` in `src/data/equipment.ts` |
+| Exam table rest | $40 for +50 HP, once per table per round | `BALANCE.economy.restCost/restHeal` |

@@ -9,6 +9,7 @@ import { events, GameEvents, type RoomPayload, type RoundPayload, type RunResult
 import { inputState } from '../core/inputState';
 import { settings } from '../core/settings';
 import { recordRun } from '../core/save';
+import { newRunStats, type RunStats } from '../core/runStats';
 import { initSfx, sfx } from '../core/sfx';
 import { CRATE_POOL, EQUIPMENT, STARTING_EQUIPMENT } from '../data/equipment';
 import { GERMS } from '../data/germs';
@@ -37,8 +38,21 @@ interface LockedDoor {
   label: Phaser.GameObjects.Text;
 }
 
-/** What the USE button would act on right now. */
-type Interactable = { kind: 'cart'; o: Obstacle } | { kind: 'door'; door: LockedDoor } | { kind: 'crate'; o: Obstacle };
+/**
+ * Something Eugene can USE: a supply cart, a locked door, a crate, the Compounding Station, an exam table.
+ * Every station is one of these; adding a new kind of station means adding one entry in buildStations().
+ */
+interface Station {
+  /** Its footprint (USE works within BALANCE.economy.interactRange of its edge). */
+  o: Obstacle;
+  /** The room it stands in: usable only once that room is open (so nothing is used through a wall). */
+  roomId?: string;
+  /** What USE shows right now. `cost` 0 with `blocked` = shown but can't be used (maxed out, used up). */
+  info(): { verb: string; cost: number; note?: string; hold?: boolean; blocked?: boolean };
+  use(time: number): void;
+  /** No longer there (a door that was bought open). */
+  gone?(): boolean;
+}
 
 /** How far (x, y) is from the edge of a rectangle; 0 inside it. */
 const rectDistance = (o: Obstacle, x: number, y: number): number =>
@@ -51,6 +65,10 @@ export class GameScene extends Phaser.Scene {
   /** No stairs again until then (so Eugene doesn't bounce straight back). */
   private stairsReadyAt = 0;
   private currentFloor?: FloorArea;
+  /** Static map drawings per floor; only Eugene's floor is drawn (the other is hidden). */
+  private floorStatic = new Map<string, Phaser.GameObjects.GameObject[]>();
+  /** One Graphics per floor and depth, so a floor's art can be hidden in one go. */
+  private floorGraphics = new Map<string, Phaser.GameObjects.Graphics>();
   private solids!: Phaser.Physics.Arcade.StaticGroup;
   /** Rooms bought open so far this run (starts with the waiting room). */
   private unlocked = new Set<string>();
@@ -58,7 +76,12 @@ export class GameScene extends Phaser.Scene {
   /** Dark overlay on each locked room, faded out when it opens. */
   private fog = new Map<string, Phaser.GameObjects.GameObject[]>();
   private currentRoom?: RoomArea;
-  private interactTarget?: Interactable;
+  private interactTarget?: Station;
+  private stations: Station[] = [];
+  /** This run's statistics (Discharge Summary, records). */
+  private runStats: RunStats = newRunStats(0);
+  /** Exam tables already rested on, and the round they were used in. */
+  private restedAt = new Map<Obstacle, number>();
   private germs!: Phaser.Physics.Arcade.Group;
   private droplets!: Phaser.Physics.Arcade.Group;
   /** Sneezer mucus globs in flight, and the puddles they leave. */
@@ -134,15 +157,19 @@ export class GameScene extends Phaser.Scene {
     this.physics.world.setBounds(0, 0, room.width, room.height);
     this.add.tileSprite(0, 0, room.width, room.height, 'floor').setOrigin(0);
 
+    // Everything drawn from here to the end of the map is static scenery, sorted by floor afterwards
+    this.floorGraphics = new Map();
+    const firstStatic = this.children.list.length;
     this.drawFloors();
     const solids = (this.solids = this.physics.add.staticGroup());
-    const art = this.add.graphics().setDepth(5);
     for (const o of room.obstacles) {
       const zone = this.add.zone(o.x + o.w / 2, o.y + o.h / 2, o.w, o.h);
       solids.add(zone);
       if (o.opens) this.lockedDoors.push(this.drawLockedDoor(o, zone));
-      else this.drawObstacle(art, o);
+      else this.drawObstacle(this.floorArt(o.x + o.w / 2, o.y + o.h / 2, 5), o);
     }
+    this.sortStaticByFloor(firstStatic);
+    this.restedAt = new Map();
 
     this.fx = new Fx(this);
     this.flow = new FlowField(room.width, room.height, this.blockingObstacles());
@@ -163,6 +190,8 @@ export class GameScene extends Phaser.Scene {
       fireGlob: (g, angle) => this.fireGlob(g, angle),
     };
     this.loadout = [new Sprayer(EQUIPMENT[STARTING_EQUIPMENT], this.droplets)];
+    this.stations = this.buildStations();
+    this.runStats = newRunStats(this.time.now);
     this.slot = 0;
     this.waves = new WaveDirector(this.time.now, DEBUG.startRound);
     this.patients = new PatientDirector({
@@ -629,6 +658,7 @@ export class GameScene extends Phaser.Scene {
     }
     if (f === this.currentFloor) return;
     this.currentFloor = f;
+    this.showFloor(f.id);
     cam.setBounds(f.x, f.y, f.w, f.h);
     if (snap) cam.centerOn(this.player.x, this.player.y);
   }
@@ -692,36 +722,75 @@ export class GameScene extends Phaser.Scene {
     }
   }
 
-  /** Shows the USE button while Eugene stands at a supply cart or a locked door. */
+  /** Every station in the clinic. */
+  private buildStations(): Station[] {
+    const eco = BALANCE.economy;
+    const list: Station[] = [];
+    for (const o of this.carts) list.push({ o, info: () => ({ verb: 'RESTOCK', cost: eco.restockCost }), use: (t) => this.restock(t) });
+    for (const door of this.lockedDoors) {
+      list.push({
+        o: door.o, info: () => ({ verb: 'OPEN', cost: door.o.cost ?? 0 }), use: () => this.buyDoor(door),
+        gone: () => !!door.o.opens && this.unlocked.has(door.o.opens),
+      });
+    }
+    for (const o of this.crates) {
+      list.push({
+        o, use: (t) => this.openCrate(o, t),
+        info: () => {
+          // A crate replaces the crate tool you're carrying; say so (and it's a press-and-hold)
+          const replaces = this.loadout[1]?.def.name;
+          return { verb: 'CRATE', cost: eco.crateCost, note: replaces ? `Replaces your ${replaces}` : '', hold: !!replaces };
+        },
+      });
+    }
+    for (const o of this.room.obstacles.filter((ob) => ob.kind === 'compounder')) {
+      list.push({
+        o, use: (t) => this.compound(t),
+        info: () => {
+          const next = this.sprayer.nextTier;
+          if (!next) return { verb: 'MAXED', cost: 0, note: `${this.sprayer.def.name}: Prescription Strength`, blocked: true };
+          return { verb: 'UPGRADE', cost: next.cost, note: `${next.name}: ${next.blurb}` };
+        },
+      });
+    }
+    for (const o of this.room.obstacles.filter((ob) => ob.kind === 'examTable')) {
+      list.push({
+        o, use: () => this.rest(o),
+        info: () => this.restedAt.get(o) === this.waves.round
+          ? { verb: 'RESTED', cost: 0, note: 'Fresh paper next round', blocked: true }
+          : { verb: 'REST', cost: eco.restCost, note: `Lie down: +${eco.restHeal} health` },
+      });
+    }
+    // Everything but doors belongs to the room it stands in
+    for (const st of list) {
+      if (st.gone) continue;
+      const cx = st.o.x + st.o.w / 2, cy = st.o.y + st.o.h / 2;
+      st.roomId = this.room.rooms.find((r) => cx >= r.x && cx < r.x + r.w && cy >= r.y && cy < r.y + r.h)?.id;
+    }
+    return list;
+  }
+
+  /** Shows the USE button while Eugene stands at a station (cart, door, crate, Compounding Station, exam table). */
   private updateInteract(): void {
     const { x, y } = this.player;
-    let target: Interactable | undefined;
+    let target: Station | undefined;
     let best = BALANCE.economy.interactRange;
     if (!this.player.dead) {
-      for (const o of this.carts) {
-        const d = rectDistance(o, x, y);
-        if (d < best) { best = d; target = { kind: 'cart', o }; }
-      }
-      for (const door of this.lockedDoors) {
-        const d = rectDistance(door.o, x, y);
-        if (d < best) { best = d; target = { kind: 'door', door }; }
-      }
-      for (const o of this.crates) {
-        const d = rectDistance(o, x, y);
-        if (d < best) { best = d; target = { kind: 'crate', o }; }
+      for (const st of this.stations) {
+        if (st.gone?.() || (st.roomId && !this.unlocked.has(st.roomId))) continue;
+        const d = rectDistance(st.o, x, y);
+        if (d < best) { best = d; target = st; }
       }
     }
     this.interactTarget = target;
     const eco = BALANCE.economy;
-    const cost = !target ? 0 : target.kind === 'cart' ? eco.restockCost : target.kind === 'crate' ? eco.crateCost : target.door.o.cost ?? 0;
-    const verb = !target ? '' : target.kind === 'cart' ? 'RESTOCK' : target.kind === 'crate' ? 'CRATE' : 'OPEN';
-    const label = target ? `${verb}\n$${cost}` : '';
-    // A crate replaces the crate tool you're carrying; say so, and make it a press-and-hold
-    const replaces = target?.kind === 'crate' && this.loadout[1] ? this.loadout[1].def.name : '';
+    const info = target?.info();
+    const cost = info?.cost ?? 0;
+    const label = info ? (info.blocked ? info.verb : `${info.verb}\n$${cost}`) : '';
     const station: StationPayload = {
-      near: !!target, label, affordable: this.copays >= cost,
-      hold: !!target && (cost >= eco.holdToBuyFrom || !!replaces),
-      note: replaces ? `Replaces your ${replaces}` : '',
+      near: !!info, label, affordable: !!info && !info.blocked && this.copays >= cost,
+      hold: !!info && !info.blocked && (cost >= eco.holdToBuyFrom || !!info.hold),
+      note: info?.note ?? '',
     };
     const s = this.station;
     if (station.near !== s.near || station.label !== s.label || station.affordable !== s.affordable || station.hold !== s.hold || station.note !== s.note) {
@@ -732,10 +801,50 @@ export class GameScene extends Phaser.Scene {
 
   private interact(time: number): void {
     const t = this.interactTarget;
-    if (!t) return;
-    if (t.kind === 'cart') this.restock(time);
-    else if (t.kind === 'crate') this.openCrate(t.o, time);
-    else this.buyDoor(t.door);
+    if (!t || t.gone?.()) return;
+    if (t.info().blocked) {
+      sfx.denied();
+      return;
+    }
+    t.use(time);
+  }
+
+  /** Not enough Copays: buzz and say how many. Returns true if Eugene can afford `cost`. */
+  private canAfford(cost: number): boolean {
+    if (this.copays >= cost) return true;
+    sfx.denied();
+    this.fx.number(this.player.x, this.player.y - 60, `NEED $${cost} COPAYS`, '#ffb3b3', 22);
+    return false;
+  }
+
+  /** COMPOUNDING STATION: upgrades the tool in Eugene's hands to its next tier. */
+  private compound(time: number): void {
+    const next = this.sprayer.nextTier;
+    if (!next || !this.canAfford(next.cost)) return;
+    this.addCopays(-next.cost);
+    this.sprayer.upgrade(time);
+    sfx.spotless();
+    this.cameras.main.shake(140, 0.005);
+    this.fx.number(this.player.x, this.player.y - 70, `${next.name.toUpperCase()}!`, '#ffe66d', 28);
+    this.fx.number(this.player.x, this.player.y - 40, next.blurb, '#e8fff9', 18);
+    this.runStats.upgrades++;
+  }
+
+  /** EXAM TABLE: lie down for a moment and get patched up. Once per table per round. */
+  private rest(o: Obstacle): void {
+    const eco = BALANCE.economy;
+    if (this.player.hp >= this.player.maxHp) {
+      this.fx.number(this.player.x, this.player.y - 60, 'YOU ARE PERFECTLY HEALTHY', '#e8fff9', 20);
+      return;
+    }
+    if (!this.canAfford(eco.restCost)) return;
+    this.addCopays(-eco.restCost);
+    this.restedAt.set(o, this.waves.round);
+    const healed = this.player.heal(eco.restHeal);
+    this.runStats.rests++;
+    sfx.refill();
+    this.fx.number(this.player.x, this.player.y - 64, `+${Math.round(healed)} HEALTH  -$${eco.restCost}`, '#7fffd4', 22);
+    events.emit(GameEvents.PlayerHealthChanged, { hp: this.player.hp, maxHp: this.player.maxHp });
   }
 
   private restock(time: number): void {
@@ -744,11 +853,7 @@ export class GameScene extends Phaser.Scene {
       this.fx.number(this.player.x, this.player.y - 60, 'JUG ALREADY FULL', '#e8fff9', 20);
       return;
     }
-    if (this.copays < cost) {
-      sfx.denied();
-      this.fx.number(this.player.x, this.player.y - 60, `NEED $${cost} COPAYS`, '#ffb3b3', 22);
-      return;
-    }
+    if (!this.canAfford(cost)) return;
     this.addCopays(-cost);
     this.sprayer.restock(time);
     sfx.cash();
@@ -772,11 +877,7 @@ export class GameScene extends Phaser.Scene {
   /** SUPPLY CRATE: pay Copays, get a random tool you don't already have. It replaces your old crate tool. */
   private openCrate(o: Obstacle, time: number): void {
     const cost = BALANCE.economy.crateCost;
-    if (this.copays < cost) {
-      sfx.denied();
-      this.fx.number(this.player.x, this.player.y - 60, `NEED $${cost} COPAYS`, '#ffb3b3', 22);
-      return;
-    }
+    if (!this.canAfford(cost)) return;
     const held = this.loadout.map((t) => t.def.id);
     const options = CRATE_POOL.filter((id) => !held.includes(id));
     const def = EQUIPMENT[Phaser.Utils.Array.GetRandom(options.length ? options : CRATE_POOL)];
@@ -797,11 +898,7 @@ export class GameScene extends Phaser.Scene {
 
   private buyDoor(door: LockedDoor): void {
     const cost = door.o.cost ?? 0;
-    if (this.copays < cost) {
-      sfx.denied();
-      this.fx.number(this.player.x, this.player.y - 60, `NEED $${cost} COPAYS`, '#ffb3b3', 22);
-      return;
-    }
+    if (!this.canAfford(cost)) return;
     this.addCopays(-cost);
     this.unlockRoom(door.o.opens!, cost);
   }
@@ -965,12 +1062,53 @@ export class GameScene extends Phaser.Scene {
   }
 
   /** Room floor tints, painted signs, and a dark veil over each room still locked. */
+  /** The shared Graphics for static art on the floor containing (x, y), at `depth`. */
+  private floorArt(x: number, y: number, depth: number): Phaser.GameObjects.Graphics {
+    const key = `${this.floorOf(x, y)?.id ?? 'all'}@${depth}`;
+    let gfx = this.floorGraphics.get(key);
+    if (!gfx) {
+      gfx = this.add.graphics().setDepth(depth);
+      this.floorGraphics.set(key, gfx);
+    }
+    return gfx;
+  }
+
+  /** Files every static map object created since `from` under its floor (for hiding the floor Eugene isn't on). */
+  private sortStaticByFloor(from: number): void {
+    this.floorStatic = new Map();
+    const byGfx = new Map<Phaser.GameObjects.GameObject, string>();
+    for (const [key, gfx] of this.floorGraphics) byGfx.set(gfx, key.split('@')[0]);
+    for (const obj of this.children.list.slice(from)) {
+      if (obj.type === 'Zone') continue;
+      let id = byGfx.get(obj);
+      if (!id) {
+        const o = obj as unknown as { x: number; y: number; width?: number; height?: number; originX?: number };
+        const cx = o.x + (o.originX === 0 ? (o.width ?? 0) / 2 : 0);
+        id = this.floorOf(cx, o.y)?.id ?? 'all';
+      }
+      if (id === 'all') continue;
+      const list = this.floorStatic.get(id) ?? [];
+      list.push(obj);
+      this.floorStatic.set(id, list);
+    }
+  }
+
+  /** Shows only the static scenery of `floorId`. */
+  private showFloor(floorId: string): void {
+    for (const [id, list] of this.floorStatic) {
+      for (const obj of list) {
+        if (!obj.scene) continue; // destroyed (an opened door, a lifted fog)
+        (obj as unknown as Phaser.GameObjects.Components.Visible).setVisible(id === floorId);
+      }
+    }
+  }
+
   private drawFloors(): void {
-    const floor = this.add.graphics().setDepth(0.5);
     const signed = new Set<string>();
     // Staircases: painted steps on the floor
     for (const s of this.room.stairs ?? []) {
       for (const z of [s.a.zone, s.b.zone]) {
+        const floor = this.floorArt(z.x + z.w / 2, z.y + z.h / 2, 0.5);
         floor.fillStyle(0x8d6e63, 0.5).fillRect(z.x, z.y, z.w, z.h);
         const across = z.w > z.h;
         for (let i = 1; i < 8; i++) {
@@ -981,7 +1119,7 @@ export class GameScene extends Phaser.Scene {
       }
     }
     for (const r of [...this.room.rooms].sort((a, b) => b.w * b.h - a.w * a.h)) {
-      if (r.tint !== undefined) floor.fillStyle(r.tint, 0.16).fillRect(r.x, r.y, r.w, r.h);
+      if (r.tint !== undefined) this.floorArt(r.x + r.w / 2, r.y + r.h / 2, 0.5).fillStyle(r.tint, 0.16).fillRect(r.x, r.y, r.w, r.h);
       if (this.unlocked.has(r.id)) continue;
       const cheapest = Math.min(...this.room.obstacles.filter((o) => o.opens === r.id).map((o) => o.cost ?? 0));
       const veil = this.add.rectangle(r.x, r.y, r.w, r.h, 0x0d1b1e, 0.55).setOrigin(0).setDepth(9);
@@ -1123,6 +1261,20 @@ export class GameScene extends Phaser.Scene {
           if (tall) g.lineBetween(o.x + 4, o.y + (o.h * i) / 3, o.x + o.w - 4, o.y + (o.h * i) / 3);
           else g.lineBetween(o.x + (o.w * i) / 3, o.y + 4, o.x + (o.w * i) / 3, o.y + o.h - 4);
         }
+        break;
+      }
+      case 'compounder': {
+        // A pharmacy compounding hood: glass front, mortar and pestle, a row of amber bottles
+        g.fillStyle(0x5e35b1).fillRoundedRect(o.x, o.y, o.w, o.h, 8);
+        g.fillStyle(0xd1c4e9, 0.85).fillRect(o.x + 8, o.y + 8, o.w - 16, o.h * 0.45);
+        for (let i = 0; i < 4; i++) g.fillStyle(0xffa000).fillRect(o.x + 14 + i * ((o.w - 28) / 4), o.y + 14, 10, 18);
+        g.fillStyle(0xeeeeee).fillCircle(o.x + o.w / 2, o.y + o.h * 0.75, 12);
+        g.lineStyle(4, 0x8d6e63).lineBetween(o.x + o.w / 2, o.y + o.h * 0.75, o.x + o.w / 2 + 18, o.y + o.h * 0.58);
+        g.lineStyle(3, outline).strokeRoundedRect(o.x, o.y, o.w, o.h, 8);
+        this.add.text(o.x + o.w / 2, o.y - 6, '⚗️ UPGRADES', {
+          fontFamily: 'system-ui, sans-serif', fontSize: '14px', fontStyle: 'bold', color: '#ffffff',
+          backgroundColor: '#0d2b2ecc', padding: { x: 6, y: 2 },
+        }).setOrigin(0.5, 1).setDepth(6);
         break;
       }
       case 'railing': {

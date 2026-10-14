@@ -78,6 +78,14 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     return true;
   }
 
+  /** Heals right away (exam table rest). Returns how much was restored. */
+  heal(amount: number): number {
+    if (this.dead) return 0;
+    const before = this.hp;
+    this.hp = Math.min(this.maxHp, this.hp + amount);
+    return this.hp - before;
+  }
+
   /** Slowly heals after a while without being hit. Returns true if health changed. */
   regen(time: number, dtMs: number): boolean {
     if (this.dead || this.hp >= this.maxHp || time - this.lastHurtAt < BALANCE.player.regenDelayMs) return false;

@@ -129,6 +129,9 @@ export const BALANCE = {
     crateCost: 250,
     /** SPOTLESS: finish a round without getting hurt for this many Copays × the round number. */
     spotlessPerRound: 10,
+    /** EXAM TABLE: lie down for a moment. Heals this much for this many Copays, once per table per round. */
+    restCost: 40,
+    restHeal: 50,
     /** Purchases this expensive need a press-and-hold on USE (CONTROLS.holdToBuyMs). */
     holdToBuyFrom: 100,
   },

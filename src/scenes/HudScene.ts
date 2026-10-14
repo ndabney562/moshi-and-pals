@@ -52,6 +52,7 @@ export class HudScene extends Phaser.Scene {
   private pauseDim!: Phaser.GameObjects.Rectangle;
   private pauseTitle!: Phaser.GameObjects.Text;
   private pauseTip!: Phaser.GameObjects.Text;
+  private pauseVersion!: Phaser.GameObjects.Text;
   private resumeItem!: Phaser.GameObjects.Text;
   private soundToggle!: Phaser.GameObjects.Text;
   private autoRefillToggle!: Phaser.GameObjects.Text;
@@ -104,7 +105,7 @@ export class HudScene extends Phaser.Scene {
       .setOrigin(0.5, 0).setShadow(0, 2, '#000', 4);
     // Small labels get a dark backing so they stay readable over the light floor
     const tag = { ...style, backgroundColor: '#0d2b2ecc', padding: { x: 8, y: 4 } };
-    this.versionText = this.add.text(0, 0, __APP_VERSION__, { ...tag, fontSize: '14px' }).setOrigin(1, 0);
+    this.versionText = this.add.text(0, 0, __APP_VERSION__, { ...tag, fontSize: '14px' }).setOrigin(1, 0).setVisible(DEBUG.overlay);
     if (DISPLAY.showFps || DEBUG.overlay) this.fpsText = this.add.text(0, 0, '', { ...tag, fontSize: '16px', align: 'right' });
     this.scoreText = this.add.text(0, 0, 'SCORE 0', { ...tag, fontSize: '18px', fontStyle: 'bold' }).setOrigin(0.5, 0);
     this.roomText = this.add.text(0, 0, '', { ...tag, fontSize: '15px' }).setOrigin(1, 0);
@@ -389,7 +390,7 @@ export class HudScene extends Phaser.Scene {
     const infoX = width - this.safe.right - m - pr * 2 - 14;
     this.versionText.setPosition(infoX, this.safe.top + m);
     this.fpsText?.setOrigin(1, 0).setPosition(infoX, this.safe.top + m + 30);
-    this.roomText.setPosition(infoX, this.safe.top + m + (DEBUG.overlay ? 110 : this.fpsText ? 64 : 34));
+    this.roomText.setPosition(infoX, this.safe.top + m + (DEBUG.overlay ? 110 : 8));
     this.layoutPauseMenu(width, height);
     const right = width - this.safe.right - m;
     const refillY = rightY - CONTROLS.buttons.sprayRadius - CONTROLS.buttons.refillRadius - 24;
@@ -447,6 +448,7 @@ export class HudScene extends Phaser.Scene {
     this.pauseDim = this.add.rectangle(0, 0, 10, 10, 0x0d2b2e, 0.82).setOrigin(0).setInteractive();
     this.pauseTitle = this.add.text(0, 0, 'PAUSED', { ...style, fontSize: '64px', fontStyle: '900' }).setOrigin(0.5).setShadow(0, 5, '#000', 8);
     this.pauseTip = this.add.text(0, 0, '', { ...style, fontSize: '20px', fontStyle: 'italic', color: COLORS.uiAccent, align: 'center', wordWrap: { width: 700 } }).setOrigin(0.5);
+    this.pauseVersion = this.add.text(0, 0, `Moshi and Pals ${__APP_VERSION__}`, { ...style, fontSize: '14px', color: '#9fb8b3' }).setOrigin(0.5, 1);
     const item = (label: string, onTap: () => void) => this.add.text(0, 0, label, {
       ...style, fontSize: '26px', fontStyle: 'bold', backgroundColor: '#1f4f55', padding: { x: 22, y: 12 }, align: 'center', fixedWidth: 340,
     }).setOrigin(0.5).setInteractive({ useHandCursor: true }).on('pointerup', onTap);
@@ -483,7 +485,7 @@ export class HudScene extends Phaser.Scene {
       this.scene.start('Title');
     });
     items.push(this.quitItem);
-    this.pauseMenu = this.add.container(0, 0, [this.pauseDim, this.pauseTitle, this.pauseTip, ...items]).setDepth(100).setVisible(false);
+    this.pauseMenu = this.add.container(0, 0, [this.pauseDim, this.pauseTitle, this.pauseTip, this.pauseVersion, ...items]).setDepth(100).setVisible(false);
     this.refreshSoundToggle();
     this.refreshAutoAimToggle();
     this.refreshAutoRefillToggle();
@@ -498,6 +500,7 @@ export class HudScene extends Phaser.Scene {
     this.pauseDim.input?.hitArea.setSize(width, height);
     this.pauseTitle.setPosition(width / 2, height * 0.15);
     this.pauseTip.setPosition(width / 2, height * 0.15 + 58);
+    this.pauseVersion.setPosition(width / 2, height - this.safe.bottom - 10);
     const items = [this.resumeItem, this.soundToggle, this.autoRefillToggle, this.autoAimToggle, this.quitItem].filter((t): t is Phaser.GameObjects.Text => !!t);
     const top = height * 0.33;
     const gap = Math.min(72, (height * 0.62) / items.length);
