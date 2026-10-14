@@ -217,7 +217,7 @@ try {
   check(restocked.reserve === 480 && restocked.copays === 60, `supply cart restocks the jug for Copays (${JSON.stringify(restocked)})`);
 
   // Rooms: walk up to the bathroom door and buy it open with Copays.
-  // Eugene is made untouchable for the station/control checks below (slow browsers take a while); restored before patients.
+  // Eugene is made untouchable from here (slow browsers take a while) until the death test.
   await page.evaluate(() => {
     const scene = window.game.scene.getScene('Game');
     scene.player.hp = scene.player.maxHp;
@@ -334,7 +334,6 @@ try {
     return scene.copays - before;
   });
   check(spotless === 40, `a spotless round 4 pays $40 (${spotless})`);
-  await page.evaluate(() => { window.game.scene.getScene('Game').player.invulnerableUntil = 0; });
 
   // Patients: one walks in, commits a health code violation, and gets sprayed into compliance
   const violation = await page.evaluate(() => {
@@ -455,6 +454,8 @@ try {
   });
   check(!beaten.active && beaten.said.length > 0, `Diamond can be defeated ("${beaten.said}")`);
 
+  // Eugene was untouchable since the station checks (slow CI browsers); make him mortal again for the death test
+  await page.evaluate(() => { window.game.scene.getScene('Game').player.invulnerableUntil = 0; });
   // Death: drop Eugene to 1 HP and put a germ on top of him
   await page.evaluate(() => {
     const scene = window.game.scene.getScene('Game');
