@@ -13,7 +13,7 @@ export class BootScene extends Phaser.Scene {
   }
 
   preload(): void {
-    // Noah's title art (MoshiMonsters poster)
+    // Noah's title art (Moshi and Pals poster)
     this.load.image('title-art', 'assets/title.jpg');
   }
 

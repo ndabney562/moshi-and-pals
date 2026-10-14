@@ -10,7 +10,7 @@
 - M3 playtest: round 1 too easy, regen too forgiving, boss needed more personality. Idea: patients who wander in as obstacles, and Eugene hates health code violations (built in v0.3.3).
 - Asked for rooms unlocked with currency earned from germ kills, and supply crates that unlock new tools. Named the currency **Copays**. Approved the tool ideas (Lysol Fogger, Bleach Super Soaker, UV Wand) and said to add more.
 - Named the clinic **MoshiLand** and asked for the rooms of a standard urgent care, including X-ray (built in v0.5.0).
-- Made the MoshiMonsters title poster (title screen since v0.5.2).
+- Made the title poster (title screen since v0.5.2; redone as Moshi and Pals in v0.5.6).
 
 ## Requested now
 - Playtest MoshiLand (v0.5.0): are the door prices right, and is any room too cramped or too empty?
