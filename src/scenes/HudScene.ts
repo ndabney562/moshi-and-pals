@@ -4,7 +4,7 @@ import { DISPLAY } from '../config/display';
 import { COLORS } from '../config/theme';
 import { BALANCE } from '../config/balance';
 import {
-  events, GameEvents, type BossPayload, type EquipmentChangedPayload, type HealthPayload, type RoomPayload, type RoundPayload, type StationPayload,
+  events, GameEvents, type BossPayload, type EquipmentChangedPayload, type HealthPayload, type RoomPayload, type RoundPayload, type StationPayload, type StreakPayload,
 } from '../core/events';
 import { DEBUG } from '../core/debug';
 import { inputState } from '../core/inputState';
@@ -64,6 +64,12 @@ export class HudScene extends Phaser.Scene {
   private toolText!: Phaser.GameObjects.Text;
   private roomText!: Phaser.GameObjects.Text;
   private copaysText!: Phaser.GameObjects.Text;
+  /** SANITATION STREAK ×N under the Copays, with a bar for the time left to keep it going. */
+  private streakText!: Phaser.GameObjects.Text;
+  private streakBar!: Phaser.GameObjects.Graphics;
+  /** Round that just finished without a scratch (the CLEARED banner becomes SPOTLESS). */
+  private spotless?: { round: number; copays: number };
+  private streakShown = 0;
   private bottle!: BottleMeter;
   private mouseDown = false;
   private spaceDown = false;
@@ -99,6 +105,9 @@ export class HudScene extends Phaser.Scene {
     this.scoreText = this.add.text(0, 0, 'SCORE 0', { ...tag, fontSize: '18px', fontStyle: 'bold' }).setOrigin(0.5, 0);
     this.roomText = this.add.text(0, 0, '', { ...tag, fontSize: '15px' }).setOrigin(1, 0);
     this.copaysText = this.add.text(0, 0, '$0 COPAYS', { ...tag, fontSize: '17px', fontStyle: 'bold', color: COLORS.uiAccent }).setOrigin(0.5, 0);
+    this.streakText = this.add.text(0, 0, '', { ...style, fontSize: '18px', fontStyle: '900', color: '#ffe66d' })
+      .setOrigin(0.5, 0).setShadow(0, 2, '#000', 4).setVisible(false);
+    this.streakBar = this.add.graphics();
     this.health = new Bar(this, 240, 22, 0x4cd964, 'EUGENE');
     this.bossBar = new Bar(this, 420, 20, 0xd64545, '').setVisible(false);
 
@@ -147,7 +156,15 @@ export class HudScene extends Phaser.Scene {
       this.roundText.setText(`ROUND ${p.round}`);
       this.showBanner(`ROUND ${p.round}`, p.title);
     };
-    const onCleared = (p: { round: number }) => this.showBanner('CLEARED!', `Round ${p.round} sanitized. Refill while you can.`, 1800);
+    const onCleared = (p: { round: number }) => {
+      if (this.spotless?.round === p.round) {
+        this.showBanner('SPOTLESS!', `Round ${p.round} without a scratch. +$${this.spotless.copays} Copays`, 2000);
+      } else {
+        this.showBanner('CLEARED!', `Round ${p.round} sanitized. Refill while you can.`, 1800);
+      }
+    };
+    const onSpotless = (p: { round: number; copays: number }) => { this.spotless = p; };
+    const onStreak = (p: StreakPayload) => this.showStreak(p);
     const onBoss = (p: BossPayload) => {
       this.bossBar.setVisible(true).setValue(p.hp, p.maxHp, p.name.toUpperCase());
     };
@@ -175,6 +192,8 @@ export class HudScene extends Phaser.Scene {
       [GameEvents.ScoreChanged, onScore],
       [GameEvents.RoundStarted, onRound],
       [GameEvents.RoundCompleted, onCleared],
+      [GameEvents.SpotlessRound, onSpotless],
+      [GameEvents.StreakChanged, onStreak],
       [GameEvents.BossSpawned, onBoss],
       [GameEvents.BossHealth, onBossHealth],
       [GameEvents.BossDefeated, onBossDown],
@@ -224,6 +243,27 @@ export class HudScene extends Phaser.Scene {
 
     // Ask the game for current health/score/bottle so the HUD starts correct
     (this.scene.get('Game') as GameScene).broadcastState();
+  }
+
+  /** Shows the streak from 2 kills up; pops a little each time it grows. */
+  private showStreak(p: StreakPayload): void {
+    const show = p.count >= 2;
+    const grew = show && p.count > this.streakShown;
+    this.streakShown = p.count;
+    this.streakText.setVisible(show).setText(show ? `STREAK ×${p.count}  ·  $×${p.mult.toFixed(2)}` : '');
+    this.streakText.setColor(p.mult > 1 ? '#ffe66d' : COLORS.uiText);
+    if (grew) {
+      this.tweens.killTweensOf(this.streakText);
+      this.streakText.setScale(1.25);
+      this.tweens.add({ targets: this.streakText, scale: 1, duration: 140, ease: 'Quad.out' });
+    }
+    const g = this.streakBar.clear();
+    if (!show) return;
+    const w = 150;
+    const x = this.streakText.x - w / 2;
+    const y = this.streakText.y + 26;
+    g.fillStyle(0x000000, 0.45).fillRoundedRect(x - 2, y - 2, w + 4, 8, 3);
+    g.fillStyle(p.mult > 1 ? 0xffe66d : 0x7fffd4).fillRoundedRect(x, y, Math.max(2, w * p.left), 4, 2);
   }
 
   private showHealth(p: HealthPayload): void {
@@ -279,7 +319,8 @@ export class HudScene extends Phaser.Scene {
     this.roundText.setPosition(width / 2, this.safe.top + m - 4);
     this.scoreText.setPosition(width / 2, this.safe.top + m + 30);
     this.copaysText.setPosition(width / 2, this.safe.top + m + 62);
-    this.bossBar.setPosition(width / 2 - this.bossBar.barWidth / 2, this.safe.top + m + 100);
+    this.streakText.setPosition(width / 2, this.safe.top + m + 94);
+    this.bossBar.setPosition(width / 2 - this.bossBar.barWidth / 2, this.safe.top + m + 132);
     this.banner.setPosition(width / 2, height * 0.38);
     this.bannerSub.setPosition(width / 2, height * 0.38 + 60);
     this.health.setPosition(this.safe.left + m, this.safe.top + m);

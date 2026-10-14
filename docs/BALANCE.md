@@ -44,3 +44,6 @@ Values live in `src/config/balance.ts` and `src/config/controls.ts`.
 | Patients | from round 2, max 1 + round/3 (cap 3), every 9-16 s | None in boss rounds; leave after 30 s |
 | Violations | every 5-8.5 s while the round still has germs to spawn | 1-2 germs each (Basic or Sprinter); skipped at the max-alive cap |
 | Cleaning a patient | 8 droplet hits | +25 points |
+| STAT! crit | 10% of droplet hits, ×2 damage | `BALANCE.feedback.critChance/critMult` |
+| Sanitation Streak | kills within 2 s chain; +5% Copays per 5 kills, max 1.5× | `BALANCE.streak` |
+| Spotless round | $10 × round number if Eugene isn't hurt | `BALANCE.economy.spotlessPerRound` |

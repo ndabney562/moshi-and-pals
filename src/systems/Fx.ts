@@ -3,6 +3,8 @@ import { BALANCE } from '../config/balance';
 
 const MAX_STAINS = 24;
 const MAX_NUMBERS = 16;
+const MAX_POPS = 16;
+const MAX_HALOS = 12;
 
 /**
  * Visual feedback: mist at the nozzle, splashes, germ splats, floor stains,
@@ -17,6 +19,10 @@ export class Fx {
   private nextStain = 0;
   private readonly numbers: Phaser.GameObjects.Text[] = [];
   private nextNumber = 0;
+  private readonly pops: Phaser.GameObjects.Image[] = [];
+  private nextPop = 0;
+  private readonly halos: Phaser.GameObjects.Image[] = [];
+  private nextHalo = 0;
 
   constructor(private readonly scene: Phaser.Scene) {
     // The visible spray: a cone of soft puffs that drift out and spread like an aerosol
@@ -36,6 +42,8 @@ export class Fx {
     for (let i = 0; i < MAX_STAINS; i++) {
       this.stains.push(scene.add.image(0, 0, 'blob').setDepth(1).setVisible(false));
     }
+    for (let i = 0; i < MAX_POPS; i++) this.pops.push(scene.add.image(0, 0, 'blob').setDepth(12).setVisible(false));
+    for (let i = 0; i < MAX_HALOS; i++) this.halos.push(scene.add.image(0, 0, 'halo').setDepth(21).setVisible(false));
     for (let i = 0; i < MAX_NUMBERS; i++) {
       this.numbers.push(scene.add.text(0, 0, '', {
         fontFamily: 'system-ui, sans-serif', fontSize: '20px', fontStyle: 'bold', color: '#ffffff',
@@ -73,6 +81,26 @@ export class Fx {
       .setScale(Phaser.Math.FloatBetween(2.6, 3.4), Phaser.Math.FloatBetween(2.0, 2.8)).setRotation(Math.random() * Math.PI);
     this.scene.tweens.add({ targets: stain, alpha: 0, delay: 2500, duration: 2000, onComplete: () => stain.setVisible(false) });
     this.scene.cameras.main.shake(BALANCE.feedback.killShakeMs, BALANCE.feedback.killShakeIntensity);
+  }
+
+  /** A disinfected germ swells and bursts (a ghost of its sprite), and its little halo floats away. */
+  germPop(texture: string, x: number, y: number, rotation: number, scale: number, haloY: number, big = false): void {
+    const pop = this.pops[this.nextPop];
+    this.nextPop = (this.nextPop + 1) % MAX_POPS;
+    this.scene.tweens.killTweensOf(pop);
+    pop.setTexture(texture).setPosition(x, y).setRotation(rotation).setScale(scale).setAlpha(0.9).setVisible(true).setTintFill(0xffffff);
+    this.scene.tweens.add({
+      targets: pop, scale: scale * (big ? 1.8 : 1.45), alpha: 0, duration: big ? 320 : 140, ease: 'Quad.out',
+      onComplete: () => pop.setVisible(false),
+    });
+    const halo = this.halos[this.nextHalo];
+    this.nextHalo = (this.nextHalo + 1) % MAX_HALOS;
+    this.scene.tweens.killTweensOf(halo);
+    halo.setPosition(x, haloY).setAlpha(1).setScale(big ? 2.2 : 1).setVisible(true);
+    this.scene.tweens.add({
+      targets: halo, y: haloY - (big ? 110 : 55), alpha: 0, duration: big ? 1400 : 700, ease: 'Sine.out',
+      onComplete: () => halo.setVisible(false),
+    });
   }
 
   number(x: number, y: number, text: string, color = '#ffffff', size = 20): void {

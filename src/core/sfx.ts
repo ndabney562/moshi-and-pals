@@ -13,6 +13,8 @@ let ctx: AudioContext | null = null;
 let master: GainNode | null = null;
 let noise: AudioBuffer | null = null;
 const lastPlayed: Record<string, number> = {};
+/** Pitch multiplier for the sound being played right now (randomized a little each time so repeats don't drone). */
+let pitch = 1;
 
 /** Hook into Phaser's audio context. Call once after the first tap. */
 export function initSfx(scene: Phaser.Scene): void {
@@ -21,7 +23,14 @@ export function initSfx(scene: Phaser.Scene): void {
   ctx = manager.context;
   master = ctx.createGain();
   master.gain.value = settings.sound ? VOLUME : 0;
-  master.connect(ctx.destination);
+  // Gentle limiter so a room full of pops doesn't clip
+  const limiter = ctx.createDynamicsCompressor();
+  limiter.threshold.value = -14;
+  limiter.knee.value = 10;
+  limiter.ratio.value = 6;
+  limiter.attack.value = 0.003;
+  limiter.release.value = 0.15;
+  master.connect(limiter).connect(ctx.destination);
   noise = ctx.createBuffer(1, ctx.sampleRate, ctx.sampleRate);
   const data = noise.getChannelData(0);
   for (let i = 0; i < data.length; i++) data[i] = Math.random() * 2 - 1;
@@ -40,13 +49,18 @@ export function resumeAudio(): void {
   if (ctx && ctx.state !== 'running') ctx.resume().catch(() => {});
 }
 
-/** Plays a voice unless the same one played within `minGapMs` (avoids audio pile-ups). */
-function play(name: string, minGapMs: number, voice: Voice): void {
+/**
+ * Plays a voice unless the same one played within `minGapMs` (avoids audio pile-ups).
+ * Each play is detuned up to ±8% so repeated sounds stay lively; `pitchMul` shifts it further (streaks).
+ */
+function play(name: string, minGapMs: number, voice: Voice, pitchMul = 1): void {
   if (!ctx || !master || ctx.state !== 'running') return;
   const now = performance.now();
   if (now - (lastPlayed[name] ?? 0) < minGapMs) return;
   lastPlayed[name] = now;
+  pitch = pitchMul * (0.92 + Math.random() * 0.16);
   voice(ctx, master, ctx.currentTime);
+  pitch = 1;
 }
 
 function noiseBurst(c: AudioContext, out: AudioNode, t: number, dur: number, freq: number, gain: number, type: BiquadFilterType): void {
@@ -66,8 +80,8 @@ function noiseBurst(c: AudioContext, out: AudioNode, t: number, dur: number, fre
 function tone(c: AudioContext, out: AudioNode, t: number, dur: number, from: number, to: number, gain: number, type: OscillatorType = 'sine'): void {
   const osc = c.createOscillator();
   osc.type = type;
-  osc.frequency.setValueAtTime(from, t);
-  osc.frequency.exponentialRampToValueAtTime(to, t + dur);
+  osc.frequency.setValueAtTime(from * pitch, t);
+  osc.frequency.exponentialRampToValueAtTime(to * pitch, t + dur);
   const env = c.createGain();
   env.gain.setValueAtTime(gain, t);
   env.gain.exponentialRampToValueAtTime(0.001, t + dur);
@@ -81,10 +95,16 @@ export const sfx = {
   spray: () => play('spray', 70, (c, o, t) => noiseBurst(c, o, t, 0.07, 3500, 0.25, 'highpass')),
   /** Droplet hits a germ: tiny wet tick */
   hit: () => play('hit', 40, (c, o, t) => tone(c, o, t, 0.05, 900, 500, 0.12, 'triangle')),
-  /** Germ disinfected: squelchy pop */
-  pop: () => play('pop', 30, (c, o, t) => {
+  /** Germ disinfected: squelchy pop. Climbs 2 semitones every 5 kills of a streak (up to an octave). */
+  pop: (streak = 0) => play('pop', 30, (c, o, t) => {
     tone(c, o, t, 0.16, 520, 90, 0.35);
     noiseBurst(c, o, t, 0.12, 900, 0.25, 'lowpass');
+  }, Math.pow(2, (Math.min(streak, 30) / 5) * (2 / 12))),
+  /** STAT! critical hit: a bright little tick */
+  crit: () => play('crit', 80, (c, o, t) => tone(c, o, t, 0.07, 1800, 1400, 0.12, 'square')),
+  /** Spotless round: sparkly arpeggio */
+  spotless: () => play('spotless', 1000, (c, o, t) => {
+    [880, 1109, 1319, 1760].forEach((f, i) => tone(c, o, t + i * 0.07, 0.2, f, f, 0.12, 'triangle'));
   }),
   /** Trigger pulled with an empty bottle */
   empty: () => play('empty', 300, (c, o, t) => tone(c, o, t, 0.08, 180, 160, 0.2, 'square')),

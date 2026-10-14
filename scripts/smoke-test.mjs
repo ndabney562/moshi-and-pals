@@ -312,6 +312,27 @@ try {
     return { throughWall: f.lineClear(500, 1000, 760, 1000), open: f.lineClear(1300, 1800, 1700, 1800) };
   });
   check(!los.throughWall && los.open, `line of sight is blocked by walls, clear across open floor (${JSON.stringify(los)})`);
+  // Sanitation Streak: quick kills build a Copay multiplier; each kill pops and drops a halo
+  const streak = await page.evaluate(() => {
+    const scene = window.game.scene.getScene('Game');
+    for (let i = 0; i < 6; i++) scene.spawnGerm('basic', { hpMult: 1, speedMult: 1 });
+    const before = scene.copays;
+    const targets = scene.germs.getChildren().filter((g) => g.active && !g.def.boss).slice(0, 6);
+    for (const g of targets) scene.damageGerm(g, 9999, 0, 0);
+    return { streak: scene.streak, mult: scene.streakMult, gained: scene.copays - before, halos: scene.fx.halos.filter((h) => h.visible).length };
+  });
+  check(streak.streak >= 6 && streak.mult > 1 && streak.halos > 0, `kills build a Sanitation Streak with a Copay multiplier and halos (${JSON.stringify(streak)})`);
+  await page.waitForFunction(() => window.game.scene.getScene('Hud').streakText.text.startsWith('STREAK'), null, { timeout: 15000 }).catch(() => {});
+  check((await page.evaluate(() => window.game.scene.getScene('Hud').streakText.text)).startsWith('STREAK ×'), 'HUD shows the streak');
+  // Spotless: a round without getting hurt pays $10 x the round
+  const spotless = await page.evaluate(() => {
+    const scene = window.game.scene.getScene('Game');
+    scene.hurtThisRound = false;
+    const before = scene.copays;
+    scene.onRoundCompleted(4);
+    return scene.copays - before;
+  });
+  check(spotless === 40, `a spotless round 4 pays $40 (${spotless})`);
   await page.evaluate(() => { window.game.scene.getScene('Game').player.invulnerableUntil = 0; });
 
   // Patients: one walks in, commits a health code violation, and gets sprayed into compliance
