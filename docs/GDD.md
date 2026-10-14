@@ -8,7 +8,7 @@
 
 **Core loop:** move → aim → disinfect → dodge → earn → upgrade → unlock → survive → repeat.
 
-## Current state (v0.14.0)
+## Current state (v0.15.0)
 - Title screen, tap to start.
 - MoshiLand Urgent Care, laid out after the real clinic (M8): ground floor and upstairs joined by two staircases. You start in the waiting room; the hallway loop, 15 exam rooms, bathrooms, supply closets, lab, X-ray, manager's office, egress stairs and the whole upstairs are bought open with Copays.
 - Eugene (placeholder art) moves with left stick, faces right-stick aim.
@@ -23,7 +23,7 @@
 - **Supply Requisition** at the crates in most rooms: $250 Copays, then pick 1 of 2 tools (Lysol Fogger, Bleach Super Soaker, UV Wand, Peroxide Foamer, Disinfectant Wipes, Gel Launcher, Defib Paddles). Appeal for a new pair at a rising price; 5% of claims are denied (joke item, half back). Carry the bottle plus one crate tool; SWAP switches.
 - Score per kill; death shows the Discharge Summary (cause of death, records, achievements this shift); restart in one tap.
 - Room traps: bathroom hand dryers (free blast), the Lab autoclave (steam cycle), the X-ray (pulse through walls). A waiting-room vending machine sells run-long snacks (3 per run).
-- 25 achievements (pause menu list, toasts). Works offline from the Home Screen; the title screen offers updates.
+- 25 achievements (pause menu list, toasts). Shifts earn CME Credits for the Residency Board (Specialties with trade-offs, a Starter Kit tool) and fill the Microbiology Atlas. Works offline from the Home Screen; the title screen offers updates.
 
 ## Controls
 - Left thumb: floating move stick. Right thumb: hold SPRAY (Noah preferred a button to a hold-to-aim stick). Auto-aim picks the nearest germ; Noah asked for it to be optional, so an AUTO-AIM ON/OFF toggle (saved per device) sits in the pause menu (II, top right).

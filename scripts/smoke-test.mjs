@@ -962,8 +962,9 @@ try {
   });
   // Down to 30% health, below the tantrum threshold
   await hitBoss(await page.evaluate(() => { const b = window.game.scene.getScene('Game').boss.germ; return b.hp - b.maxHp * 0.3; }));
-  await page.waitForFunction(() => window.game.scene.getScene('Game').boss.mode === 'tantrumWindup', null, { timeout: 15000 });
-  await page.waitForFunction(() => window.game.scene.getScene('Game').boss.nextTantrumAt > 0, null, { timeout: 15000 });
+  // (slow test browsers: allow plenty of game time for the wind-up and the stomp)
+  await page.waitForFunction(() => window.game.scene.getScene('Game').boss.mode === 'tantrumWindup', null, { timeout: 30000 });
+  await page.waitForFunction(() => window.game.scene.getScene('Game').boss.nextTantrumAt > 0, null, { timeout: 30000 });
   check(true, 'Policy Tantrum winds up and stomps at low health');
 
   // Finish her off
@@ -1043,6 +1044,12 @@ try {
   check(saved2.bestScore > 0, `high score saved (${JSON.stringify(saved2)})`);
   const achLine = await page.evaluate(() => window.game.scene.getScene('GameOver').children.list.find((c) => typeof c.text === 'string' && c.text.includes('NEW:'))?.text ?? '');
   check(achLine.includes('Hand Hygiene Compliant'), `the Discharge Summary names the achievements unlocked this shift ("${achLine}")`);
+  const cme = await page.evaluate(() => ({
+    saved: JSON.parse(localStorage.getItem('moshi.progress.v1') ?? '{}'),
+    line: window.game.scene.getScene('GameOver').children.list.find((c) => typeof c.text === 'string' && c.text.includes('CME CREDITS'))?.text ?? '',
+  }));
+  check(cme.saved.credits > 0 && cme.line.includes(`+${cme.saved.credits} CME`) && (cme.saved.kills?.basic ?? 0) > 0,
+    `the shift earns CME Credits and banks lifetime kills for the Atlas (${cme.line}, ${cme.saved.credits} CME, ${cme.saved.kills?.basic} basics)`);
 
   // Restart from the game over screen
   const again = await page.evaluate(() => {
@@ -1087,6 +1094,49 @@ try {
   check(firstHint.includes('MOVE'), `a new player is shown how to move ("${firstHint}")`);
   const learned = await page.evaluate(() => JSON.parse(localStorage.getItem('moshi.settings.v1') ?? '{}').learned ?? {});
   check(learned.move && learned.spray, `moving and spraying are learned, so those hints are gone (${JSON.stringify(learned)})`);
+
+  // RESIDENCY BOARD (M15): from the title, buy a Specialty with CME, read the Atlas, and start a shift with it
+  await page.evaluate(() => {
+    const sc = window.game.scene;
+    sc.stop('Hud');
+    sc.stop('Game');
+    sc.start('Title');
+  });
+  await page.waitForFunction(() => window.game.scene.isActive('Title'), null, { timeout: 10000 });
+  const tapText = async (scene, match) => {
+    const at = await page.evaluate(([key, m]) => {
+      const t = window.game.scene.getScene(key).children.list.concat(...window.game.scene.getScene(key).children.list.filter((c) => c.list).map((c) => c.list))
+        .find((c) => typeof c.text === 'string' && c.text.includes(m) && c.visible);
+      if (!t) return null;
+      const b = t.getBounds();
+      const canvas = window.game.canvas.getBoundingClientRect();
+      const k = canvas.width / window.game.scale.width;
+      return { x: canvas.left + b.centerX * k, y: canvas.top + b.centerY * k };
+    }, [scene, match]);
+    if (at) await page.touchscreen.tap(at.x, at.y);
+    return !!at;
+  };
+  await tapText('Title', 'RESIDENCY BOARD');
+  await page.waitForFunction(() => window.game.scene.isActive('Board'), null, { timeout: 10000 }).catch(() => {});
+  const boughtSpec = await tapText('Board', 'BUY');
+  await page.waitForTimeout(300);
+  const board = await page.evaluate(() => {
+    const saved = JSON.parse(localStorage.getItem('moshi.progress.v1') ?? '{}');
+    return { open: window.game.scene.isActive('Board'), owned: saved.owned, specialty: saved.specialty, credits: saved.credits };
+  });
+  check(board.open && boughtSpec && board.specialty === 'infectiousDisease' && board.owned.includes('infectiousDisease'),
+    `the Residency Board sells a Specialty for CME and puts it on shift (${JSON.stringify(board)})`);
+  await tapText('Board', 'MICROBIOLOGY ATLAS');
+  await page.waitForTimeout(300);
+  const atlas = await page.evaluate(() => window.game.scene.getScene('Board').children.list.filter((c) => c.list).flatMap((c) => c.list).map((c) => c.text).filter((t) => typeof t === 'string' && t.includes('Basic Germ')));
+  check(atlas.length === 1 && /disinfected/.test(atlas[0]), `the Microbiology Atlas lists germs with lifetime kills (${atlas[0]})`);
+  await tapText('Board', 'BACK');
+  await page.waitForFunction(() => window.game.scene.isActive('Title'), null, { timeout: 10000 }).catch(() => {});
+  await page.touchscreen.tap(426, 120);
+  await page.waitForFunction(() => window.game.scene.isActive('Hud'), null, { timeout: 15000 }).catch(() => {});
+  const onShift = await page.evaluate(() => window.game.scene.getScene('Game').player.maxHp);
+  check(onShift === 90, `a shift under Infectious Disease starts with its catch: 90 max health (${onShift})`);
+
   check(errors.length === 0, `no console errors${errors.length ? ': ' + errors.join(' | ') : ''}`);
 
   // Debug/stress switches: ?round=6&copays=999&god&fps=30

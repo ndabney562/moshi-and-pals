@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import { COLORS } from '../config/theme';
 import { applyUpdate, offerFilesToCache, onUpdateReady } from '../core/updates';
+import { progress } from '../core/progress';
 
 /**
  * "Tap to start" screen. The tap also matters technically: iPhones only allow
@@ -14,6 +15,7 @@ export class TitleScene extends Phaser.Scene {
   private art!: Phaser.GameObjects.Image;
   private tap!: Phaser.GameObjects.Text;
   private updatePill!: Phaser.GameObjects.Text;
+  private boardButton!: Phaser.GameObjects.Text;
 
   private started = false;
 
@@ -43,6 +45,16 @@ export class TitleScene extends Phaser.Scene {
     navigator.serviceWorker?.ready.then(() => offerFilesToCache()).catch(() => undefined);
     this.events.once('shutdown', off);
 
+    // The Residency Board: spend CME Credits between shifts
+    this.boardButton = this.add.text(0, 0, `🎓 RESIDENCY BOARD · ${progress().credits} CME`, {
+      fontFamily: font, fontSize: '20px', fontStyle: '900', color: COLORS.uiText, backgroundColor: '#0d2b2ecc', padding: { x: 14, y: 9 },
+    }).setOrigin(0, 1).setInteractive({ useHandCursor: true });
+    this.boardButton.on('pointerdown', (_p: Phaser.Input.Pointer, _x: number, _y: number, e: Phaser.Types.Input.EventData) => {
+      e.stopPropagation();
+      this.started = true;
+      this.scene.start('Board');
+    });
+
     // The screen's shape can change after load (rotating, Safari's toolbars), so re-fit whenever it does
     this.layout();
     this.scale.on('resize', this.layout, this);
@@ -50,7 +62,7 @@ export class TitleScene extends Phaser.Scene {
 
     this.input.keyboard?.once('keydown', () => this.begin());
     this.input.on('pointerdown', (_p: Phaser.Input.Pointer, over: Phaser.GameObjects.GameObject[]) => {
-      if (!over.includes(this.updatePill)) this.begin();
+      if (!over.includes(this.updatePill) && !over.includes(this.boardButton)) this.begin();
     });
   }
 
@@ -63,6 +75,7 @@ export class TitleScene extends Phaser.Scene {
     art.setScale(k).setPosition(width / 2, -Math.min(spare, 30) * k);
     this.tap.setPosition(width / 2, height * 0.92);
     this.updatePill.setPosition(width / 2, height * 0.8);
+    this.boardButton.setPosition(24, height - 20);
   }
 
   private begin(): void {

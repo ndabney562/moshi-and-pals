@@ -32,6 +32,8 @@ export class Sprayer {
 
   /** Pour time multiplier (Cold Brew). */
   refillScale = 1;
+  /** Jug size multiplier (Pharmacology). Set it with `scaleJug`. */
+  private jugScale = 1;
 
   /** Compounding Station upgrades bought for this tool (0 = generic). */
   tier = 0;
@@ -106,7 +108,7 @@ export class Sprayer {
     this.tier++;
     this.def = { ...old, ...next.mods };
     this.ammo = Math.min(this.def.capacity, (this.ammo / old.capacity) * this.def.capacity);
-    if (old.reserve > 0) this.reserve = Math.min(this.def.reserve, (this.reserve / old.reserve) * this.def.reserve);
+    if (old.reserve > 0) this.reserve = Math.min(this.maxReserve, (this.reserve / (old.reserve * this.jugScale)) * this.maxReserve);
     this.emitChanged(time);
     return next;
   }
@@ -150,13 +152,24 @@ export class Sprayer {
     events.emit(GameEvents.EquipmentRefilled);
   }
 
+  /** How much the jug holds. */
+  get maxReserve(): number {
+    return Math.round(this.def.reserve * this.jugScale);
+  }
+
+  /** Makes the jug bigger or smaller (and fills it to match). */
+  scaleJug(k: number): void {
+    this.jugScale = k;
+    this.reserve = this.maxReserve;
+  }
+
   get reserveFull(): boolean {
-    return this.reserve >= this.def.reserve;
+    return this.reserve >= this.maxReserve;
   }
 
   /** Tops the jug back up (bought at the supply cart). */
   restock(time: number): void {
-    this.reserve = this.def.reserve;
+    this.reserve = this.maxReserve;
     this.emitChanged(time);
   }
 

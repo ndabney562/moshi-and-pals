@@ -55,6 +55,9 @@ Every tool is a `Sprayer` (supply, fire rate, refills, upgrades). Spray tools la
 ## Room traps and vending (M14)
 Traps are stations (`GameScene.buildStations`, kinds `handDryer`, `autoclave`, `xrayControls` in `data/clinic.ts`): `useTrap` pays, starts the recharge (`trapReadyAt`), and fires the effect; numbers in `BALANCE.traps`. The vending machine (`vending`) uses the same `ui/ChoicePanel` as the Supply Requisition (`VendingOpened` / `VendingPicked` / `VendingDone` / `VendingCancelled`); snacks in `data/vending.ts` set run perks (`perks`, `player.maxHp`, a `snack` speed mod).
 
+## Residency (M15)
+`core/progress.ts` keeps between-run progress under its own key (credits, owned board items, the chosen Specialty and Starter Kit tool, lifetime kills per germ). `GameScene.applyResidency` applies the Specialty's `mods` at the start of a shift (max health, speed, start Copays, jug size; `hitGerm`, `sinusPurge`, `scaled` and `upgradeCost` read the rest), and `endRun` banks the shift's credits and kills. `scenes/BoardScene.ts` is the board (Specialties, Starter Kit, Atlas), opened from the title screen.
+
 ## Content as data
 - `src/config/`: tuning numbers (balance, controls, display, theme colors).
 - `src/data/`: content (rooms now; germs, equipment, waves, dialogue later).
