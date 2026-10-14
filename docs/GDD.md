@@ -23,7 +23,8 @@
 
 ## Controls
 - Left thumb: floating move stick. Right thumb: hold SPRAY (Noah preferred a button to a hold-to-aim stick). Auto-aim picks the nearest germ; Noah asked for it to be optional, so an AUTO-AIM ON/OFF toggle (saved per device) sits in the pause menu (II, top right).
-- Buttons: SPRAY, REFILL, SINUS PURGE (left of SPRAY), RESTOCK (appears at the supply cart).
+- Right half of the screen sprays (the SPRAY ring floats to the thumb); drag the spraying thumb to aim by hand. Auto-aim only targets germs Eugene can see.
+- Buttons: SPRAY, REFILL, SINUS PURGE (left of SPRAY), USE (stations; hold to buy $100+), II pause (top right).
 - Alternative scheme kept in code: twin-stick (`CONTROLS.scheme = 'twinStick'`).
 - Desktop testing: WASD/arrows to move, mouse to aim, hold mouse or Space to spray, R to refill, Q to Sinus Purge, E to restock.
 

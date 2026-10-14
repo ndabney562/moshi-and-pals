@@ -8,6 +8,10 @@
 - **Fix: sound dying for good after a call or app switch.** Any touch now wakes iOS audio back up.
 - **Fix: paused or backgrounded time no longer counts.** Before, cooldowns, refills, intermissions and Diamond's timers all ran out while the game was hidden. Game time now only moves while you're playing.
 - **Fix: same game at any frame rate.** Germ steering and turning, patient turning, Eugene's settle and shove slide, and the camera follow now scale with frame time, so Low Power Mode (30 FPS) plays like 60 FPS.
+- **Spray anywhere on the right.** Any touch on the right half of the screen (below the top HUD, not on another button) sprays, and the SPRAY ring floats to your thumb. A thumb that lands next to the button no longer does nothing.
+- **Drag to aim.** While spraying, slide your thumb about a fingertip's width and Eugene aims that way by hand; lift it and auto-aim takes over again.
+- **Auto-aim needs line of sight.** Eugene no longer turns to spray at a germ behind a wall or bench, and he sticks with his current target unless another is clearly closer (no twitching between two germs).
+- **Hold to buy.** Doors, crates and anything else from $100 up need a short press-and-hold on USE (a ring fills). Restocking stays a tap. A crate that would replace your crate tool says which one ("Replaces your UV Wand").
 
 ## v0.6.0: Milestone 6, supply crates
 - **Supply crates** (📦 with a big "?") in the waiting room, exam rooms, staff break room, lab and X-ray. Walk up and tap USE ($250 Copays) for a random new tool you don't already have.

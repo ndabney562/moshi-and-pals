@@ -28,6 +28,12 @@ export class HudScene extends Phaser.Scene {
   /** Only exists in the twin-stick scheme. */
   private aimStick?: VirtualJoystick;
   private sprayButton?: HudButton;
+  /** Where SPRAY rests; it floats to wherever a spray-zone touch lands. */
+  private readonly sprayHome = new Phaser.Math.Vector2();
+  /** A touch on the right half (not on a button) that is spraying, if any. */
+  private sprayTouchId: number | null = null;
+  /** Small warning above USE (e.g. "Replaces your UV Wand"). */
+  private interactNote!: Phaser.GameObjects.Text;
   private fpsText?: Phaser.GameObjects.Text;
   private versionText!: Phaser.GameObjects.Text;
   private roundText!: Phaser.GameObjects.Text;
@@ -123,6 +129,8 @@ export class HudScene extends Phaser.Scene {
     this.interactButton = new HudButton(this, CONTROLS.buttons.interactRadius, 'USE', 0x7fffd4, () => {
       inputState.interactRequested = true;
     }).setVisible(false);
+    this.interactNote = this.add.text(0, 0, '', { ...tag, fontSize: '13px', fontStyle: 'bold', align: 'center', color: '#ffe66d' })
+      .setOrigin(0.5, 1).setVisible(false);
 
     const onEquipment = (p: EquipmentChangedPayload) => {
       this.bottle.set(p);
@@ -150,7 +158,10 @@ export class HudScene extends Phaser.Scene {
       this.purgeButton.setProgress(ready ? -1 : p.progress).setAlpha(ready ? 1 : 0.55);
     };
     const onStation = (p: StationPayload) => {
-      this.interactButton.setVisible(p.near).setLabel(p.label).setAlpha(p.affordable ? 1 : 0.55);
+      this.interactButton.setVisible(p.near).setLabel(p.label).setAlpha(p.affordable ? 1 : 0.55)
+        .setHoldToConfirm(p.hold && p.affordable ? CONTROLS.holdToBuyMs : 0);
+      if (!p.near) this.interactButton.release();
+      this.interactNote.setText(p.near ? [p.note, p.hold && p.affordable ? 'HOLD TO BUY' : ''].filter(Boolean).join('\n') : '').setVisible(p.near);
     };
     const onRoomEntered = (p: RoomPayload) => this.roomText.setText(`📍 ${p.name.toUpperCase()}`);
     const onTool = (p: { name: string }) => this.showBanner(p.name.toUpperCase(), 'New tool! Tap SWAP to switch back to the bottle.', 2000);
@@ -262,7 +273,8 @@ export class HudScene extends Phaser.Scene {
     const rightX = Math.min(width * restRight.x, width - this.safe.right - 110);
     const rightY = height * restRight.y - this.safe.bottom;
     this.aimStick?.setHome(rightX, rightY);
-    this.sprayButton?.setPosition(rightX, rightY);
+    this.sprayHome.set(rightX, rightY);
+    if (this.sprayTouchId === null) this.sprayButton?.setPosition(rightX, rightY);
     this.drawVignette(width, height);
     this.roundText.setPosition(width / 2, this.safe.top + m - 4);
     this.scoreText.setPosition(width / 2, this.safe.top + m + 30);
@@ -290,6 +302,7 @@ export class HudScene extends Phaser.Scene {
     const purgeX = rightX - sprayRadius - purgeRadius - 22;
     this.purgeButton.setPosition(purgeX, rightY + sprayRadius - purgeRadius);
     this.interactButton.setPosition(purgeX - 10, rightY - sprayRadius - interactRadius - 10);
+    this.interactNote.setPosition(purgeX - 10, rightY - sprayRadius - interactRadius * 2 - 16);
   }
 
   /** FPS counter; with ?debug, also frame-time p95 and entity counts (text redrawn 4x a second, not every frame). */
@@ -388,6 +401,7 @@ export class HudScene extends Phaser.Scene {
     // Let go of everything, so nothing is stuck "held" when play resumes
     this.moveStick.release();
     this.aimStick?.release();
+    this.endSprayTouch();
     for (const b of [this.sprayButton, this.refillButton, this.purgeButton, this.interactButton, this.swapButton]) b?.release();
     this.mouseDown = false;
     this.spaceDown = false;
@@ -420,9 +434,29 @@ export class HudScene extends Phaser.Scene {
       this.mouseDown = true;
       return;
     }
-    // Left half of the screen moves, right half aims
-    const stick = pointer.x < this.scale.width / 2 ? this.moveStick : this.aimStick;
-    if (stick && !stick.active) stick.start(pointer);
+    // Left half of the screen moves, right half aims (twin-stick) or sprays (SPRAY-button scheme)
+    if (pointer.x < this.scale.width / 2) {
+      if (!this.moveStick.active) this.moveStick.start(pointer);
+    } else if (this.aimStick) {
+      if (!this.aimStick.active) this.aimStick.start(pointer);
+    } else if (this.sprayButton && this.sprayTouchId === null && !this.sprayButton.held && pointer.y > this.scale.height * CONTROLS.sprayZoneTop) {
+      // Anywhere on the right sprays, not just the button; the SPRAY ring floats to the thumb
+      this.sprayTouchId = pointer.id;
+      this.sprayButton.setPosition(pointer.x, pointer.y).setScale(0.92);
+    }
+  }
+
+  private endSprayTouch(): void {
+    if (this.sprayTouchId === null) return;
+    this.sprayTouchId = null;
+    this.sprayButton?.setPosition(this.sprayHome.x, this.sprayHome.y).setScale(1);
+  }
+
+  /** The finger spraying right now (on the SPRAY button or anywhere in the spray zone), if any. */
+  private sprayPointer(): Phaser.Input.Pointer | undefined {
+    const id = this.sprayTouchId ?? this.sprayButton?.holdPointer ?? null;
+    if (id === null) return undefined;
+    return this.input.manager.pointers.find((p) => p.id === id);
   }
 
   private onPointerMove(pointer: Phaser.Input.Pointer): void {
@@ -437,6 +471,7 @@ export class HudScene extends Phaser.Scene {
 
   private onPointerUp(pointer: Phaser.Input.Pointer): void {
     if (!pointer.wasTouch) this.mouseDown = false;
+    if (pointer.id === this.sprayTouchId) this.endSprayTouch();
     if (pointer.id === this.moveStick.pointerId) this.moveStick.release();
     if (this.aimStick && pointer.id === this.aimStick.pointerId) this.aimStick.release();
   }
@@ -468,8 +503,22 @@ export class HudScene extends Phaser.Scene {
       inputState.aimY = aim.y / aimLen;
       inputState.mouseActive = false;
     }
-    // Spray: SPRAY button, or the aim stick in twin-stick mode, or the mouse on desktop
-    inputState.firing = !!this.sprayButton?.held || this.spaceDown || inputState.aiming || (this.mouseDown && inputState.mouseActive);
+    // SPRAY-button scheme: drag the spraying thumb to aim by hand; lift it and auto-aim takes over again
+    const sprayer = this.sprayPointer();
+    if (sprayer && !inputState.aiming) {
+      const dx = sprayer.x - sprayer.downX;
+      const dy = sprayer.y - sprayer.downY;
+      const len = Math.hypot(dx, dy);
+      if (len >= CONTROLS.dragAimDistance) {
+        inputState.aiming = true;
+        inputState.aimX = dx / len;
+        inputState.aimY = dy / len;
+        inputState.mouseActive = false;
+      }
+    }
+    // Spray: SPRAY button or spray-zone touch, or the aim stick in twin-stick mode, or the mouse on desktop
+    inputState.firing = !!sprayer || this.spaceDown || inputState.aiming || (this.mouseDown && inputState.mouseActive);
+    this.interactButton.tick(this.time.now);
 
     this.updateFps();
   }

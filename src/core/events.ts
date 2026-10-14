@@ -49,7 +49,13 @@ export interface EquipmentChangedPayload {
   /** How many tools Eugene is carrying (SWAP shows at 2). */
   slots: number;
 }
-export interface StationPayload { near: boolean; label: string; affordable: boolean; }
+export interface StationPayload {
+  near: boolean; label: string; affordable: boolean;
+  /** Purchase needs a press-and-hold (pricey, or replaces a tool). */
+  hold: boolean;
+  /** Small warning shown above USE, e.g. which tool a crate would replace. */
+  note: string;
+}
 export interface RoomPayload { id: string; name: string; cost?: number; }
 export interface GermKilledPayload { germId: string; x: number; y: number; totalKills: number; }
 

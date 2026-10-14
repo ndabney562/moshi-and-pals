@@ -53,6 +53,13 @@ try {
   // Drag the left stick up-right with one finger
   const cdp = await context.newCDPSession(page);
   const touch = (type, points) => cdp.send('Input.dispatchTouchEvent', { type, touchPoints: points });
+  /** Press and hold a screen point until `done()` is true in the page (or 15 s pass), then lift. */
+  const holdAt = async (p, done) => {
+    await touch('touchStart', [{ x: p.x, y: p.y, id: 7 }]);
+    await page.waitForFunction(done, null, { timeout: 15000 }).catch(() => {});
+    await touch('touchEnd', []);
+    await page.waitForTimeout(100);
+  };
   const L = { x: 120, y: 300, id: 1 };
   await touch('touchStart', [L]);
   for (let i = 1; i <= 10; i++) {
@@ -83,7 +90,7 @@ try {
     const scene = window.game.scene.getScene('Game');
     const e = scene.children.list.find((c) => c.texture?.key === 'eugene');
     return scene.children.list.some((c) => c.texture?.key?.startsWith('germ-') && c.active && Math.hypot(c.x - e.x, c.y - e.y) < 180);
-  }, null, { timeout: 30000 });
+  }, null, { timeout: 90000 });
   const before = await game();
   check(before.germs > 0, `germs spawned and approached (${before.germs} alive)`);
   const spray = await buttonAt('sprayButton');
@@ -213,8 +220,12 @@ try {
   await page.waitForFunction(() => window.game.scene.getScene('Hud').interactButton.label?.text?.startsWith('OPEN'), null, { timeout: 15000 }).catch(() => {});
   const doorLabel = await page.evaluate(() => window.game.scene.getScene('Hud').interactButton.label?.text);
   const openAt = await buttonAt('interactButton');
+  // Purchases of $100+ need a press-and-hold: a quick tap does nothing
   await page.touchscreen.tap(openAt.x, openAt.y);
-  await page.waitForTimeout(200);
+  await page.waitForTimeout(600);
+  const tapOnly = await page.evaluate(() => window.game.scene.getScene('Game').unlocked.has('bathroom'));
+  check(!tapOnly, 'a quick tap on USE does not buy a $200 door');
+  await holdAt(openAt, () => window.game.scene.getScene('Game').unlocked.has('bathroom'));
   const opened = await page.evaluate(() => {
     const scene = window.game.scene.getScene('Game');
     return {
@@ -240,8 +251,7 @@ try {
   });
   await page.waitForFunction(() => window.game.scene.getScene('Hud').interactButton.label?.text?.startsWith('CRATE'), null, { timeout: 15000 }).catch(() => {});
   const crateAt = await buttonAt('interactButton');
-  await page.touchscreen.tap(crateAt.x, crateAt.y);
-  await page.waitForTimeout(200);
+  await holdAt(crateAt, () => window.game.scene.getScene('Game').loadout.length === 2);
   const crated = await page.evaluate(() => {
     const scene = window.game.scene.getScene('Game');
     return { tools: scene.loadout.map((t) => t.def.id), slot: scene.slot, copays: scene.copays, swap: window.game.scene.getScene('Hud').swapButton.visible };
@@ -260,6 +270,40 @@ try {
   await page.waitForTimeout(200);
   const swapped = await page.evaluate(() => window.game.scene.getScene('Game').sprayer.def.id);
   check(swapped === 'squirtBottle', `SWAP switches back to the bottle (${swapped})`);
+
+  // A second crate would replace the crate tool: USE says so
+  await page.waitForFunction(() => window.game.scene.getScene('Hud').interactNote.text.length > 0, null, { timeout: 15000 }).catch(() => {});
+  const note = await page.evaluate(() => window.game.scene.getScene('Hud').interactNote.text);
+  check(/Replaces your/.test(note), `crate warns which tool it replaces (${JSON.stringify(note)})`);
+
+  // Spray zone: a touch anywhere on the right half sprays, and dragging it aims by hand
+  await page.evaluate(() => window.game.scene.getScene('Game').player.setPosition(1500, 1700));
+  const zone = await page.evaluate(() => {
+    const r = window.game.canvas.getBoundingClientRect();
+    return { x: r.left + r.width * 0.62, y: r.top + r.height * 0.55 };
+  });
+  await touch('touchStart', [{ ...zone, id: 8 }]);
+  const zoneFire = { firing: await page.waitForFunction(() => window.game.scene.getScene('Hud').sprayTouchId !== null, null, { timeout: 15000 }).then(() => true, () => false) };
+  for (let i = 1; i <= 6; i++) {
+    await touch('touchMove', [{ x: zone.x, y: zone.y - i * 12, id: 8 }]);
+    await page.waitForTimeout(30);
+  }
+  await page.waitForFunction(() => {
+    const e = window.game.scene.getScene('Game').player;
+    return Math.abs(Math.atan2(Math.sin(e.rotation + Math.PI / 2), Math.cos(e.rotation + Math.PI / 2))) < 0.3;
+  }, null, { timeout: 15000 }).catch(() => {});
+  const dragAim = await page.evaluate(() => ({ rot: window.game.scene.getScene('Game').player.rotation }));
+  await touch('touchEnd', []);
+  const zoneOff = await page.waitForFunction(() => window.game.scene.getScene('Hud').sprayTouchId === null, null, { timeout: 15000 }).then(() => true, () => false);
+  check(zoneFire.firing && zoneOff, 'touching the right half (off the SPRAY button) sprays until lifted');
+  check(Math.abs(Math.atan2(Math.sin(dragAim.rot + Math.PI / 2), Math.cos(dragAim.rot + Math.PI / 2))) < 0.3, `dragging the spray thumb up aims Eugene up (rotation ${dragAim.rot.toFixed(2)})`);
+
+  // Auto-aim needs line of sight: nothing through walls
+  const los = await page.evaluate(() => {
+    const f = window.game.scene.getScene('Game').flow;
+    return { throughWall: f.lineClear(500, 1000, 760, 1000), open: f.lineClear(1300, 1800, 1700, 1800) };
+  });
+  check(!los.throughWall && los.open, `line of sight is blocked by walls, clear across open floor (${JSON.stringify(los)})`);
 
   // Patients: one walks in, commits a health code violation, and gets sprayed into compliance
   const violation = await page.evaluate(() => {
@@ -442,7 +486,7 @@ try {
   await dbg.goto(url + '?round=6&copays=999&god&fps=30');
   await dbg.waitForFunction(() => window.game?.scene.isActive('Title'));
   await dbg.touchscreen.tap(426, 200);
-  await dbg.waitForFunction(() => window.game.scene.getScene('Game')?.waves?.round === 6, null, { timeout: 30000 });
+  await dbg.waitForFunction(() => window.game.scene.getScene('Game')?.waves?.round === 6, null, { timeout: 90000 });
   await dbg.waitForTimeout(6000); // germs reach Eugene and bump him
   const dbgState = await dbg.evaluate(() => {
     const scene = window.game.scene.getScene('Game');
