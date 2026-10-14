@@ -124,6 +124,8 @@ export class HudScene extends Phaser.Scene {
   }
 
   create(): void {
+    // Fades in from black with the clinic
+    this.cameras.main.fadeIn(DISPLAY.fadeInMs, 0, 0, 0);
     // Two thumbs plus a spare finger for future buttons
     this.input.addPointer(2);
 

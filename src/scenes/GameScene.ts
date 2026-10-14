@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import { BALANCE } from '../config/balance';
 import { CONTROLS } from '../config/controls';
+import { DISPLAY } from '../config/display';
 import { COLORS } from '../config/theme';
 import { DEBUG } from '../core/debug';
 import { useGameTime } from '../core/gameClock';
@@ -356,6 +357,7 @@ export class GameScene extends Phaser.Scene {
     });
 
     this.scene.launch('Hud');
+    this.cameras.main.fadeIn(DISPLAY.fadeInMs, 0, 0, 0);
     events.emit(GameEvents.RunStarted, { roomId: room.id });
   }
 

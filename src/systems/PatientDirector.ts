@@ -1,6 +1,6 @@
 import Phaser from 'phaser';
 import { BALANCE } from '../config/balance';
-import { VIOLATIONS } from '../data/patients';
+import { CLEANED_LINES, VIOLATIONS } from '../data/patients';
 import type { RoomArea, RoomLayout } from '../data/rooms';
 import { Patient } from '../entities/Patient';
 import type { Player } from '../entities/Player';
@@ -72,7 +72,7 @@ export class PatientDirector {
     p.setTintFill(0xffffff);
     p.scene.time.delayedCall(60, () => p.clearTint());
     if (p.hits >= this.cfg.hitsToClean) {
-      p.bubble.say(Phaser.Utils.Array.GetRandom(['Okay, okay! Sorry, doc!', 'Fine! I\'ll wash my hands!', 'I get it! I\'m going!']), p, 34, 2000);
+      p.bubble.say(Phaser.Utils.Array.GetRandom(CLEANED_LINES), p, 34, 2000);
       p.setTint(0xbff7ff);
       this.sendHome(p, p.scene.time.now);
       this.host.onCleaned(p);
