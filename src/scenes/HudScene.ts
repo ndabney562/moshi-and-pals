@@ -40,12 +40,14 @@ export class HudScene extends Phaser.Scene {
   private refillButton!: HudButton;
   private purgeButton!: HudButton;
   private interactButton!: HudButton;
+  private swapButton!: HudButton;
+  private toolText!: Phaser.GameObjects.Text;
   private roomText!: Phaser.GameObjects.Text;
   private copaysText!: Phaser.GameObjects.Text;
   private bottle!: BottleMeter;
   private mouseDown = false;
   private spaceDown = false;
-  private keys!: Record<'up' | 'down' | 'left' | 'right' | 'w' | 'a' | 's' | 'd' | 'r' | 'q' | 'e', Phaser.Input.Keyboard.Key>;
+  private keys!: Record<'up' | 'down' | 'left' | 'right' | 'w' | 'a' | 's' | 'd' | 'r' | 'q' | 'e' | 'x', Phaser.Input.Keyboard.Key>;
   private safe: Insets = { top: 0, right: 0, bottom: 0, left: 0 };
 
   constructor() {
@@ -102,13 +104,22 @@ export class HudScene extends Phaser.Scene {
     this.purgeButton = new HudButton(this, CONTROLS.buttons.purgeRadius, 'SINUS\nPURGE', 0xc8ff6b, () => {
       inputState.purgeRequested = true;
     });
+    // SWAP appears once a crate has given Eugene a second tool
+    this.swapButton = new HudButton(this, CONTROLS.buttons.swapRadius, 'SWAP', 0xffe66d, () => {
+      inputState.swapRequested = true;
+    }).setVisible(false);
+    this.toolText = this.add.text(0, 0, '', { ...tag, fontSize: '14px', fontStyle: 'bold' }).setOrigin(1, 1);
+
     // USE pops up at supply carts (restock) and locked doors (buy them open)
     this.interactButton = new HudButton(this, CONTROLS.buttons.interactRadius, 'USE', 0x7fffd4, () => {
       inputState.interactRequested = true;
     }).setVisible(false);
 
     const onEquipment = (p: EquipmentChangedPayload) => {
-      this.bottle.set(p.ammo, p.capacity, p.refillProgress, p.reserve);
+      this.bottle.set(p);
+      this.toolText.setText(p.name.toUpperCase());
+      this.swapButton.setVisible(p.slots > 1);
+      this.refillButton.setVisible(!p.selfCharging);
       this.refillButton.setProgress(p.refillProgress);
       this.refillButton.setUrgent(p.refillProgress < 0 && p.ammo / p.capacity < 0.15);
     };
@@ -133,6 +144,7 @@ export class HudScene extends Phaser.Scene {
       this.interactButton.setVisible(p.near).setLabel(p.label).setAlpha(p.affordable ? 1 : 0.55);
     };
     const onRoomEntered = (p: RoomPayload) => this.roomText.setText(`📍 ${p.name.toUpperCase()}`);
+    const onTool = (p: { name: string }) => this.showBanner(p.name.toUpperCase(), 'New tool! Tap SWAP to switch back to the bottle.', 2000);
     const onRoomUnlocked = (p: RoomPayload) => this.showBanner(`${p.name.toUpperCase()} OPEN`, 'More room to run. More places for germs, too.', 1800);
     const onBossDown = () => this.time.delayedCall(600, () => this.bossBar.setVisible(false));
 
@@ -151,6 +163,7 @@ export class HudScene extends Phaser.Scene {
       [GameEvents.StationNearby, onStation],
       [GameEvents.RoomEntered, onRoomEntered],
       [GameEvents.RoomUnlocked, onRoomUnlocked],
+      [GameEvents.ToolUnlocked, onTool],
     ];
     for (const [name, fn] of listeners) events.on(name, fn);
     this.events.once('shutdown', () => {
@@ -165,11 +178,12 @@ export class HudScene extends Phaser.Scene {
 
     const kb = this.input.keyboard!;
     this.keys = kb.addKeys({
-      up: 'UP', down: 'DOWN', left: 'LEFT', right: 'RIGHT', w: 'W', a: 'A', s: 'S', d: 'D', r: 'R', q: 'Q', e: 'E',
+      up: 'UP', down: 'DOWN', left: 'LEFT', right: 'RIGHT', w: 'W', a: 'A', s: 'S', d: 'D', r: 'R', q: 'Q', e: 'E', x: 'X',
     }) as HudScene['keys'];
     this.keys.r.on('down', () => (inputState.refillRequested = true));
     this.keys.q.on('down', () => (inputState.purgeRequested = true));
     this.keys.e.on('down', () => (inputState.interactRequested = true));
+    this.keys.x.on('down', () => (inputState.swapRequested = true));
     this.input.keyboard!.addKey('SPACE').on('down', () => (this.spaceDown = true)).on('up', () => (this.spaceDown = false));
 
     this.layout();
@@ -244,6 +258,9 @@ export class HudScene extends Phaser.Scene {
     const refillY = rightY - CONTROLS.buttons.sprayRadius - CONTROLS.buttons.refillRadius - 24;
     this.refillButton.setPosition(right - CONTROLS.buttons.refillRadius, refillY);
     this.bottle.setPosition(right - CONTROLS.buttons.refillRadius * 2 - 44, refillY - 10);
+    this.toolText.setPosition(right, refillY - CONTROLS.buttons.refillRadius - 46);
+    // SWAP sits left of the bottle, above SINUS PURGE's thumb zone
+    this.swapButton.setPosition(right - CONTROLS.buttons.refillRadius * 2 - 44 - 34 - CONTROLS.buttons.swapRadius - 18, refillY);
     // Sinus Purge sits just left of SPRAY, within the same thumb's reach; USE pops up above it
     const { sprayRadius, purgeRadius, interactRadius } = CONTROLS.buttons;
     const purgeX = rightX - sprayRadius - purgeRadius - 22;

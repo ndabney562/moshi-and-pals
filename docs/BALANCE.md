@@ -19,6 +19,11 @@ Values live in `src/config/balance.ts` and `src/config/controls.ts`.
 | USE range | 80 px from a cart or door's edge | |
 | Germ spawn distance | at least 380 px from Eugene, preferably within 1600 px | Only from rooms that are open |
 | Sinus Purge | 240 px, 35 damage, big knockback, 0.6 s stun | 18 s cooldown; ready at start |
+| Supply crate | $250 Copays, random tool not already held | `BALANCE.economy.crateCost`; tools in `src/data/equipment.ts` |
+| Lysol Fogger | 6 puffs × 3 dmg every 120 ms, 75° cone, 160 px | 200 mL tank, 2/shot, jug 600 |
+| Bleach Super Soaker | 1 × 10 dmg every 70 ms, 400 px, knockback 45 | 300 mL tank, 3/shot, jug 900 |
+| UV Wand | 1 × 6 dmg every 60 ms, 280 px, pierces 3 | 100% charge, 2/shot, recharges 22%/s after 0.4 s; spores ×1.5 |
+| Peroxide Foamer | 3 × 4 dmg every 110 ms, 24° cone, 220 px | Slows to 45% for 1.6 s (not bosses); 150 mL, jug 450 |
 | Basic Germ HP / speed | 40 / 95 px/s | Was 75; Noah: round 1 too easy |
 | Eugene HP / invulnerability | 100 / 0.7 s | |
 | Regen | 6 HP/s after 6 s unhurt | Was 12/s after 4.5 s; Noah never lost health |

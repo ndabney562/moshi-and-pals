@@ -15,7 +15,9 @@
  */
 export type ObstacleKind =
   | 'wall' | 'chairRow' | 'desk' | 'table' | 'plant' | 'waterCooler' | 'door' | 'supplyCart'
-  | 'stall' | 'sink' | 'examTable' | 'counter' | 'xray' | 'couch' | 'fridge' | 'cabinet';
+  | 'stall' | 'sink' | 'examTable' | 'counter' | 'xray' | 'couch' | 'fridge' | 'cabinet'
+  /** Supply crate: buy it open with Copays for a random new tool (M6). */
+  | 'crate';
 
 export interface Obstacle {
   kind: ObstacleKind;
@@ -98,6 +100,7 @@ const WAITING_FURNITURE: Obstacle[] = shift([
   { kind: 'plant', x: 60, y: 980, w: 60, h: 60 },
   { kind: 'waterCooler', x: 1680, y: 420, w: 50, h: 50 },
   { kind: 'supplyCart', x: 1480, y: 840, w: 90, h: 54, label: 'SUPPLIES' },
+  { kind: 'crate', x: 1100, y: 860, w: 70, h: 60 },
 ], WX, WY);
 
 export const MOSHILAND: RoomLayout = {
@@ -186,6 +189,7 @@ export const MOSHILAND: RoomLayout = {
     { kind: 'cabinet', x: 2160, y: 60, w: 60, h: 120 },
     { kind: 'counter', x: 1320, y: 620, w: 360, h: 80, label: 'TRIAGE' },
     { kind: 'plant', x: 2240, y: 880, w: 60, h: 60 },
+    { kind: 'crate', x: 2150, y: 600, w: 70, h: 60 },
 
     // STAFF BREAK ROOM: couch, table, fridge and a counter full of mugs
     { kind: 'couch', x: 80, y: 120, w: 260, h: 90 },
@@ -193,6 +197,7 @@ export const MOSHILAND: RoomLayout = {
     { kind: 'fridge', x: 470, y: 60, w: 80, h: 90 },
     { kind: 'counter', x: 60, y: 800, w: 90, h: 360 },
     { kind: 'cabinet', x: 420, y: 760, w: 120, h: 60 },
+    { kind: 'crate', x: 300, y: 980, w: 70, h: 60 },
 
     // LAB: long benches make narrow aisles
     { kind: 'counter', x: 2560, y: 1260, w: 900, h: 70 },
@@ -201,6 +206,7 @@ export const MOSHILAND: RoomLayout = {
     { kind: 'fridge', x: 3640, y: 1360, w: 80, h: 100 },
     { kind: 'cabinet', x: 2460, y: 1920, w: 120, h: 60 },
     { kind: 'supplyCart', x: 3560, y: 1900, w: 90, h: 54, label: 'SUPPLIES' },
+    { kind: 'crate', x: 2420, y: 1380, w: 70, h: 60 },
 
     // X-RAY: the big machine, lead partitions and a control booth. The busiest room.
     { kind: 'xray', x: 2860, y: 360, w: 420, h: 220, label: 'X-RAY' },
@@ -208,5 +214,6 @@ export const MOSHILAND: RoomLayout = {
     wall(2700, 720, 300, 30), wall(3140, 720, 300, 30),
     { kind: 'counter', x: 3520, y: 860, w: 200, h: 70, label: 'CONTROLS' },
     { kind: 'cabinet', x: 2460, y: 860, w: 60, h: 140 },
+    { kind: 'crate', x: 3600, y: 300, w: 70, h: 60 },
   ],
 };

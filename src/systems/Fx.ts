@@ -45,11 +45,12 @@ export class Fx {
   }
 
   /** One burst of mist from the nozzle, fanned across the spray cone. */
-  nozzleMist(x: number, y: number, angle: number, spreadDeg: number): void {
+  nozzleMist(x: number, y: number, angle: number, spreadDeg: number, tint = 0xbfe9ff, puffs = 5): void {
     const deg = Phaser.Math.RadToDeg(angle);
     const half = spreadDeg / 2 + 4;
     this.mist.setEmitterAngle({ min: deg - half, max: deg + half });
-    this.mist.explode(5, x, y);
+    this.mist.particleTint = tint;
+    this.mist.explode(puffs, x, y);
   }
 
   dropletSplash(x: number, y: number): void {

@@ -208,6 +208,36 @@ try {
   check((await page.evaluate(() => window.game.scene.getScene('Hud').roomText.text)).includes('BATHROOM'), 'walking into the bathroom updates the room label');
   await page.screenshot({ path: 'smoke-rooms.png' });
 
+  // Supply crate: buy a random new tool, spray with it, then SWAP back to the bottle
+  await page.evaluate(() => {
+    const scene = window.game.scene.getScene('Game');
+    scene.addCopays(300 - scene.copays);
+    const crate = scene.crates[0];
+    scene.player.setPosition(crate.x + crate.w / 2, crate.y - 45);
+  });
+  await page.waitForFunction(() => window.game.scene.getScene('Hud').interactButton.label?.text?.startsWith('CRATE'), null, { timeout: 3000 }).catch(() => {});
+  const crateAt = await buttonAt('interactButton');
+  await page.touchscreen.tap(crateAt.x, crateAt.y);
+  await page.waitForTimeout(200);
+  const crated = await page.evaluate(() => {
+    const scene = window.game.scene.getScene('Game');
+    return { tools: scene.loadout.map((t) => t.def.id), slot: scene.slot, copays: scene.copays, swap: window.game.scene.getScene('Hud').swapButton.visible };
+  });
+  check(crated.tools.length === 2 && crated.slot === 1 && crated.copays === 50 && crated.swap, `supply crate gives a new tool for Copays (${JSON.stringify(crated)})`);
+  await page.screenshot({ path: 'smoke-crate.png' });
+  const toolFired = await page.evaluate(async () => {
+    const scene = window.game.scene.getScene('Game');
+    const before = scene.sprayer.ammo;
+    scene.sprayer.tryFire(scene.player.x, scene.player.y, 0, scene.time.now + 10000);
+    return { before, after: scene.sprayer.ammo, name: scene.sprayer.def.name };
+  });
+  check(toolFired.after < toolFired.before, `the crate tool sprays (${toolFired.name}: ${toolFired.before} -> ${toolFired.after})`);
+  const swapAt = await buttonAt('swapButton');
+  await page.touchscreen.tap(swapAt.x, swapAt.y);
+  await page.waitForTimeout(200);
+  const swapped = await page.evaluate(() => window.game.scene.getScene('Game').sprayer.def.id);
+  check(swapped === 'squirtBottle', `SWAP switches back to the bottle (${swapped})`);
+
   // Patients: one walks in, commits a health code violation, and gets sprayed into compliance
   const violation = await page.evaluate(() => {
     const scene = window.game.scene.getScene('Game');
@@ -215,6 +245,7 @@ try {
     const p = scene.patients.group.getChildren().find((c) => c.active);
     p.setPosition(scene.player.x + 150, scene.player.y);
     p.nextViolationAt = 0;
+    p.leaveAt = Number.MAX_SAFE_INTEGER; // stay put for the test, however slow the frame rate
     return { germsBefore: scene.germs.countActive(true), id: p.def.id };
   });
   await page.waitForFunction(() => window.game.scene.getScene('Game').patients.eugeneBubble.text.length > 0, null, { timeout: 4000 }).catch(() => {});
@@ -267,7 +298,7 @@ try {
   const hitBoss = (amount) => page.evaluate((n) => {
     const scene = window.game.scene.getScene('Game');
     const d = scene.droplets.get();
-    d.fire(scene.boss.germ.x, scene.boss.germ.y, 0, 1, 100, n, 0, 0xffffff);
+    d.fire(scene.boss.germ.x, scene.boss.germ.y, 0, 1, 100, { ...scene.loadout[0].def, damage: n, knockback: 0, effectiveness: {} });
     scene.onDropletHit(d, scene.boss.germ);
   }, amount);
   await hitBoss(200);

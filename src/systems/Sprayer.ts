@@ -13,6 +13,10 @@ export class Sprayer {
   reserve: number;
   private nextShotAt = 0;
   private refillStartedAt = -1;
+  private lastFiredAt = -Infinity;
+  private lastUpdateAt = -1;
+  /** Total tools carried, for the HUD's SWAP button. Set by the game scene. */
+  slots = 1;
 
   constructor(readonly def: EquipmentDef, private readonly droplets: Phaser.Physics.Arcade.Group) {
     this.ammo = def.capacity;
@@ -34,13 +38,14 @@ export class Sprayer {
     const d = this.def;
     this.nextShotAt = time + d.fireIntervalMs;
     this.ammo -= d.costPerShot;
+    this.lastFiredAt = time;
     const spread = Phaser.Math.DegToRad(d.spreadDeg);
     for (let i = 0; i < d.dropletsPerShot; i++) {
       const droplet = this.droplets.get() as Droplet | null;
       if (!droplet) break; // pool exhausted; skip rather than allocate mid-fight
       const a = angle + Phaser.Math.FloatBetween(-spread / 2, spread / 2);
       const speed = d.dropletSpeed * Phaser.Math.FloatBetween(0.85, 1.1);
-      droplet.fire(x, y, a, speed, d.range * Phaser.Math.FloatBetween(0.85, 1.05), d.damage, d.knockback, d.color);
+      droplet.fire(x, y, a, speed, d.range * Phaser.Math.FloatBetween(0.85, 1.05), d);
     }
     this.emitChanged(time);
     return 'fired';
@@ -48,6 +53,7 @@ export class Sprayer {
 
   /** Starts pouring from the jug. Returns false if there is nothing to pour. */
   startRefill(time: number): boolean {
+    if (this.def.rechargePerSecond) return true; // charges itself
     if (this.refilling || this.ammo >= this.def.capacity) return true;
     if (this.reserve <= 0) return false;
     this.refillStartedAt = time;
@@ -66,6 +72,13 @@ export class Sprayer {
   }
 
   update(time: number): void {
+    const dt = this.lastUpdateAt < 0 ? 0 : time - this.lastUpdateAt;
+    this.lastUpdateAt = time;
+    const rate = this.def.rechargePerSecond;
+    if (rate && this.ammo < this.def.capacity && time - this.lastFiredAt > 400) {
+      this.ammo = Math.min(this.def.capacity, this.ammo + (rate * dt) / 1000);
+      this.emitChanged(time);
+    }
     if (!this.refilling) return;
     if (time - this.refillStartedAt >= this.def.refillMs) {
       this.refillStartedAt = -1;
@@ -83,6 +96,10 @@ export class Sprayer {
       capacity: this.def.capacity,
       refillProgress: this.refilling ? Math.min(1, (time - this.refillStartedAt) / this.def.refillMs) : -1,
       reserve: this.reserve,
+      name: this.def.name,
+      unit: this.def.unit,
+      selfCharging: !!this.def.rechargePerSecond,
+      slots: this.slots,
     });
   }
 }

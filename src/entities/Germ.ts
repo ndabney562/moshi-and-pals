@@ -16,6 +16,9 @@ export class Germ extends Phaser.Physics.Arcade.Sprite {
   private speed = 0;
   /** While stunned (knocked back), the germ stops steering toward Eugene. */
   private stunnedUntil = 0;
+  /** Foam slow: speed multiplier until `slowUntil`. */
+  private slowUntil = 0;
+  private slowFactor = 1;
   private flashUntil = 0;
   private wobble = Math.random() * 10;
   /** Damage gathered since the last floating number was shown. */
@@ -27,6 +30,7 @@ export class Germ extends Phaser.Physics.Arcade.Sprite {
     this.maxHp = this.hp = def.hp * scaling.hpMult;
     this.speed = def.speed * scaling.speedMult;
     this.pendingDamage = 0;
+    this.slowUntil = 0;
     this.setTexture(`germ-${def.id}`);
     this.enableBody(true, x, y, true, true);
     const r = def.radius;
@@ -49,6 +53,7 @@ export class Germ extends Phaser.Physics.Arcade.Sprite {
   /** Steers toward `target` at its normal speed, or at `speed` when a boss brain says so. */
   chase(target: { x: number; y: number }, time: number, dtMs: number, speed = this.speed): void {
     if (!this.active) return;
+    if (time < this.slowUntil) speed *= this.slowFactor;
     if (time >= this.stunnedUntil) {
       const angle = Phaser.Math.Angle.Between(this.x, this.y, target.x, target.y);
       const body = this.body as Phaser.Physics.Arcade.Body;
@@ -80,6 +85,12 @@ export class Germ extends Phaser.Physics.Arcade.Sprite {
     body.velocity.x += Math.cos(fromAngle) * push;
     body.velocity.y += Math.sin(fromAngle) * push;
     return this.hp <= 0;
+  }
+
+  /** Slows the germ (peroxide foam). */
+  slow(time: number, factor: number, ms: number): void {
+    this.slowFactor = Math.min(time < this.slowUntil ? this.slowFactor : 1, factor);
+    this.slowUntil = Math.max(this.slowUntil, time + ms);
   }
 
   /** Stops steering for `ms` (it keeps sliding from whatever hit it). */

@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import type { EquipmentDef } from '../data/equipment';
 
 /**
  * One droplet of disinfectant in flight: the hitbox that does the damage.
@@ -8,10 +9,20 @@ import Phaser from 'phaser';
 export class Droplet extends Phaser.Physics.Arcade.Image {
   damage = 0;
   knockback = 0;
+  /** The tool that fired it (effectiveness, slow, pierce). */
+  def!: EquipmentDef;
+  /** Germs it can still pass through. */
+  pierceLeft = 0;
+  /** Germs already hit, so a piercing droplet doesn't hit the same one every frame. */
+  readonly hit = new Set<object>();
   private expiresAt = 0;
   private launchedAt = 0;
 
-  fire(x: number, y: number, angle: number, speed: number, range: number, damage: number, knockback: number, tint: number): void {
+  fire(x: number, y: number, angle: number, speed: number, range: number, def: EquipmentDef): void {
+    const { damage, knockback, color: tint } = def;
+    this.def = def;
+    this.pierceLeft = def.pierce ?? 0;
+    this.hit.clear();
     this.enableBody(true, x, y, true, true);
     this.setTexture('puff').setTint(tint).setAlpha(0.25).setScale(0.4).setDepth(11);
     this.body!.setSize(16, 16).setOffset(16, 16);

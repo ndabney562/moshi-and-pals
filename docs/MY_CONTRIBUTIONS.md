@@ -18,4 +18,5 @@
 
 ## Coming up
 - Any time: a real Sinus Purge recording (the HRRRNNNKKK) to replace the placeholder.
-- M6: which tools come out of the supply crates, and roughly what they cost.
+- Playtest M6 crate tools: which feels best, which feels useless, and is $250 right?
+- More crate tool ideas any time (each one is one entry in `src/data/equipment.ts`).

@@ -8,7 +8,7 @@
 
 **Core loop:** move → aim → disinfect → dodge → earn → upgrade → unlock → survive → repeat.
 
-## Current state (v0.5.0)
+## Current state (v0.6.0)
 - Title screen, tap to start.
 - MoshiLand Urgent Care (fictional layout): you start in the waiting room; bathroom, exam rooms, lab, staff break room and X-ray are bought open with Copays.
 - Eugene (placeholder art) moves with left stick, faces right-stick aim.
@@ -18,6 +18,7 @@
 - Patients wander in from round 2; their health code violations let germs loose. Spray them clean for points and Copays.
 - **Copays** (currency, Noah's name) earned per kill. REFILL pours from a limited jug; the SUPPLIES cart restocks the jug for Copays.
 - **Sinus Purge** button: a honking shockwave that damages and blasts away nearby germs, on a cooldown.
+- **Supply crates** in most rooms: $250 Copays for a random tool (Lysol Fogger, Bleach Super Soaker, UV Wand, Peroxide Foamer). Carry the bottle plus one crate tool; SWAP switches.
 - Score per kill; death shows a game over screen with high score; restart in one tap.
 
 ## Controls

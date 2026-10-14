@@ -108,6 +108,8 @@ export const BALANCE = {
     cleanPatientCopays: 10,
     /** How close Eugene must be to a supply cart or locked door (from its edge) to use it. Door prices live in data/rooms.ts. */
     interactRange: 80,
+    /** Price of opening a supply crate (random new tool). */
+    crateCost: 250,
   },
   /** SINUS PURGE: Eugene's signature honk. A shockwave that damages and blasts germs away. */
   purge: {

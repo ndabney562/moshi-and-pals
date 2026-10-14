@@ -7,7 +7,7 @@ import { inputState } from '../core/inputState';
 import { settings } from '../core/settings';
 import { recordRun } from '../core/save';
 import { initSfx, sfx } from '../core/sfx';
-import { EQUIPMENT, STARTING_EQUIPMENT } from '../data/equipment';
+import { CRATE_POOL, EQUIPMENT, STARTING_EQUIPMENT } from '../data/equipment';
 import { GERMS } from '../data/germs';
 import { WAVES } from '../data/waves';
 import { MOSHILAND, type Obstacle, type RoomArea, type RoomLayout } from '../data/rooms';
@@ -31,7 +31,7 @@ interface LockedDoor {
 }
 
 /** What the USE button would act on right now. */
-type Interactable = { kind: 'cart'; o: Obstacle } | { kind: 'door'; door: LockedDoor };
+type Interactable = { kind: 'cart'; o: Obstacle } | { kind: 'door'; door: LockedDoor } | { kind: 'crate'; o: Obstacle };
 
 /** How far (x, y) is from the edge of a rectangle; 0 inside it. */
 const rectDistance = (o: Obstacle, x: number, y: number): number =>
@@ -51,7 +51,9 @@ export class GameScene extends Phaser.Scene {
   private interactTarget?: Interactable;
   private germs!: Phaser.Physics.Arcade.Group;
   private droplets!: Phaser.Physics.Arcade.Group;
-  private sprayer!: Sprayer;
+  /** Tools carried: the bottle, plus one from a supply crate. */
+  private loadout: Sprayer[] = [];
+  private slot = 0;
   private fx!: Fx;
   private flow!: FlowField;
   private nextFlowAt = 0;
@@ -66,6 +68,7 @@ export class GameScene extends Phaser.Scene {
   private purgeReadyAt = 0;
   private lastPurgeProgress = -1;
   private carts: Obstacle[] = [];
+  private crates: Obstacle[] = [];
   private station: StationPayload = { near: false, label: '', affordable: false };
   private lastJugWarningAt = -Infinity;
   /** The current boss's behavior, if a boss with a brain is (or was last) in the room. */
@@ -90,6 +93,8 @@ export class GameScene extends Phaser.Scene {
     inputState.purgeRequested = false;
     inputState.interactRequested = false;
     this.carts = room.obstacles.filter((o) => o.kind === 'supplyCart');
+    this.crates = room.obstacles.filter((o) => o.kind === 'crate');
+    inputState.swapRequested = false;
     this.unlocked = new Set(room.rooms.filter((r) => r.start).map((r) => r.id));
     this.lockedDoors = [];
     this.fog = new Map();
@@ -117,7 +122,8 @@ export class GameScene extends Phaser.Scene {
     // Pools: created once, reused all game
     this.droplets = this.physics.add.group({ classType: Droplet, maxSize: 90, runChildUpdate: true, defaultKey: 'droplet' });
     this.germs = this.physics.add.group({ classType: Germ, maxSize: 60, defaultKey: 'germ-basic' });
-    this.sprayer = new Sprayer(EQUIPMENT[STARTING_EQUIPMENT], this.droplets);
+    this.loadout = [new Sprayer(EQUIPMENT[STARTING_EQUIPMENT], this.droplets)];
+    this.slot = 0;
     this.waves = new WaveDirector(this.time.now);
     this.patients = new PatientDirector({
       scene: this,
@@ -221,12 +227,17 @@ export class GameScene extends Phaser.Scene {
       this.lastPurgeProgress = purge;
       events.emit(GameEvents.PurgeChanged, { progress: purge });
     }
-    this.sprayer.update(time);
+    if (inputState.swapRequested) {
+      inputState.swapRequested = false;
+      this.swapTool(time);
+    }
+    for (const tool of this.loadout) tool.update(time);
     if (inputState.firing) {
       this.player.nozzle(this.nozzle);
       // Spray where Eugene is actually facing, so the stream follows his turn
       if (this.sprayer.tryFire(this.nozzle.x, this.nozzle.y, this.player.rotation, time) === 'fired') {
-        this.fx.nozzleMist(this.nozzle.x, this.nozzle.y, this.player.rotation, this.sprayer.def.spreadDeg);
+        const d = this.sprayer.def;
+        this.fx.nozzleMist(this.nozzle.x, this.nozzle.y, this.player.rotation, d.spreadDeg, d.color, d.mistPuffs);
         sfx.spray();
       }
     }
@@ -268,10 +279,18 @@ export class GameScene extends Phaser.Scene {
 
   private onDropletHit(drop: Droplet, germ: Germ): void {
     if (!drop.active || !germ.active) return;
-    const mult = this.sprayer.def.effectiveness[germ.def.tag] ?? 1;
+    if (drop.hit.has(germ)) return; // a piercing beam already hit this one
+    const def = drop.def;
+    const mult = def.effectiveness[germ.def.tag] ?? 1;
     this.fx.dropletSplash(drop.x, drop.y);
-    drop.retire();
+    if (drop.pierceLeft > 0) {
+      drop.pierceLeft--;
+      drop.hit.add(germ);
+    } else {
+      drop.retire();
+    }
     sfx.hit();
+    if (def.slow && !germ.def.boss) germ.slow(this.time.now, def.slow.factor, def.slow.ms);
     this.damageGerm(germ, drop.damage * mult, drop.rotation, drop.knockback);
   }
 
@@ -373,10 +392,16 @@ export class GameScene extends Phaser.Scene {
         const d = rectDistance(door.o, x, y);
         if (d < best) { best = d; target = { kind: 'door', door }; }
       }
+      for (const o of this.crates) {
+        const d = rectDistance(o, x, y);
+        if (d < best) { best = d; target = { kind: 'crate', o }; }
+      }
     }
     this.interactTarget = target;
-    const cost = !target ? 0 : target.kind === 'cart' ? BALANCE.economy.restockCost : target.door.o.cost ?? 0;
-    const label = !target ? '' : `${target.kind === 'cart' ? 'RESTOCK' : 'OPEN'}\n$${cost}`;
+    const eco = BALANCE.economy;
+    const cost = !target ? 0 : target.kind === 'cart' ? eco.restockCost : target.kind === 'crate' ? eco.crateCost : target.door.o.cost ?? 0;
+    const verb = !target ? '' : target.kind === 'cart' ? 'RESTOCK' : target.kind === 'crate' ? 'CRATE' : 'OPEN';
+    const label = target ? `${verb}\n$${cost}` : '';
     const station = { near: !!target, label, affordable: this.copays >= cost };
     const s = this.station;
     if (station.near !== s.near || station.label !== s.label || station.affordable !== s.affordable) {
@@ -389,6 +414,7 @@ export class GameScene extends Phaser.Scene {
     const t = this.interactTarget;
     if (!t) return;
     if (t.kind === 'cart') this.restock(time);
+    else if (t.kind === 'crate') this.openCrate(t.o, time);
     else this.buyDoor(t.door);
   }
 
@@ -407,6 +433,46 @@ export class GameScene extends Phaser.Scene {
     this.sprayer.restock(time);
     sfx.cash();
     this.fx.number(this.player.x, this.player.y - 60, `JUG RESTOCKED -$${cost}`, '#7fffd4', 22);
+  }
+
+  /** The tool in Eugene's hands. */
+  get sprayer(): Sprayer {
+    return this.loadout[this.slot];
+  }
+
+  /** Switches between the bottle and the crate tool. */
+  private swapTool(time: number): void {
+    if (this.loadout.length < 2 || this.player.dead) return;
+    this.slot = (this.slot + 1) % this.loadout.length;
+    sfx.refill();
+    this.fx.number(this.player.x, this.player.y - 60, this.sprayer.def.name.toUpperCase(), '#e8fff9', 20);
+    this.sprayer.emitChanged(time);
+  }
+
+  /** SUPPLY CRATE: pay Copays, get a random tool you don't already have. It replaces your old crate tool. */
+  private openCrate(o: Obstacle, time: number): void {
+    const cost = BALANCE.economy.crateCost;
+    if (this.copays < cost) {
+      sfx.denied();
+      this.fx.number(this.player.x, this.player.y - 60, `NEED $${cost} COPAYS`, '#ffb3b3', 22);
+      return;
+    }
+    const held = this.loadout.map((t) => t.def.id);
+    const options = CRATE_POOL.filter((id) => !held.includes(id));
+    const def = EQUIPMENT[Phaser.Utils.Array.GetRandom(options.length ? options : CRATE_POOL)];
+    this.addCopays(-cost);
+    const tool = new Sprayer(def, this.droplets);
+    this.loadout[1] = tool;
+    this.slot = 1;
+    for (const t of this.loadout) t.slots = this.loadout.length;
+    sfx.cash();
+    this.cameras.main.shake(160, 0.006);
+    const cx = o.x + o.w / 2;
+    const cy = o.y + o.h / 2;
+    this.fx.germSplat(cx, cy, def.color);
+    this.fx.number(cx, cy - 50, def.name.toUpperCase() + '!', '#ffe66d', 30);
+    events.emit(GameEvents.ToolUnlocked, { name: def.name });
+    tool.emitChanged(time);
   }
 
   private buyDoor(door: LockedDoor): void {
@@ -690,6 +756,20 @@ export class GameScene extends Phaser.Scene {
         g.lineStyle(2, outline).lineBetween(o.x + 4, o.y + o.h * 0.35, o.x + o.w - 4, o.y + o.h * 0.35);
         g.fillStyle(0x607d8b).fillRect(o.x + o.w - 16, o.y + o.h * 0.45, 6, 22); // handle
         break;
+      case 'crate': {
+        // Wooden supply crate with a big "?" stencil
+        g.fillStyle(0xa0703c).fillRect(o.x, o.y, o.w, o.h);
+        g.lineStyle(4, 0x6b4423).strokeRect(o.x + 2, o.y + 2, o.w - 4, o.h - 4);
+        g.lineBetween(o.x + 4, o.y + 4, o.x + o.w - 4, o.y + o.h - 4).lineBetween(o.x + o.w - 4, o.y + 4, o.x + 4, o.y + o.h - 4);
+        this.add.text(o.x + o.w / 2, o.y + o.h / 2, '?', {
+          fontFamily: 'system-ui, sans-serif', fontSize: '34px', fontStyle: '900', color: '#ffe66d',
+        }).setOrigin(0.5).setDepth(6).setShadow(0, 2, '#000', 4);
+        this.add.text(o.x + o.w / 2, o.y - 6, `📦 TOOLS $${BALANCE.economy.crateCost}`, {
+          fontFamily: 'system-ui, sans-serif', fontSize: '14px', fontStyle: 'bold', color: '#ffffff',
+          backgroundColor: '#0d2b2ecc', padding: { x: 6, y: 2 },
+        }).setOrigin(0.5, 1).setDepth(6);
+        break;
+      }
       case 'cabinet': {
         g.fillStyle(0xb0bec5).fillRect(o.x, o.y, o.w, o.h);
         g.lineStyle(3, outline).strokeRect(o.x, o.y, o.w, o.h);
