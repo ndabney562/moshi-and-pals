@@ -25,7 +25,12 @@ page.on('pageerror', (e) => errors.push(e.message));
 page.on('console', (m) => m.type() === 'error' && errors.push(m.text()));
 
 let failed = false;
-const check = (ok, msg) => { console.log(`${ok ? 'PASS' : 'FAIL'} ${msg}`); if (!ok) failed = true; };
+const check = (ok, msg) => {
+  console.log(`${ok ? 'PASS' : 'FAIL'} ${msg}`);
+  if (!ok) failed = true;
+  // On GitHub Actions, failures also become annotations (readable from the PR's checks without the raw log)
+  if (!ok && process.env.GITHUB_ACTIONS) console.log(`::error title=Smoke test::${String(msg).replace(/\r?\n/g, ' ')}`);
+};
 
 try {
   await page.goto(url);
