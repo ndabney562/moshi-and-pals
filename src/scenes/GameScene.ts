@@ -4,6 +4,7 @@ import { CONTROLS } from '../config/controls';
 import { COLORS } from '../config/theme';
 import { DEBUG } from '../core/debug';
 import { useGameTime } from '../core/gameClock';
+import { damp } from '../core/math';
 import { events, GameEvents, type RoomPayload, type RunResult, type StationPayload } from '../core/events';
 import { inputState } from '../core/inputState';
 import { settings } from '../core/settings';
@@ -210,6 +211,9 @@ export class GameScene extends Phaser.Scene {
       aimTarget = this.nearestGerm(CONTROLS.autoAimRange) ?? this.patients.nearestViolator(this.player.x, this.player.y, CONTROLS.autoAimRange);
     }
     this.player.drive(inputState, delta, aimTarget);
+    // Camera follow eases per frame in Phaser; keep it the same at any frame rate
+    const follow = damp(BALANCE.camera.followLerp, delta);
+    this.cameras.main.setLerp(follow, follow);
     if (this.player.regen(time, delta)) {
       events.emit(GameEvents.PlayerHealthChanged, { hp: this.player.hp, maxHp: this.player.maxHp });
     }
