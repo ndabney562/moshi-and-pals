@@ -8,13 +8,15 @@
 
 **Core loop:** move → aim → disinfect → dodge → earn → upgrade → unlock → survive → repeat.
 
-## Current state (v0.6.0)
+## Current state (v0.7.0)
 - Title screen, tap to start.
 - MoshiLand Urgent Care (fictional layout): you start in the waiting room; bathroom, exam rooms, lab, staff break room and X-ray are bought open with Copays.
 - Eugene (placeholder art) moves with left stick, faces right-stick aim.
 - Holding SPRAY sprays the alcohol bottle (cone of droplets, limited supply, manual refill). Eugene auto-aims at the nearest germ in range.
 - Germs come in escalating rounds through the doors and hurt Eugene on contact. Health regenerates after a few seconds without a hit.
-- Round 3+: Viral Sprinters. Every 5th round: Diamond the Practice Manager.
+- Round 3+: Viral Sprinters. Round 4+: Sneezers (ranged, slowing puddles). Round 6+: Spore Pods (armored front; flank, UV, or Purge-flip them). Every 5th round: Diamond the Practice Manager.
+- Sanitation Streak (kill chains raise Copays up to 1.5×), Spotless bonus for a no-damage round, STAT! crits, Perfect Pour active refill.
+- Pause menu (II, top right) with sound, auto-refill and auto-aim settings; auto-pauses when the app is left.
 - Patients wander in from round 2; their health code violations let germs loose. Spray them clean for points and Copays.
 - **Copays** (currency, Noah's name) earned per kill. REFILL pours from a limited jug; the SUPPLIES cart restocks the jug for Copays.
 - **Sinus Purge** button: a honking shockwave that damages and blasts away nearby germs, on a cooldown.
