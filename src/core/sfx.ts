@@ -100,6 +100,10 @@ export const sfx = {
     tone(c, o, t, 0.16, 520, 90, 0.35);
     noiseBurst(c, o, t, 0.12, 900, 0.25, 'lowpass');
   }, Math.pow(2, (Math.min(streak, 30) / 5) * (2 / 12))),
+  /** Special round: a two-tone clinic alarm */
+  specialRound: () => play('specialRound', 1500, (c, o, t) => {
+    for (let i = 0; i < 4; i++) tone(c, o, t + i * 0.18, 0.16, i % 2 ? 660 : 880, i % 2 ? 660 : 880, 0.16, 'square');
+  }),
   /** Spray bouncing off a Spore Pod's armor */
   tink: () => play('tink', 120, (c, o, t) => {
     tone(c, o, t, 0.06, 2400, 2200, 0.1, 'square');

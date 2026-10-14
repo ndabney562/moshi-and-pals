@@ -14,6 +14,13 @@
   - **TRIAGE:** every hit is a STAT! crit for 10 s.
   - **STAT CLEAN:** a white flash disinfects every germ nearby (bosses lose 15%).
   - **DOUBLE COPAY:** germs pay double for 15 s.
+- **Special rounds,** announced with a yellow banner and an alarm:
+  - **WAITING ROOM RUSH** (round 7): everyone walks in the front at once.
+  - **SLOW TUESDAY** (round 9): fewer germs, and Copays pay double. Go shopping.
+  - **OUTBREAK** (round 12): fast, fragile, and everywhere.
+  - **INSPECTION DAY** (round 14): don't get hurt, because Spotless pays triple.
+  - **SUPERBUG** (round 17): half as many germs, but resistant ones everywhere.
+  After round 17 they come back on most odd rounds (never on boss rounds).
 
 ## v0.9.0: Milestone 9, grow and learn
 - **Compounding Station** in the Lab (⚗️ UPGRADES): hold USE to upgrade the tool in your hands. Two upgrades per tool, $300 then $700, and each changes how it plays:

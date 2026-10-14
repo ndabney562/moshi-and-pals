@@ -676,6 +676,24 @@ try {
   });
   check(!beaten.active && beaten.said.length > 0, `Diamond can be defeated ("${beaten.said}")`);
 
+  // SPECIAL ROUNDS: round 7 is a Waiting Room Rush, announced with its own banner
+  await page.evaluate(() => {
+    const scene = window.game.scene.getScene('Game');
+    for (const g of scene.germs.getChildren()) if (g.active) g.kill();
+    scene.boss?.destroy();
+    scene.boss = undefined;
+    scene.waves.queue.length = 0;
+    scene.waves.round = 6;
+    scene.waves.phase = 'intermission';
+    scene.waves.nextRoundAt = scene.time.now;
+  });
+  await page.waitForFunction(() => window.game.scene.getScene('Game').waves.round === 7, null, { timeout: 15000 }).catch(() => {});
+  const special = await page.evaluate(() => {
+    const scene = window.game.scene.getScene('Game');
+    return { id: scene.waves.special?.id, banner: window.game.scene.getScene('Hud').banner.text, queued: scene.waves.queue.length };
+  });
+  check(special.id === 'rush' && special.banner === 'WAITING ROOM RUSH', `round 7 is a special round with its own banner (${JSON.stringify(special)})`);
+
   // Eugene was untouchable since the station checks (slow CI browsers); make him mortal again for the death test
   await page.evaluate(() => { window.game.scene.getScene('Game').player.invulnerableUntil = 0; });
   // Death: drop Eugene to 1 HP and put a germ on top of him

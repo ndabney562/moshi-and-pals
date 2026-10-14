@@ -56,3 +56,4 @@ Values live in `src/config/balance.ts` and `src/config/controls.ts`.
 | Exam table rest | $40 for +50 HP, once per table per round | `BALANCE.economy.restCost/restHeal` |
 | RESISTANT elites | from r8, 5% +1%/round (max 14%); ×2.5 HP, ×1.25 size, ×3 Copays/points | Shielded 50% bubble, Hasty ×1.35, Regenerating 4%/s, Splitting into 2 basics; `BALANCE.elites` |
 | Power-ups | elites always drop; others 1.2%; 10 s on the floor (blinks last 3 s) | Durations in `src/data/powerups.ts`, tuning in `BALANCE.powerups` |
+| Special rounds | 7 Rush, 9 Slow Tuesday, 12 Outbreak, 14 Inspection, 17 Superbug; then odd non-boss rounds | `SPECIAL_ROUNDS` and `WAVES.specialFor` in `src/data/waves.ts` |

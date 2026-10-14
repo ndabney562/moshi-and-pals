@@ -1,3 +1,31 @@
+/** A special round: same clinic, different rules. Announced with its own banner. */
+export interface SpecialRound {
+  id: string;
+  name: string;
+  blurb: string;
+  /** Germs in the round ×, spawn interval ×, extra on-screen germs, germ health ×. */
+  countMult?: number;
+  spawnMult?: number;
+  maxAliveAdd?: number;
+  hpMult?: number;
+  /** Replace the usual mix. */
+  mix?: Record<string, number>;
+  /** Germs only come in through the starting room's doors. */
+  fromStart?: boolean;
+  /** Elite chance ×, Copays from kills ×, Spotless bonus ×. */
+  eliteBoost?: number;
+  copayMult?: number;
+  spotlessMult?: number;
+}
+
+export const SPECIAL_ROUNDS: Record<string, SpecialRound> = {
+  rush: { id: 'rush', name: 'WAITING ROOM RUSH', blurb: 'Everyone walked in at once', countMult: 1.25, spawnMult: 0.45, maxAliveAdd: 6, fromStart: true },
+  slowTuesday: { id: 'slowTuesday', name: 'SLOW TUESDAY', blurb: 'Fewer germs. Copays pay double.', countMult: 0.6, copayMult: 2 },
+  outbreak: { id: 'outbreak', name: 'OUTBREAK', blurb: 'Fast, fragile, and everywhere', countMult: 1.7, hpMult: 0.6, maxAliveAdd: 10, spawnMult: 0.6, mix: { sprinter: 2, basic: 1, sneezer: 0.2 } },
+  inspection: { id: 'inspection', name: 'INSPECTION DAY', blurb: "Don't get hurt: Spotless pays triple", spotlessMult: 3 },
+  superbug: { id: 'superbug', name: 'SUPERBUG', blurb: 'Resistant germs everywhere', countMult: 0.6, eliteBoost: 6 },
+};
+
 /**
  * Wave (round) scaling. Every number that makes later rounds harder lives here.
  * `r` is the round number, starting at 1.
@@ -37,6 +65,17 @@ export const WAVES = {
     sneezer: (r: number) => Math.min(2 + Math.floor((r - 4) / 3), 4),
     sporePod: (r: number) => Math.min(2 + Math.floor((r - 6) / 2), 5),
   } as Record<string, (r: number) => number>,
+
+  /**
+   * Special rounds: a first run through each one at fixed rounds (so everyone meets them), then they come
+   * back every other odd round. Never on boss rounds.
+   */
+  specialFor: (r: number): string | undefined => {
+    const fixed: Record<number, string> = { 7: 'rush', 9: 'slowTuesday', 12: 'outbreak', 14: 'inspection', 17: 'superbug' };
+    if (fixed[r]) return fixed[r];
+    if (r > 17 && r % 5 !== 0 && r % 2 === 1) return ['rush', 'outbreak', 'superbug', 'inspection'][((r - 19) / 2) % 4];
+    return undefined;
+  },
 
   /** Every Nth round is a boss round: the boss plus a lighter escort of normal germs. */
   bossEvery: 5,

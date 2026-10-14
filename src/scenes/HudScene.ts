@@ -191,6 +191,13 @@ export class HudScene extends Phaser.Scene {
     const onHurt = () => this.flashDamage();
     const onScore = (p: { score: number }) => this.scoreText.setText(`SCORE ${p.score.toLocaleString()}`);
     const onRound = (p: RoundPayload) => {
+      if (p.special) {
+        this.roundText.setText(`ROUND ${p.round}`);
+        this.showBanner(p.special, p.title.split(': ').slice(1).join(': '), 2600);
+        this.banner.setColor('#ffe66d');
+        return;
+      }
+      this.banner.setColor(COLORS.uiText);
       this.roundText.setText(`ROUND ${p.round}`);
       this.showBanner(`ROUND ${p.round}`, p.title);
     };

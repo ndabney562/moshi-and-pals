@@ -260,7 +260,10 @@ export class GameScene extends Phaser.Scene {
       [GameEvents.RoundCompleted, sfx.roundEnd],
     ];
     for (const [name, fn] of sounds) events.on(name, fn);
-    const onRoundStart = () => { this.hurtThisRound = false; };
+    const onRoundStart = (p: RoundPayload) => {
+      this.hurtThisRound = false;
+      if (p.special) sfx.specialRound();
+    };
     const onRoundDone = (p: RoundPayload) => this.onRoundCompleted(p.round);
     events.on(GameEvents.RoundStarted, onRoundStart);
     events.on(GameEvents.RoundCompleted, onRoundDone);
@@ -389,9 +392,6 @@ export class GameScene extends Phaser.Scene {
   }
 
   /** Living germs of one type (for WAVES.aliveLimit). */
-  /** Special rounds can make elites more common (×). */
-  private eliteBoost = 1;
-
   private aliveOf(id: string): number {
     let n = 0;
     for (const g of this.germs.getChildren() as Germ[]) if (g.active && g.def.id === id) n++;
@@ -473,7 +473,7 @@ export class GameScene extends Phaser.Scene {
   /** SPOTLESS: a round finished without a scratch pays a bonus. */
   private onRoundCompleted(round: number): void {
     if (this.hurtThisRound || this.runOver) return;
-    const bonus = BALANCE.economy.spotlessPerRound * round;
+    const bonus = BALANCE.economy.spotlessPerRound * round * (this.waves.special?.spotlessMult ?? 1);
     this.addCopays(bonus);
     this.score += BALANCE.economy.spotlessScorePerRound * round;
     events.emit(GameEvents.ScoreChanged, { score: this.score });
@@ -630,7 +630,8 @@ export class GameScene extends Phaser.Scene {
       const el = BALANCE.elites;
       const eliteMult = germ.elite ? el.copaysMult : 1;
       const doubled = this.powerups.isActive('doubleCopay', time) ? 2 : 1;
-      this.addCopays(Math.round(germ.def.copays * this.streakMult * eliteMult * doubled));
+      const special = this.waves.special?.copayMult ?? 1;
+      this.addCopays(Math.round(germ.def.copays * this.streakMult * eliteMult * doubled * special));
       if (germ.elite) this.score += germ.def.points * (el.pointsMult - 1);
       // Power-ups: elites always drop one; any other germ now and then
       if (germ.elite || (!germ.def.boss && Math.random() < BALANCE.powerups.dropChance)) this.powerups.drop(germ.x, germ.y, time);
@@ -1019,7 +1020,9 @@ export class GameScene extends Phaser.Scene {
     if (def.boss) scaling = { ...scaling, hpMult: Math.min(scaling.hpMult, WAVES.bossHpMultMax) };
     // Germs come in through every room that's open, but not right on top of Eugene or miles away
     const { minSpawnDistance, maxSpawnDistance } = BALANCE.spawning;
-    const spots = this.room.rooms.filter((r) => this.unlocked.has(r.id)).flatMap((r) => r.germSpawns);
+    // Waiting Room Rush: everyone comes in through the front
+    const fromStart = !!this.waves.special?.fromStart;
+    const spots = this.room.rooms.filter((r) => this.unlocked.has(r.id) && (!fromStart || r.start)).flatMap((r) => r.germSpawns);
     const dist = (p: { x: number; y: number }) => Phaser.Math.Distance.Between(p.x, p.y, this.player.x, this.player.y);
     const far = spots.filter((p) => dist(p) >= minSpawnDistance);
     const ideal = far.filter((p) => dist(p) <= maxSpawnDistance);
@@ -1054,7 +1057,8 @@ export class GameScene extends Phaser.Scene {
   private maybeElite(germ: Germ, force?: EliteAffix): void {
     const el = BALANCE.elites;
     if (germ.def.boss) return;
-    if (!force && Math.random() >= el.chance(this.waves.round) * this.eliteBoost) return;
+    const boost = this.waves.special?.eliteBoost ?? 1;
+    if (!force && Math.random() >= Math.min(0.6, el.chance(this.waves.round) * boost)) return;
     const affix = force ?? Phaser.Utils.Array.GetRandom(Object.keys(ELITE_AFFIXES) as EliteAffix[]);
     germ.makeElite(affix, el.hpMult, { shield: el.shield, speed: el.hastySpeed });
   }

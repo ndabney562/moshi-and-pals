@@ -73,7 +73,7 @@ export interface GermKilledPayload { germId: string; x: number; y: number; total
 
 export interface StreakPayload { count: number; mult: number; left: number; }
 export interface HealthPayload { hp: number; maxHp: number; }
-export interface RoundPayload { round: number; title: string; }
+export interface RoundPayload { round: number; title: string; /** Special round name, if it is one. */ special?: string; }
 export interface BossPayload { name: string; hp: number; maxHp: number; }
 export interface RunResult {
   score: number; round: number; kills: number;
