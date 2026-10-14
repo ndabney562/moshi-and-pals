@@ -133,6 +133,10 @@ export class BootScene extends Phaser.Scene {
       this.makeSporePod(def);
       return;
     }
+    if (def.shape === 'duo' || def.shape === 'rod' || def.shape === 'dish' || def.shape === 'mold') {
+      this.makeEcologyGerm(def);
+      return;
+    }
     if (def.shape === 'sneezer') {
       this.makeSneezer(def);
       return;
@@ -251,6 +255,77 @@ export class BootScene extends Phaser.Scene {
     g.lineStyle(2, 0x999999).lineBetween(bx + r * 0.1, by + r * 0.13, bx + r * 0.38, by + r * 0.13)
       .lineBetween(bx + r * 0.1, by + r * 0.22, bx + r * 0.3, by + r * 0.22);
 
+    g.generateTexture(`germ-${def.id}`, size, size);
+    g.destroy();
+  }
+
+  /**
+   * M11 germs, each with its own silhouette (faces +x like every germ):
+   * duo = two cocci stuck together (diplococcus), rod = a long capsule (bacillus),
+   * dish = a petri dish with colonies growing in it, mold = a fuzzy stain.
+   */
+  private makeEcologyGerm(def: GermDef): void {
+    const r = def.radius;
+    const ink = def.outline;
+    const eyes = (g: Phaser.GameObjects.Graphics, x: number, y: number, s: number, sleepy = false) => {
+      for (const dy of [-0.35, 0.35]) {
+        g.fillStyle(0xffffff).fillCircle(x, y + s * dy, s * 0.3);
+        g.fillStyle(0x111111).fillCircle(x + s * 0.1, y + s * dy, s * 0.14);
+        if (sleepy) g.fillStyle(def.color).fillRect(x - s * 0.32, y + s * dy - s * 0.32, s * 0.64, s * 0.26);
+      }
+    };
+    const g = this.add.graphics();
+    let size = (r + 12) * 2;
+    if (def.shape === 'duo') {
+      size = (r + 14) * 2;
+      const c = size / 2;
+      for (const dy of [-r * 0.45, r * 0.45]) {
+        g.fillStyle(def.color).fillCircle(c, c + dy, r * 0.62);
+        g.lineStyle(3, ink).strokeCircle(c, c + dy, r * 0.62);
+        g.fillStyle(0xffffff, 0.25).fillCircle(c - r * 0.2, c + dy - r * 0.2, r * 0.18);
+        eyes(g, c + r * 0.25, c + dy, r * 0.5);
+      }
+    } else if (def.shape === 'rod') {
+      size = (r + 30) * 2;
+      const c = size / 2;
+      const len = r * 2.6;
+      g.fillStyle(def.color).fillRoundedRect(c - len / 2, c - r * 0.7, len, r * 1.4, r * 0.7);
+      g.lineStyle(3, ink).strokeRoundedRect(c - len / 2, c - r * 0.7, len, r * 1.4, r * 0.7);
+      g.lineStyle(2, ink, 0.4);
+      for (const x of [-0.6, -0.2, 0.2]) g.lineBetween(c + r * x, c - r * 0.55, c + r * x, c + r * 0.55);
+      g.fillStyle(0xffffff, 0.25).fillRoundedRect(c - len / 2 + 6, c - r * 0.55, len - 20, r * 0.3, 6);
+      eyes(g, c + len / 2 - r * 0.45, c, r * 0.7);
+      // Angry brow: it means business
+      g.lineStyle(3, ink).lineBetween(c + len / 2 - r * 0.8, c - r * 0.5, c + len / 2 - r * 0.25, c - r * 0.25);
+    } else if (def.shape === 'dish') {
+      const c = size / 2;
+      g.fillStyle(0xe1f5fe, 0.9).fillCircle(c, c, r);
+      g.lineStyle(4, 0x90a4ae).strokeCircle(c, c, r);
+      g.fillStyle(def.color).fillCircle(c, c, r * 0.8);
+      for (const [x, y, s] of [[-0.35, -0.3, 0.16], [0.1, -0.45, 0.12], [-0.45, 0.25, 0.14], [0.0, 0.4, 0.1], [-0.1, 0.0, 0.09]]) {
+        g.fillStyle(0xf06292).fillCircle(c + r * x, c + r * y, r * s);
+      }
+      g.fillStyle(0xffffff, 0.5).fillEllipse(c - r * 0.3, c - r * 0.55, r * 0.6, r * 0.2);
+      eyes(g, c + r * 0.4, c, r * 0.6);
+    } else {
+      // mold
+      size = (r + 16) * 2;
+      const c = size / 2;
+      g.fillStyle(def.color);
+      for (let i = 0; i < 16; i++) {
+        const a = (i / 16) * Math.PI * 2;
+        const d = r * (0.75 + ((i * 7) % 5) * 0.06);
+        g.fillCircle(c + Math.cos(a) * d, c + Math.sin(a) * d, r * 0.28);
+      }
+      g.fillCircle(c, c, r * 0.85);
+      g.fillStyle(ink, 0.5);
+      for (let i = 0; i < 10; i++) {
+        const a = i * 2.4;
+        g.fillCircle(c + Math.cos(a) * r * 0.55, c + Math.sin(a) * r * 0.55, 3);
+      }
+      g.fillStyle(0xc5e1a5, 0.5).fillCircle(c - r * 0.2, c - r * 0.2, r * 0.3);
+      eyes(g, c + r * 0.3, c, r * 0.55, true);
+    }
     g.generateTexture(`germ-${def.id}`, size, size);
     g.destroy();
   }

@@ -29,7 +29,9 @@ const labelWaits = (p) => {
 };
 labelWaits(page);
 const errors = [];
-page.on('pageerror', (e) => errors.push(e.message));
+// Page errors say where they came from (the top stack frame), so a CI annotation is enough to find them
+const where = (e) => `${e.message} @ ${(e.stack ?? '').split('\n')[1]?.trim() ?? '?'}`;
+page.on('pageerror', (e) => errors.push(where(e)));
 page.on('console', (m) => m.type() === 'error' && errors.push(m.text()));
 
 let failed = false;
@@ -434,6 +436,105 @@ try {
   });
   check(slowed < 1, `standing in a puddle slows Eugene (speed ×${slowed.toFixed(2)})`);
 
+  // ECOLOGY (M11): splitters, Chonk, Colony, Mother Culture, Bulldozer, Mold Spot
+  const eco = await page.evaluate(() => {
+    const scene = window.game.scene.getScene('Game');
+    const clear = () => {
+      for (const g of scene.germs.getChildren()) if (g.active) g.kill();
+      for (const p of scene.powerups.pills) p.img.setVisible(false);
+      scene.powerups.active.clear();
+    };
+    const count = (id) => scene.germs.getChildren().filter((c) => c.active && c.def.id === id).length;
+    const make = (id, dx, dy) => {
+      scene.spawnGermAt(id, scene.player.x + dx, scene.player.y + dy, true);
+      return scene.germs.getChildren().find((c) => c.active && c.def.id === id);
+    };
+    clear();
+    scene.damageGerm(make('duo', 220, 0), 1e6, 0, 0);
+    const split = count('monococcus');
+    clear();
+    scene.damageGerm(make('chonk', 220, 0), 1e6, 0, 0);
+    const burst = count('basic');
+    clear();
+    scene.spawnGerm('colony', { hpMult: 1, speedMult: 1 });
+    const specks = count('speck');
+    clear();
+    const hurt = make('basic', 260, 60);
+    const healer = make('healer', 260, 0);
+    hurt.hp = hurt.maxHp / 2;
+    hurt.freezeFor(scene.time.now, 60000); // hold it still inside the aura
+    return { split, burst, specks, hurtHp: hurt.hp, healerX: healer.x };
+  });
+  check(eco.split === 2, `a Diplococcus Duo splits in two when disinfected (${eco.split} halves)`);
+  check(eco.burst === 6, `a Chonk bursts into 6 germs (${eco.burst})`);
+  check(eco.specks === 8, `a Colony arrives as a flock of 8 Specks (${eco.specks})`);
+  const healed = await page.waitForFunction((hp0) => {
+    const scene = window.game.scene.getScene('Game');
+    const g = scene.germs.getChildren().find((c) => c.active && c.def.id === 'basic');
+    return g && g.hp > hp0 + 3 ? g.hp : null;
+  }, eco.hurtHp, { timeout: 20000 }).then((h) => h.jsonValue(), () => null);
+  check(healed !== null, `a Mother Culture heals germs inside its aura (${Math.round(eco.hurtHp)} -> ${healed && Math.round(healed)} HP)`);
+
+  // Bulldozer: aims (red lane), charges straight, and a wall leaves it dazed and taking double damage
+  await page.evaluate(() => {
+    const scene = window.game.scene.getScene('Game');
+    for (const g of scene.germs.getChildren()) if (g.active) g.kill();
+    const sp = scene.room.playerSpawn;
+    scene.player.setPosition(sp.x, sp.y);
+    scene.spawnGermAt('charger', sp.x + 300, sp.y, true);
+    const g = scene.germs.getChildren().find((c) => c.active && c.def.id === 'charger');
+    g.nextChargeAt = 0;
+    window.__chargeSeen = new Set();
+    scene.events.on('postupdate', () => window.__chargeSeen.add(g.chargeState));
+  });
+  const charged = await page.waitForFunction(() => window.__chargeSeen.has('windup') && window.__chargeSeen.has('charging'), null, { timeout: 20000 }).then(() => true, () => false);
+  check(charged, `a Bacillus Bulldozer winds up, then charges (${[...(await page.evaluate(() => [...window.__chargeSeen]))].join(' -> ')})`);
+  await page.evaluate(() => {
+    const scene = window.game.scene.getScene('Game');
+    const g = scene.germs.getChildren().find((c) => c.active && c.def.id === 'charger');
+    // Aim it at the nearest wall and let it go
+    let best = null;
+    for (let i = 0; i < 32; i++) {
+      const a = (i / 32) * Math.PI * 2;
+      for (let d = 60; d <= 420; d += 20) {
+        if (!scene.flow.lineClear(g.x, g.y, g.x + Math.cos(a) * d, g.y + Math.sin(a) * d)) {
+          if (!best || d < best.d) best = { a, d };
+          break;
+        }
+      }
+    }
+    g.chargeState = 'charging';
+    g.chargeAngle = best ? best.a : 0;
+    g.chargeUntil = scene.time.now + g.def.charge.ms * 1.5;
+  });
+  const dazed = await page.waitForFunction(() => {
+    const g = window.game.scene.getScene('Game').germs.getChildren().find((c) => c.active && c.def.id === 'charger');
+    return g && g.chargeState === 'dazed';
+  }, null, { timeout: 20000 }).then(() => true, () => false);
+  const dazedHit = await page.evaluate(() => {
+    const scene = window.game.scene.getScene('Game');
+    const g = scene.germs.getChildren().find((c) => c.active && c.def.id === 'charger');
+    const hp0 = g.hp;
+    scene.damageGerm(g, 5, 0, 0);
+    return hp0 - g.hp;
+  });
+  check(dazed && dazedHit === 10, `a charge into a wall leaves it dazed, taking double damage (${dazed}, 5 -> ${dazedHit})`);
+
+  // Mold Spot: rooted in place, it lets out spores
+  await page.evaluate(() => {
+    const scene = window.game.scene.getScene('Game');
+    for (const g of scene.germs.getChildren()) if (g.active) g.kill();
+    scene.spawnGermAt('moldSpot', scene.player.x + 260, scene.player.y, true);
+    const g = scene.germs.getChildren().find((c) => c.active && c.def.id === 'moldSpot');
+    g.nextSpawnAt = 0;
+  });
+  const spored = await page.waitForFunction(() => window.game.scene.getScene('Game').germs.getChildren().some((c) => c.active && c.def.id === 'spore'), null, { timeout: 20000 }).then(() => true, () => false);
+  check(spored, 'a Mold Spot lets out spores');
+  await page.evaluate(() => {
+    const scene = window.game.scene.getScene('Game');
+    for (const g of scene.germs.getChildren()) if (g.active) g.kill();
+  });
+
   // RESISTANT elites: tougher, with a trait; always drop a power-up. Power-ups are picked up by walking over them
   const elite = await page.evaluate(() => {
     const scene = window.game.scene.getScene('Game');
@@ -800,7 +901,7 @@ try {
   const dbg = await context.newPage();
   labelWaits(dbg);
   const dbgErrors = [];
-  dbg.on('pageerror', (e) => dbgErrors.push(e.message));
+  dbg.on('pageerror', (e) => dbgErrors.push(where(e)));
   await dbg.goto(url + '?round=6&copays=999&god&fps=30');
   await dbg.waitForFunction(() => window.game?.scene.isActive('Title'));
   await dbg.touchscreen.tap(426, 200);
@@ -825,7 +926,7 @@ try {
   const pp = await tall.newPage();
   labelWaits(pp);
   const tallErrors = [];
-  pp.on('pageerror', (e) => tallErrors.push(e.message));
+  pp.on('pageerror', (e) => tallErrors.push(where(e)));
   await pp.goto(url);
   await pp.waitForFunction(() => window.game?.scene.isActive('Title'));
   await pp.touchscreen.tap(196, 426);

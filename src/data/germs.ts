@@ -22,7 +22,7 @@ export interface GermDef {
   /** Copays (currency) earned on kill. */
   copays: number;
   /** Placeholder art style: round blob with cilia, spiky virus, sheet of paper, armored hex shell, or droopy sneezer. */
-  shape: 'blob' | 'spiky' | 'paper' | 'shell' | 'sneezer';
+  shape: 'blob' | 'spiky' | 'paper' | 'shell' | 'sneezer' | 'duo' | 'rod' | 'dish' | 'mold';
   /** 0 = full knockback from spray, 1 = immovable. */
   knockbackResist: number;
   /** "Cause of death" on the Discharge Summary when this germ lands the final hit. */
@@ -48,6 +48,20 @@ export interface GermDef {
     globSpeed: number; globRange: number; damage: number;
     puddleMs: number; puddleRadius: number; puddleSlow: number;
   };
+  /** Bursts into `count` germs of type `id` when disinfected (Diplococcus Duo, Chonk Coccus). */
+  splitInto?: { id: string; count: number };
+  /** Arrives as a group of `count` germs of type `id` instead of itself (Colony). */
+  spawnAs?: { id: string; count: number };
+  /**
+   * Charger (Bacillus Bulldozer): within `range` and in sight, it stops and aims (a red line shows the
+   * path) for `windupMs`, then charges straight at `speed` for up to `ms`. Hitting Eugene hurts for
+   * `damage`; hitting a wall stuns it for `stunMs`, and it takes `stunnedDamageTaken` × damage meanwhile.
+   */
+  charge?: { range: number; windupMs: number; speed: number; ms: number; cooldownMs: [number, number]; damage: number; stunMs: number; stunnedDamageTaken: number };
+  /** Healer (Mother Culture): keeps `keepAway` from Eugene and heals germs within `radius` by `perSec` HP/s. */
+  heal?: { radius: number; perSec: number; keepAway: number };
+  /** Stationary spawner (Mold Spot): never moves; lets out a `id` germ every `everyMs` (at most `max` alive). */
+  spawner?: { id: string; everyMs: number; max: number };
 }
 
 export const GERMS: Record<string, GermDef> = {
@@ -132,6 +146,63 @@ export const GERMS: Record<string, GermDef> = {
       globSpeed: 300, globRange: 420, damage: 10,
       puddleMs: 2500, puddleRadius: 52, puddleSlow: 0.55,
     },
+  },
+  /** DIPLOCOCCUS DUO: two cocci stuck together. Disinfect it and it splits into two quicker halves. From round 7. */
+  duo: {
+    id: 'duo', name: 'Diplococcus Duo', tag: 'bacteria', deathNote: 'Outnumbered by a germ that came in pairs.',
+    hp: 46, speed: 90, radius: 24, color: 0x4fc3a1, outline: 0x1f5a49, contactBounce: 260, contactDamage: 14,
+    points: 25, copays: 10, shape: 'duo', knockbackResist: 0.1, splitInto: { id: 'monococcus', count: 2 },
+  },
+  monococcus: {
+    id: 'monococcus', name: 'Monococcus', tag: 'bacteria', deathNote: 'Half a germ. Still enough.',
+    hp: 16, speed: 135, radius: 14, color: 0x4fc3a1, outline: 0x1f5a49, contactBounce: 300, contactDamage: 8,
+    points: 8, copays: 3, shape: 'blob', knockbackResist: 0,
+  },
+  /**
+   * BACILLUS BULLDOZER: a long rod that lines up, shows its path with a red line, then charges.
+   * Sidestep it; if it slams into a wall it's dazed and takes double damage. From round 8.
+   */
+  charger: {
+    id: 'charger', name: 'Bacillus Bulldozer', tag: 'bacteria', deathNote: 'Run over by a Bacillus Bulldozer.',
+    hp: 60, speed: 80, radius: 22, color: 0xff8a50, outline: 0x7a2e0e, contactBounce: 200, contactDamage: 12,
+    points: 30, copays: 14, shape: 'rod', knockbackResist: 0.5,
+    charge: { range: 420, windupMs: 800, speed: 560, ms: 900, cooldownMs: [2800, 4200], damage: 24, stunMs: 1500, stunnedDamageTaken: 2 },
+  },
+  /** MOTHER CULTURE: a walking petri dish that hangs back and heals germs around it (green pulse). Kill it first. From round 9. */
+  healer: {
+    id: 'healer', name: 'Mother Culture', tag: 'biofilm', deathNote: 'You let the Mother Culture keep everyone healthy.',
+    hp: 40, speed: 95, radius: 22, color: 0xf8bbd0, outline: 0x7a2e4a, contactBounce: 260, contactDamage: 6,
+    points: 35, copays: 16, shape: 'dish', knockbackResist: 0, heal: { radius: 200, perSec: 10, keepAway: 330 },
+  },
+  /** COLONY: arrives as a flock of eight tiny specks. One spray hit each; the Fogger eats them alive. From round 10. */
+  colony: {
+    id: 'colony', name: 'Colony', tag: 'virus', hp: 1, speed: 0, radius: 8, color: 0xce93d8, outline: 0x4a148c,
+    contactBounce: 0, contactDamage: 0, points: 0, copays: 0, shape: 'spiky', knockbackResist: 0, spawnAs: { id: 'speck', count: 8 },
+  },
+  speck: {
+    id: 'speck', name: 'Colony Speck', tag: 'virus', deathNote: 'Nibbled to death by a Colony.',
+    hp: 6, speed: 150, radius: 9, color: 0xce93d8, outline: 0x4a148c, contactBounce: 300, contactDamage: 4,
+    points: 3, copays: 1, shape: 'spiky', knockbackResist: 0,
+  },
+  /**
+   * MOLD SPOT: a fuzzy stain that grows somewhere far from Eugene and never moves, letting out a spore
+   * every few seconds until it's cleaned. The round can't end while it's there. Bleach melts it. From round 11.
+   */
+  moldSpot: {
+    id: 'moldSpot', name: 'Mold Spot', tag: 'fungus', deathNote: 'Spores. So many spores.',
+    hp: 120, speed: 0, radius: 30, color: 0x558b2f, outline: 0x1b3a0b, contactBounce: 200, contactDamage: 10,
+    points: 40, copays: 20, shape: 'mold', knockbackResist: 1, spawner: { id: 'spore', everyMs: 6000, max: 5 },
+  },
+  spore: {
+    id: 'spore', name: 'Mold Spore', tag: 'fungus', deathNote: 'Breathed in a Mold Spore.',
+    hp: 12, speed: 120, radius: 11, color: 0x9ccc65, outline: 0x33691e, contactBounce: 280, contactDamage: 6,
+    points: 4, copays: 2, shape: 'blob', knockbackResist: 0,
+  },
+  /** CHONK COCCUS: a huge, slow, unshovable blob (mini-boss). It bursts into six Basic Germs. From round 8. */
+  chonk: {
+    id: 'chonk', name: 'Chonk Coccus', tag: 'bacteria', deathNote: 'Sat on by a Chonk Coccus.',
+    hp: 380, speed: 55, radius: 44, color: 0x7cb342, outline: 0x2f4f12, contactBounce: 160, contactDamage: 22,
+    points: 80, copays: 35, shape: 'blob', knockbackResist: 1, splitInto: { id: 'basic', count: 6 },
   },
   /**
    * BOSS #1, designed with Noah: Diamond, the clinic's grouchy practice

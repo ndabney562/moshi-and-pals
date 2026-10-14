@@ -45,6 +45,13 @@ export class Germ extends Phaser.Physics.Arcade.Sprite {
   shield = 0;
   /** Prior Authorization: frozen solid until then. */
   frozenUntil = 0;
+  /** Bacillus Bulldozer: aiming, charging, or dazed after hitting a wall. */
+  chargeState: 'none' | 'windup' | 'charging' | 'dazed' = 'none';
+  chargeUntil = 0;
+  chargeAngle = 0;
+  nextChargeAt = 0;
+  /** Mold Spot: when it lets out its next spore. */
+  nextSpawnAt = 0;
   /** Elite aura (created the first time this pooled germ becomes an elite). */
   private ring?: Phaser.GameObjects.Image;
   /** Elite trait label (so traits don't rely on color alone). */
@@ -67,6 +74,10 @@ export class Germ extends Phaser.Physics.Arcade.Sprite {
     this.elite = undefined;
     this.shield = 0;
     this.frozenUntil = 0;
+    this.chargeState = 'none';
+    this.chargeUntil = 0;
+    this.nextChargeAt = now + Phaser.Math.Between(1500, 2500);
+    this.nextSpawnAt = now + (def.spawner?.everyMs ?? 0) / 2;
     this.sizeMul = 1;
     this.ring?.setVisible(false);
     this.tag?.setVisible(false);
@@ -77,7 +88,8 @@ export class Germ extends Phaser.Physics.Arcade.Sprite {
     this.setCircle(r, this.width / 2 - r, this.height / 2 - r);
     this.setDepth(def.boss ? 9 : 8).clearTint().setAlpha(1);
     this.setBounce(0.2);
-    this.setPushable(!def.boss);
+    // Bosses and unshovable germs (Chonk, Mold Spot) can't be pushed around by other germs
+    this.setPushable(!def.boss && def.knockbackResist < 1);
     // Squeeze out of the doorway
     this.setScale(0.1);
     this.scene.tweens.add({ targets: this, scale: 1, duration: def.boss ? 900 : 350, ease: 'Back.out' });

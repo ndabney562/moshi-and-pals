@@ -58,3 +58,9 @@ Values live in `src/config/balance.ts` and `src/config/controls.ts`.
 | Power-ups | elites always drop; others 1.2%; 10 s on the floor (blinks last 3 s) | Durations in `src/data/powerups.ts`, tuning in `BALANCE.powerups` |
 | Special rounds | 7 Rush, 9 Slow Tuesday, 12 Outbreak, 14 Inspection, 17 Superbug; then odd non-boss rounds | `SPECIAL_ROUNDS` and `WAVES.specialFor` in `src/data/waves.ts` |
 | Patient Zero | 1100 HP, 52 px/s, 20 contact, $150 | Cough every 4.2-6 s (55° × 330 px, 14 dmg, 3 Sprinters); sneeze below 60% every 9 s (5 globs); mask after 70 hits for 8 s (×2 damage); leaves below 25%; `BALANCE.patientZero` |
+| Diplococcus Duo | 46 HP, 90 px/s, 14 contact, $10; from r7, 10% +2%/round (max 20%) | Splits into 2 Monococci (16 HP, 135 px/s, 8 contact, $3) |
+| Bacillus Bulldozer | 60 HP, 80 px/s, 12 contact, $14; from r8, 7% +1%/round (max 14%), 2-4 alive | Charges within 420 px with line of sight: 0.8 s aim, 560 px/s for 0.9 s, 24 damage; cooldown 2.8-4.2 s; a wall dazes it 1.5 s at ×2 damage taken |
+| Chonk Coccus | 380 HP, 55 px/s, 22 contact, $35, no knockback; from r8, 2.5%, 1 alive | Bursts into 6 Basic Germs |
+| Mother Culture | 40 HP, 95 px/s, 6 contact, $16; from r9, 5%, 1 alive (2 from r14) | Keeps 330 px away; heals germs within 200 px by 10 HP/s (not bosses) |
+| Colony | from r10, 5%, 2 alive | 8 Specks (6 HP, 150 px/s, 4 contact, $1) |
+| Mold Spot | 120 HP, rooted, 10 contact, $20; from r11, 3.5%, 2 alive | Spawns at the farthest open door; a spore every 6 s (12 HP, 120 px/s), up to 5 per Mold Spot. Fungus: bottle ×0.6, fogger ×0.8, bleach ×2, UV ×1, foamer ×0.8 |
