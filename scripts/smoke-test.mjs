@@ -641,6 +641,7 @@ try {
       scene.spawnGermAt('basic', x, y, true);
       const g = scene.germs.getChildren().find((c) => c.active && !before.has(c));
       g.freezeFor(scene.time.now, 8000);
+      g.maxHp = g.hp = 1000; // tough enough to survive, so no kill Copays muddy the prices
       return g;
     };
     const hurt = (g, hp) => !g.active || g.hp < hp;
@@ -668,11 +669,14 @@ try {
   check(steamed, 'the autoclave hisses, then its steam cycle cooks the germ in front of it');
 
   // VENDING MACHINE (M14): three snacks, buy one (a run-long perk), too poor for another, walk away
-  const vend = await page.evaluate(() => {
+  await page.evaluate(() => {
     const scene = window.game.scene.getScene('Game');
     for (const g of scene.germs.getChildren()) if (g.active) g.kill();
     scene.addCopays(1000 - scene.copays);
     scene.stations.find((s) => s.o.kind === 'vending').use(scene.time.now);
+  });
+  await page.waitForFunction(() => window.game.scene.isPaused('Game'), null, { timeout: 5000 }).catch(() => {});
+  const vend = await page.evaluate(() => {
     const hud = window.game.scene.getScene('Hud');
     return { open: hud.choosing === 'vending', offered: hud.choicePanel.offered, paused: window.game.scene.isPaused('Game') };
   });
