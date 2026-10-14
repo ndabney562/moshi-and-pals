@@ -76,3 +76,5 @@ Values live in `src/config/balance.ts` and `src/config/controls.ts`.
 | Specialties | 8-12 CME each; one active | `SPECIALTIES` in `src/data/residency.ts` |
 | Starter Kit | 15 CME; start with any crate tool | `STARTER_KIT_COST` |
 | Atlas notes | unlock at 25 lifetime kills (bosses 1) | `src/data/atlas.ts` |
+| Dr. Kaya: CODE BLUE | 320 px sprint in 0.23 s, untouchable +0.25 s; 90 px lane, 30 damage, 650 knockback, 0.7 s stun; 9 s recharge. Passive ×1.08 speed | `BALANCE.codeBlue`, `src/data/characters.ts` |
+| PA Lucien: CLEAN FIELD | 180 px zone for 6 s; germs ×0.4 speed, 22 damage/s; 20 s recharge. Passive +20 health | `BALANCE.cleanField` |

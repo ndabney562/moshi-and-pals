@@ -21,6 +21,7 @@ import { WAVES } from '../data/waves';
 import { CLINIC } from '../data/clinic';
 import type { FloorArea, Obstacle, ObstacleKind, RoomArea, RoomLayout, Stairway } from '../data/rooms';
 import { SNACKS, type SnackDef } from '../data/vending';
+import { characterById, type CharacterDef } from '../data/characters';
 import { Droplet } from '../entities/Droplet';
 import { Glob } from '../entities/Glob';
 import { Germ, type GermScaling } from '../entities/Germ';
@@ -119,6 +120,10 @@ export class GameScene extends Phaser.Scene {
   private mods: SpecialtyMods = {};
   private specialtyName = '';
   private bossesDefeated = 0;
+  /** Who's on shift (title screen): their art, passive and signature move. */
+  character: CharacterDef = characterById('eugene');
+  /** PA Lucien's CLEAN FIELD, while it's down. */
+  private field?: { x: number; y: number; until: number; gfx: Phaser.GameObjects.Graphics };
   private slot = 0;
   private fx!: Fx;
   private flow!: FlowField;
@@ -209,7 +214,12 @@ export class GameScene extends Phaser.Scene {
 
     this.fx = new Fx(this);
     this.flow = new FlowField(room.width, room.height, this.blockingObstacles());
-    this.player = new Player(this, room.playerSpawn.x, room.playerSpawn.y);
+    this.character = characterById(settings.character);
+    this.player = new Player(this, room.playerSpawn.x, room.playerSpawn.y, this.character.id);
+    const passive = this.character.passive;
+    if (passive.maxHp) this.player.maxHp = this.player.hp = this.player.maxHp + passive.maxHp;
+    if (passive.moveSpeed) this.player.setSpeedMod('character', passive.moveSpeed);
+    this.field = undefined;
 
     // Pools: created once, reused all game
     this.droplets = this.physics.add.group({ classType: Droplet, maxSize: 90, runChildUpdate: true, defaultKey: 'droplet' });
@@ -393,7 +403,7 @@ export class GameScene extends Phaser.Scene {
     }
     if (inputState.purgeRequested) {
       inputState.purgeRequested = false;
-      this.sinusPurge(time);
+      this.signature(time);
     }
     this.updateStairs(time);
     this.fitCameraToFloor();
@@ -436,6 +446,7 @@ export class GameScene extends Phaser.Scene {
     this.boss?.update(time);
     this.behaviorHost.telegraphs.clear();
     this.gel.update(time, -1e9, -1e9);
+    this.updateField(time, delta);
     const gelOn = this.gel.count > 0;
     for (const g of this.germs.getChildren() as Germ[]) {
       if (!g.active) continue;
@@ -809,9 +820,113 @@ export class GameScene extends Phaser.Scene {
     events.emit(GameEvents.CopaysChanged, { copays: this.copays });
   }
 
+  /** The signature move's recharge (Sinus Purge, Code Blue, Clean Field), after snacks. */
+  private get signatureCooldown(): number {
+    const sig = this.character.signature;
+    const base = sig === 'codeBlue' ? BALANCE.codeBlue.cooldownMs : sig === 'cleanField' ? BALANCE.cleanField.cooldownMs : BALANCE.purge.cooldownMs;
+    return base * this.perks.purge;
+  }
+
+  /** The big green button: whoever is on shift does their move. */
+  private signature(time: number): void {
+    if (this.character.signature === 'codeBlue') this.codeBlue(time);
+    else if (this.character.signature === 'cleanField') this.cleanField(time);
+    else this.sinusPurge(time);
+  }
+
+  /**
+   * DR. KAYA'S CODE BLUE: a flat-out sprint where he's headed (or facing). He can't be hurt on the way,
+   * and every germ he runs through is bowled over.
+   */
+  private codeBlue(time: number): void {
+    if (time < this.purgeReadyAt || this.player.dead) return;
+    const cfg = BALANCE.codeBlue;
+    this.purgeReadyAt = time + this.signatureCooldown;
+    this.runStats.purges++;
+    const p = this.player;
+    const moving = Math.hypot(inputState.moveX, inputState.moveY) > 0.2;
+    const a = moving ? Math.atan2(inputState.moveY, inputState.moveX) : p.rotation;
+    // Stop short of walls
+    let dist = cfg.distance;
+    for (let d = 20; d <= cfg.distance; d += 20) {
+      if (!this.flow.lineClear(p.x, p.y, p.x + Math.cos(a) * d, p.y + Math.sin(a) * d)) { dist = Math.max(0, d - 30); break; }
+    }
+    const x0 = p.x;
+    const y0 = p.y;
+    const x1 = x0 + Math.cos(a) * dist;
+    const y1 = y0 + Math.sin(a) * dist;
+    const speed = (dist / cfg.ms) * 1000;
+    p.shove(Math.cos(a) * speed, Math.sin(a) * speed, cfg.ms);
+    p.guard(cfg.ms + cfg.guardMs);
+    p.rotation = a;
+    sfx.dash();
+    this.cameras.main.shake(140, 0.005);
+    this.fx.number(x0, y0 - 70, 'CODE BLUE!', '#7fd3ff', 28);
+    const streak = this.add.graphics().setDepth(9.5);
+    streak.lineStyle(cfg.width, 0x7fd3ff, 0.45).lineBetween(x0, y0, x1, y1);
+    streak.lineStyle(6, 0xffffff, 0.8).lineBetween(x0, y0, x1, y1);
+    this.tweens.add({ targets: streak, alpha: 0, duration: 420, onComplete: () => streak.destroy() });
+    const dx = x1 - x0;
+    const dy = y1 - y0;
+    const len2 = dx * dx + dy * dy || 1;
+    let bowled = 0;
+    for (const g of this.livingGerms()) {
+      // Closest point of the lane to this germ
+      const t = Phaser.Math.Clamp(((g.x - x0) * dx + (g.y - y0) * dy) / len2, 0, 1);
+      const sx = x0 + dx * t;
+      const sy = y0 + dy * t;
+      if (Phaser.Math.Distance.Between(g.x, g.y, sx, sy) > cfg.width / 2 + g.def.radius) continue;
+      // Shoved off to the side of the lane
+      const away = Phaser.Math.Angle.Between(sx, sy, g.x, g.y);
+      bowled++;
+      this.damageGerm(g, cfg.damage, Number.isFinite(away) ? away : a + Math.PI / 2, cfg.knockback);
+      if (g.active) g.stun(time, cfg.stunMs);
+    }
+    if (bowled >= 5) this.achieve('honk');
+    events.emit(GameEvents.PurgeUsed);
+  }
+
+  /** PA LUCIEN'S CLEAN FIELD: a sterile zone where he stands. Germs inside crawl, and burn. */
+  private cleanField(time: number): void {
+    if (time < this.purgeReadyAt || this.player.dead) return;
+    const cfg = BALANCE.cleanField;
+    this.purgeReadyAt = time + this.signatureCooldown;
+    this.runStats.purges++;
+    this.field?.gfx.destroy();
+    const { x, y } = this.player;
+    this.field = { x, y, until: time + cfg.ms, gfx: this.add.graphics().setDepth(1.6) };
+    sfx.field();
+    this.fx.number(x, y - 70, 'CLEAN FIELD!', '#b2fab4', 28);
+    const ring = this.add.circle(x, y, cfg.radius).setStrokeStyle(10, 0xb2fab4, 0.9).setScale(0.2).setDepth(13);
+    this.tweens.add({ targets: ring, scale: 1, alpha: 0, duration: 360, ease: 'Cubic.out', onComplete: () => ring.destroy() });
+    events.emit(GameEvents.PurgeUsed);
+  }
+
+  /** Runs the Clean Field each frame: draws it, slows and burns the germs inside. */
+  private updateField(time: number, dtMs: number): void {
+    const f = this.field;
+    if (!f) return;
+    const cfg = BALANCE.cleanField;
+    if (time >= f.until) {
+      f.gfx.destroy();
+      this.field = undefined;
+      return;
+    }
+    const left = (f.until - time) / cfg.ms;
+    const pulse = 0.5 + 0.5 * Math.sin(time / 160);
+    f.gfx.clear()
+      .fillStyle(0xb2fab4, 0.12 + 0.06 * pulse).fillCircle(f.x, f.y, cfg.radius)
+      .lineStyle(5, 0x66bb6a, 0.5 + 0.4 * Math.min(1, left * 3)).strokeCircle(f.x, f.y, cfg.radius * (0.97 + 0.03 * pulse));
+    for (const g of this.livingGerms()) {
+      if ((g.x - f.x) ** 2 + (g.y - f.y) ** 2 > (cfg.radius + g.def.radius) ** 2) continue;
+      if (!g.def.boss) g.slow(time, cfg.slow, 250);
+      this.damageGerm(g, cfg.dps * (dtMs / 1000), 0, 0);
+    }
+  }
+
   /** 0..1 while recharging, 1 when ready. */
   private purgeProgress(time: number): number {
-    const cd = BALANCE.purge.cooldownMs * this.perks.purge;
+    const cd = this.signatureCooldown;
     return time >= this.purgeReadyAt ? 1 : 1 - (this.purgeReadyAt - time) / cd;
   }
 
@@ -819,7 +934,7 @@ export class GameScene extends Phaser.Scene {
   private sinusPurge(time: number): void {
     if (time < this.purgeReadyAt || this.player.dead) return;
     const cfg = BALANCE.purge;
-    this.purgeReadyAt = time + cfg.cooldownMs * this.perks.purge;
+    this.purgeReadyAt = time + this.signatureCooldown;
     this.runStats.purges++;
     const { x, y } = this.player;
     sfx.purge();
@@ -1625,6 +1740,7 @@ export class GameScene extends Phaser.Scene {
         germ.setVelocity(vx, vy);
       },
       damagePlayer: (amount) => this.hurtPlayer(amount, 'diamond'),
+      surname: this.character.surname,
       canMeet: () => !!this.currentRoom?.start,
     };
   }
@@ -1661,6 +1777,7 @@ export class GameScene extends Phaser.Scene {
       favoriteVictim: favId ? { name: GERMS[favId]?.name ?? favId, count: favCount ?? 0 } : undefined,
       totalKills: record.next.totalKills, runs: record.next.runs,
       newAchievements: [...st.achievements],
+      chart: this.character.chart,
       cme,
       specialty: this.specialtyName,
     };

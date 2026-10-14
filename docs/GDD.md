@@ -8,10 +8,10 @@
 
 **Core loop:** move → aim → disinfect → dodge → earn → upgrade → unlock → survive → repeat.
 
-## Current state (v0.15.0)
+## Current state (v0.16.0)
 - Title screen, tap to start.
 - MoshiLand Urgent Care, laid out after the real clinic (M8): ground floor and upstairs joined by two staircases. You start in the waiting room; the hallway loop, 15 exam rooms, bathrooms, supply closets, lab, X-ray, manager's office, egress stairs and the whole upstairs are bought open with Copays.
-- Eugene (placeholder art) moves with left stick, faces right-stick aim.
+- Three playable doctors, picked on the title screen: Dr. Moshkovich (Sinus Purge), Dr. Kaya (Code Blue sprint) and PA Lucien (Clean Field zone). Noah's coworkers; their reference photos stay out of the repo.
 - Holding SPRAY sprays the alcohol bottle (cone of droplets, limited supply, manual refill). Eugene auto-aims at the nearest germ in range.
 - Germs come in escalating rounds through the doors and hurt Eugene on contact. Health regenerates after a few seconds without a hit.
 - Round 3+: Viral Sprinters. Round 4+: Sneezers (ranged, slowing puddles). Round 6+: Spore Pods (armored front; flank, UV, or Purge-flip them). Every 5th round a boss: Diamond the Practice Manager (5, 15, 25) or Patient Zero (10, 20). From round 8, RESISTANT elites drop power-ups; special rounds from round 7. Ecology (M11): Diplococcus Duo splits (7+), Bacillus Bulldozer charges and gets dazed by walls (8+), Chonk Coccus bursts into six (8+), Mother Culture heals (9+), Colony flocks (10+), Mold Spot spawns spores (11+).

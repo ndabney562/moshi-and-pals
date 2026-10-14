@@ -24,8 +24,8 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
   /** While shoved, Eugene slides and can't steer. */
   private shovedUntil = 0;
 
-  constructor(scene: Phaser.Scene, x: number, y: number) {
-    super(scene, x, y, 'eugene');
+  constructor(scene: Phaser.Scene, x: number, y: number, texture = 'eugene') {
+    super(scene, x, y, texture);
     scene.add.existing(this);
     scene.physics.add.existing(this);
 
@@ -59,6 +59,11 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     let k = 1;
     for (const v of this.speedMods.values()) k *= v;
     return k;
+  }
+
+  /** Can't be hurt for `ms` (a dash). */
+  guard(ms: number): void {
+    this.invulnerableUntil = Math.max(this.invulnerableUntil, this.scene.time.now + ms);
   }
 
   get invulnerable(): boolean {

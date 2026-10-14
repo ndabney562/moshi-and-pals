@@ -128,6 +128,8 @@ export interface RunResult {
   /** CME Credits this shift earned for the Residency Board, and the Specialty worked under ('' = none). */
   cme: number;
   specialty: string;
+  /** Who was on shift, as the chart names them. */
+  chart: string;
 }
 
 export const events = new Phaser.Events.EventEmitter();

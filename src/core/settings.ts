@@ -13,10 +13,12 @@ export interface Settings {
   reducedMotion: boolean;
   /** One-time gameplay hints already learned (move, spray, pour, purge, buy). */
   learned: Record<string, boolean>;
+  /** Who you play (title screen): eugene, kaya or lucien. */
+  character: string;
 }
 
 const KEY = 'moshi.settings.v1';
-const DEFAULTS: Settings = { autoAim: true, sound: true, autoRefill: true, reducedMotion: false, learned: {} };
+const DEFAULTS: Settings = { autoAim: true, sound: true, autoRefill: true, reducedMotion: false, learned: {}, character: 'eugene' };
 
 function load(): Settings {
   try {

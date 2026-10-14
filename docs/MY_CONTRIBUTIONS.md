@@ -12,6 +12,7 @@
 - Named the clinic **MoshiLand** and asked for the rooms of a standard urgent care, including X-ray (built in v0.5.0).
 - Approved the M7 roadmap (docs/ROADMAP.md) and the GameScene split; cut the first-person view. Kept the names Spore Pod, Sneezer, Sanitation Streak and Perfect Pour.
 - Shared photos of the real clinic's ground floor and upstairs plans for the M8 map; made the new app icon.
+- Named the Pals and shared reference photos: Dr. Kaya and PA Lucien are playable alongside Moshi (v0.16.0).
 - Made the title poster (title screen since v0.5.2; redone as Moshi and Pals in v0.5.6).
 
 ## Requested now

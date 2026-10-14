@@ -19,6 +19,8 @@ export class BootScene extends Phaser.Scene {
 
   create(): void {
     this.makeEugene();
+    this.makeKaya();
+    this.makeLucien();
     this.makeFloorTile();
     this.makeShadow();
     for (const def of Object.values(GERMS)) this.makeGerm(def);
@@ -96,6 +98,74 @@ export class BootScene extends Phaser.Scene {
   }
 
   /** Two-tone clinic linoleum, tiled across the floor. */
+  /** The parts every doctor shares, seen from above facing +x: arms (one holding the bottle) and the lab coat. */
+  private drawDoctorBody(g: Phaser.GameObjects.Graphics, skin: number, under: number, coatW: number): void {
+    const outline = 0x1b2b30;
+    g.fillStyle(COLORS.coat).lineStyle(3, outline).fillRoundedRect(46, 60, 30, 13, 6).strokeRoundedRect(46, 60, 30, 13, 6);
+    g.fillStyle(skin).fillCircle(78, 66, 6).strokeCircle(78, 66, 6);
+    g.fillStyle(COLORS.bottle).fillRoundedRect(76, 70, 14, 20, 4).strokeRoundedRect(76, 70, 14, 20, 4);
+    g.fillStyle(COLORS.bottleCap).fillRect(79, 64, 8, 7).strokeRect(79, 64, 8, 7);
+    g.fillStyle(COLORS.bottleCap).fillTriangle(87, 65, 94, 67, 87, 69);
+    g.fillStyle(COLORS.coat).fillRoundedRect(44, 18, 22, 13, 6).strokeRoundedRect(44, 18, 22, 13, 6);
+    g.fillStyle(skin).fillCircle(68, 24, 6).strokeCircle(68, 24, 6);
+    g.fillStyle(COLORS.coat).fillEllipse(41, 46, coatW, 78).strokeEllipse(41, 46, coatW, 78);
+    g.fillStyle(COLORS.coatShadow).fillEllipse(34, 46, coatW * 0.43, 58);
+    g.fillStyle(under).fillCircle(49, 46, 19).fillEllipse(58, 46, 22, 26);
+  }
+
+  /**
+   * DR. KAYA (from Noah's photo): lean, a black cap, dark sunglasses, a trimmed dark beard, a smartwatch.
+   * Charcoal scrubs under the coat.
+   */
+  private makeKaya(): void {
+    const g = this.add.graphics();
+    const outline = 0x1b2b30;
+    const skin = 0xdcae8c;
+    this.drawDoctorBody(g, skin, 0x3a3f47, 42);
+    g.fillStyle(0x111111).fillRoundedRect(55, 18, 6, 11, 2); // smartwatch on the left wrist
+    // Face, with the beard round its front edge
+    g.fillStyle(skin).lineStyle(3, outline).fillCircle(49, 46, 15).strokeCircle(49, 46, 15);
+    g.lineStyle(5, 0x2b2420).beginPath().arc(49, 46, 13, Phaser.Math.DegToRad(-55), Phaser.Math.DegToRad(55), false).strokePath();
+    // Trimmed dark beard along the jaw, showing past both sides of the brim
+    g.fillStyle(0x2b2420).fillEllipse(56, 32, 12, 7).fillEllipse(56, 60, 12, 7).fillEllipse(62, 46, 5, 26);
+    // Black cap: crown over the head, brim pointing forward, a little orange button on top
+    g.fillStyle(0x16181c).lineStyle(2, outline).fillCircle(46, 46, 14).strokeCircle(46, 46, 14);
+    g.fillStyle(0x16181c).fillEllipse(57, 46, 11, 21).strokeEllipse(57, 46, 11, 21);
+    g.lineStyle(1.5, 0x3a3f47).lineBetween(34, 46, 58, 46).lineBetween(38, 36, 52, 56).lineBetween(38, 56, 52, 36);
+    g.fillStyle(0xf26b21).fillCircle(46, 46, 3);
+    // Dark sunglasses peeking out under the brim
+    g.fillStyle(0x0b0b0b).fillRoundedRect(62, 37, 5, 8, 2).fillRoundedRect(62, 47, 5, 8, 2).fillRect(63, 44, 2, 4);
+    g.generateTexture('kaya', 96, 96);
+    g.destroy();
+  }
+
+  /**
+   * PA LUCIEN (from Noah's photo): glasses, close-cropped hair, a mustache and goatee, shirt and tie
+   * under the white coat, stethoscope.
+   */
+  private makeLucien(): void {
+    const g = this.add.graphics();
+    const outline = 0x1b2b30;
+    const skin = 0x6b4632;
+    this.drawDoctorBody(g, skin, 0xe3eaf2, 48);
+    // Silver-lilac tie peeking out under the chin
+    g.fillStyle(0xc5b8d6).lineStyle(1.5, outline).fillTriangle(62, 43, 62, 49, 69, 46).strokeTriangle(62, 43, 62, 49, 69, 46);
+    g.lineStyle(3, COLORS.stethoscope).beginPath()
+      .arc(48, 46, 19, Phaser.Math.DegToRad(-70), Phaser.Math.DegToRad(70), false).strokePath();
+    // Head: close-cropped hair as a thin cap over the crown and back, the brow and face in front
+    g.fillStyle(skin).lineStyle(3, outline).fillCircle(48, 46, 15).strokeCircle(48, 46, 15);
+    g.fillStyle(0x2a1d16).beginPath().slice(48, 46, 14, Phaser.Math.DegToRad(110), Phaser.Math.DegToRad(250), false).fillPath();
+    g.fillStyle(0x7d5440).fillEllipse(51, 46, 10, 16); // light on the top of his head
+    // Glasses: thin frames with pale lenses, arms running back over the ears
+    g.fillStyle(0xd6e4ec, 0.9).lineStyle(2, 0x111111).fillRoundedRect(57, 36, 6, 9, 2).strokeRoundedRect(57, 36, 6, 9, 2)
+      .fillRoundedRect(57, 47, 6, 9, 2).strokeRoundedRect(57, 47, 6, 9, 2);
+    g.lineStyle(2, 0x111111).lineBetween(60, 45, 60, 47).lineBetween(57, 39, 44, 34).lineBetween(57, 53, 44, 58);
+    // Mustache and goatee at the front
+    g.fillStyle(0x1a1410).fillEllipse(63.5, 46, 3, 12);
+    g.generateTexture('lucien', 96, 96);
+    g.destroy();
+  }
+
   private makeFloorTile(): void {
     const g = this.add.graphics();
     g.fillStyle(COLORS.floorA).fillRect(0, 0, 64, 64);

@@ -2,6 +2,8 @@ import Phaser from 'phaser';
 import { COLORS } from '../config/theme';
 import { applyUpdate, offerFilesToCache, onUpdateReady } from '../core/updates';
 import { progress } from '../core/progress';
+import { saveSettings, settings } from '../core/settings';
+import { CHARACTERS, characterById } from '../data/characters';
 
 /**
  * "Tap to start" screen. The tap also matters technically: iPhones only allow
@@ -16,6 +18,9 @@ export class TitleScene extends Phaser.Scene {
   private tap!: Phaser.GameObjects.Text;
   private updatePill!: Phaser.GameObjects.Text;
   private boardButton!: Phaser.GameObjects.Text;
+  /** WHO'S ON SHIFT: a portrait per doctor, and a line about the chosen one. */
+  private picks: { id: string; ring: Phaser.GameObjects.Arc; art: Phaser.GameObjects.Image; name: Phaser.GameObjects.Text }[] = [];
+  private pickInfo!: Phaser.GameObjects.Text;
 
   private started = false;
 
@@ -55,6 +60,24 @@ export class TitleScene extends Phaser.Scene {
       this.scene.start('Board');
     });
 
+    // Who's on shift
+    this.picks = CHARACTERS.map((c) => {
+      const ring = this.add.circle(0, 0, 40, 0x0d2b2e, 0.85).setStrokeStyle(4, 0xe8fff9, 0.5).setInteractive({ useHandCursor: true });
+      const art = this.add.image(0, 0, c.id).setAngle(-90).setScale(0.85);
+      const name = this.add.text(0, 0, c.short, {
+        fontFamily: font, fontSize: '14px', fontStyle: '900', color: COLORS.uiText, backgroundColor: '#0d2b2ecc', padding: { x: 6, y: 2 },
+      }).setOrigin(0.5, 0);
+      ring.on('pointerdown', (_p: Phaser.Input.Pointer, _x: number, _y: number, e: Phaser.Types.Input.EventData) => {
+        e.stopPropagation();
+        this.pick(c.id);
+      });
+      return { id: c.id, ring, art, name };
+    });
+    this.pickInfo = this.add.text(0, 0, '', {
+      fontFamily: font, fontSize: '15px', fontStyle: 'bold', color: '#ffe66d', backgroundColor: '#0d2b2ecc', padding: { x: 8, y: 4 },
+    }).setOrigin(1, 1);
+    this.pick(settings.character);
+
     // The screen's shape can change after load (rotating, Safari's toolbars), so re-fit whenever it does
     this.layout();
     this.scale.on('resize', this.layout, this);
@@ -62,7 +85,7 @@ export class TitleScene extends Phaser.Scene {
 
     this.input.keyboard?.once('keydown', () => this.begin());
     this.input.on('pointerdown', (_p: Phaser.Input.Pointer, over: Phaser.GameObjects.GameObject[]) => {
-      if (!over.includes(this.updatePill) && !over.includes(this.boardButton)) this.begin();
+      if (!over.includes(this.updatePill) && !over.includes(this.boardButton) && !this.picks.some((p) => over.includes(p.ring))) this.begin();
     });
   }
 
@@ -76,6 +99,28 @@ export class TitleScene extends Phaser.Scene {
     this.tap.setPosition(width / 2, height * 0.92);
     this.updatePill.setPosition(width / 2, height * 0.8);
     this.boardButton.setPosition(24, height - 20);
+    this.picks.forEach((p, i) => {
+      const x = width - 70 - (this.picks.length - 1 - i) * 112;
+      const y = height - 92;
+      p.ring.setPosition(x, y);
+      p.art.setPosition(x, y + 4);
+      p.name.setPosition(x, y + 44);
+    });
+    this.pickInfo.setPosition(width - 20, height - 150);
+  }
+
+  /** Chooses who's on shift (saved for next time). */
+  private pick(id: string): void {
+    const c = characterById(id);
+    settings.character = c.id;
+    saveSettings();
+    for (const p of this.picks) {
+      const on = p.id === c.id;
+      p.ring.setStrokeStyle(on ? 5 : 3, on ? 0xffe66d : 0xe8fff9, on ? 1 : 0.4);
+      p.art.setAlpha(on ? 1 : 0.6);
+      p.name.setColor(on ? '#ffe66d' : COLORS.uiText);
+    }
+    this.pickInfo?.setText(`${c.name.toUpperCase()} · ${c.blurb}`);
   }
 
   private begin(): void {

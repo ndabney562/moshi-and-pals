@@ -1231,6 +1231,45 @@ try {
   check(offline, 'with no network, the game still launches to the title screen');
   check(swErrors.length === 0, `no errors offline${swErrors.length ? ': ' + swErrors.join(' | ') : ''}`);
   await swc.close();
+
+  // THE PALS (M16): Dr. Kaya and PA Lucien are playable, each with their own signature move
+  for (const who of ['kaya', 'lucien']) {
+    const pc = await browser.newContext({ viewport: { width: 852, height: 393 }, deviceScaleFactor: 1, isMobile: true, hasTouch: true });
+    await pc.addInitScript((w) => localStorage.setItem('moshi.settings.v1', JSON.stringify({ character: w, learned: { move: true, spray: true, pour: true, purge: true, buy: true } })), who);
+    const pp2 = await pc.newPage();
+    labelWaits(pp2);
+    const palErrors = [];
+    pp2.on('pageerror', (e) => palErrors.push(where(e)));
+    await pp2.goto(url + '?god');
+    await pp2.waitForFunction(() => window.game?.scene.isActive('Title'));
+    await pp2.touchscreen.tap(426, 120);
+    await pp2.waitForFunction(() => window.game.scene.isActive('Hud'), null, { timeout: 15000 });
+    const start = await pp2.evaluate(() => {
+      const sc = window.game.scene.getScene('Game');
+      sc.waves.nextRoundAt = 1e12;
+      const p = sc.player;
+      p.rotation = 0;
+      for (let i = 0; i < 4; i++) sc.spawnGermAt('basic', p.x + 70 + i * 45, p.y, true);
+      for (const g of sc.germs.getChildren()) if (g.active) { g.maxHp = g.hp = 500; g.freezeFor(sc.time.now, 20000); }
+      const x0 = p.x;
+      sc.signature(sc.time.now);
+      return { id: sc.character.id, texture: p.texture.key, maxHp: p.maxHp, label: window.game.scene.getScene('Hud').purgeButton.label?.text ?? '', x0, cooling: sc.purgeReadyAt > sc.time.now };
+    });
+    const moved = await pp2.waitForFunction((x0) => {
+      const sc = window.game.scene.getScene('Game');
+      const hurt = sc.germs.getChildren().filter((g) => g.active && g.hp < g.maxHp).length;
+      return hurt >= 2 ? { hurt, dx: Math.round(sc.player.x - x0) } : null;
+    }, start.x0, { timeout: 20000 }).then((h) => h.jsonValue(), () => ({ hurt: 0, dx: 0 }));
+    if (who === 'kaya') {
+      check(start.texture === 'kaya' && /CODE/.test(start.label) && start.cooling && moved.hurt >= 2,
+        `Dr. Kaya's CODE BLUE sprints through germs (${JSON.stringify({ ...start, ...moved })})`);
+    } else {
+      check(start.texture === 'lucien' && start.maxHp === 120 && /CLEAN/.test(start.label) && start.cooling && moved.hurt >= 2,
+        `PA Lucien (+20 health) puts down a CLEAN FIELD that burns germs (${JSON.stringify({ ...start, ...moved })})`);
+    }
+    check(palErrors.length === 0, `no errors playing ${who}${palErrors.length ? ': ' + palErrors.join(' | ') : ''}`);
+    await pc.close();
+  }
 } catch (e) {
   check(false, String(e) + (errors.length ? " | errors: " + errors.join(" | ") : ""));
 } finally {

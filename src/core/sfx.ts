@@ -211,6 +211,17 @@ export const sfx = {
     tone(c, o, t, 0.4, 300, 1800, 0.12, 'sine');
     tone(c, o, t + 0.4, 0.3, 90, 50, 0.4, 'square');
   }),
+  /** Code Blue: a whoosh and a pager beep */
+  dash: () => play('dash', 200, (c, o, t) => {
+    noiseBurst(c, o, t, 0.25, 1800, 0.35, 'bandpass');
+    tone(c, o, t, 0.08, 1400, 1400, 0.15, 'square');
+    tone(c, o, t + 0.1, 0.08, 1400, 1400, 0.15, 'square');
+  }),
+  /** Clean Field: a soft rising chime */
+  field: () => play('field', 300, (c, o, t) => {
+    tone(c, o, t, 0.25, 520, 780, 0.2, 'sine');
+    tone(c, o, t + 0.12, 0.35, 780, 1040, 0.15, 'triangle');
+  }),
   /** CLAIM DENIED: a sad rubber stamp */
   stamp: () => play('stamp', 300, (c, o, t) => {
     noiseBurst(c, o, t, 0.08, 300, 0.45, 'lowpass');
