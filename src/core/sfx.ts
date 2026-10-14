@@ -100,6 +100,25 @@ export const sfx = {
     tone(c, o, t, 0.16, 520, 90, 0.35);
     noiseBurst(c, o, t, 0.12, 900, 0.25, 'lowpass');
   }, Math.pow(2, (Math.min(streak, 30) / 5) * (2 / 12))),
+  /** Spray bouncing off a Spore Pod's armor */
+  tink: () => play('tink', 120, (c, o, t) => {
+    tone(c, o, t, 0.06, 2400, 2200, 0.1, 'square');
+    tone(c, o, t + 0.03, 0.08, 3100, 2900, 0.06, 'triangle');
+  }),
+  /** Spore Pod flipped onto its back */
+  flip: () => play('flip', 200, (c, o, t) => tone(c, o, t, 0.25, 300, 900, 0.18, 'triangle')),
+  /** Sneezer wind-up: a rising, wheezy "ah... AH..." */
+  sneezeWindup: () => play('sneezeWindup', 300, (c, o, t) => {
+    tone(c, o, t, 0.3, 300, 420, 0.12, 'sawtooth');
+    tone(c, o, t + 0.35, 0.3, 360, 560, 0.14, 'sawtooth');
+  }),
+  /** The sneeze: CHOO! */
+  sneeze: () => play('sneeze', 120, (c, o, t) => {
+    noiseBurst(c, o, t, 0.25, 1800, 0.45, 'bandpass');
+    tone(c, o, t, 0.12, 700, 200, 0.2, 'sawtooth');
+  }),
+  /** Glob lands: wet splat */
+  splat: () => play('splat', 100, (c, o, t) => noiseBurst(c, o, t, 0.15, 500, 0.3, 'lowpass')),
   /** STAT! critical hit: a bright little tick */
   crit: () => play('crit', 80, (c, o, t) => tone(c, o, t, 0.07, 1800, 1400, 0.12, 'square')),
   /** Spotless round: sparkly arpeggio */

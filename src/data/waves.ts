@@ -17,9 +17,19 @@ export const WAVES = {
   hpMult: (r: number) => 1 + 0.1 * (r - 1),
   speedMult: (r: number) => Math.min(1 + 0.035 * (r - 1), 1.6),
 
-  /** Relative spawn weights per germ id. Viral Sprinters join from round 3. */
-  composition: (r: number): Record<string, number> =>
-    r < 3 ? { basic: 1 } : { basic: 1, sprinter: Math.min(0.15 + 0.06 * (r - 3), 0.5) },
+  /** Relative spawn weights per germ id. Viral Sprinters join from round 3, Sneezers from 4, Spore Pods from 6. */
+  composition: (r: number): Record<string, number> => {
+    const mix: Record<string, number> = { basic: 1 };
+    if (r >= 3) mix.sprinter = Math.min(0.15 + 0.06 * (r - 3), 0.5);
+    if (r >= 4) mix.sneezer = Math.min(0.1 + 0.02 * (r - 4), 0.2);
+    if (r >= 6) mix.sporePod = Math.min(0.12 + 0.02 * (r - 6), 0.25);
+    return mix;
+  },
+  /** Most of a germ type alive at once, so special germs stay a spice, not the meal. Others are unlimited. */
+  aliveLimit: {
+    sneezer: (r: number) => Math.min(2 + Math.floor((r - 4) / 3), 4),
+    sporePod: (r: number) => Math.min(2 + Math.floor((r - 6) / 2), 5),
+  } as Record<string, (r: number) => number>,
 
   /** Every Nth round is a boss round: the boss plus a lighter escort of normal germs. */
   bossEvery: 5,

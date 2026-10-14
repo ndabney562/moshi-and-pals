@@ -190,7 +190,7 @@ export class DiamondBrain {
     this.mode = 'meeting';
     this.meetingStartedAt = time;
     this.meetingDamage = 0;
-    this.host.player.moveScale = this.cfg.meetingMoveScale;
+    this.host.player.setSpeedMod('meeting', this.cfg.meetingMoveScale);
     this.say(pick(DIAMOND_LINES.meeting), this.cfg.meetingMaxMs);
     sfx.tapeRip();
   }
@@ -213,7 +213,7 @@ export class DiamondBrain {
   /** Lets go of Eugene. */
   private release(): void {
     this.host.player.pull.set(0, 0);
-    this.host.player.moveScale = 1;
+    this.host.player.setSpeedMod('meeting', null);
     this.tape.clear();
     this.hint.setVisible(false);
   }

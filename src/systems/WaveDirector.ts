@@ -47,14 +47,20 @@ export class WaveDirector {
    * Call every frame. `spawn` is asked to place one germ and returns false if it couldn't
    * (pool full); the director will retry next frame.
    */
-  update(time: number, alive: number, spawn: (germId: string, scaling: GermScaling) => boolean): void {
+  update(time: number, alive: number, spawn: (germId: string, scaling: GermScaling) => boolean, aliveOf: (germId: string) => number = () => 0): void {
     if (this.phase === 'intermission') {
       if (time >= this.nextRoundAt) this.startRound(time);
       return;
     }
     const r = this.round;
     if (this.queue.length > 0 && time >= this.nextSpawnAt && alive < WAVES.maxAlive(r)) {
-      if (spawn(this.queue[0], this.scaling)) {
+      // A type at its alive limit waits its turn: send in the next germ that isn't
+      const atLimit = (id: string) => !!WAVES.aliveLimit[id] && aliveOf(id) >= WAVES.aliveLimit[id](r);
+      if (atLimit(this.queue[0])) {
+        const next = this.queue.findIndex((id) => !atLimit(id));
+        if (next > 0) [this.queue[0], this.queue[next]] = [this.queue[next], this.queue[0]];
+      }
+      if (!atLimit(this.queue[0]) && spawn(this.queue[0], this.scaling)) {
         this.queue.shift();
         this.nextSpawnAt = time + WAVES.spawnIntervalMs(r) * Phaser.Math.FloatBetween(0.7, 1.3);
       }
