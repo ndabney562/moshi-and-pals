@@ -37,6 +37,23 @@ export const BALANCE = {
     /** Camera kick on a kill. Kept small on purpose; phones get nauseous fast. */
     killShakeMs: 70,
     killShakeIntensity: 0.003,
+    /** How long a hit germ stays squashed (its jelly "boing"). */
+    squashMs: 110,
+    /** Chance a droplet lands a STAT! critical hit, and its damage multiplier. */
+    critChance: 0.1,
+    critMult: 2,
+  },
+  /** SANITATION STREAK: kills in quick succession build a Copay multiplier. */
+  streak: {
+    /** Each kill keeps the streak alive this long. */
+    windowMs: 2000,
+    /** +this much Copay multiplier per `killsPerStep` kills... */
+    multPerStep: 0.05,
+    killsPerStep: 5,
+    /** ...up to this. */
+    maxMult: 1.5,
+    /** Streaks this long get a shout-out when they end. */
+    announceFrom: 10,
   },
   camera: {
     /** How quickly the camera catches up to Eugene (0..1, higher is snappier). */
@@ -110,6 +127,8 @@ export const BALANCE = {
     interactRange: 80,
     /** Price of opening a supply crate (random new tool). */
     crateCost: 250,
+    /** SPOTLESS: finish a round without getting hurt for this many Copays × the round number. */
+    spotlessPerRound: 10,
     /** Purchases this expensive need a press-and-hold on USE (CONTROLS.holdToBuyMs). */
     holdToBuyFrom: 100,
   },

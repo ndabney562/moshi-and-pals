@@ -25,12 +25,18 @@ export class Germ extends Phaser.Physics.Arcade.Sprite {
   /** Damage gathered since the last floating number was shown. */
   pendingDamage = 0;
   lastNumberAt = 0;
+  /** A STAT! crit landed since the last floating number (shows it in yellow). */
+  pendingCrit = false;
+  /** 1 right after a hit, easing to 0: the jelly squash. */
+  private squash = 0;
 
   spawn(def: GermDef, x: number, y: number, scaling: GermScaling = { hpMult: 1, speedMult: 1 }): void {
     this.def = def;
     this.maxHp = this.hp = def.hp * scaling.hpMult;
     this.speed = def.speed * scaling.speedMult;
     this.pendingDamage = 0;
+    this.pendingCrit = false;
+    this.squash = 0;
     this.slowUntil = 0;
     this.setTexture(`germ-${def.id}`);
     this.enableBody(true, x, y, true, true);
@@ -65,11 +71,13 @@ export class Germ extends Phaser.Physics.Arcade.Sprite {
       // RotateTo's step is radians per call: scale it by frame time
       this.rotation = Phaser.Math.Angle.RotateTo(this.rotation, angle, 0.08 * (dtMs / (1000 / 60)));
     }
-    // Jelly wobble
+    // Jelly wobble, plus a squash right after each hit (no tweens: cheap with many germs)
     this.wobble += dtMs / 140;
+    if (this.squash > 0) this.squash = Math.max(0, this.squash - dtMs / BALANCE.feedback.squashMs);
     if (!this.scene.tweens.isTweening(this)) {
       const s = Math.sin(this.wobble) * 0.07;
-      this.setScale(1 + s, 1 - s);
+      const q = this.squash;
+      this.setScale(1 + s + 0.22 * q, 1 - s - 0.18 * q);
     }
     if (this.flashUntil && time >= this.flashUntil) {
       this.flashUntil = 0;
@@ -81,6 +89,7 @@ export class Germ extends Phaser.Physics.Arcade.Sprite {
   hurt(amount: number, fromAngle: number, knockback: number, time: number): boolean {
     this.hp -= amount;
     this.pendingDamage += amount;
+    this.squash = 1;
     this.setTintFill(0xffffff);
     this.flashUntil = time + BALANCE.feedback.hitFlashMs;
     const push = knockback * (1 - this.def.knockbackResist);

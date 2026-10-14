@@ -13,6 +13,9 @@
 - **Drag to aim.** While spraying, slide your thumb about a fingertip's width and Eugene aims that way by hand; lift it and auto-aim takes over again.
 - **Auto-aim needs line of sight.** Eugene no longer turns to spray at a germ behind a wall or bench, and he sticks with his current target unless another is clearly closer (no twitching between two germs).
 - **Hold to buy.** Doors, crates and anything else from $100 up need a short press-and-hold on USE (a ring fills). Restocking stays a tap. A crate that would replace your crate tool says which one ("Replaces your UV Wand").
+- **Hits and kills feel better.** Germs squash like jelly when hit. Disinfected germs swell and burst, and a tiny halo floats up off each one (a big one off a boss). 10% of droplets land a **STAT!** crit for double damage (yellow number, bright tick). Sounds vary in pitch a little every time, and a limiter keeps a busy room from clipping.
+- **Sanitation Streak.** Kills within 2 s of each other build a streak, shown under the Copays with a countdown bar. Every 5 kills adds 5% to Copays earned, up to 1.5× at 50 kills. The pop sound climbs in pitch as it grows. Streaks of 10+ get a shout-out when they end.
+- **Spotless bonus.** Finish a round without getting hurt for $10 × the round number. The CLEARED banner becomes SPOTLESS.
 
 ## v0.6.0: Milestone 6, supply crates
 - **Supply crates** (📦 with a big "?") in the waiting room, exam rooms, staff break room, lab and X-ray. Walk up and tap USE ($250 Copays) for a random new tool you don't already have.

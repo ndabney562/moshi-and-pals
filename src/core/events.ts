@@ -39,6 +39,10 @@ export const GameEvents = {
   RoomEntered: 'room.entered',
   /** { id, name, cost } a door was bought open */
   RoomUnlocked: 'room.unlocked',
+  /** { count, mult, left } Sanitation Streak: kills in a row, Copay multiplier, 0..1 time left (count 0 = ended) */
+  StreakChanged: 'streak.changed',
+  /** { round, copays } finished a round without getting hurt */
+  SpotlessRound: 'round.spotless',
   /** { name } a supply crate gave Eugene a new tool */
   ToolUnlocked: 'tool.unlocked',
 } as const;
@@ -59,6 +63,7 @@ export interface StationPayload {
 export interface RoomPayload { id: string; name: string; cost?: number; }
 export interface GermKilledPayload { germId: string; x: number; y: number; totalKills: number; }
 
+export interface StreakPayload { count: number; mult: number; left: number; }
 export interface HealthPayload { hp: number; maxHp: number; }
 export interface RoundPayload { round: number; title: string; }
 export interface BossPayload { name: string; hp: number; maxHp: number; }

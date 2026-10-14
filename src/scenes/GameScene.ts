@@ -5,7 +5,7 @@ import { COLORS } from '../config/theme';
 import { DEBUG } from '../core/debug';
 import { useGameTime } from '../core/gameClock';
 import { damp } from '../core/math';
-import { events, GameEvents, type RoomPayload, type RunResult, type StationPayload } from '../core/events';
+import { events, GameEvents, type RoomPayload, type RoundPayload, type RunResult, type StationPayload, type StreakPayload } from '../core/events';
 import { inputState } from '../core/inputState';
 import { settings } from '../core/settings';
 import { recordRun } from '../core/save';
@@ -77,6 +77,12 @@ export class GameScene extends Phaser.Scene {
   /** The current boss's behavior, if a boss with a brain is (or was last) in the room. */
   private boss?: DiamondBrain;
   private readonly mouseWorld = new Phaser.Math.Vector2();
+  /** SANITATION STREAK: kills in a row (each within BALANCE.streak.windowMs of the last). */
+  private streak = 0;
+  private streakUntil = 0;
+  private lastStreakLeft = -1;
+  /** Eugene got hurt this round (no Spotless bonus). */
+  private hurtThisRound = false;
   /** Auto-aim's current target; kept unless another visible germ is clearly closer (no flip-flopping). */
   private aimLock?: Germ;
   private readonly nozzle = new Phaser.Math.Vector2();
@@ -108,6 +114,10 @@ export class GameScene extends Phaser.Scene {
     this.currentRoom = undefined;
     this.interactTarget = undefined;
     this.aimLock = undefined;
+    this.streak = 0;
+    this.streakUntil = 0;
+    this.lastStreakLeft = -1;
+    this.hurtThisRound = false;
     inputState.firing = false;
     inputState.refillRequested = false;
     this.physics.world.setBounds(0, 0, room.width, room.height);
@@ -177,7 +187,13 @@ export class GameScene extends Phaser.Scene {
       [GameEvents.RoundCompleted, sfx.roundEnd],
     ];
     for (const [name, fn] of sounds) events.on(name, fn);
+    const onRoundStart = () => { this.hurtThisRound = false; };
+    const onRoundDone = (p: RoundPayload) => this.onRoundCompleted(p.round);
+    events.on(GameEvents.RoundStarted, onRoundStart);
+    events.on(GameEvents.RoundCompleted, onRoundDone);
     this.events.once('shutdown', () => {
+      events.off(GameEvents.RoundStarted, onRoundStart);
+      events.off(GameEvents.RoundCompleted, onRoundDone);
       for (const [name, fn] of sounds) events.off(name, fn);
       this.boss?.destroy();
       this.boss = undefined;
@@ -197,6 +213,7 @@ export class GameScene extends Phaser.Scene {
     events.emit(GameEvents.PlayerHealthChanged, { hp: this.player.hp, maxHp: this.player.maxHp });
     events.emit(GameEvents.ScoreChanged, { score: this.score });
     events.emit(GameEvents.CopaysChanged, { copays: this.copays });
+    this.emitStreak(Math.max(0, this.lastStreakLeft));
     events.emit(GameEvents.PurgeChanged, { progress: this.purgeProgress(this.time.now) });
     events.emit(GameEvents.StationNearby, this.station);
     if (this.currentRoom) events.emit(GameEvents.RoomEntered, { id: this.currentRoom.id, name: this.currentRoom.name });
@@ -281,6 +298,46 @@ export class GameScene extends Phaser.Scene {
     }
     this.waves.update(time, this.germs.countActive(true), (id, scaling) => this.spawnGerm(id, scaling));
     this.patients.update(time, delta, this.waves.round, this.waves.spawning, this.waves.isBossRound);
+    this.updateStreak(time);
+  }
+
+  /** Copay multiplier from the current Sanitation Streak. */
+  private get streakMult(): number {
+    const c = BALANCE.streak;
+    return Math.min(c.maxMult, 1 + c.multPerStep * Math.floor(this.streak / c.killsPerStep));
+  }
+
+  private emitStreak(left: number): void {
+    events.emit(GameEvents.StreakChanged, { count: this.streak, mult: this.streakMult, left } satisfies StreakPayload);
+  }
+
+  /** Counts the streak's clock down (for the HUD bar) and ends it when time runs out. */
+  private updateStreak(time: number): void {
+    if (this.streak === 0) return;
+    const left = (this.streakUntil - time) / BALANCE.streak.windowMs;
+    if (left > 0) {
+      if (Math.abs(left - this.lastStreakLeft) >= 0.03) {
+        this.lastStreakLeft = left;
+        this.emitStreak(left);
+      }
+      return;
+    }
+    if (this.streak >= BALANCE.streak.announceFrom) {
+      this.fx.number(this.player.x, this.player.y - 80, `STREAK OF ${this.streak}!`, '#ffe66d', 26);
+    }
+    this.streak = 0;
+    this.lastStreakLeft = -1;
+    this.emitStreak(0);
+  }
+
+  /** SPOTLESS: a round finished without a scratch pays a bonus. */
+  private onRoundCompleted(round: number): void {
+    if (this.hurtThisRound || this.runOver) return;
+    const bonus = BALANCE.economy.spotlessPerRound * round;
+    this.addCopays(bonus);
+    sfx.spotless();
+    this.fx.number(this.player.x, this.player.y - 90, `SPOTLESS! +$${bonus}`, '#7fffd4', 30);
+    events.emit(GameEvents.SpotlessRound, { round, copays: bonus });
   }
 
   /** Live entity counts for the debug perf overlay. */
@@ -331,9 +388,17 @@ export class GameScene extends Phaser.Scene {
     } else {
       drop.retire();
     }
-    sfx.hit();
+    // STAT! critical hit
+    const fb = BALANCE.feedback;
+    const crit = Math.random() < fb.critChance;
+    if (crit) {
+      germ.pendingCrit = true;
+      sfx.crit();
+    } else {
+      sfx.hit();
+    }
     if (def.slow && !germ.def.boss) germ.slow(this.time.now, def.slow.factor, def.slow.ms);
-    this.damageGerm(germ, drop.damage * mult, drop.rotation, drop.knockback);
+    this.damageGerm(germ, drop.damage * mult * (crit ? fb.critMult : 1), drop.rotation, drop.knockback);
   }
 
   /** Every way a germ gets hurt goes through here: numbers, boss bar, kills, score and Copays. */
@@ -344,7 +409,10 @@ export class GameScene extends Phaser.Scene {
 
     // Batch damage into one number every ~180 ms per germ so the screen stays readable
     if (killed || time - germ.lastNumberAt > 180) {
-      this.fx.number(germ.x, germ.y - germ.def.radius, `${Math.round(germ.pendingDamage)}`);
+      const n = Math.round(germ.pendingDamage);
+      if (germ.pendingCrit) this.fx.number(germ.x, germ.y - germ.def.radius, `STAT! ${n}`, '#ffe66d', 24);
+      else this.fx.number(germ.x, germ.y - germ.def.radius, `${n}`);
+      germ.pendingCrit = false;
       germ.pendingDamage = 0;
       germ.lastNumberAt = time;
     }
@@ -356,10 +424,16 @@ export class GameScene extends Phaser.Scene {
     if (killed) {
       this.kills++;
       this.score += germ.def.points;
-      this.addCopays(germ.def.copays);
+      // Sanitation Streak: each kill extends it and may raise the Copay multiplier
+      this.streak++;
+      this.streakUntil = time + BALANCE.streak.windowMs;
+      this.lastStreakLeft = 1;
+      this.emitStreak(1);
+      this.addCopays(Math.round(germ.def.copays * this.streakMult));
       this.fx.germSplat(germ.x, germ.y, germ.def.color);
+      this.fx.germPop(germ.texture.key, germ.x, germ.y, germ.rotation, germ.scaleX, germ.y - germ.def.radius - 8, !!germ.def.boss);
       this.fx.number(germ.x, germ.y - germ.def.radius - 24, `+${germ.def.points}`, '#ffe66d', germ.def.boss ? 34 : 18);
-      sfx.pop();
+      sfx.pop(this.streak);
       if (germ.def.boss) {
         // Extra-large mess and a proper camera kick
         for (let i = 0; i < 4; i++) {
@@ -572,6 +646,7 @@ export class GameScene extends Phaser.Scene {
   private hurtPlayer(amount: number, source: string): void {
     if (DEBUG.god) return;
     if (this.runOver || !this.player.takeDamage(amount, this.time.now)) return;
+    this.hurtThisRound = true;
     sfx.hurt();
     this.cameras.main.shake(120, 0.006);
     events.emit(GameEvents.PlayerBumped, { germId: source });

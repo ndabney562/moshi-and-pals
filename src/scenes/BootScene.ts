@@ -26,6 +26,7 @@ export class BootScene extends Phaser.Scene {
     this.makeDroplet();
     this.makeSplat();
     this.makePuff();
+    this.makeHalo();
     this.scene.start('Title');
   }
 
@@ -292,6 +293,15 @@ export class BootScene extends Phaser.Scene {
     g.fillStyle(0xffffff, 0.35).fillCircle(8, 8, 8);
     g.fillStyle(0xffffff).fillCircle(8, 8, 4.5);
     g.generateTexture('droplet', 16, 16);
+    g.destroy();
+  }
+
+  /** A tiny saint's halo that floats up off each disinfected germ. */
+  private makeHalo(): void {
+    const g = this.add.graphics();
+    g.lineStyle(4, 0xffe66d).strokeEllipse(16, 8, 26, 10);
+    g.lineStyle(2, 0xfff8d0).strokeEllipse(16, 8, 20, 6);
+    g.generateTexture('halo', 32, 16);
     g.destroy();
   }
 

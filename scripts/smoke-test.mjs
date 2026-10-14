@@ -87,7 +87,8 @@ try {
       ammo: scene.sprayer.ammo, kills: scene.kills, germs: germs.length,
       dist: g ? Math.hypot(g.x - eugene.x, g.y - eugene.y) : Infinity,
       facing: eugene.rotation,
-      aim: g ? Math.atan2(g.y - eugene.y, g.x - eugene.x) : 0,
+      // Auto-aim sticks with its current target (scene.aimLock) until another is clearly closer, so check against that
+      aim: (() => { const t = scene.aimLock?.active ? scene.aimLock : g; return t ? Math.atan2(t.y - eugene.y, t.x - eugene.x) : 0; })(),
     };
   });
   // Let the germs come to Eugene (within spray range) before spraying
@@ -112,7 +113,7 @@ try {
       if (Math.abs(Math.atan2(Math.sin(facing - aim), Math.cos(facing - aim))) < 0.5) aimHits++;
     }
   }
-  check(aimSamples > 0 && aimHits / aimSamples >= 0.6, `auto-aim faces the nearest germ (${aimHits}/${aimSamples} samples)`);
+  check(aimSamples > 0 && aimHits / aimSamples >= 0.6, `auto-aim faces its target germ (${aimHits}/${aimSamples} samples)`);
   await touch('touchEnd', []);
   const after = await game();
   check(after.ammo < before.ammo, `spraying used alcohol (${before.ammo} -> ${after.ammo} mL)`);
@@ -216,7 +217,7 @@ try {
   check(restocked.reserve === 480 && restocked.copays === 60, `supply cart restocks the jug for Copays (${JSON.stringify(restocked)})`);
 
   // Rooms: walk up to the bathroom door and buy it open with Copays.
-  // Eugene is made untouchable for the station/control checks below (slow browsers take a while); restored before patients.
+  // Eugene is made untouchable from here (slow browsers take a while) until the death test.
   await page.evaluate(() => {
     const scene = window.game.scene.getScene('Game');
     scene.player.hp = scene.player.maxHp;
@@ -312,7 +313,27 @@ try {
     return { throughWall: f.lineClear(500, 1000, 760, 1000), open: f.lineClear(1300, 1800, 1700, 1800) };
   });
   check(!los.throughWall && los.open, `line of sight is blocked by walls, clear across open floor (${JSON.stringify(los)})`);
-  await page.evaluate(() => { window.game.scene.getScene('Game').player.invulnerableUntil = 0; });
+  // Sanitation Streak: quick kills build a Copay multiplier; each kill pops and drops a halo
+  const streak = await page.evaluate(() => {
+    const scene = window.game.scene.getScene('Game');
+    for (let i = 0; i < 6; i++) scene.spawnGerm('basic', { hpMult: 1, speedMult: 1 });
+    const before = scene.copays;
+    const targets = scene.germs.getChildren().filter((g) => g.active && !g.def.boss).slice(0, 6);
+    for (const g of targets) scene.damageGerm(g, 9999, 0, 0);
+    return { streak: scene.streak, mult: scene.streakMult, gained: scene.copays - before, halos: scene.fx.halos.filter((h) => h.visible).length };
+  });
+  check(streak.streak >= 6 && streak.mult > 1 && streak.halos > 0, `kills build a Sanitation Streak with a Copay multiplier and halos (${JSON.stringify(streak)})`);
+  await page.waitForFunction(() => window.game.scene.getScene('Hud').streakText.text.startsWith('STREAK'), null, { timeout: 15000 }).catch(() => {});
+  check((await page.evaluate(() => window.game.scene.getScene('Hud').streakText.text)).startsWith('STREAK ×'), 'HUD shows the streak');
+  // Spotless: a round without getting hurt pays $10 x the round
+  const spotless = await page.evaluate(() => {
+    const scene = window.game.scene.getScene('Game');
+    scene.hurtThisRound = false;
+    const before = scene.copays;
+    scene.onRoundCompleted(4);
+    return scene.copays - before;
+  });
+  check(spotless === 40, `a spotless round 4 pays $40 (${spotless})`);
 
   // Patients: one walks in, commits a health code violation, and gets sprayed into compliance
   const violation = await page.evaluate(() => {
@@ -433,6 +454,8 @@ try {
   });
   check(!beaten.active && beaten.said.length > 0, `Diamond can be defeated ("${beaten.said}")`);
 
+  // Eugene was untouchable since the station checks (slow CI browsers); make him mortal again for the death test
+  await page.evaluate(() => { window.game.scene.getScene('Game').player.invulnerableUntil = 0; });
   // Death: drop Eugene to 1 HP and put a germ on top of him
   await page.evaluate(() => {
     const scene = window.game.scene.getScene('Game');
