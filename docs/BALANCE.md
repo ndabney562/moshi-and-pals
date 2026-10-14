@@ -16,7 +16,9 @@ Values live in `src/config/balance.ts` and `src/config/controls.ts`.
 | Jug (reserve) | 480 mL (4 refills) | Restock at SUPPLIES cart for $40 Copays |
 | Copays per kill | Basic 5, Sprinter 8, Write-Up 2, Diamond 100 | Cleaning a patient: 10 |
 | Door prices | Bathroom 200, Exam Rooms 350, Lab 500, Break Room 600, X-Ray 750 | In `src/data/rooms.ts`; round 1 earns ~$50 |
-| USE range | 80 px from a cart or door's edge | |
+| USE range | 80 px from a cart or door's edge | Hold 350 ms to buy at $100+ or when replacing a tool |
+| Spray zone / drag-aim | right half below 22% of height / 28 px drag | `CONTROLS.sprayZoneTop`, `dragAimDistance` |
+| Auto-aim stickiness | keeps target unless another is 25% closer | Line of sight required |
 | Germ spawn distance | at least 380 px from Eugene, preferably within 1600 px | Only from rooms that are open |
 | Sinus Purge | 240 px, 35 damage, big knockback, 0.6 s stun | 18 s cooldown; ready at start |
 | Supply crate | $250 Copays, random tool not already held | `BALANCE.economy.crateCost`; tools in `src/data/equipment.ts` |

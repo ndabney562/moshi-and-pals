@@ -14,6 +14,11 @@ export class FlowField {
   private readonly blocked: Uint8Array;
   private readonly dist: Int32Array;
   private readonly queue: Int32Array;
+  /** Finer grid of what's actually solid (no clearance), for line-of-sight checks. */
+  private readonly solid: Uint8Array;
+  private readonly solidCols: number;
+  private readonly solidRows: number;
+  private static readonly SOLID_CELL = 16;
   private static readonly NEIGHBORS = [
     [1, 0], [-1, 0], [0, 1], [0, -1], [1, 1], [1, -1], [-1, 1], [-1, -1],
   ] as const;
@@ -26,6 +31,9 @@ export class FlowField {
     this.blocked = new Uint8Array(n);
     this.dist = new Int32Array(n);
     this.queue = new Int32Array(n);
+    this.solidCols = Math.ceil(width / FlowField.SOLID_CELL);
+    this.solidRows = Math.ceil(height / FlowField.SOLID_CELL);
+    this.solid = new Uint8Array(this.solidCols * this.solidRows);
     this.rebuild(obstacles);
   }
 
@@ -40,6 +48,29 @@ export class FlowField {
       const y1 = Math.min(rows - 1, Math.floor((o.y + o.h + clearance - 1) / cell));
       for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) this.blocked[y * cols + x] = 1;
     }
+    const sc = FlowField.SOLID_CELL;
+    this.solid.fill(0);
+    for (const o of obstacles) {
+      const x0 = Math.max(0, Math.floor(o.x / sc));
+      const y0 = Math.max(0, Math.floor(o.y / sc));
+      const x1 = Math.min(this.solidCols - 1, Math.floor((o.x + o.w - 1) / sc));
+      const y1 = Math.min(this.solidRows - 1, Math.floor((o.y + o.h - 1) / sc));
+      for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) this.solid[y * this.solidCols + x] = 1;
+    }
+  }
+
+  /** True if nothing solid (walls, furniture, locked doors) lies on the straight line between two points. */
+  lineClear(x0: number, y0: number, x1: number, y1: number): boolean {
+    const sc = FlowField.SOLID_CELL;
+    const steps = Math.ceil(Math.hypot(x1 - x0, y1 - y0) / (sc * 0.75));
+    for (let i = 1; i < steps; i++) {
+      const t = i / steps;
+      const cx = Math.floor((x0 + (x1 - x0) * t) / sc);
+      const cy = Math.floor((y0 + (y1 - y0) * t) / sc);
+      if (cx < 0 || cy < 0 || cx >= this.solidCols || cy >= this.solidRows) return false;
+      if (this.solid[cy * this.solidCols + cx]) return false;
+    }
+    return true;
   }
 
   /** Re-floods distances from a target position (Eugene). */

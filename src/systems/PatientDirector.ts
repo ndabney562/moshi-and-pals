@@ -80,13 +80,13 @@ export class PatientDirector {
   }
 
   /** The closest wandering patient within `range`, for auto-aim when no germ is near. */
-  nearestViolator(x: number, y: number, range: number): Patient | undefined {
+  nearestViolator(x: number, y: number, range: number, visible: (p: Patient) => boolean = () => true): Patient | undefined {
     let best: Patient | undefined;
     let bestDist = range * range;
     for (const p of this.group.getChildren() as Patient[]) {
       if (!p.active || p.state !== 'wander') continue;
       const d = Phaser.Math.Distance.Squared(p.x, p.y, x, y);
-      if (d < bestDist) { bestDist = d; best = p; }
+      if (d < bestDist && visible(p)) { bestDist = d; best = p; }
     }
     return best;
   }

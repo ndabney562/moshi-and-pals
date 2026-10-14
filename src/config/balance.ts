@@ -110,6 +110,8 @@ export const BALANCE = {
     interactRange: 80,
     /** Price of opening a supply crate (random new tool). */
     crateCost: 250,
+    /** Purchases this expensive need a press-and-hold on USE (CONTROLS.holdToBuyMs). */
+    holdToBuyFrom: 100,
   },
   /** SINUS PURGE: Eugene's signature honk. A shockwave that damages and blasts germs away. */
   purge: {

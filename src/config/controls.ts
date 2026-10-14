@@ -27,6 +27,14 @@ export const CONTROLS = {
     /** Top-right corner, far from both thumbs. */
     pauseRadius: 34,
   },
+  /** SPRAY-button scheme: any touch on the right half below this fraction of the screen height sprays (not just the button). */
+  sprayZoneTop: 0.22,
+  /** ...and dragging that touch this far (logical px) aims by hand until it lifts. */
+  dragAimDistance: 28,
+  /** Hold USE this long to confirm purchases from `holdToBuyFrom` Copays up, or any that replace a tool. */
+  holdToBuyMs: 350,
+  /** Auto-aim keeps its current target unless another visible germ is this much closer (0.75 = 25% closer). */
+  aimStickiness: 0.75,
   /** The right stick counts as "aiming" only past this fraction of its radius. */
   aimThreshold: 0.3,
   /** Extra space kept clear of the iPhone notch/home bar, on top of the safe area. */

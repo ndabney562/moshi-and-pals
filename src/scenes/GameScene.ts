@@ -72,11 +72,13 @@ export class GameScene extends Phaser.Scene {
   private lastPurgeProgress = -1;
   private carts: Obstacle[] = [];
   private crates: Obstacle[] = [];
-  private station: StationPayload = { near: false, label: '', affordable: false };
+  private station: StationPayload = { near: false, label: '', affordable: false, hold: false, note: '' };
   private lastJugWarningAt = -Infinity;
   /** The current boss's behavior, if a boss with a brain is (or was last) in the room. */
   private boss?: DiamondBrain;
   private readonly mouseWorld = new Phaser.Math.Vector2();
+  /** Auto-aim's current target; kept unless another visible germ is clearly closer (no flip-flopping). */
+  private aimLock?: Germ;
   private readonly nozzle = new Phaser.Math.Vector2();
 
   constructor() {
@@ -94,7 +96,7 @@ export class GameScene extends Phaser.Scene {
     this.copays = DEBUG.copays;
     this.purgeReadyAt = 0;
     this.lastPurgeProgress = -1;
-    this.station = { near: false, label: '', affordable: false };
+    this.station = { near: false, label: '', affordable: false, hold: false, note: '' };
     inputState.purgeRequested = false;
     inputState.interactRequested = false;
     this.carts = room.obstacles.filter((o) => o.kind === 'supplyCart');
@@ -105,6 +107,7 @@ export class GameScene extends Phaser.Scene {
     this.fog = new Map();
     this.currentRoom = undefined;
     this.interactTarget = undefined;
+    this.aimLock = undefined;
     inputState.firing = false;
     inputState.refillRequested = false;
     this.physics.world.setBounds(0, 0, room.width, room.height);
@@ -208,7 +211,9 @@ export class GameScene extends Phaser.Scene {
     if (inputState.mouseActive) {
       aimTarget = this.cameras.main.getWorldPoint(inputState.mouseX, inputState.mouseY, this.mouseWorld);
     } else if (CONTROLS.scheme === 'sprayButton' && settings.autoAim) {
-      aimTarget = this.nearestGerm(CONTROLS.autoAimRange) ?? this.patients.nearestViolator(this.player.x, this.player.y, CONTROLS.autoAimRange);
+      const { x, y } = this.player;
+      aimTarget = this.nearestGerm(CONTROLS.autoAimRange)
+        ?? this.patients.nearestViolator(x, y, CONTROLS.autoAimRange, (p) => this.flow.lineClear(x, y, p.x, p.y));
     }
     this.player.drive(inputState, delta, aimTarget);
     // Camera follow eases per frame in Phaser; keep it the same at any frame rate
@@ -288,17 +293,29 @@ export class GameScene extends Phaser.Scene {
     };
   }
 
-  /** Auto-aim: the closest living germ within `range`, if any. */
+  /**
+   * Auto-aim: the closest living germ within `range` that Eugene can actually see (no aiming at walls).
+   * Sticks with its current target unless another is clearly closer, so Eugene doesn't twitch between two.
+   */
   private nearestGerm(range: number): Germ | undefined {
+    const { x, y } = this.player;
     const priority = this.boss?.priorityTarget;
-    if (priority && Phaser.Math.Distance.Between(priority.x, priority.y, this.player.x, this.player.y) < range) return priority;
+    if (priority && Phaser.Math.Distance.Between(priority.x, priority.y, x, y) < range) return priority;
+    const r2 = range * range;
     let best: Germ | undefined;
-    let bestDist = range * range;
+    let bestDist = r2;
     for (const g of this.germs.getChildren() as Germ[]) {
       if (!g.active) continue;
-      const d = Phaser.Math.Distance.Squared(g.x, g.y, this.player.x, this.player.y);
-      if (d < bestDist) { bestDist = d; best = g; }
+      const d = Phaser.Math.Distance.Squared(g.x, g.y, x, y);
+      if (d < bestDist && this.flow.lineClear(x, y, g.x, g.y)) { bestDist = d; best = g; }
     }
+    const lock = this.aimLock;
+    if (lock && lock !== best && lock.active) {
+      const d = Phaser.Math.Distance.Squared(lock.x, lock.y, x, y);
+      const k = CONTROLS.aimStickiness * CONTROLS.aimStickiness;
+      if (d < r2 && (!best || bestDist > d * k) && this.flow.lineClear(x, y, lock.x, lock.y)) best = lock;
+    }
+    this.aimLock = best;
     return best;
   }
 
@@ -427,9 +444,15 @@ export class GameScene extends Phaser.Scene {
     const cost = !target ? 0 : target.kind === 'cart' ? eco.restockCost : target.kind === 'crate' ? eco.crateCost : target.door.o.cost ?? 0;
     const verb = !target ? '' : target.kind === 'cart' ? 'RESTOCK' : target.kind === 'crate' ? 'CRATE' : 'OPEN';
     const label = target ? `${verb}\n$${cost}` : '';
-    const station = { near: !!target, label, affordable: this.copays >= cost };
+    // A crate replaces the crate tool you're carrying; say so, and make it a press-and-hold
+    const replaces = target?.kind === 'crate' && this.loadout[1] ? this.loadout[1].def.name : '';
+    const station: StationPayload = {
+      near: !!target, label, affordable: this.copays >= cost,
+      hold: !!target && (cost >= eco.holdToBuyFrom || !!replaces),
+      note: replaces ? `Replaces your ${replaces}` : '',
+    };
     const s = this.station;
-    if (station.near !== s.near || station.label !== s.label || station.affordable !== s.affordable) {
+    if (station.near !== s.near || station.label !== s.label || station.affordable !== s.affordable || station.hold !== s.hold || station.note !== s.note) {
       this.station = station;
       events.emit(GameEvents.StationNearby, station);
     }
