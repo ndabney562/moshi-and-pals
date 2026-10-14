@@ -352,6 +352,25 @@ try {
   check(streak.streak >= 6 && streak.mult > 1 && streak.halos > 0, `kills build a Sanitation Streak with a Copay multiplier and halos (${JSON.stringify(streak)})`);
   await page.waitForFunction(() => window.game.scene.getScene('Hud').streakText.text.startsWith('STREAK'), null, { timeout: 15000 }).catch(() => {});
   check((await page.evaluate(() => window.game.scene.getScene('Hud').streakText.text)).startsWith('STREAK ×'), 'HUD shows the streak');
+  // Off-screen threat arrows: a germ just off the right edge of the screen gets an arrow pointing at it
+  await page.evaluate(() => {
+    const scene = window.game.scene.getScene('Game');
+    for (const g of scene.germs.getChildren()) if (g.active) g.kill();
+    scene.spawnGerm('basic', { hpMult: 1, speedMult: 1 });
+    const g = scene.germs.getChildren().find((c) => c.active);
+    const v = scene.cameras.main.worldView;
+    g.setPosition(v.right + 60, scene.player.y);
+    g.freeze();
+  });
+  await page.waitForFunction(() => window.game.scene.getScene('Hud').arrows.some((a) => a.visible), null, { timeout: 15000 }).catch(() => {});
+  const arrow = await page.evaluate(() => {
+    const hud = window.game.scene.getScene('Hud');
+    const a = hud.arrows.find((x) => x.visible);
+    return a ? { x: Math.round(a.x), rot: +a.rotation.toFixed(2), w: hud.scale.width } : null;
+  });
+  check(!!arrow && arrow.x > arrow.w * 0.85 && Math.abs(arrow.rot) < 0.4, `off-screen germ gets an edge arrow pointing at it (${JSON.stringify(arrow)})`);
+  await page.evaluate(() => window.game.scene.getScene('Game').germs.getChildren().forEach((g) => g.active && g.kill()));
+
   // Spotless: a round without getting hurt pays $10 x the round
   const spotless = await page.evaluate(() => {
     const scene = window.game.scene.getScene('Game');
