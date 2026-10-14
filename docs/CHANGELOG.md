@@ -1,6 +1,6 @@
 # Changelog
 
-## v0.9.0 (in progress): Milestone 9, grow and learn
+## v0.9.0: Milestone 9, grow and learn
 - **Compounding Station** in the Lab (⚗️ UPGRADES): hold USE to upgrade the tool in your hands. Two upgrades per tool, $300 then $700, and each changes how it plays:
   - Squirt Bottle: **Pressure Nozzle** (40% farther), then **Industrial Trigger** (faster, pierces a germ, bigger bottle)
   - Lysol Fogger: **Atomizer** (much wider cloud), then **Double Tank** (twice the tank, harder hits)

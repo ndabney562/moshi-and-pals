@@ -15,6 +15,8 @@
 - Made the title poster (title screen since v0.5.2; redone as Moshi and Pals in v0.5.6).
 
 ## Requested now
+- Playtest v0.9.0: Compounding Station (Lab), exam-table Rest, the Discharge Summary, and the first-run hints (to see them again, clear the site data or use a private tab).
+- Any time: your own causes of death (`deathNote` in `src/data/germs.ts`) and pause tips (`src/data/tips.ts`).
 - Playtest v0.7.0 (checklist in the M7 wrap-up message): Low Power Mode, pause/auto-pause, spray zone + drag-aim, hold-to-buy, Perfect Pour, Spore Pods, Sneezers.
 - Playtest MoshiLand (v0.5.0): are the door prices right, and is any room too cramped or too empty?
 - Optional: round titles and game over lines (`src/data/waves.ts`, `src/scenes/GameOverScene.ts`).

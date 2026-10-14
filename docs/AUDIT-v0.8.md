@@ -121,7 +121,7 @@ move + hold spray ──► germs flash, squash, pop (+halo, +$ × streak)
 8. **Presentation:** an art pass (sprite atlas), music in layers, recorded audio, menus.
 9. **Release:** baked map textures if needed, offline support, the Capacitor wrapper with haptics and Game Center, a device test pass.
 
-## 11. First sprint, M9 "Grow and Learn" (being built now)
+## 11. First sprint, M9 "Grow and Learn": DONE (v0.9.0, PR #29)
 | # | Change | Why |
 |---|---|---|
 | F1 | Draw only Eugene's floor; hide the FPS counter and build label unless `?debug` (build label moves to the pause menu) | Halves static draw work; declutters the HUD |
