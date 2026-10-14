@@ -384,6 +384,8 @@ try {
   // Patients: one walks in, commits a health code violation, and gets sprayed into compliance
   const violation = await page.evaluate(() => {
     const scene = window.game.scene.getScene('Game');
+    // Only the test's patient (others may have wandered in during a slow run)
+    for (const other of scene.patients.group.getChildren()) if (other.active) other.retire();
     scene.patients.spawn(scene.time.now);
     const p = scene.patients.group.getChildren().find((c) => c.active);
     p.setPosition(scene.player.x + 150, scene.player.y);
