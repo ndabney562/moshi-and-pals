@@ -1,5 +1,8 @@
 # Changelog
 
+## v0.7.0 (in progress): Milestone 7, feel and fairness
+- **Testing switches** for playtesting on the phone, added to the address: `?round=12` starts at round 12, `?copays=2000` starts with Copays, `?god` makes Eugene unhurtable, `?fps=30` caps the frame rate like Low Power Mode, `?debug` shows a perf overlay (frame time, germ/droplet/particle counts). Combine them: `?round=15&god&debug`. Normal play is unchanged.
+
 ## v0.6.0: Milestone 6, supply crates
 - **Supply crates** (📦 with a big "?") in the waiting room, exam rooms, staff break room, lab and X-ray. Walk up and tap USE ($250 Copays) for a random new tool you don't already have.
 - Four crate tools:

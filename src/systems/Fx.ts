@@ -53,6 +53,11 @@ export class Fx {
     this.mist.explode(puffs, x, y);
   }
 
+  /** Particles currently on screen (debug overlay). */
+  aliveParticles(): number {
+    return this.mist.getAliveParticleCount() + this.splash.getAliveParticleCount() + this.splat.getAliveParticleCount();
+  }
+
   dropletSplash(x: number, y: number): void {
     this.splash.explode(1, x, y);
   }

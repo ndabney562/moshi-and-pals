@@ -6,6 +6,7 @@ import { BALANCE } from '../config/balance';
 import {
   events, GameEvents, type BossPayload, type EquipmentChangedPayload, type HealthPayload, type RoomPayload, type RoundPayload, type StationPayload,
 } from '../core/events';
+import { DEBUG } from '../core/debug';
 import { inputState } from '../core/inputState';
 import { readSafeArea, type Insets } from '../core/safeArea';
 import { saveSettings, settings } from '../core/settings';
@@ -49,6 +50,9 @@ export class HudScene extends Phaser.Scene {
   private spaceDown = false;
   private keys!: Record<'up' | 'down' | 'left' | 'right' | 'w' | 'a' | 's' | 'd' | 'r' | 'q' | 'e' | 'x', Phaser.Input.Keyboard.Key>;
   private safe: Insets = { top: 0, right: 0, bottom: 0, left: 0 };
+  /** Debug overlay: recent frame times (ms), sampled every frame. */
+  private readonly frameTimes: number[] = [];
+  private nextStatsAt = 0;
 
   constructor() {
     super('Hud');
@@ -72,7 +76,7 @@ export class HudScene extends Phaser.Scene {
     // Small labels get a dark backing so they stay readable over the light floor
     const tag = { ...style, backgroundColor: '#0d2b2ecc', padding: { x: 8, y: 4 } };
     this.versionText = this.add.text(0, 0, __APP_VERSION__, { ...tag, fontSize: '14px' }).setOrigin(1, 0);
-    if (DISPLAY.showFps) this.fpsText = this.add.text(0, 0, '', { ...tag, fontSize: '16px' });
+    if (DISPLAY.showFps || DEBUG.overlay) this.fpsText = this.add.text(0, 0, '', { ...tag, fontSize: '16px', align: 'right' });
     this.scoreText = this.add.text(0, 0, 'SCORE 0', { ...tag, fontSize: '18px', fontStyle: 'bold' }).setOrigin(0.5, 0);
     this.roomText = this.add.text(0, 0, '', { ...tag, fontSize: '15px' }).setOrigin(1, 0);
     this.copaysText = this.add.text(0, 0, '$0 COPAYS', { ...tag, fontSize: '17px', fontStyle: 'bold', color: COLORS.uiAccent }).setOrigin(0.5, 0);
@@ -253,7 +257,7 @@ export class HudScene extends Phaser.Scene {
     this.autoAimToggle?.setPosition(this.safe.left + m, this.safe.top + m + this.health.outerHeight + 10);
     this.versionText.setPosition(width - this.safe.right - m, this.safe.top + m);
     this.fpsText?.setOrigin(1, 0).setPosition(width - this.safe.right - m, this.safe.top + m + 30);
-    this.roomText.setPosition(width - this.safe.right - m, this.safe.top + m + (this.fpsText ? 64 : 34));
+    this.roomText.setPosition(width - this.safe.right - m, this.safe.top + m + (DEBUG.overlay ? 110 : this.fpsText ? 64 : 34));
     const right = width - this.safe.right - m;
     const refillY = rightY - CONTROLS.buttons.sprayRadius - CONTROLS.buttons.refillRadius - 24;
     this.refillButton.setPosition(right - CONTROLS.buttons.refillRadius, refillY);
@@ -266,6 +270,32 @@ export class HudScene extends Phaser.Scene {
     const purgeX = rightX - sprayRadius - purgeRadius - 22;
     this.purgeButton.setPosition(purgeX, rightY + sprayRadius - purgeRadius);
     this.interactButton.setPosition(purgeX - 10, rightY - sprayRadius - interactRadius - 10);
+  }
+
+  /** FPS counter; with ?debug, also frame-time p95 and entity counts (text redrawn 4x a second, not every frame). */
+  private updateFps(): void {
+    if (!this.fpsText) return;
+    const loop = this.game.loop;
+    if (DEBUG.overlay) {
+      this.frameTimes.push(loop.delta);
+      if (this.frameTimes.length > 240) this.frameTimes.shift();
+    }
+    if (loop.now < this.nextStatsAt) return;
+    this.nextStatsAt = loop.now + 250;
+    if (!DEBUG.overlay) {
+      this.fpsText.setText(`${Math.round(loop.actualFps)} FPS`);
+      return;
+    }
+    const sorted = [...this.frameTimes].sort((a, b) => a - b);
+    const p95 = sorted[Math.floor(sorted.length * 0.95)] ?? 0;
+    const worst = sorted[sorted.length - 1] ?? 0;
+    const s = (this.scene.get('Game') as GameScene).stats();
+    const flags = [DEBUG.god && 'GOD', DEBUG.fpsLimit && `CAP ${DEBUG.fpsLimit}`].filter(Boolean).join(' ');
+    this.fpsText.setText([
+      `${Math.round(loop.actualFps)} FPS  p95 ${p95.toFixed(1)}ms  max ${worst.toFixed(0)}ms`,
+      `germs ${s.germs}  drops ${s.droplets}  fx ${s.particles}  pts ${s.patients}`,
+      `DEBUG ${flags}`.trim(),
+    ].join('\n'));
   }
 
   private refreshAutoAimToggle(): void {
@@ -327,6 +357,6 @@ export class HudScene extends Phaser.Scene {
     // Spray: SPRAY button, or the aim stick in twin-stick mode, or the mouse on desktop
     inputState.firing = !!this.sprayButton?.held || this.spaceDown || inputState.aiming || (this.mouseDown && inputState.mouseActive);
 
-    this.fpsText?.setText(`${Math.round(this.game.loop.actualFps)} FPS`);
+    this.updateFps();
   }
 }

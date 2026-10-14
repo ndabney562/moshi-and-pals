@@ -37,5 +37,6 @@ Systems will announce gameplay events on `core/events.ts` (event bus); dialogue,
 - `src/data/`: content (rooms now; germs, equipment, waves, dialogue later).
 
 ## Testing
+Debug switches live in `core/debug.ts` (`?round`, `?copays`, `?god`, `?fps`, `?debug`); see the changelog for usage. They also run in the smoke test.
 `npm run build && npm run smoke` serves the build, opens it in a phone-sized touch browser, drives both sticks, checks Eugene moves and faces the aim direction, waits for germs, sprays them until some die, taps Refill, and fails on console errors. CI runs it on every pull request.
 - Orientation: `core/orientation.ts` keeps the game landscape. On a touch screen taller than wide it rotates `#game` 90° with CSS, and patches Phaser's parent measuring, centering and pointer mapping to match; `safeArea.ts` rotates the insets too.

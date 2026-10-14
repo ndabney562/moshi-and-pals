@@ -2,6 +2,7 @@ import Phaser from 'phaser';
 import { BALANCE } from '../config/balance';
 import { CONTROLS } from '../config/controls';
 import { COLORS } from '../config/theme';
+import { DEBUG } from '../core/debug';
 import { events, GameEvents, type RoomPayload, type RunResult, type StationPayload } from '../core/events';
 import { inputState } from '../core/inputState';
 import { settings } from '../core/settings';
@@ -86,7 +87,7 @@ export class GameScene extends Phaser.Scene {
     this.score = 0;
     this.runOver = false;
     this.boss = undefined;
-    this.copays = 0;
+    this.copays = DEBUG.copays;
     this.purgeReadyAt = 0;
     this.lastPurgeProgress = -1;
     this.station = { near: false, label: '', affordable: false };
@@ -124,7 +125,7 @@ export class GameScene extends Phaser.Scene {
     this.germs = this.physics.add.group({ classType: Germ, maxSize: 60, defaultKey: 'germ-basic' });
     this.loadout = [new Sprayer(EQUIPMENT[STARTING_EQUIPMENT], this.droplets)];
     this.slot = 0;
-    this.waves = new WaveDirector(this.time.now);
+    this.waves = new WaveDirector(this.time.now, DEBUG.startRound);
     this.patients = new PatientDirector({
       scene: this,
       player: this.player,
@@ -261,6 +262,16 @@ export class GameScene extends Phaser.Scene {
     }
     this.waves.update(time, this.germs.countActive(true), (id, scaling) => this.spawnGerm(id, scaling));
     this.patients.update(time, delta, this.waves.round, this.waves.roundActive, this.waves.isBossRound);
+  }
+
+  /** Live entity counts for the debug perf overlay. */
+  stats(): { germs: number; droplets: number; particles: number; patients: number } {
+    return {
+      germs: this.germs.countActive(true),
+      droplets: this.droplets.countActive(true),
+      particles: this.fx.aliveParticles(),
+      patients: this.patients.group.countActive(true),
+    };
   }
 
   /** Auto-aim: the closest living germ within `range`, if any. */
@@ -522,6 +533,7 @@ export class GameScene extends Phaser.Scene {
 
   /** Every way Eugene gets hurt goes through here: sound, shake, HUD, and death. */
   private hurtPlayer(amount: number, source: string): void {
+    if (DEBUG.god) return;
     if (this.runOver || !this.player.takeDamage(amount, this.time.now)) return;
     sfx.hurt();
     this.cameras.main.shake(120, 0.006);

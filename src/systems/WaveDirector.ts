@@ -18,8 +18,10 @@ export class WaveDirector {
   private queue: string[] = [];
   private scaling: GermScaling = { hpMult: 1, speedMult: 1 };
 
-  constructor(startTime: number) {
+  /** `firstRound` > 1 skips ahead (debug/stress testing). */
+  constructor(startTime: number, firstRound = 1) {
     this.nextRoundAt = startTime + WAVES.firstRoundDelayMs;
+    this.round = Math.max(0, firstRound - 1);
   }
 
   /** True while germs are spawning or still alive this round (not during the break). */
