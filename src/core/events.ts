@@ -28,6 +28,8 @@ export const GameEvents = {
   BossSpawned: 'boss.spawned',
   BossHealth: 'boss.health',
   BossDefeated: 'boss.defeated',
+  /** { name } the boss got away (Patient Zero leaving against medical advice) */
+  BossEscaped: 'boss.escaped',
   /** { copays } */
   CopaysChanged: 'copays.changed',
   /** { progress } 0..1 while recharging, 1 when ready */

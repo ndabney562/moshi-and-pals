@@ -676,6 +676,40 @@ try {
   });
   check(!beaten.active && beaten.said.length > 0, `Diamond can be defeated ("${beaten.said}")`);
 
+  // PATIENT ZERO (boss #2): coughs Sprinters, masks up when sprayed enough (takes double), runs for the exit at low health
+  await page.evaluate(() => {
+    const scene = window.game.scene.getScene('Game');
+    for (const g of scene.germs.getChildren()) if (g.active) g.kill();
+    scene.boss?.destroy();
+    scene.boss = undefined;
+    const sp = scene.room.playerSpawn;
+    scene.player.setPosition(sp.x, sp.y);
+    scene.spawnGerm('patientZero', { hpMult: 1, speedMult: 1 });
+    scene.boss.germ.setPosition(sp.x + 250, sp.y);
+    scene.boss.nextCoughAt = 0;
+  });
+  const coughed = await page.waitForFunction(() => window.game.scene.getScene('Game').germs.getChildren().some((g) => g.active && g.def.id === 'sprinter'), null, { timeout: 20000 }).then(() => true, () => false);
+  check(coughed, 'Patient Zero coughs out Viral Sprinters');
+  const masked = await page.evaluate(() => {
+    const scene = window.game.scene.getScene('Game');
+    const b = scene.boss;
+    for (let i = 0; i < 80; i++) b.onHurt(1, scene.time.now);
+    return { masked: b.masked, taken: b.damageTaken };
+  });
+  check(masked.masked && masked.taken === 2, `spraying Patient Zero enough makes him mask up and take double damage (${JSON.stringify(masked)})`);
+  await page.evaluate(() => {
+    const scene = window.game.scene.getScene('Game');
+    scene.boss.germ.hp = scene.boss.germ.maxHp * 0.2;
+  });
+  const leaving = await page.waitForFunction(() => window.game.scene.getScene('Game').boss?.currentMode === 'leaving', null, { timeout: 15000 }).then(() => true, () => false);
+  await page.evaluate(() => {
+    const scene = window.game.scene.getScene('Game');
+    scene.boss.germ.setPosition(scene.room.exit.x, scene.room.exit.y - 60);
+  });
+  const escaped = await page.waitForFunction(() => !window.game.scene.getScene('Game').boss.germ.active, null, { timeout: 15000 }).then(() => true, () => false);
+  const escBanner = await page.evaluate(() => window.game.scene.getScene('Hud').banner.text);
+  check(leaving && escaped && escBanner.includes('AGAINST MEDICAL ADVICE'), `at low health he leaves against medical advice and can escape ("${escBanner}")`);
+
   // SPECIAL ROUNDS: round 7 is a Waiting Room Rush, announced with its own banner
   await page.evaluate(() => {
     const scene = window.game.scene.getScene('Game');

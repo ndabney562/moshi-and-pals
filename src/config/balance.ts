@@ -99,6 +99,29 @@ export const BALANCE = {
     tantrumShoveMs: 320,
     tantrumDamage: 8,
   },
+  /** PATIENT ZERO, boss #2 (systems/PatientZeroBrain.ts). */
+  patientZero: {
+    firstCoughMs: 3500,
+    coughEveryMs: [4200, 6000] as [number, number],
+    coughWindupMs: 850,
+    coughRange: 330,
+    coughConeDeg: 55,
+    coughDamage: 14,
+    /** Viral Sprinters launched by each cough. */
+    coughGerms: 3,
+    sneezeBelow: 0.6,
+    sneezeEveryMs: 9000,
+    sneezeWindupMs: 1000,
+    sneezeRange: 520,
+    sneezeGlobs: 5,
+    /** Spray hits that shame him into a mask, how long it stays on, and the damage he takes meanwhile. */
+    complianceHits: 70,
+    maskedMs: 8000,
+    maskedDamageTaken: 2,
+    leaveBelow: 0.25,
+    leaveSpeed: 85,
+    escapeDistance: 130,
+  },
   /** Patients with health code violations (data/patients.ts). */
   patients: {
     /** First round they show up in. Boss rounds stay patient-free so Diamond gets the spotlight. */

@@ -21,6 +21,11 @@
   - **INSPECTION DAY** (round 14): don't get hurt, because Spotless pays triple.
   - **SUPERBUG** (round 17): half as many germs, but resistant ones everywhere.
   After round 17 they come back on most odd rounds (never on boss rounds).
+- **New boss: PATIENT ZERO** (rounds 10, 20...; Diamond keeps 5, 15, 25). The waiting room's most contagious patient, nine hours into his wait: a hospital gown, tissues stuck all over, a red nose, a ticket that says 9 HRS.
+  - **Cough:** he puffs up, a pale cone shows where it will land, then he coughs. It hurts if you're in the cone and launches three Viral Sprinters.
+  - **Sneeze** (below 60%): a red line shows where it's going (step aside!), then a volley of mucus globs and puddles comes down it.
+  - **Compliance:** keep spraying him and he gives in and puts on a mask: no coughing or sneezing for 8 s, and he takes **double damage**. Then he pulls it down again.
+  - **Against medical advice** (below 25%): he makes a run for the EXIT. If he gets there, he's gone: *LEFT AGAINST MEDICAL ADVICE*, no reward. Auto-aim locks onto him while he runs.
 
 ## v0.9.0: Milestone 9, grow and learn
 - **Compounding Station** in the Lab (⚗️ UPGRADES): hold USE to upgrade the tool in your hands. Two upgrades per tool, $300 then $700, and each changes how it plays:

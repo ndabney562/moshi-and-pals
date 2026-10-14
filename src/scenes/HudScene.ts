@@ -234,6 +234,10 @@ export class HudScene extends Phaser.Scene {
     const onTool = (p: { name: string }) => this.showBanner(p.name.toUpperCase(), 'New tool! Tap SWAP to switch back to the bottle.', 2000);
     const onRoomUnlocked = (p: RoomPayload) => this.showBanner(`${p.name.toUpperCase()} OPEN`, 'More room to run. More places for germs, too.', 1800);
     const onBossDown = () => this.time.delayedCall(600, () => this.bossBar.setVisible(false));
+    const onBossEscaped = (p: { name: string }) => {
+      this.bossBar.setVisible(false);
+      this.showBanner('LEFT AGAINST MEDICAL ADVICE', `${p.name} got away. No reward.`, 2400);
+    };
 
     const listeners: [string, (...args: never[]) => void][] = [
       [GameEvents.EquipmentChanged, onEquipment],
@@ -253,6 +257,7 @@ export class HudScene extends Phaser.Scene {
       [GameEvents.BossSpawned, onBoss],
       [GameEvents.BossHealth, onBossHealth],
       [GameEvents.BossDefeated, onBossDown],
+      [GameEvents.BossEscaped, onBossEscaped],
       [GameEvents.CopaysChanged, onCopays],
       [GameEvents.PurgeChanged, onPurge],
       [GameEvents.StationNearby, onStation],

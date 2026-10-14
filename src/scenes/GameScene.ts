@@ -28,6 +28,8 @@ import { Powerups } from '../systems/Powerups';
 import { ELITE_AFFIXES, type EliteAffix, type PowerupDef } from '../data/powerups';
 import { Fx } from '../systems/Fx';
 import { DiamondBrain, type BossHost } from '../systems/DiamondBrain';
+import type { BossBrain } from '../systems/BossBrain';
+import { PatientZeroBrain } from '../systems/PatientZeroBrain';
 import { PatientDirector } from '../systems/PatientDirector';
 import { Sprayer } from '../systems/Sprayer';
 import { WaveDirector } from '../systems/WaveDirector';
@@ -112,7 +114,7 @@ export class GameScene extends Phaser.Scene {
   private station: StationPayload = { near: false, label: '', affordable: false, hold: false, note: '' };
   private lastJugWarningAt = -Infinity;
   /** The current boss's behavior, if a boss with a brain is (or was last) in the room. */
-  private boss?: DiamondBrain;
+  private boss?: BossBrain;
   private readonly mouseWorld = new Phaser.Math.Vector2();
   /** SANITATION STREAK: kills in a row (each within BALANCE.streak.windowMs of the last). */
   private streak = 0;
@@ -401,16 +403,23 @@ export class GameScene extends Phaser.Scene {
   /** CHOO! A Sneezer launches a mucus glob. */
   private fireGlob(g: Germ, angle: number): void {
     const s = g.def.spit;
-    const glob = this.globs.get() as Glob | null;
-    if (!s || !glob) return;
+    if (!s) return;
     const r = g.def.radius + 10;
-    glob.fire(g.x + Math.cos(angle) * r, g.y + Math.sin(angle) * r, angle, s.globSpeed, s.globRange, this.time.now);
+    this.launchGlob(g.x + Math.cos(angle) * r, g.y + Math.sin(angle) * r, angle, s.globSpeed, s.globRange, s);
+    sfx.sneeze();
+    this.fx.number(g.x, g.y - g.def.radius - 14, 'CHOO!', '#d7e88a', 22);
+  }
+
+  /** One mucus glob in flight (Sneezers, Patient Zero's sneeze). */
+  private launchGlob(x: number, y: number, angle: number, speed: number, range: number,
+    s: { damage: number; puddleMs: number; puddleRadius: number; puddleSlow: number }): void {
+    const glob = this.globs.get() as Glob | null;
+    if (!glob) return;
+    glob.fire(x, y, angle, speed, range, this.time.now);
     glob.damage = s.damage;
     glob.puddleMs = s.puddleMs;
     glob.puddleRadius = s.puddleRadius;
     glob.puddleSlow = s.puddleSlow;
-    sfx.sneeze();
-    this.fx.number(g.x, g.y - g.def.radius - 14, 'CHOO!', '#d7e88a', 22);
   }
 
   /** A glob hits something (or runs out of range) and leaves a slippery puddle. */
@@ -600,6 +609,7 @@ export class GameScene extends Phaser.Scene {
   /** Every way a germ gets hurt goes through here: numbers, boss bar, kills, score and Copays. */
   private damageGerm(germ: Germ, damage: number, fromAngle: number, knockback: number): void {
     const time = this.time.now;
+    if (this.boss?.germ === germ) damage *= this.boss.damageTaken ?? 1;
     const killed = germ.hurt(damage, fromAngle, knockback, time);
     if (this.boss?.germ === germ) this.boss.onHurt(damage, time);
 
@@ -1033,6 +1043,27 @@ export class GameScene extends Phaser.Scene {
     if (def.brain === 'diamond') {
       this.boss?.destroy();
       this.boss = new DiamondBrain(this.bossHost(), germ);
+    } else if (def.brain === 'patientZero') {
+      this.boss?.destroy();
+      this.boss = new PatientZeroBrain({
+        ...this.bossHost(),
+        // COUGH: a spray of Viral Sprinters out of his cone
+        cough: (x, y, angle) => {
+          const n = BALANCE.patientZero.coughGerms;
+          for (let i = 0; i < n; i++) {
+            const a = angle + (i - (n - 1) / 2) * 0.25;
+            this.bossHost().spawnMinion('sprinter', x, y, Math.cos(a) * 320, Math.sin(a) * 320);
+          }
+        },
+        // SNEEZE: a volley of mucus globs down the red line
+        sneezeVolley: (x, y, angle) => {
+          const spit = GERMS.sneezer.spit!;
+          for (let i = 0; i < BALANCE.patientZero.sneezeGlobs; i++) {
+            const a = angle + Phaser.Math.FloatBetween(-0.06, 0.06);
+            this.launchGlob(x + Math.cos(angle) * 70, y + Math.sin(angle) * 70, a, spit.globSpeed * (1 + i * 0.18), spit.globRange * 1.3, spit);
+          }
+        },
+      }, germ);
     }
     if (def.boss) {
       sfx.bossArrives();

@@ -125,6 +125,10 @@ export class BootScene extends Phaser.Scene {
       this.makeManagerMonster(def);
       return;
     }
+    if (def.look === 'patient') {
+      this.makePatientZero(def);
+      return;
+    }
     if (def.shape === 'shell') {
       this.makeSporePod(def);
       return;
@@ -247,6 +251,54 @@ export class BootScene extends Phaser.Scene {
     g.lineStyle(2, 0x999999).lineBetween(bx + r * 0.1, by + r * 0.13, bx + r * 0.38, by + r * 0.13)
       .lineBetween(bx + r * 0.1, by + r * 0.22, bx + r * 0.3, by + r * 0.22);
 
+    g.generateTexture(`germ-${def.id}`, size, size);
+    g.destroy();
+  }
+
+  /**
+   * Patient Zero, seen from above facing right (+x): broad shoulders in a dotted hospital gown,
+   * a sweaty head with messy hair, a big red nose, tissues stuck all over, and his ticket: 9 HRS.
+   */
+  private makePatientZero(def: GermDef): void {
+    const r = def.radius;
+    const size = (r + 16) * 2;
+    const c = size / 2;
+    const g = this.add.graphics();
+    // Shoulders and gown
+    g.fillStyle(def.color).fillEllipse(c - r * 0.1, c, r * 1.5, r * 2.0);
+    g.lineStyle(3, def.outline).strokeEllipse(c - r * 0.1, c, r * 1.5, r * 2.0);
+    g.fillStyle(0x6fa9cf);
+    for (let i = 0; i < 18; i++) {
+      const a = (i / 18) * Math.PI * 2;
+      g.fillCircle(c - r * 0.1 + Math.cos(a) * r * 0.55, c + Math.sin(a) * r * 0.8, 3);
+    }
+    // Arms forward, one holding the ticket
+    g.fillStyle(0xe8b48f).fillEllipse(c + r * 0.55, c - r * 0.78, r * 0.6, r * 0.3).fillEllipse(c + r * 0.55, c + r * 0.78, r * 0.6, r * 0.3);
+    g.fillStyle(0xffe066).fillRect(c + r * 0.7, c + r * 0.62, r * 0.42, r * 0.3);
+    g.lineStyle(2, 0x5d4037).strokeRect(c + r * 0.7, c + r * 0.62, r * 0.42, r * 0.3);
+    g.fillStyle(0x5d4037).fillRect(c + r * 0.76, c + r * 0.72, r * 0.3, 3).fillRect(c + r * 0.76, c + r * 0.8, r * 0.2, 3);
+    // Head: sweaty, messy hair at the back, puffy eyes, the red nose out front
+    g.fillStyle(0xf2c2a0).fillCircle(c + r * 0.2, c, r * 0.55);
+    g.lineStyle(3, 0x8d5b3f).strokeCircle(c + r * 0.2, c, r * 0.55);
+    g.fillStyle(0x4e342e).slice(c + r * 0.2, c, r * 0.56, Math.PI - 1.2, Math.PI + 1.2, false).fillPath();
+    for (const dy of [-0.22, 0.22]) {
+      g.fillStyle(0xffffff).fillCircle(c + r * 0.45, c + r * dy, r * 0.11);
+      g.fillStyle(0xd84315, 0.5).fillCircle(c + r * 0.45, c + r * dy + r * 0.05, r * 0.12);
+      g.fillStyle(0x111111).fillCircle(c + r * 0.5, c + r * dy, r * 0.05);
+    }
+    g.fillStyle(0xe5383b).fillCircle(c + r * 0.72, c, r * 0.17);
+    g.fillStyle(0xffffff, 0.6).fillCircle(c + r * 0.76, c - r * 0.06, r * 0.05);
+    g.fillStyle(0x7fd3ff).fillCircle(c + r * 0.4, c + r * 0.35, r * 0.06); // sweat
+    // Tissues stuck everywhere
+    g.fillStyle(0xffffff);
+    for (const [x, y, a] of [[-0.5, -0.6, 0.3], [-0.6, 0.4, -0.5], [0.0, 0.75, 0.2], [-0.2, -0.85, -0.2], [0.05, -0.3, 0.6]]) {
+      g.save();
+      g.translateCanvas(c + r * x, c + r * y);
+      g.rotateCanvas(a);
+      g.fillRect(-8, -6, 16, 12);
+      g.lineStyle(1, 0xbdbdbd).strokeRect(-8, -6, 16, 12);
+      g.restore();
+    }
     g.generateTexture(`germ-${def.id}`, size, size);
     g.destroy();
   }

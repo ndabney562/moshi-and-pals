@@ -87,7 +87,7 @@ export class WaveDirector {
     let count = Math.round(WAVES.count(r) * (sp?.countMult ?? 1));
     this.queue = [];
     if (this.isBossRound) {
-      this.queue.push(WAVES.bossId);
+      this.queue.push(WAVES.bossFor(r));
       count = Math.round(count * WAVES.bossEscortFraction);
     }
     // Weighted random mix of normal germs
@@ -101,7 +101,7 @@ export class WaveDirector {
 
     this.nextSpawnAt = time + 600;
     const titles = WAVES.titles;
-    const title = this.isBossRound ? `BOSS ROUND: ${GERMS[WAVES.bossId].name} has arrived`
+    const title = this.isBossRound ? `BOSS ROUND: ${GERMS[WAVES.bossFor(r)].name} has arrived`
       : sp ? `${sp.name}: ${sp.blurb}` : titles[Math.min(r - 1, titles.length - 1)];
     events.emit(GameEvents.RoundStarted, { round: r, title, special: sp?.name });
   }
