@@ -13,6 +13,8 @@ export interface PatientHost {
   readonly room: RoomLayout;
   /** The room patients wait in (they never wander past its walls). */
   readonly area: RoomArea;
+  /** Who's on shift (picks whose reaction lines are said). */
+  readonly doctor?: 'eugene' | 'kaya' | 'lucien';
   /** Lets a germ loose at (x, y). */
   spawnGermAt(id: string, x: number, y: number): void;
   /** A patient was sprayed into compliance. */
@@ -110,7 +112,8 @@ export class PatientDirector {
     }
     const { player } = this.host;
     if (!player.dead && Phaser.Math.Distance.BetweenPoints(player, p) < this.cfg.grumbleRange) {
-      this.eugeneBubble.say(Phaser.Utils.Array.GetRandom(p.def.eugene), player, 52, 2000);
+      const lines = (this.host.doctor && this.host.doctor !== 'eugene' && p.def[this.host.doctor]?.length) ? p.def[this.host.doctor]! : p.def.eugene;
+      this.eugeneBubble.say(Phaser.Utils.Array.GetRandom(lines), player, 52, 2000);
     }
   }
 

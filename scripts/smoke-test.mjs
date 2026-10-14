@@ -104,6 +104,13 @@ try {
       aim: (() => { const t = scene.aimLock?.active ? scene.aimLock : g; return t ? Math.atan2(t.y - eugene.y, t.x - eugene.x) : 0; })(),
     };
   });
+  // Round 1's germs spawn ~1,100 px away; on a slow test machine the walk alone can outlast the timeout.
+  // Once they've spawned, bring them to the near side of the waiting room, then they still have to walk up.
+  await page.waitForFunction(() => window.game.scene.getScene('Game').germs.countActive(true) > 0, null, { timeout: 90000 });
+  await page.evaluate(() => {
+    const scene = window.game.scene.getScene('Game');
+    for (const g of scene.germs.getChildren()) if (g.active) g.setPosition(scene.player.x + 300 + Math.random() * 40, scene.player.y - 20 + Math.random() * 40);
+  });
   // Let the germs come to Eugene (within spray range) before spraying
   await page.waitForFunction(() => {
     const scene = window.game.scene.getScene('Game');

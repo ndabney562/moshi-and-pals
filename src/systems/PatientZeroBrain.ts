@@ -212,7 +212,7 @@ export class PatientZeroBrain implements BossBrain {
 
   private say(line: string, ms = 2400): void {
     if (!this.bubble.scene) return; // replaced by a newer boss before a delayed line came due
-    this.bubble.say(line, this.germ, this.germ.def.radius + 18, ms);
+    this.bubble.say(line.replace('{SURNAME}', this.host.surname ?? 'MOSHKOVICH'), this.germ, this.germ.def.radius + 18, ms);
     this.nextChatterAt = this.host.scene.time.now + ms + Phaser.Math.Between(4000, 7000);
   }
 
