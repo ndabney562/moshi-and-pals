@@ -99,6 +99,29 @@ export const BALANCE = {
     tantrumShoveMs: 320,
     tantrumDamage: 8,
   },
+  /** PATIENT ZERO, boss #2 (systems/PatientZeroBrain.ts). */
+  patientZero: {
+    firstCoughMs: 3500,
+    coughEveryMs: [4200, 6000] as [number, number],
+    coughWindupMs: 850,
+    coughRange: 330,
+    coughConeDeg: 55,
+    coughDamage: 14,
+    /** Viral Sprinters launched by each cough. */
+    coughGerms: 3,
+    sneezeBelow: 0.6,
+    sneezeEveryMs: 9000,
+    sneezeWindupMs: 1000,
+    sneezeRange: 520,
+    sneezeGlobs: 5,
+    /** Spray hits that shame him into a mask, how long it stays on, and the damage he takes meanwhile. */
+    complianceHits: 70,
+    maskedMs: 8000,
+    maskedDamageTaken: 2,
+    leaveBelow: 0.25,
+    leaveSpeed: 85,
+    escapeDistance: 130,
+  },
   /** Patients with health code violations (data/patients.ts). */
   patients: {
     /** First round they show up in. Boss rounds stay patient-free so Diamond gets the spotlight. */
@@ -137,6 +160,35 @@ export const BALANCE = {
     restHeal: 50,
     /** Purchases this expensive need a press-and-hold on USE (CONTROLS.holdToBuyMs). */
     holdToBuyFrom: 100,
+  },
+  /** RESISTANT elites ("antibiotic-resistant" versions of normal germs). */
+  elites: {
+    firstRound: 8,
+    /** Chance a spawning germ is an elite, by round. */
+    chance: (r: number) => (r < 8 ? 0 : Math.min(0.05 + 0.01 * (r - 8), 0.14)),
+    hpMult: 2.5,
+    copaysMult: 3,
+    pointsMult: 3,
+    /** Shielded: a bubble that soaks this fraction of max health first. */
+    shield: 0.5,
+    hastySpeed: 1.35,
+    /** Regenerating: heals this fraction of max health per second. */
+    regenPerSec: 0.04,
+    /** Splitting: bursts into this many basic germs. */
+    splitInto: 2,
+  },
+  /** Power-up pickups. */
+  powerups: {
+    /** Chance any normal germ drops one (elites always do). */
+    dropChance: 0.012,
+    /** Seconds on the floor before it vanishes; it blinks for the last `blinkMs`. */
+    lifeMs: 10000,
+    blinkMs: 3000,
+    pickupRadius: 46,
+    statCleanRadius: 520,
+    /** Stat Clean takes this much of a boss's max health instead of killing it. */
+    statCleanBoss: 0.15,
+    erWaitSlow: 0.3,
   },
   /** PERFECT POUR: tap REFILL again while the pour is in its sweet spot. */
   pour: {

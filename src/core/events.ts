@@ -28,6 +28,8 @@ export const GameEvents = {
   BossSpawned: 'boss.spawned',
   BossHealth: 'boss.health',
   BossDefeated: 'boss.defeated',
+  /** { name } the boss got away (Patient Zero leaving against medical advice) */
+  BossEscaped: 'boss.escaped',
   /** { copays } */
   CopaysChanged: 'copays.changed',
   /** { progress } 0..1 while recharging, 1 when ready */
@@ -43,6 +45,10 @@ export const GameEvents = {
   StreakChanged: 'streak.changed',
   /** { round, copays } finished a round without getting hurt */
   SpotlessRound: 'round.spotless',
+  /** { active: [{ id, name, color, left }] } power-ups running now (left 0..1) */
+  PowerupsChanged: 'powerups.changed',
+  /** { name, blurb, color } a power-up was picked up */
+  PowerupPicked: 'powerup.picked',
   /** { name } a supply crate gave Eugene a new tool */
   ToolUnlocked: 'tool.unlocked',
 } as const;
@@ -69,7 +75,7 @@ export interface GermKilledPayload { germId: string; x: number; y: number; total
 
 export interface StreakPayload { count: number; mult: number; left: number; }
 export interface HealthPayload { hp: number; maxHp: number; }
-export interface RoundPayload { round: number; title: string; }
+export interface RoundPayload { round: number; title: string; /** Special round name, if it is one. */ special?: string; }
 export interface BossPayload { name: string; hp: number; maxHp: number; }
 export interface RunResult {
   score: number; round: number; kills: number;

@@ -1,7 +1,7 @@
 import Phaser from 'phaser';
 import { events, GameEvents } from '../core/events';
 import { GERMS } from '../data/germs';
-import { WAVES } from '../data/waves';
+import { SPECIAL_ROUNDS, WAVES, type SpecialRound } from '../data/waves';
 import type { GermScaling } from '../entities/Germ';
 
 /**
@@ -19,6 +19,8 @@ export class WaveDirector {
   private scaling: GermScaling = { hpMult: 1, speedMult: 1 };
   /** Spawn-interval multiplier the game sets each frame (1 = normal, more = a breather). */
   pacing = 1;
+  /** This round's special rules, if it's a special round. */
+  special?: SpecialRound;
 
   /** `firstRound` > 1 skips ahead (debug/stress testing). */
   constructor(startTime: number, firstRound = 1) {
@@ -55,7 +57,7 @@ export class WaveDirector {
       return;
     }
     const r = this.round;
-    if (this.queue.length > 0 && time >= this.nextSpawnAt && alive < WAVES.maxAlive(r)) {
+    if (this.queue.length > 0 && time >= this.nextSpawnAt && alive < WAVES.maxAlive(r) + (this.special?.maxAliveAdd ?? 0)) {
       // A type at its alive limit waits its turn: send in the next germ that isn't
       const atLimit = (id: string) => !!WAVES.aliveLimit[id] && aliveOf(id) >= WAVES.aliveLimit[id](r);
       if (atLimit(this.queue[0])) {
@@ -64,7 +66,7 @@ export class WaveDirector {
       }
       if (!atLimit(this.queue[0]) && spawn(this.queue[0], this.scaling)) {
         this.queue.shift();
-        this.nextSpawnAt = time + WAVES.spawnIntervalMs(r) * this.pacing * Phaser.Math.FloatBetween(0.7, 1.3);
+        this.nextSpawnAt = time + WAVES.spawnIntervalMs(r) * this.pacing * (this.special?.spawnMult ?? 1) * Phaser.Math.FloatBetween(0.7, 1.3);
       }
     }
     if (this.queue.length === 0 && alive === 0) {
@@ -77,16 +79,19 @@ export class WaveDirector {
   private startRound(time: number): void {
     const r = ++this.round;
     this.phase = 'active';
-    this.scaling = { hpMult: WAVES.hpMult(r), speedMult: WAVES.speedMult(r) };
+    const specialId = this.isBossRound ? undefined : WAVES.specialFor(r);
+    this.special = specialId ? SPECIAL_ROUNDS[specialId] : undefined;
+    const sp = this.special;
+    this.scaling = { hpMult: WAVES.hpMult(r) * (sp?.hpMult ?? 1), speedMult: WAVES.speedMult(r) };
 
-    let count = WAVES.count(r);
+    let count = Math.round(WAVES.count(r) * (sp?.countMult ?? 1));
     this.queue = [];
     if (this.isBossRound) {
-      this.queue.push(WAVES.bossId);
+      this.queue.push(WAVES.bossFor(r));
       count = Math.round(count * WAVES.bossEscortFraction);
     }
     // Weighted random mix of normal germs
-    const weights = Object.entries(WAVES.composition(r)).filter(([id]) => GERMS[id]);
+    const weights = Object.entries(sp?.mix ?? WAVES.composition(r)).filter(([id]) => GERMS[id]);
     const total = weights.reduce((sum, [, w]) => sum + w, 0);
     for (let i = 0; i < count; i++) {
       let pick = Math.random() * total;
@@ -96,7 +101,8 @@ export class WaveDirector {
 
     this.nextSpawnAt = time + 600;
     const titles = WAVES.titles;
-    const title = this.isBossRound ? `BOSS ROUND: ${GERMS[WAVES.bossId].name} has arrived` : titles[Math.min(r - 1, titles.length - 1)];
-    events.emit(GameEvents.RoundStarted, { round: r, title });
+    const title = this.isBossRound ? `BOSS ROUND: ${GERMS[WAVES.bossFor(r)].name} has arrived`
+      : sp ? `${sp.name}: ${sp.blurb}` : titles[Math.min(r - 1, titles.length - 1)];
+    events.emit(GameEvents.RoundStarted, { round: r, title, special: sp?.name });
   }
 }

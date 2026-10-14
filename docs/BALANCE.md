@@ -54,3 +54,7 @@ Values live in `src/config/balance.ts` and `src/config/controls.ts`.
 | Sneezer | 24 HP, 110 px/s, 8 contact, $10 | Keeps 260 ± 60 px; 0.7 s wind-up; glob 10 dmg, 300 px/s, 420 px; puddle 52 px, 2.5 s, Eugene ×0.55; from r4, 2-4 alive |
 | Compounding Station | tier II $300, tier III $700, per tool | `tiers` in `src/data/equipment.ts` |
 | Exam table rest | $40 for +50 HP, once per table per round | `BALANCE.economy.restCost/restHeal` |
+| RESISTANT elites | from r8, 5% +1%/round (max 14%); ×2.5 HP, ×1.25 size, ×3 Copays/points | Shielded 50% bubble, Hasty ×1.35, Regenerating 4%/s, Splitting into 2 basics; `BALANCE.elites` |
+| Power-ups | elites always drop; others 1.2%; 10 s on the floor (blinks last 3 s) | Durations in `src/data/powerups.ts`, tuning in `BALANCE.powerups` |
+| Special rounds | 7 Rush, 9 Slow Tuesday, 12 Outbreak, 14 Inspection, 17 Superbug; then odd non-boss rounds | `SPECIAL_ROUNDS` and `WAVES.specialFor` in `src/data/waves.ts` |
+| Patient Zero | 1100 HP, 52 px/s, 20 contact, $150 | Cough every 4.2-6 s (55° × 330 px, 14 dmg, 3 Sprinters); sneeze below 60% every 9 s (5 globs); mask after 70 hits for 8 s (×2 damage); leaves below 25%; `BALANCE.patientZero` |

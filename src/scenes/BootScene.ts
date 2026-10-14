@@ -29,6 +29,8 @@ export class BootScene extends Phaser.Scene {
     this.makeHalo();
     this.makeArrow();
     this.makeGlob();
+    this.makeEliteRing();
+    this.makePill();
     this.scene.start('Title');
   }
 
@@ -121,6 +123,10 @@ export class BootScene extends Phaser.Scene {
     }
     if (def.look === 'manager') {
       this.makeManagerMonster(def);
+      return;
+    }
+    if (def.look === 'patient') {
+      this.makePatientZero(def);
       return;
     }
     if (def.shape === 'shell') {
@@ -250,6 +256,54 @@ export class BootScene extends Phaser.Scene {
   }
 
   /**
+   * Patient Zero, seen from above facing right (+x): broad shoulders in a dotted hospital gown,
+   * a sweaty head with messy hair, a big red nose, tissues stuck all over, and his ticket: 9 HRS.
+   */
+  private makePatientZero(def: GermDef): void {
+    const r = def.radius;
+    const size = (r + 16) * 2;
+    const c = size / 2;
+    const g = this.add.graphics();
+    // Shoulders and gown
+    g.fillStyle(def.color).fillEllipse(c - r * 0.1, c, r * 1.5, r * 2.0);
+    g.lineStyle(3, def.outline).strokeEllipse(c - r * 0.1, c, r * 1.5, r * 2.0);
+    g.fillStyle(0x6fa9cf);
+    for (let i = 0; i < 18; i++) {
+      const a = (i / 18) * Math.PI * 2;
+      g.fillCircle(c - r * 0.1 + Math.cos(a) * r * 0.55, c + Math.sin(a) * r * 0.8, 3);
+    }
+    // Arms forward, one holding the ticket
+    g.fillStyle(0xe8b48f).fillEllipse(c + r * 0.55, c - r * 0.78, r * 0.6, r * 0.3).fillEllipse(c + r * 0.55, c + r * 0.78, r * 0.6, r * 0.3);
+    g.fillStyle(0xffe066).fillRect(c + r * 0.7, c + r * 0.62, r * 0.42, r * 0.3);
+    g.lineStyle(2, 0x5d4037).strokeRect(c + r * 0.7, c + r * 0.62, r * 0.42, r * 0.3);
+    g.fillStyle(0x5d4037).fillRect(c + r * 0.76, c + r * 0.72, r * 0.3, 3).fillRect(c + r * 0.76, c + r * 0.8, r * 0.2, 3);
+    // Head: sweaty, messy hair at the back, puffy eyes, the red nose out front
+    g.fillStyle(0xf2c2a0).fillCircle(c + r * 0.2, c, r * 0.55);
+    g.lineStyle(3, 0x8d5b3f).strokeCircle(c + r * 0.2, c, r * 0.55);
+    g.fillStyle(0x4e342e).slice(c + r * 0.2, c, r * 0.56, Math.PI - 1.2, Math.PI + 1.2, false).fillPath();
+    for (const dy of [-0.22, 0.22]) {
+      g.fillStyle(0xffffff).fillCircle(c + r * 0.45, c + r * dy, r * 0.11);
+      g.fillStyle(0xd84315, 0.5).fillCircle(c + r * 0.45, c + r * dy + r * 0.05, r * 0.12);
+      g.fillStyle(0x111111).fillCircle(c + r * 0.5, c + r * dy, r * 0.05);
+    }
+    g.fillStyle(0xe5383b).fillCircle(c + r * 0.72, c, r * 0.17);
+    g.fillStyle(0xffffff, 0.6).fillCircle(c + r * 0.76, c - r * 0.06, r * 0.05);
+    g.fillStyle(0x7fd3ff).fillCircle(c + r * 0.4, c + r * 0.35, r * 0.06); // sweat
+    // Tissues stuck everywhere
+    g.fillStyle(0xffffff);
+    for (const [x, y, a] of [[-0.5, -0.6, 0.3], [-0.6, 0.4, -0.5], [0.0, 0.75, 0.2], [-0.2, -0.85, -0.2], [0.05, -0.3, 0.6]]) {
+      g.save();
+      g.translateCanvas(c + r * x, c + r * y);
+      g.rotateCanvas(a);
+      g.fillRect(-8, -6, 16, 12);
+      g.lineStyle(1, 0xbdbdbd).strokeRect(-8, -6, 16, 12);
+      g.restore();
+    }
+    g.generateTexture(`germ-${def.id}`, size, size);
+    g.destroy();
+  }
+
+  /**
    * Spore Pod: a hexagonal shell with thick armor plates across its front (+x, the way it faces),
    * beady eyes peeking out between the plates, and a soft, lighter back: the weak spot.
    */
@@ -364,6 +418,31 @@ export class BootScene extends Phaser.Scene {
     g.fillStyle(0xffffff, 0.35).fillCircle(8, 8, 8);
     g.fillStyle(0xffffff).fillCircle(8, 8, 4.5);
     g.generateTexture('droplet', 16, 16);
+    g.destroy();
+  }
+
+  /** RESISTANT aura: a spiky gold ring (tinted per trait) behind an elite germ. */
+  private makeEliteRing(): void {
+    const g = this.add.graphics();
+    g.lineStyle(7, 0xffffff, 1).strokeCircle(32, 32, 25);
+    for (let i = 0; i < 12; i++) {
+      const a = (i / 12) * Math.PI * 2;
+      g.fillStyle(0xffffff).fillTriangle(32 + Math.cos(a - 0.15) * 26, 32 + Math.sin(a - 0.15) * 26, 32 + Math.cos(a + 0.15) * 26, 32 + Math.sin(a + 0.15) * 26, 32 + Math.cos(a) * 32, 32 + Math.sin(a) * 32);
+    }
+    g.generateTexture('elite-ring', 64, 64);
+    g.destroy();
+  }
+
+  /** Power-up pickup: a two-tone capsule (the white half is tinted per power-up). */
+  private makePill(): void {
+    const g = this.add.graphics();
+    g.fillStyle(0x000000, 0.35).fillRoundedRect(4, 12, 44, 22, 11);
+    // White and light grey halves: tinting the whole pill gives two tones of the power-up's color
+    g.fillStyle(0xffffff).fillRoundedRect(2, 8, 44, 22, 11);
+    g.fillStyle(0xa0a0a0).fillRoundedRect(24, 8, 22, 22, { tl: 0, bl: 0, tr: 11, br: 11 });
+    g.fillStyle(0xffffff).fillRect(8, 12, 14, 4);
+    g.lineStyle(2, 0x1b2b30).strokeRoundedRect(2, 8, 44, 22, 11);
+    g.generateTexture('pill', 48, 36);
     g.destroy();
   }
 

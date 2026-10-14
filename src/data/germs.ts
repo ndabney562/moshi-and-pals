@@ -30,9 +30,9 @@ export interface GermDef {
   /** Bosses get a health bar and their own round. */
   boss?: boolean;
   /** Extra costume drawn on top of the body. */
-  look?: 'manager';
+  look?: 'manager' | 'patient';
   /** Special behavior controller. Germs without one simply chase Eugene. */
-  brain?: 'diamond';
+  brain?: 'diamond' | 'patientZero';
   /**
    * Armored shell (Spore Pod): hits on the front arc are mostly blocked, hits from behind hurt extra.
    * It turns slowly (`turnDegPerSec`), so circling it works. Piercing tools (UV) ignore the shell;
@@ -159,6 +159,31 @@ export const GERMS: Record<string, GermDef> = {
     boss: true,
     look: 'manager',
     brain: 'diamond',
+  },
+  /**
+   * BOSS #2: PATIENT ZERO. The most contagious patient in the waiting room, nine hours into his wait.
+   * Huge, in a hospital gown, tissues stuck all over, a red nose and a ticket that says 9 HRS.
+   * Moves in systems/PatientZeroBrain.ts, lines in data/patientZero.ts, numbers in BALANCE.patientZero.
+   */
+  patientZero: {
+    id: 'patientZero',
+    deathNote: 'Patient Zero coughed directly into your face.',
+    name: 'Patient Zero',
+    tag: 'virus',
+    hp: 1100,
+    speed: 52,
+    radius: 60,
+    color: 0xb3d9f2,
+    outline: 0x2c4a5e,
+    contactBounce: 120,
+    contactDamage: 20,
+    points: 400,
+    copays: 150,
+    shape: 'blob',
+    knockbackResist: 0.9,
+    boss: true,
+    look: 'patient',
+    brain: 'patientZero',
   },
   /** Diamond's write-ups: angry pink slips she flings when she gets hurt. Tiny, quick, fragile. */
   writeUp: {

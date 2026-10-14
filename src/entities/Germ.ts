@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import { BALANCE } from '../config/balance';
 import { damp } from '../core/math';
+import { ELITE_AFFIXES, type EliteAffix } from '../data/powerups';
 import type { GermDef } from '../data/germs';
 
 /** Per-round multipliers applied when a germ spawns. */
@@ -38,6 +39,17 @@ export class Germ extends Phaser.Physics.Arcade.Sprite {
   flippedUntil = 0;
   /** Last "TINK" when spray bounced off armor (throttles the feedback). */
   lastBlockAt = 0;
+  /** RESISTANT elite trait, if this germ is one. */
+  elite?: EliteAffix;
+  /** Shielded elites: damage the bubble soaks before health. */
+  shield = 0;
+  /** Prior Authorization: frozen solid until then. */
+  frozenUntil = 0;
+  /** Elite aura (created the first time this pooled germ becomes an elite). */
+  private ring?: Phaser.GameObjects.Image;
+  /** Elite trait label (so traits don't rely on color alone). */
+  private tag?: Phaser.GameObjects.Text;
+  private sizeMul = 1;
 
   spawn(def: GermDef, x: number, y: number, scaling: GermScaling = { hpMult: 1, speedMult: 1 }): void {
     this.def = def;
@@ -52,6 +64,12 @@ export class Germ extends Phaser.Physics.Arcade.Sprite {
     this.strafe = Math.random() < 0.5 ? -1 : 1;
     this.flippedUntil = 0;
     this.lastBlockAt = 0;
+    this.elite = undefined;
+    this.shield = 0;
+    this.frozenUntil = 0;
+    this.sizeMul = 1;
+    this.ring?.setVisible(false);
+    this.tag?.setVisible(false);
     this.slowUntil = 0;
     this.setTexture(`germ-${def.id}`);
     this.enableBody(true, x, y, true, true);
@@ -66,6 +84,30 @@ export class Germ extends Phaser.Physics.Arcade.Sprite {
     this.stunnedUntil = this.scene.time.now + 350;
   }
 
+  /** Turns this germ into a RESISTANT elite: much tougher, bigger, with an aura showing its trait. */
+  makeElite(affix: EliteAffix, hpMult: number, extra: { shield: number; speed: number }): void {
+    this.elite = affix;
+    this.maxHp = this.hp = this.hp * hpMult;
+    this.sizeMul = 1.25;
+    if (affix === 'shielded') this.shield = this.maxHp * extra.shield;
+    if (affix === 'hasty') this.speed *= extra.speed;
+    if (!this.ring) this.ring = this.scene.add.image(this.x, this.y, 'elite-ring').setDepth(7.5);
+    this.ring.setVisible(true).setTint(ELITE_AFFIXES[affix].ring).setScale(((this.def.radius * 1.25 + 18) * 2) / 64);
+    if (!this.tag) {
+      this.tag = this.scene.add.text(0, 0, '', {
+        fontFamily: 'system-ui, sans-serif', fontSize: '12px', fontStyle: '900', color: '#ffffff', stroke: '#1b2b30', strokeThickness: 3,
+      }).setOrigin(0.5, 1).setDepth(19);
+    }
+    this.tag.setText(`RESISTANT · ${ELITE_AFFIXES[affix].label}`).setVisible(true);
+  }
+
+  /** PRIOR AUTHORIZATION: frozen in place (pending approval) for `ms`. */
+  freezeFor(time: number, ms: number): void {
+    this.frozenUntil = Math.max(this.frozenUntil, time + ms);
+    this.stun(time, ms);
+    this.setVelocity(0, 0);
+  }
+
   /** Stops moving (used when the run ends). */
   freeze(): void {
     this.setVelocity(0, 0);
@@ -76,7 +118,10 @@ export class Germ extends Phaser.Physics.Arcade.Sprite {
   chase(target: { x: number; y: number }, time: number, dtMs: number, speed = this.speed): void {
     if (!this.active) return;
     if (time < this.slowUntil) speed *= this.slowFactor;
-    if (time < this.flippedUntil) {
+    if (time < this.frozenUntil) {
+      // Pending approval: not going anywhere
+      this.setVelocity(0, 0);
+    } else if (time < this.flippedUntil) {
       // On its back: spins helplessly
       this.rotation += dtMs * 0.012;
     } else if (time >= this.stunnedUntil) {
@@ -95,13 +140,25 @@ export class Germ extends Phaser.Physics.Arcade.Sprite {
     // Wind-up telegraph: flashes red before a sneeze; a flipped Spore Pod blushes
     if (this.windupUntil > time) this.setTint(Math.sin(time / 45) > 0 ? 0xff6b6b : 0xffd0d0);
     else if (this.flippedUntil > time) this.setTint(0xffc9a8);
+    // Regenerating elites heal over time
+    if (this.elite === 'regenerating' && this.hp < this.maxHp) this.hp = Math.min(this.maxHp, this.hp + this.maxHp * BALANCE.elites.regenPerSec * (dtMs / 1000));
     // Jelly wobble, plus a squash right after each hit (no tweens: cheap with many germs)
     this.wobble += dtMs / 140;
     if (this.squash > 0) this.squash = Math.max(0, this.squash - dtMs / BALANCE.feedback.squashMs);
     if (!this.scene.tweens.isTweening(this)) {
       const s = Math.sin(this.wobble) * 0.07;
       const q = this.squash;
-      this.setScale(1 + s + 0.22 * q, 1 - s - 0.18 * q);
+      const k = this.sizeMul;
+      this.setScale(k * (1 + s + 0.22 * q), k * (1 - s - 0.18 * q));
+    }
+    if (this.ring?.visible) {
+      this.ring.setPosition(this.x, this.y).setRotation(this.wobble * 0.3).setAlpha(this.shield > 0 ? 1 : 0.8);
+      this.tag?.setPosition(this.x, this.y - this.def.radius * 1.25 - 16);
+    }
+    if (this.frozenUntil > time) this.setTint(0xbfe9ff);
+    else if (this.frozenUntil > 0) {
+      this.frozenUntil = 0;
+      this.clearTint();
     }
     if (this.flashUntil && time >= this.flashUntil) {
       this.flashUntil = 0;
@@ -115,6 +172,12 @@ export class Germ extends Phaser.Physics.Arcade.Sprite {
 
   /** Applies damage and a push away from `fromAngle`. Returns true if this killed it. */
   hurt(amount: number, fromAngle: number, knockback: number, time: number): boolean {
+    // A shielded elite's bubble soaks damage first
+    if (this.shield > 0) {
+      const soaked = Math.min(this.shield, amount);
+      this.shield -= soaked;
+      amount -= soaked;
+    }
     this.hp -= amount;
     this.pendingDamage += amount;
     this.squash = 1;
@@ -157,5 +220,7 @@ export class Germ extends Phaser.Physics.Arcade.Sprite {
 
   kill(): void {
     this.disableBody(true, true);
+    this.ring?.setVisible(false);
+    this.tag?.setVisible(false);
   }
 }

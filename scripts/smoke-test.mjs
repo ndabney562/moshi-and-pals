@@ -20,6 +20,14 @@ const context = await browser.newContext({
   viewport: { width: 852, height: 393 }, deviceScaleFactor: 3, isMobile: true, hasTouch: true,
 });
 const page = await context.newPage();
+/** Timeouts say what they were waiting for (CI logs aren't readable, only the failure message). */
+const labelWaits = (p) => {
+  const wait = p.waitForFunction.bind(p);
+  p.waitForFunction = (fn, arg, opts) => wait(fn, arg, opts).catch((e) => {
+    throw new Error(`${e.message.split('\n')[0]} waiting for: ${String(fn).replace(/\s+/g, ' ').slice(0, 160)}`);
+  });
+};
+labelWaits(page);
 const errors = [];
 page.on('pageerror', (e) => errors.push(e.message));
 page.on('console', (m) => m.type() === 'error' && errors.push(m.text()));
@@ -426,6 +434,48 @@ try {
   });
   check(slowed < 1, `standing in a puddle slows Eugene (speed ×${slowed.toFixed(2)})`);
 
+  // RESISTANT elites: tougher, with a trait; always drop a power-up. Power-ups are picked up by walking over them
+  const elite = await page.evaluate(() => {
+    const scene = window.game.scene.getScene('Game');
+    for (const g of scene.germs.getChildren()) if (g.active) g.kill();
+    scene.spawnGerm('basic', { hpMult: 1, speedMult: 1 });
+    const g = scene.germs.getChildren().find((c) => c.active);
+    const hp0 = g.maxHp;
+    scene.maybeElite(g, 'shielded');
+    const res = { hpx: g.maxHp / hp0, shield: Math.round(g.shield), elite: g.elite };
+    g.setPosition(scene.player.x + 150, scene.player.y);
+    scene.damageGerm(g, 1e6, 0, 0);
+    return { ...res, dead: !g.active, pills: scene.powerups.onFloor };
+  });
+  check(elite.elite === 'shielded' && elite.hpx === 2.5 && elite.shield > 0 && elite.dead && elite.pills >= 1, `a RESISTANT elite is tougher and drops a power-up (${JSON.stringify(elite)})`);
+  const picked = await page.evaluate(() => {
+    const scene = window.game.scene.getScene('Game');
+    scene.spawnGerm('basic', { hpMult: 1, speedMult: 1 });
+    const g = scene.germs.getChildren().find((c) => c.active);
+    g.setPosition(scene.player.x + 300, scene.player.y);
+    scene.powerups.drop(scene.player.x, scene.player.y, scene.time.now, 'priorAuth');
+    return true;
+  });
+  await page.waitForFunction(() => {
+    const scene = window.game.scene.getScene('Game');
+    return scene.powerups.isActive('priorAuth', scene.time.now);
+  }, null, { timeout: 15000 }).catch(() => {});
+  const frozen = await page.evaluate(() => {
+    const scene = window.game.scene.getScene('Game');
+    const g = scene.germs.getChildren().find((c) => c.active);
+    return { active: scene.powerups.isActive('priorAuth', scene.time.now), frozen: !!g && g.frozenUntil > scene.time.now, hud: window.game.scene.getScene('Hud').powerRows[0].text.text };
+  });
+  check(picked && frozen.active && frozen.frozen, `walking over PRIOR AUTHORIZATION freezes the germs (${JSON.stringify(frozen)})`);
+  const statCleaned = await page.evaluate(() => {
+    const scene = window.game.scene.getScene('Game');
+    for (let i = 0; i < 3; i++) scene.spawnGerm('basic', { hpMult: 1, speedMult: 1 });
+    for (const g of scene.germs.getChildren()) if (g.active) g.setPosition(scene.player.x + 100 + Math.random() * 200, scene.player.y);
+    const before = scene.germs.countActive(true);
+    scene.onPowerup({ id: 'statClean', name: 'STAT CLEAN', blurb: '', color: 0xffffff, ms: 0 }, scene.time.now);
+    return { before, after: scene.germs.countActive(true) };
+  });
+  check(statCleaned.before > 0 && statCleaned.after === 0, `STAT CLEAN disinfects everything nearby (${JSON.stringify(statCleaned)})`);
+
   // STAIRS (M8 map): buy Upstairs, walk into the west stairs and come out upstairs; germs follow the same way
   await page.evaluate(() => {
     const scene = window.game.scene.getScene('Game');
@@ -634,6 +684,58 @@ try {
   });
   check(!beaten.active && beaten.said.length > 0, `Diamond can be defeated ("${beaten.said}")`);
 
+  // PATIENT ZERO (boss #2): coughs Sprinters, masks up when sprayed enough (takes double), runs for the exit at low health
+  await page.evaluate(() => {
+    const scene = window.game.scene.getScene('Game');
+    for (const g of scene.germs.getChildren()) if (g.active) g.kill();
+    scene.boss?.destroy();
+    scene.boss = undefined;
+    const sp = scene.room.playerSpawn;
+    scene.player.setPosition(sp.x, sp.y);
+    scene.spawnGerm('patientZero', { hpMult: 1, speedMult: 1 });
+    scene.boss.germ.setPosition(sp.x + 250, sp.y);
+    scene.boss.nextCoughAt = 0;
+  });
+  const coughed = await page.waitForFunction(() => window.game.scene.getScene('Game').germs.getChildren().some((g) => g.active && g.def.id === 'sprinter'), null, { timeout: 20000 }).then(() => true, () => false);
+  check(coughed, 'Patient Zero coughs out Viral Sprinters');
+  const masked = await page.evaluate(() => {
+    const scene = window.game.scene.getScene('Game');
+    const b = scene.boss;
+    for (let i = 0; i < 80; i++) b.onHurt(1, scene.time.now);
+    return { masked: b.masked, taken: b.damageTaken };
+  });
+  check(masked.masked && masked.taken === 2, `spraying Patient Zero enough makes him mask up and take double damage (${JSON.stringify(masked)})`);
+  await page.evaluate(() => {
+    const scene = window.game.scene.getScene('Game');
+    scene.boss.germ.hp = scene.boss.germ.maxHp * 0.2;
+  });
+  const leaving = await page.waitForFunction(() => window.game.scene.getScene('Game').boss?.currentMode === 'leaving', null, { timeout: 15000 }).then(() => true, () => false);
+  await page.evaluate(() => {
+    const scene = window.game.scene.getScene('Game');
+    scene.boss.germ.setPosition(scene.room.exit.x, scene.room.exit.y - 60);
+  });
+  const escaped = await page.waitForFunction(() => !window.game.scene.getScene('Game').boss.germ.active, null, { timeout: 15000 }).then(() => true, () => false);
+  const escBanner = await page.evaluate(() => window.game.scene.getScene('Hud').banner.text);
+  check(leaving && escaped && escBanner.includes('AGAINST MEDICAL ADVICE'), `at low health he leaves against medical advice and can escape ("${escBanner}")`);
+
+  // SPECIAL ROUNDS: round 7 is a Waiting Room Rush, announced with its own banner
+  await page.evaluate(() => {
+    const scene = window.game.scene.getScene('Game');
+    for (const g of scene.germs.getChildren()) if (g.active) g.kill();
+    scene.boss?.destroy();
+    scene.boss = undefined;
+    scene.waves.queue.length = 0;
+    scene.waves.round = 6;
+    scene.waves.phase = 'intermission';
+    scene.waves.nextRoundAt = scene.time.now;
+  });
+  await page.waitForFunction(() => window.game.scene.getScene('Game').waves.round === 7, null, { timeout: 15000 }).catch(() => {});
+  const special = await page.evaluate(() => {
+    const scene = window.game.scene.getScene('Game');
+    return { id: scene.waves.special?.id, banner: window.game.scene.getScene('Hud').banner.text, queued: scene.waves.queue.length };
+  });
+  check(special.id === 'rush' && special.banner === 'WAITING ROOM RUSH', `round 7 is a special round with its own banner (${JSON.stringify(special)})`);
+
   // Eugene was untouchable since the station checks (slow CI browsers); make him mortal again for the death test
   await page.evaluate(() => { window.game.scene.getScene('Game').player.invulnerableUntil = 0; });
   // Death: drop Eugene to 1 HP and put a germ on top of him
@@ -696,6 +798,7 @@ try {
 
   // Debug/stress switches: ?round=6&copays=999&god&fps=30
   const dbg = await context.newPage();
+  labelWaits(dbg);
   const dbgErrors = [];
   dbg.on('pageerror', (e) => dbgErrors.push(e.message));
   await dbg.goto(url + '?round=6&copays=999&god&fps=30');
@@ -720,6 +823,7 @@ try {
   // Phone held upright: the game still plays in landscape, turned sideways, and touches land where they look
   const tall = await browser.newContext({ viewport: { width: 393, height: 852 }, deviceScaleFactor: 3, isMobile: true, hasTouch: true });
   const pp = await tall.newPage();
+  labelWaits(pp);
   const tallErrors = [];
   pp.on('pageerror', (e) => tallErrors.push(e.message));
   await pp.goto(url);

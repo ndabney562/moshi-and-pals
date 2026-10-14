@@ -24,8 +24,12 @@ import { Player } from '../entities/Player';
 import { FlowField } from '../systems/FlowField';
 import { steerSpitter, type BehaviorHost } from '../systems/GermBehaviors';
 import { Puddles } from '../systems/Puddles';
+import { Powerups } from '../systems/Powerups';
+import { ELITE_AFFIXES, type EliteAffix, type PowerupDef } from '../data/powerups';
 import { Fx } from '../systems/Fx';
 import { DiamondBrain, type BossHost } from '../systems/DiamondBrain';
+import type { BossBrain } from '../systems/BossBrain';
+import { PatientZeroBrain } from '../systems/PatientZeroBrain';
 import { PatientDirector } from '../systems/PatientDirector';
 import { Sprayer } from '../systems/Sprayer';
 import { WaveDirector } from '../systems/WaveDirector';
@@ -87,6 +91,7 @@ export class GameScene extends Phaser.Scene {
   /** Sneezer mucus globs in flight, and the puddles they leave. */
   private globs!: Phaser.Physics.Arcade.Group;
   private puddles!: Puddles;
+  private powerups!: Powerups;
   private behaviorHost!: BehaviorHost;
   /** Tools carried: the bottle, plus one from a supply crate. */
   private loadout: Sprayer[] = [];
@@ -109,7 +114,7 @@ export class GameScene extends Phaser.Scene {
   private station: StationPayload = { near: false, label: '', affordable: false, hold: false, note: '' };
   private lastJugWarningAt = -Infinity;
   /** The current boss's behavior, if a boss with a brain is (or was last) in the room. */
-  private boss?: DiamondBrain;
+  private boss?: BossBrain;
   private readonly mouseWorld = new Phaser.Math.Vector2();
   /** SANITATION STREAK: kills in a row (each within BALANCE.streak.windowMs of the last). */
   private streak = 0;
@@ -187,6 +192,7 @@ export class GameScene extends Phaser.Scene {
     this.germs = this.physics.add.group({ classType: Germ, maxSize: 60, defaultKey: 'germ-basic' });
     this.globs = this.physics.add.group({ classType: Glob, maxSize: 16, defaultKey: 'glob' });
     this.puddles = new Puddles(this);
+    this.powerups = new Powerups(this, (def, t) => this.onPowerup(def, t));
     this.behaviorHost = {
       player: this.player,
       flow: this.flow,
@@ -256,7 +262,10 @@ export class GameScene extends Phaser.Scene {
       [GameEvents.RoundCompleted, sfx.roundEnd],
     ];
     for (const [name, fn] of sounds) events.on(name, fn);
-    const onRoundStart = () => { this.hurtThisRound = false; };
+    const onRoundStart = (p: RoundPayload) => {
+      this.hurtThisRound = false;
+      if (p.special) sfx.specialRound();
+    };
     const onRoundDone = (p: RoundPayload) => this.onRoundCompleted(p.round);
     events.on(GameEvents.RoundStarted, onRoundStart);
     events.on(GameEvents.RoundCompleted, onRoundDone);
@@ -377,6 +386,7 @@ export class GameScene extends Phaser.Scene {
     this.waves.update(time, alive, (id, scaling) => this.spawnGerm(id, scaling), (id) => this.aliveOf(id));
     // Globs that fly their full range splat where they stop; puddles slow Eugene
     for (const gl of this.globs.getChildren() as Glob[]) if (gl.active && time >= gl.expiresAt) this.globLands(gl);
+    this.powerups.update(time, this.player.x, this.player.y);
     const slow = this.puddles.update(time, this.player.x, this.player.y);
     this.player.setSpeedMod('puddle', slow < 1 ? slow : null);
     this.patients.update(time, delta, this.waves.round, this.waves.spawning, this.waves.isBossRound);
@@ -393,16 +403,23 @@ export class GameScene extends Phaser.Scene {
   /** CHOO! A Sneezer launches a mucus glob. */
   private fireGlob(g: Germ, angle: number): void {
     const s = g.def.spit;
-    const glob = this.globs.get() as Glob | null;
-    if (!s || !glob) return;
+    if (!s) return;
     const r = g.def.radius + 10;
-    glob.fire(g.x + Math.cos(angle) * r, g.y + Math.sin(angle) * r, angle, s.globSpeed, s.globRange, this.time.now);
+    this.launchGlob(g.x + Math.cos(angle) * r, g.y + Math.sin(angle) * r, angle, s.globSpeed, s.globRange, s);
+    sfx.sneeze();
+    this.fx.number(g.x, g.y - g.def.radius - 14, 'CHOO!', '#d7e88a', 22);
+  }
+
+  /** One mucus glob in flight (Sneezers, Patient Zero's sneeze). */
+  private launchGlob(x: number, y: number, angle: number, speed: number, range: number,
+    s: { damage: number; puddleMs: number; puddleRadius: number; puddleSlow: number }): void {
+    const glob = this.globs.get() as Glob | null;
+    if (!glob) return;
+    glob.fire(x, y, angle, speed, range, this.time.now);
     glob.damage = s.damage;
     glob.puddleMs = s.puddleMs;
     glob.puddleRadius = s.puddleRadius;
     glob.puddleSlow = s.puddleSlow;
-    sfx.sneeze();
-    this.fx.number(g.x, g.y - g.def.radius - 14, 'CHOO!', '#d7e88a', 22);
   }
 
   /** A glob hits something (or runs out of range) and leaves a slippery puddle. */
@@ -465,7 +482,7 @@ export class GameScene extends Phaser.Scene {
   /** SPOTLESS: a round finished without a scratch pays a bonus. */
   private onRoundCompleted(round: number): void {
     if (this.hurtThisRound || this.runOver) return;
-    const bonus = BALANCE.economy.spotlessPerRound * round;
+    const bonus = BALANCE.economy.spotlessPerRound * round * (this.waves.special?.spotlessMult ?? 1);
     this.addCopays(bonus);
     this.score += BALANCE.economy.spotlessScorePerRound * round;
     events.emit(GameEvents.ScoreChanged, { score: this.score });
@@ -570,7 +587,7 @@ export class GameScene extends Phaser.Scene {
     }
     // STAT! critical hit
     const fb = BALANCE.feedback;
-    const crit = Math.random() < fb.critChance;
+    const crit = this.powerups.isActive('triage', this.time.now) || Math.random() < fb.critChance;
     if (crit) {
       germ.pendingCrit = true;
       this.runStats.crits++;
@@ -592,6 +609,7 @@ export class GameScene extends Phaser.Scene {
   /** Every way a germ gets hurt goes through here: numbers, boss bar, kills, score and Copays. */
   private damageGerm(germ: Germ, damage: number, fromAngle: number, knockback: number): void {
     const time = this.time.now;
+    if (this.boss?.germ === germ) damage *= this.boss.damageTaken ?? 1;
     const killed = germ.hurt(damage, fromAngle, knockback, time);
     if (this.boss?.germ === germ) this.boss.onHurt(damage, time);
 
@@ -619,7 +637,20 @@ export class GameScene extends Phaser.Scene {
       this.streakUntil = time + BALANCE.streak.windowMs;
       this.lastStreakLeft = 1;
       this.emitStreak(1);
-      this.addCopays(Math.round(germ.def.copays * this.streakMult));
+      const el = BALANCE.elites;
+      const eliteMult = germ.elite ? el.copaysMult : 1;
+      const doubled = this.powerups.isActive('doubleCopay', time) ? 2 : 1;
+      const special = this.waves.special?.copayMult ?? 1;
+      this.addCopays(Math.round(germ.def.copays * this.streakMult * eliteMult * doubled * special));
+      if (germ.elite) this.score += germ.def.points * (el.pointsMult - 1);
+      // Power-ups: elites always drop one; any other germ now and then
+      if (germ.elite || (!germ.def.boss && Math.random() < BALANCE.powerups.dropChance)) this.powerups.drop(germ.x, germ.y, time);
+      if (germ.elite === 'splitting') {
+        for (let i = 0; i < el.splitInto; i++) {
+          const a = Math.random() * Math.PI * 2;
+          this.spawnGermAt('basic', germ.x + Math.cos(a) * 30, germ.y + Math.sin(a) * 30, true);
+        }
+      }
       this.fx.germSplat(germ.x, germ.y, germ.def.color);
       this.fx.germPop(germ.texture.key, germ.x, germ.y, germ.rotation, germ.scaleX, germ.y - germ.def.radius - 8, !!germ.def.boss);
       this.fx.number(germ.x, germ.y - germ.def.radius - 24, `+${germ.def.points}`, '#ffe66d', germ.def.boss ? 34 : 18);
@@ -999,15 +1030,40 @@ export class GameScene extends Phaser.Scene {
     if (def.boss) scaling = { ...scaling, hpMult: Math.min(scaling.hpMult, WAVES.bossHpMultMax) };
     // Germs come in through every room that's open, but not right on top of Eugene or miles away
     const { minSpawnDistance, maxSpawnDistance } = BALANCE.spawning;
-    const spots = this.room.rooms.filter((r) => this.unlocked.has(r.id)).flatMap((r) => r.germSpawns);
+    // Waiting Room Rush: everyone comes in through the front
+    const fromStart = !!this.waves.special?.fromStart;
+    const spots = this.room.rooms.filter((r) => this.unlocked.has(r.id) && (!fromStart || r.start)).flatMap((r) => r.germSpawns);
     const dist = (p: { x: number; y: number }) => Phaser.Math.Distance.Between(p.x, p.y, this.player.x, this.player.y);
     const far = spots.filter((p) => dist(p) >= minSpawnDistance);
     const ideal = far.filter((p) => dist(p) <= maxSpawnDistance);
     const spot = Phaser.Utils.Array.GetRandom(ideal.length ? ideal : far.length ? far : spots);
     germ.spawn(def, spot.x, spot.y, scaling);
+    this.maybeElite(germ);
+    this.applyOngoingPowerups(germ);
     if (def.brain === 'diamond') {
       this.boss?.destroy();
       this.boss = new DiamondBrain(this.bossHost(), germ);
+    } else if (def.brain === 'patientZero') {
+      this.boss?.destroy();
+      this.boss = new PatientZeroBrain({
+        ...this.bossHost(),
+        // COUGH: a spray of Viral Sprinters out of his cone
+        cough: (x, y, angle) => {
+          const n = BALANCE.patientZero.coughGerms;
+          for (let i = 0; i < n; i++) {
+            const a = angle + (i - (n - 1) / 2) * 0.25;
+            this.bossHost().spawnMinion('sprinter', x, y, Math.cos(a) * 320, Math.sin(a) * 320);
+          }
+        },
+        // SNEEZE: a volley of mucus globs down the red line
+        sneezeVolley: (x, y, angle) => {
+          const spit = GERMS.sneezer.spit!;
+          for (let i = 0; i < BALANCE.patientZero.sneezeGlobs; i++) {
+            const a = angle + Phaser.Math.FloatBetween(-0.06, 0.06);
+            this.launchGlob(x + Math.cos(angle) * 70, y + Math.sin(angle) * 70, a, spit.globSpeed * (1 + i * 0.18), spit.globRange * 1.3, spit);
+          }
+        },
+      }, germ);
     }
     if (def.boss) {
       sfx.bossArrives();
@@ -1016,15 +1072,66 @@ export class GameScene extends Phaser.Scene {
     return true;
   }
 
-  /** A germ let loose by a patient's health code violation, at this round's toughness. */
-  private spawnGermAt(id: string, x: number, y: number): void {
+  /** A germ let loose at (x, y) (a patient's violation, a splitting elite), at this round's toughness. */
+  private spawnGermAt(id: string, x: number, y: number, ignoreCap = false): void {
     const r = Math.max(1, this.waves.round);
     // Same on-screen cap as wave spawns, so violations can't flood the room
-    if (this.germs.countActive(true) >= WAVES.maxAlive(r)) return;
+    if (!ignoreCap && this.germs.countActive(true) >= WAVES.maxAlive(r)) return;
     const def = GERMS[id];
     const germ = this.germs.get() as Germ | null;
     if (!def || !germ) return;
     germ.spawn(def, x, y, { hpMult: WAVES.hpMult(r), speedMult: WAVES.speedMult(r) });
+    this.applyOngoingPowerups(germ);
+  }
+
+  /** RESISTANT: from round 8 some germs arrive as elites with a trait. */
+  private maybeElite(germ: Germ, force?: EliteAffix): void {
+    const el = BALANCE.elites;
+    if (germ.def.boss) return;
+    const boost = this.waves.special?.eliteBoost ?? 1;
+    if (!force && Math.random() >= Math.min(0.6, el.chance(this.waves.round) * boost)) return;
+    const affix = force ?? Phaser.Utils.Array.GetRandom(Object.keys(ELITE_AFFIXES) as EliteAffix[]);
+    germ.makeElite(affix, el.hpMult, { shield: el.shield, speed: el.hastySpeed });
+  }
+
+  /** Freezes or slows a germ that arrives while Prior Authorization or ER Wait Time is running. */
+  private applyOngoingPowerups(germ: Germ): void {
+    const time = this.time.now;
+    if (this.powerups.isActive('priorAuth', time)) germ.freezeFor(time, this.powerups.until('priorAuth') - time);
+    if (this.powerups.isActive('erWait', time) && !germ.def.boss) germ.slow(time, BALANCE.powerups.erWaitSlow, this.powerups.until('erWait') - time);
+  }
+
+  /** A power-up was picked up: start its effect. */
+  private onPowerup(def: PowerupDef, time: number): void {
+    const cfg = BALANCE.powerups;
+    const living = (this.germs.getChildren() as Germ[]).filter((g) => g.active);
+    sfx.spotless();
+    this.cameras.main.shake(120, 0.004);
+    this.fx.number(this.player.x, this.player.y - 70, `${def.name}!`, '#ffe66d', 26);
+    switch (def.id) {
+      case 'priorAuth':
+        for (const g of living) g.freezeFor(time, def.ms);
+        break;
+      case 'erWait':
+        for (const g of living) if (!g.def.boss) g.slow(time, cfg.erWaitSlow, def.ms);
+        break;
+      case 'freeRefills':
+        for (const t of this.loadout) t.freeUntil = time + def.ms;
+        break;
+      case 'statClean': {
+        const { x, y } = this.player;
+        const ring = this.add.circle(x, y, cfg.statCleanRadius).setStrokeStyle(18, 0xffffff, 0.9).setFillStyle(0xe8fff9, 0.25).setDepth(13).setScale(0.05);
+        this.tweens.add({ targets: ring, scale: 1, alpha: 0, duration: 520, ease: 'Cubic.out', onComplete: () => ring.destroy() });
+        this.cameras.main.flash(160, 255, 255, 255);
+        for (const g of living) {
+          if (Phaser.Math.Distance.Between(x, y, g.x, g.y) > cfg.statCleanRadius) continue;
+          const angle = Phaser.Math.Angle.Between(x, y, g.x, g.y);
+          this.damageGerm(g, g.def.boss ? g.maxHp * cfg.statCleanBoss : g.hp + g.shield + 1, angle, 300);
+        }
+        break;
+      }
+      // triage and doubleCopay are checked where they apply
+    }
   }
 
   private onPatientCleaned(p: Patient): void {
