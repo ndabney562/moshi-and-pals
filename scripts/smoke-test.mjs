@@ -916,6 +916,10 @@ try {
   // Diamond the Practice Manager: spawn her near Eugene and walk her through every move
   await page.evaluate(() => {
     const scene = window.game.scene.getScene('Game');
+    // Hold the wave director between rounds, so a real boss round can't replace the bosses under test
+    scene.waves.queue.length = 0;
+    scene.waves.phase = 'intermission';
+    scene.waves.nextRoundAt = Number.MAX_SAFE_INTEGER;
     for (const g of scene.germs.getChildren()) if (g.active) g.kill();
     scene.player.hp = 100;
     const sp = scene.room.playerSpawn;
