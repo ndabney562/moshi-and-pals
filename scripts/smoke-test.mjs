@@ -131,6 +131,11 @@ try {
   const after = await game();
   check(after.ammo < before.ammo, `spraying used alcohol (${before.ammo} -> ${after.ammo} mL)`);
   check(after.kills > 0, `germs disinfected (${after.kills})`);
+  const firstAch = await page.evaluate(() => ({
+    saved: JSON.parse(localStorage.getItem('moshi.achievements.v1') ?? '[]'),
+    toast: window.game.scene.getScene('Hud').toastName.text,
+  }));
+  check(firstAch.saved.includes('firstKill') && firstAch.toast.includes('HAND HYGIENE'), `the first kill unlocks an achievement, saved, with a toast (${JSON.stringify(firstAch)})`);
 
   // Tap the Refill button
   const refillAt = await buttonAt('refillButton');
@@ -175,6 +180,17 @@ try {
   await page.waitForTimeout(400);
   const frozenT = await page.evaluate(() => window.game.scene.getScene('Game').time.now);
   check(pausedState.paused && pausedState.menu && frozenT === pausedState.t, `PAUSE button freezes the game and shows the menu ("${pausedState.tip}")`);
+  const achAt = await buttonAt('achievementsItem');
+  await page.touchscreen.tap(achAt.x, achAt.y);
+  await page.waitForTimeout(200);
+  const achList = await page.evaluate(() => {
+    const l = window.game.scene.getScene('Hud').achievementList;
+    const out = { open: l.visible, title: l.title.text, first: l.rows[0].name.text };
+    l.back.emit('pointerup');
+    return { ...out, closed: !l.visible };
+  });
+  check(achList.open && /ACHIEVEMENTS +\d+ \/ \d+/.test(achList.title) && achList.first.includes('🏆') && achList.closed,
+    `the pause menu lists achievements, unlocked ones lit (${JSON.stringify(achList)})`);
   await page.screenshot({ path: 'smoke-paused.png' });
   // Tap AUTO-AIM to turn it off; it should be saved for next time
   const toggle = await buttonAt('autoAimToggle');
@@ -938,6 +954,8 @@ try {
   await page.screenshot({ path: 'smoke-gameover.png' });
   const saved2 = await page.evaluate(() => JSON.parse(localStorage.getItem('moshi.save.v2') ?? '{}'));
   check(saved2.bestScore > 0, `high score saved (${JSON.stringify(saved2)})`);
+  const achLine = await page.evaluate(() => window.game.scene.getScene('GameOver').children.list.find((c) => typeof c.text === 'string' && c.text.includes('NEW:'))?.text ?? '');
+  check(achLine.includes('Hand Hygiene Compliant'), `the Discharge Summary names the achievements unlocked this shift ("${achLine}")`);
 
   // Restart from the game over screen
   const again = await page.evaluate(() => {
@@ -1040,6 +1058,33 @@ try {
   await pp.screenshot({ path: 'smoke-portrait.png' });
   check(purgedTall, 'tapping SINUS PURGE works while the phone is upright');
   check(tallErrors.length === 0, `no errors in portrait${tallErrors.length ? ': ' + tallErrors.join(' | ') : ''}`);
+
+  // OFFLINE + UPDATES: the service worker caches what the game loaded, so it launches with no network;
+  // a newer version.json puts UPDATE READY on the title screen
+  const swc = await browser.newContext({ viewport: { width: 852, height: 393 }, deviceScaleFactor: 1, isMobile: true, hasTouch: true });
+  const sw = await swc.newPage();
+  labelWaits(sw);
+  const swErrors = [];
+  sw.on('pageerror', (e) => swErrors.push(where(e)));
+  await sw.route('**/version.json*', (r) => r.fulfill({ contentType: 'application/json', body: JSON.stringify({ version: 'v99.0.0 (newer)' }) }));
+  await sw.goto(url + '?sw');
+  await sw.waitForFunction(() => window.game?.scene.isActive('Title'));
+  const pill = await sw.waitForFunction(() => window.game.scene.getScene('Title').updatePill?.visible, null, { timeout: 10000 }).then(() => true, () => false);
+  check(pill, 'a newer build on the server shows UPDATE READY on the title screen');
+  const cached = await sw.waitForFunction(async () => {
+    await navigator.serviceWorker.ready;
+    const keys = (await caches.keys()).filter((k) => k.startsWith('moshi-'));
+    if (!keys.length) return false;
+    const files = (await (await caches.open(keys[0])).keys()).map((r) => r.url);
+    return files.some((u) => u.endsWith('.js') && !u.includes('sw.js')) && files.some((u) => u.endsWith('/')) && files.some((u) => u.includes('title.jpg')) ? files.length : false;
+  }, null, { timeout: 30000, polling: 500 }).then((h) => h.jsonValue(), () => 0);
+  check(cached > 0, `the service worker caches the game (${cached} files)`);
+  await swc.setOffline(true);
+  await sw.reload();
+  const offline = await sw.waitForFunction(() => window.game?.scene.isActive('Title'), null, { timeout: 20000 }).then(() => true, () => false);
+  check(offline, 'with no network, the game still launches to the title screen');
+  check(swErrors.length === 0, `no errors offline${swErrors.length ? ': ' + swErrors.join(' | ') : ''}`);
+  await swc.close();
 } catch (e) {
   check(false, String(e) + (errors.length ? " | errors: " + errors.join(" | ") : ""));
 } finally {

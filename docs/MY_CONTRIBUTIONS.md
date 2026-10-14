@@ -16,7 +16,8 @@
 
 ## Requested now
 - Playtest v0.12.0: the six new germs (rounds 7-11; `?round=11&copays=2000` to jump ahead), the Supply Requisition form, and the Wipes, Gel Launcher and Defib Paddles. Which tool feels best, which feels useless?
-- Any time: more CLAIM DENIED joke items (`src/data/requisition.ts`).
+- Any time: more CLAIM DENIED joke items (`src/data/requisition.ts`) and achievement names (`src/data/achievements.ts`).
+- v0.13.0 offline check: add the game to the Home Screen, open it once, then turn on Airplane Mode and open it again.
 - Playtest v0.9.0: Compounding Station (Lab), exam-table Rest, the Discharge Summary, and the first-run hints (to see them again, clear the site data or use a private tab).
 - Any time: your own causes of death (`deathNote` in `src/data/germs.ts`) and pause tips (`src/data/tips.ts`).
 - Playtest v0.7.0 (checklist in the M7 wrap-up message): Low Power Mode, pause/auto-pause, spray zone + drag-aim, hold-to-buy, Perfect Pour, Spore Pods, Sneezers.

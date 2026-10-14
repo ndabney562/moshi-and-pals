@@ -12,10 +12,12 @@ export interface RunStats {
   purges: number;
   /** Germ id (or 'diamond') that landed the last hit. */
   killer?: string;
+  /** Achievements unlocked for the first time during this run (names). */
+  achievements: string[];
   /** Game time when the run started, to work out time survived. */
   startedAt: number;
 }
 
 export const newRunStats = (now: number): RunStats => ({
-  kills: {}, bestStreak: 0, copaysEarned: 0, crits: 0, roomsOpened: 0, upgrades: 0, rests: 0, perfectPours: 0, purges: 0, startedAt: now,
+  kills: {}, bestStreak: 0, copaysEarned: 0, crits: 0, roomsOpened: 0, upgrades: 0, rests: 0, perfectPours: 0, purges: 0, achievements: [], startedAt: now,
 });

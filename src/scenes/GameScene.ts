@@ -9,6 +9,7 @@ import { events, GameEvents, type RequisitionPayload, type RoomPayload, type Rou
 import { inputState } from '../core/inputState';
 import { settings } from '../core/settings';
 import { recordRun } from '../core/save';
+import { unlockAchievement } from '../core/achievements';
 import { newRunStats, type RunStats } from '../core/runStats';
 import { initSfx, sfx } from '../core/sfx';
 import { CRATE_POOL, EQUIPMENT, STARTING_EQUIPMENT, type EquipmentDef } from '../data/equipment';
@@ -225,6 +226,7 @@ export class GameScene extends Phaser.Scene {
         sfx.tantrum();
         this.cameras.main.shake(120, 0.004);
         this.fx.number(g.x, g.y - g.def.radius - 12, 'DAZED! ×2 DAMAGE', '#ffe66d', 16);
+        this.achieve('wallBanger');
       },
       telegraphSneeze: (g) => {
         sfx.sneezeWindup();
@@ -295,18 +297,23 @@ export class GameScene extends Phaser.Scene {
     const onRoundStart = (p: RoundPayload) => {
       this.hurtThisRound = false;
       if (p.special) sfx.specialRound();
+      if (p.round >= 10) this.achieve('doubleShift');
+      if (p.round >= 20) this.achieve('attending');
     };
+    const onEscaped = () => this.achieve('ama');
     const onRoundDone = (p: RoundPayload) => this.onRoundCompleted(p.round);
     const onPicked = (p: { id: string }) => this.pickRequisition(p.id);
     const onAppealed = () => this.appealRequisition();
     events.on(GameEvents.RoundStarted, onRoundStart);
     events.on(GameEvents.RoundCompleted, onRoundDone);
     events.on(GameEvents.RequisitionPicked, onPicked);
+    events.on(GameEvents.BossEscaped, onEscaped);
     events.on(GameEvents.RequisitionAppealed, onAppealed);
     this.events.once('shutdown', () => {
       events.off(GameEvents.RoundStarted, onRoundStart);
       events.off(GameEvents.RoundCompleted, onRoundDone);
       events.off(GameEvents.RequisitionPicked, onPicked);
+      events.off(GameEvents.BossEscaped, onEscaped);
       events.off(GameEvents.RequisitionAppealed, onAppealed);
       for (const [name, fn] of sounds) events.off(name, fn);
       this.boss?.destroy();
@@ -559,6 +566,13 @@ export class GameScene extends Phaser.Scene {
     sfx.spotless();
     this.fx.number(this.player.x, this.player.y - 90, `SPOTLESS! +$${bonus}`, '#7fffd4', 30);
     events.emit(GameEvents.SpotlessRound, { round, copays: bonus });
+    this.achieve('spotless');
+  }
+
+  /** Unlocks an achievement (once per device); remembers it for this run's Discharge Summary. */
+  private achieve(id: string): void {
+    const def = unlockAchievement(id);
+    if (def) this.runStats.achievements.push(def.name);
   }
 
   /** For the HUD's off-screen arrows: every germ (check `active`) and Eugene. */
@@ -597,6 +611,7 @@ export class GameScene extends Phaser.Scene {
     const result = this.sprayer.pourTap(time);
     if (result === 'perfect') {
       this.runStats.perfectPours++;
+      this.achieve('perfectPour');
       sfx.spotless();
       this.cameras.main.shake(90, 0.003);
       this.fx.number(this.player.x, this.player.y - 64, 'PERFECT POUR! FRESH BOTTLE', '#ffe66d', 24);
@@ -713,6 +728,13 @@ export class GameScene extends Phaser.Scene {
       this.streakUntil = time + BALANCE.streak.windowMs;
       this.lastStreakLeft = 1;
       this.emitStreak(1);
+      this.achieve('firstKill');
+      if (this.streak >= 25) this.achieve('streak25');
+      if (germ.def.id === 'healer') this.achieve('cultureShock');
+      if (germ.def.id === 'moldSpot') this.achieve('remediation');
+      if (germ.def.brain === 'diamond') this.achieve('meetingAdjourned');
+      if (germ.def.brain === 'patientZero') this.achieve('discharged');
+      if ((this.runStats.kills.sneezer ?? 0) >= 10) this.achieve('gesundheit');
       const el = BALANCE.elites;
       const eliteMult = germ.elite ? el.copaysMult : 1;
       const doubled = this.powerups.isActive('doubleCopay', time) ? 2 : 1;
@@ -779,11 +801,13 @@ export class GameScene extends Phaser.Scene {
     this.fx.number(x, y - 70, 'HRRRNNNKKK!', '#c8ff6b', 30);
     const ring = this.add.circle(x, y, cfg.radius).setStrokeStyle(14, 0xc8ff6b, 0.9).setFillStyle(0xc8ff6b, 0.15).setDepth(13).setScale(0.1);
     this.tweens.add({ targets: ring, scale: 1, alpha: 0, duration: 420, ease: 'Cubic.out', onComplete: () => ring.destroy() });
+    let purged = 0;
     for (const g of this.germs.getChildren() as Germ[]) {
       if (!g.active) continue;
       const d = Phaser.Math.Distance.Between(x, y, g.x, g.y);
       if (d > cfg.radius + g.def.radius) continue;
       const angle = Phaser.Math.Angle.Between(x, y, g.x, g.y);
+      purged++;
       this.damageGerm(g, cfg.damage, angle, cfg.knockback);
       if (g.active) g.stun(time, cfg.stunMs);
       // Spore Pods get knocked onto their backs: no armor, no moving
@@ -791,8 +815,10 @@ export class GameScene extends Phaser.Scene {
         g.flip(time, g.def.armor.flipMs);
         sfx.flip();
         this.fx.number(g.x, g.y - g.def.radius - 10, 'FLIPPED!', '#ffe66d', 18);
+        this.achieve('flipper');
       }
     }
+    if (purged >= 5) this.achieve('honk');
     events.emit(GameEvents.PurgeUsed);
   }
 
@@ -981,6 +1007,7 @@ export class GameScene extends Phaser.Scene {
     this.fx.number(this.player.x, this.player.y - 70, `${next.name.toUpperCase()}!`, '#ffe66d', 28);
     this.fx.number(this.player.x, this.player.y - 40, next.blurb, '#e8fff9', 18);
     this.runStats.upgrades++;
+    if (!this.sprayer.nextTier) this.achieve('rxStrength');
   }
 
   /** EXAM TABLE: lie down for a moment and get patched up. Once per table per round. */
@@ -995,6 +1022,7 @@ export class GameScene extends Phaser.Scene {
     this.restedAt.set(o, this.waves.round);
     const healed = this.player.heal(eco.restHeal);
     this.runStats.rests++;
+    this.achieve('doctorsOrders');
     sfx.refill();
     this.fx.number(this.player.x, this.player.y - 64, `+${Math.round(healed)} HEALTH  -$${eco.restCost}`, '#7fffd4', 22);
     events.emit(GameEvents.PlayerHealthChanged, { hp: this.player.hp, maxHp: this.player.maxHp });
@@ -1086,6 +1114,7 @@ export class GameScene extends Phaser.Scene {
     }
     this.addCopays(-cost);
     r.appeals++;
+    this.achieve('secondOpinion');
     if (Math.random() < this.claimDeniedChance) {
       const refund = Math.round(cost * BALANCE.economy.deniedRefund);
       this.addCopays(refund);
@@ -1111,6 +1140,7 @@ export class GameScene extends Phaser.Scene {
     this.addCopays(refund);
     sfx.stamp();
     this.cameras.main.shake(120, 0.004);
+    this.achieve('claimDenied');
     this.fx.number(x, y - 50, 'CLAIM DENIED', '#ff6b6b', 30);
     events.emit(GameEvents.ClaimDenied, { title: 'CLAIM DENIED', line: `Enclosed: ${Phaser.Utils.Array.GetRandom(DENIED_ITEMS)}. $${refund} refunded.` });
   }
@@ -1144,6 +1174,7 @@ export class GameScene extends Phaser.Scene {
     if (this.unlocked.has(id)) return;
     this.unlocked.add(id);
     this.runStats.roomsOpened++;
+    if (id === 'upstairs') this.achieve('upstairs');
     for (const d of this.lockedDoors.filter((d) => d.o.opens === id)) {
       this.solids.remove(d.zone, true, true);
       d.art.destroy();
@@ -1293,6 +1324,7 @@ export class GameScene extends Phaser.Scene {
 
   /** A power-up was picked up: start its effect. */
   private onPowerup(def: PowerupDef, time: number): void {
+    if (def.id === 'priorAuth') this.achieve('pendingApproval');
     const cfg = BALANCE.powerups;
     const living = (this.germs.getChildren() as Germ[]).filter((g) => g.active);
     sfx.spotless();
@@ -1379,6 +1411,7 @@ export class GameScene extends Phaser.Scene {
       upgrades: st.upgrades, crits: st.crits, perfectPours: st.perfectPours,
       favoriteVictim: favId ? { name: GERMS[favId]?.name ?? favId, count: favCount ?? 0 } : undefined,
       totalKills: record.next.totalKills, runs: record.next.runs,
+      newAchievements: [...st.achievements],
     };
     this.time.delayedCall(1600, () => {
       this.scene.stop('Hud');
