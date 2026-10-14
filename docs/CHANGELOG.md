@@ -1,5 +1,14 @@
 # Changelog
 
+## v0.13.0: Milestone 13, achievements and offline
+- **21 achievements**, each a small joke that points at a mechanic: *Hand Hygiene Compliant* (first germ), *Steady Hands* (a Perfect Pour), *HRRRNNNKKK* (5 germs in one Purge), *Brake Check* (a Bulldozer into a wall), *Out of Network* (a denied claim), *Against Medical Advice* (let Patient Zero walk out), and more.
+  - A gold toast drops in under the score when one unlocks.
+  - The pause menu has an ACHIEVEMENTS list: unlocked ones are lit, locked ones say how to get them.
+  - The Discharge Summary names the ones you got this shift.
+  - They're kept on this device, separately from records.
+- **Works offline.** After one visit, the game launches from the Home Screen with no signal. It's a small hand-written service worker. The page always comes from the network when there is one, so updates arrive as soon as you're online.
+- **Update prompt.** When a newer version is live, the title screen shows *UPDATE READY · TAP HERE TO GET IT*, and the pause menu mentions it. The check runs at launch and whenever the app comes back to the foreground.
+
 ## v0.12.0: Milestone 12, arsenal
 - **Supply Requisition** replaces the random crate. Pay $250 at a crate and a form comes up (the game waits): **pick one of two tools**, never the one you're already carrying. Don't like either? **APPEAL THE DECISION** for a different pair ($100, then $50 more each time). Insurance being insurance, 5% of claims (and appeals) are simply **CLAIM DENIED**: you get a joke item (one cotton ball, a fax confirming your fax...) and half your money back.
 - Three new tools, all on the form alongside the old four:

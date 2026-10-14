@@ -2,6 +2,7 @@ import Phaser from 'phaser';
 import { DISPLAY } from './config/display';
 import { DEBUG } from './core/debug';
 import { resumeAudio } from './core/sfx';
+import { registerOffline, watchForUpdates } from './core/updates';
 import { applyOrientation, isPortrait, patchForPortrait } from './core/orientation';
 import { BootScene } from './scenes/BootScene';
 import { GameOverScene } from './scenes/GameOverScene';
@@ -60,6 +61,10 @@ document.addEventListener('pointerdown', resumeAudio, { passive: true });
 // Stop iOS pinch-zoom and double-tap gestures from hijacking the game.
 document.addEventListener('gesturestart', (e) => e.preventDefault());
 document.addEventListener('dblclick', (e) => e.preventDefault());
+
+// Works offline from the Home Screen, and notices when a newer build is live
+registerOffline();
+watchForUpdates();
 
 // Handy for debugging in the browser console.
 (window as unknown as { game: Phaser.Game }).game = game;

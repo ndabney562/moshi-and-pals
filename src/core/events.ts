@@ -59,6 +59,8 @@ export const GameEvents = {
   RequisitionAppealed: 'requisition.appealed',
   /** { title, line } the claim was denied (no form; part refund) */
   ClaimDenied: 'requisition.denied',
+  /** AchievementDef: unlocked for the first time on this device */
+  AchievementUnlocked: 'achievement.unlocked',
 } as const;
 
 export interface RequisitionOption { id: string; name: string; blurb: string; color: number; }
@@ -107,6 +109,8 @@ export interface RunResult {
   /** The germ this run disinfected most, and how many. */
   favoriteVictim?: { name: string; count: number };
   totalKills: number; runs: number;
+  /** Achievements unlocked for the first time this run (names). */
+  newAchievements: string[];
 }
 
 export const events = new Phaser.Events.EventEmitter();

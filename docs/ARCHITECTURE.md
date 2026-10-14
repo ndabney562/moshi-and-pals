@@ -44,6 +44,14 @@ The HUD owns pause (`HudScene.pause/resume`): it releases all touches, clears `i
 ## Settings
 `core/settings.ts` holds player settings saved in localStorage (wrapped in try/catch; falls back to defaults). Currently: `autoAim`, `sound` (both in the pause menu).
 
+## Tools (M12)
+Every tool is a `Sprayer` (supply, fire rate, refills, upgrades). Spray tools launch pooled droplets; tools with an `attack` (Wipes `swipe`, Gel Launcher `lob`, Defib Paddles `chain`) hand each shot to `systems/Arsenal.ts`. Both paths end in `GameScene.hitGerm` (effectiveness, crits, slow, armor, then `damageGerm`). Crates open the Supply Requisition: `GameScene` emits `RequisitionOpened`, the HUD pauses the game and shows `ui/RequisitionPanel`, and the pick or appeal comes back as an event.
+
+## Achievements and offline (M13)
+- `data/achievements.ts` lists them; `core/achievements.ts` stores unlocked ids under their own localStorage key and emits `AchievementUnlocked` (HUD toast). `GameScene.achieve(id)` is called where each one happens and remembers this run's unlocks for the Discharge Summary.
+- `public/sw.js` (hand-written): network-first for the page, cache-first for everything else, one cache per build (`sw.js?v=<build>`). The title screen hands it everything already loaded (`offerFilesToCache`), so the next launch works offline. Test browsers skip the worker unless the URL has `?sw`.
+- The build writes `version.json`; `core/updates.ts` checks it at launch and whenever the app returns to the foreground, and the title screen offers UPDATE READY (the pause menu mentions it).
+
 ## Content as data
 - `src/config/`: tuning numbers (balance, controls, display, theme colors).
 - `src/data/`: content (rooms now; germs, equipment, waves, dialogue later).

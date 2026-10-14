@@ -89,6 +89,16 @@ export class GameOverScene extends Phaser.Scene {
     card.add(t(width / 2, cy + ch - 34, `PERSONAL BESTS  ·  Round ${result.bestRound}  ·  ${result.bestScore.toLocaleString()} pts  ·  Streak ${result.recordStreak}  ·  ${result.totalKills.toLocaleString()} germs all-time`, 15, INK_SOFT, 'bold', 0.5));
     this.tweens.add({ targets: card, y: 0, alpha: 1, duration: 420, delay: 180, ease: 'Cubic.out' });
 
+    // Achievements unlocked this shift
+    if (result.newAchievements?.length) {
+      const names = result.newAchievements;
+      const line = names.length > 3 ? `${names.slice(0, 3).join('  ·  ')}  +${names.length - 3} more` : names.join('  ·  ');
+      const ach = this.add.text(width / 2, cy + ch + 22, `🏆  NEW: ${line}`, {
+        fontFamily: font, fontSize: '18px', fontStyle: '900', color: '#ffe66d',
+      }).setOrigin(0.5).setAlpha(0);
+      this.tweens.add({ targets: ach, alpha: 1, duration: 400, delay: 600 });
+    }
+
     // One big PLAY AGAIN (plus the menu), ready the moment the summary lands
     const by = Math.min(height - 56, cy + ch + 70);
     this.makeButton(width / 2 - 130, by, 360, 'PLAY AGAIN', 0x2a9d8f, () => this.scene.start('Game'));

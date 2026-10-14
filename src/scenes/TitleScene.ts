@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 import { COLORS } from '../config/theme';
+import { applyUpdate, offerFilesToCache, onUpdateReady } from '../core/updates';
 
 /**
  * "Tap to start" screen. The tap also matters technically: iPhones only allow
@@ -12,8 +13,12 @@ export class TitleScene extends Phaser.Scene {
 
   private art!: Phaser.GameObjects.Image;
   private tap!: Phaser.GameObjects.Text;
+  private updatePill!: Phaser.GameObjects.Text;
+
+  private started = false;
 
   create(): void {
+    this.started = false;
     const font = 'system-ui, -apple-system, sans-serif';
     this.art = this.add.image(0, 0, 'title-art').setOrigin(0.5, 0);
     this.tweens.add({ targets: this.art, alpha: { from: 0, to: 1 }, duration: 400 });
@@ -24,13 +29,29 @@ export class TitleScene extends Phaser.Scene {
     }).setOrigin(0.5).setShadow(0, 3, '#000', 6);
     this.tweens.add({ targets: this.tap, alpha: 0.35, duration: 650, yoyo: true, repeat: -1 });
 
+    // A newer build is live: offer it (tapping here reloads instead of starting)
+    this.updatePill = this.add.text(0, 0, '✨ UPDATE READY · TAP HERE TO GET IT', {
+      fontFamily: font, fontSize: '22px', fontStyle: '900', color: '#0d2b2e', backgroundColor: '#ffe66d', padding: { x: 16, y: 10 },
+    }).setOrigin(0.5).setVisible(false).setInteractive({ useHandCursor: true });
+    this.updatePill.on('pointerdown', (_p: Phaser.Input.Pointer, _x: number, _y: number, e: Phaser.Types.Input.EventData) => {
+      e.stopPropagation();
+      applyUpdate();
+    });
+    const off = onUpdateReady(() => this.updatePill.setVisible(true));
+    // Everything's loaded by now: let the offline cache have it
+    offerFilesToCache();
+    navigator.serviceWorker?.ready.then(() => offerFilesToCache()).catch(() => undefined);
+    this.events.once('shutdown', off);
+
     // The screen's shape can change after load (rotating, Safari's toolbars), so re-fit whenever it does
     this.layout();
     this.scale.on('resize', this.layout, this);
     this.events.once('shutdown', () => this.scale.off('resize', this.layout, this));
 
     this.input.keyboard?.once('keydown', () => this.begin());
-    this.input.once('pointerdown', () => this.begin());
+    this.input.on('pointerdown', (_p: Phaser.Input.Pointer, over: Phaser.GameObjects.GameObject[]) => {
+      if (!over.includes(this.updatePill)) this.begin();
+    });
   }
 
   /** Noah's poster covers the screen. Wide phones crop it, mostly from the bottom, so the logo stays in view. */
@@ -41,9 +62,12 @@ export class TitleScene extends Phaser.Scene {
     const spare = art.height - height / k; // image rows that don't fit
     art.setScale(k).setPosition(width / 2, -Math.min(spare, 30) * k);
     this.tap.setPosition(width / 2, height * 0.92);
+    this.updatePill.setPosition(width / 2, height * 0.8);
   }
 
   private begin(): void {
+    if (this.started) return;
+    this.started = true;
     this.scene.start('Game');
   }
 }

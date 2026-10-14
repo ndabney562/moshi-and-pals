@@ -16,6 +16,10 @@ import { saveSettings, settings } from '../core/settings';
 import { Bar } from '../ui/Bar';
 import { BottleMeter } from '../ui/BottleMeter';
 import { RequisitionPanel } from '../ui/RequisitionPanel';
+import { AchievementList } from '../ui/AchievementList';
+import { achievementList } from '../core/achievements';
+import { isUpdateReady } from '../core/updates';
+import type { AchievementDef } from '../data/achievements';
 import type { GameScene } from './GameScene';
 import { HudButton } from '../ui/HudButton';
 import { VirtualJoystick } from '../ui/VirtualJoystick';
@@ -74,6 +78,14 @@ export class HudScene extends Phaser.Scene {
   /** The Supply Requisition form is up (the game waits for a pick). */
   private requisitioning = false;
   private requisitionPanel!: RequisitionPanel;
+  private achievementsItem!: Phaser.GameObjects.Text;
+  private achievementList!: AchievementList;
+  /** ACHIEVEMENT toast (top centre) and the ones waiting their turn. */
+  private toast!: Phaser.GameObjects.Container;
+  private toastName!: Phaser.GameObjects.Text;
+  private toastHow!: Phaser.GameObjects.Text;
+  private toastQueue: AchievementDef[] = [];
+  private toastBusy = false;
   private refillButton!: HudButton;
   private purgeButton!: HudButton;
   private interactButton!: HudButton;
@@ -154,6 +166,14 @@ export class HudScene extends Phaser.Scene {
     // Pause: top-right corner, away from both thumbs. Settings live in the pause menu.
     this.pauseButton = new HudButton(this, CONTROLS.buttons.pauseRadius, 'II', 0xe8fff9, () => this.pause());
     this.buildPauseMenu(style);
+    // ACHIEVEMENT toast, shown under the score
+    this.toastName = this.add.text(0, -12, '', { ...style, fontSize: '20px', fontStyle: '900', color: '#ffe66d' }).setOrigin(0.5);
+    this.toastHow = this.add.text(0, 16, '', { ...style, fontSize: '15px', fontStyle: 'bold' }).setOrigin(0.5);
+    this.toast = this.add.container(0, 0, [
+      this.add.rectangle(0, 0, 10, 10, 0x0d2b2e, 0.92).setStrokeStyle(3, 0xffe66d, 0.9), this.toastName, this.toastHow,
+    ]).setDepth(60).setVisible(false);
+    this.toastQueue = [];
+    this.toastBusy = false;
     this.requisitioning = false;
     this.requisitionPanel = new RequisitionPanel(this, (id) => {
       this.requisitionPanel.hide();
@@ -250,6 +270,10 @@ export class HudScene extends Phaser.Scene {
       }
       this.requisitionPanel.show(p);
     };
+    const onAchievement = (def: AchievementDef) => {
+      this.toastQueue.push(def);
+      this.nextToast();
+    };
     const onDenied = (p: { title: string; line: string }) => {
       this.showBanner(p.title, p.line, 2600, '#ff6b6b');
     };
@@ -288,6 +312,7 @@ export class HudScene extends Phaser.Scene {
       [GameEvents.ToolUnlocked, onTool],
       [GameEvents.RequisitionOpened, onRequisition],
       [GameEvents.ClaimDenied, onDenied],
+      [GameEvents.AchievementUnlocked, onAchievement],
     ];
     for (const [name, fn] of listeners) events.on(name, fn);
     this.events.once('shutdown', () => {
@@ -504,6 +529,26 @@ export class HudScene extends Phaser.Scene {
     this.tweens.add({ targets: this.vignette, alpha: 0, duration: 400 });
   }
 
+  /** Shows the next waiting ACHIEVEMENT toast: it drops in, holds, and slides away. */
+  private nextToast(): void {
+    if (this.toastBusy) return;
+    const def = this.toastQueue.shift();
+    if (!def) return;
+    this.toastBusy = true;
+    this.toastName.setText(`🏆  ${def.name.toUpperCase()}`);
+    this.toastHow.setText(def.how);
+    const t = this.toast;
+    const bg = t.getAt(0) as Phaser.GameObjects.Rectangle;
+    bg.setSize(Math.max(this.toastName.width, this.toastHow.width) + 48, 72).setOrigin(0.5);
+    this.tweens.killTweensOf(t);
+    t.setVisible(true).setAlpha(0).setScale(0.8);
+    this.tweens.add({ targets: t, alpha: 1, scale: 1, duration: 260, ease: 'Back.out' });
+    this.tweens.add({
+      targets: t, alpha: 0, duration: 300, delay: 2600,
+      onComplete: () => { t.setVisible(false); this.toastBusy = false; this.nextToast(); },
+    });
+  }
+
   private showBanner(title: string, subtitle: string, holdMs = 2200, color: string = COLORS.uiText): void {
     for (const t of [this.banner, this.bannerSub]) this.tweens.killTweensOf(t);
     this.banner.setText(title).setColor(color).setAlpha(0).setScale(1.6);
@@ -550,6 +595,8 @@ export class HudScene extends Phaser.Scene {
     this.roomText.setPosition(infoX, this.safe.top + m + (DEBUG.overlay ? 110 : 8));
     this.layoutPauseMenu(width, height);
     this.requisitionPanel.layout(width, height);
+    this.achievementList.layout(width, height);
+    this.toast.setPosition(width / 2, this.safe.top + m + 172);
     const right = width - this.safe.right - m;
     const refillY = rightY - CONTROLS.buttons.sprayRadius - CONTROLS.buttons.refillRadius - 24;
     this.refillButton.setPosition(right - CONTROLS.buttons.refillRadius, refillY);
@@ -627,6 +674,8 @@ export class HudScene extends Phaser.Scene {
       saveSettings();
       this.refreshMotionToggle();
     });
+    this.achievementList = new AchievementList(this);
+    this.achievementsItem = item('', () => this.achievementList.open());
     const items: Phaser.GameObjects.Text[] = [this.resumeItem, this.soundToggle, this.autoRefillToggle, this.motionToggle];
     if (this.sprayButton) {
       this.autoAimToggle = item('', () => {
@@ -636,6 +685,7 @@ export class HudScene extends Phaser.Scene {
       });
       items.push(this.autoAimToggle);
     }
+    items.push(this.achievementsItem);
     // Quitting throws the run away, so it takes a second tap
     this.quitItem = item('QUIT TO MENU', () => {
       if (this.time.now > this.quitArmedUntil) {
@@ -669,7 +719,7 @@ export class HudScene extends Phaser.Scene {
     this.pauseTitle.setPosition(width / 2, height * 0.15);
     this.pauseTip.setPosition(width / 2, height * 0.15 + 58);
     this.pauseVersion.setPosition(width / 2, height - this.safe.bottom - 10);
-    const items = [this.resumeItem, this.soundToggle, this.autoRefillToggle, this.motionToggle, this.autoAimToggle, this.quitItem].filter((t): t is Phaser.GameObjects.Text => !!t);
+    const items = [this.resumeItem, this.soundToggle, this.autoRefillToggle, this.motionToggle, this.autoAimToggle, this.achievementsItem, this.quitItem].filter((t): t is Phaser.GameObjects.Text => !!t);
     const top = height * 0.3;
     const gap = Math.min(66, (height * 0.62) / items.length);
     items.forEach((t, i) => t.setPosition(width / 2, top + i * gap));
@@ -684,9 +734,11 @@ export class HudScene extends Phaser.Scene {
     this.scene.pause('Game');
     this.quitArmedUntil = 0;
     this.quitItem.setText('QUIT TO MENU').setColor(COLORS.uiText);
-    this.pauseTip.setText(`Tip: ${Phaser.Utils.Array.GetRandom(TIPS)}`);
+    this.pauseTip.setText(isUpdateReady() ? 'A new version is ready. Quit to the menu to get it.' : `Tip: ${Phaser.Utils.Array.GetRandom(TIPS)}`);
     this.refreshSoundToggle();
     this.refreshAutoAimToggle();
+    const list = achievementList();
+    this.achievementsItem.setText(`ACHIEVEMENTS ${list.filter((a) => a.unlocked).length}/${list.length}`);
     this.pauseMenu.setVisible(true);
   }
 
@@ -708,6 +760,7 @@ export class HudScene extends Phaser.Scene {
     if (!this.paused) return;
     this.paused = false;
     this.pauseMenu.setVisible(false);
+    this.achievementList.setVisible(false);
     resumeAudio();
     this.scene.resume('Game');
   }
