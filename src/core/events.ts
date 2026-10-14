@@ -52,6 +52,10 @@ export interface EquipmentChangedPayload {
   name: string; unit: 'mL' | '%'; selfCharging: boolean;
   /** How many tools Eugene is carrying (SWAP shows at 2). */
   slots: number;
+  /** Perfect Pour sweet spot (fractions of the refill), shown on the REFILL ring. */
+  pourWindow: [number, number];
+  /** FRESH BOTTLE damage boost is active. */
+  fresh: boolean;
 }
 export interface StationPayload {
   near: boolean; label: string; affordable: boolean;

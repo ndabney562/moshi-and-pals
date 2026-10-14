@@ -97,10 +97,24 @@ export class HudButton extends Phaser.GameObjects.Container {
     }
   }
 
+  /** A highlighted arc on the progress ring (Perfect Pour's sweet spot), as fractions 0..1. */
+  private window?: [number, number];
+
+  setWindow(window?: [number, number]): this {
+    this.window = window;
+    return this;
+  }
+
   /** Draws a ring showing 0..1 progress; pass a negative number to hide it. */
   setProgress(p: number): this {
     this.ring.clear();
     if (p < 0) return this;
+    if (this.window) {
+      const [a, b] = this.window;
+      const inside = p >= a && p <= b;
+      this.ring.lineStyle(inside ? 14 : 10, 0xffe66d, inside ? 1 : 0.6).beginPath()
+        .arc(0, 0, this.radius - 3, -Math.PI / 2 + Math.PI * 2 * a, -Math.PI / 2 + Math.PI * 2 * b).strokePath();
+    }
     this.ring.lineStyle(6, 0xffffff, 0.9).beginPath()
       .arc(0, 0, this.radius - 3, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * p).strokePath();
     return this;

@@ -7,10 +7,12 @@ export interface Settings {
   autoAim: boolean;
   /** Sound effects on/off (pause menu). */
   sound: boolean;
+  /** Start a refill automatically when you spray an empty bottle (pause menu). */
+  autoRefill: boolean;
 }
 
 const KEY = 'moshi.settings.v1';
-const DEFAULTS: Settings = { autoAim: true, sound: true };
+const DEFAULTS: Settings = { autoAim: true, sound: true, autoRefill: true };
 
 function load(): Settings {
   try {

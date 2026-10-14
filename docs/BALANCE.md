@@ -47,3 +47,4 @@ Values live in `src/config/balance.ts` and `src/config/controls.ts`.
 | STAT! crit | 10% of droplet hits, ×2 damage | `BALANCE.feedback.critChance/critMult` |
 | Sanitation Streak | kills within 2 s chain; +5% Copays per 5 kills, max 1.5× | `BALANCE.streak` |
 | Spotless round | $10 × round number if Eugene isn't hurt | `BALANCE.economy.spotlessPerRound` |
+| Perfect Pour | sweet spot 45-65% of the refill; +20% damage for 4 s; miss = +0.5 s once | `BALANCE.pour` |
