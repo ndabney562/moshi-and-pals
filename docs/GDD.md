@@ -10,7 +10,7 @@
 
 ## Current state (v0.7.0)
 - Title screen, tap to start.
-- MoshiLand Urgent Care (fictional layout): you start in the waiting room; bathroom, exam rooms, lab, staff break room and X-ray are bought open with Copays.
+- MoshiLand Urgent Care, laid out after the real clinic (M8): ground floor and upstairs joined by two staircases. You start in the waiting room; the hallway loop, 15 exam rooms, bathrooms, supply closets, lab, X-ray, manager's office, egress stairs and the whole upstairs are bought open with Copays.
 - Eugene (placeholder art) moves with left stick, faces right-stick aim.
 - Holding SPRAY sprays the alcohol bottle (cone of droplets, limited supply, manual refill). Eugene auto-aims at the nearest germ in range.
 - Germs come in escalating rounds through the doors and hurt Eugene on contact. Health regenerates after a few seconds without a hit.
