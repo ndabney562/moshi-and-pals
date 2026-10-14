@@ -243,11 +243,7 @@ export class GameScene extends Phaser.Scene {
     // Equipment
     if (inputState.refillRequested) {
       inputState.refillRequested = false;
-      if (!this.sprayer.startRefill(time) && time - this.lastJugWarningAt > 1500) {
-        this.lastJugWarningAt = time;
-        sfx.denied();
-        this.fx.number(this.player.x, this.player.y - 60, 'JUG EMPTY! Restock at a SUPPLIES cart', '#ffb3b3', 20);
-      }
+      this.refillPressed(time);
     }
     if (inputState.purgeRequested) {
       inputState.purgeRequested = false;
@@ -272,10 +268,13 @@ export class GameScene extends Phaser.Scene {
     if (inputState.firing) {
       this.player.nozzle(this.nozzle);
       // Spray where Eugene is actually facing, so the stream follows his turn
-      if (this.sprayer.tryFire(this.nozzle.x, this.nozzle.y, this.player.rotation, time) === 'fired') {
+      const shot = this.sprayer.tryFire(this.nozzle.x, this.nozzle.y, this.player.rotation, time);
+      if (shot === 'fired') {
         const d = this.sprayer.def;
         this.fx.nozzleMist(this.nozzle.x, this.nozzle.y, this.player.rotation, d.spreadDeg, d.color, d.mistPuffs);
         sfx.spray();
+      } else if (shot === 'empty' && settings.autoRefill) {
+        this.startRefill(time);
       }
     }
 
@@ -348,6 +347,30 @@ export class GameScene extends Phaser.Scene {
       particles: this.fx.aliveParticles(),
       patients: this.patients.group.countActive(true),
     };
+  }
+
+  /** REFILL pressed: start pouring, or (mid-pour) try for a Perfect Pour. */
+  refillPressed(time: number): void {
+    const result = this.sprayer.pourTap(time);
+    if (result === 'perfect') {
+      sfx.spotless();
+      this.cameras.main.shake(90, 0.003);
+      this.fx.number(this.player.x, this.player.y - 64, 'PERFECT POUR! FRESH BOTTLE', '#ffe66d', 24);
+    } else if (result === 'spill') {
+      sfx.denied();
+      this.fx.number(this.player.x, this.player.y - 64, 'SPILLED!', '#ffb3b3', 22);
+    } else {
+      this.startRefill(time);
+    }
+  }
+
+  /** Starts a refill from the jug, warning (now and then) when the jug is dry. */
+  private startRefill(time: number): void {
+    if (!this.sprayer.startRefill(time) && time - this.lastJugWarningAt > 1500) {
+      this.lastJugWarningAt = time;
+      sfx.denied();
+      this.fx.number(this.player.x, this.player.y - 60, 'JUG EMPTY! Restock at a SUPPLIES cart', '#ffb3b3', 20);
+    }
   }
 
   /**

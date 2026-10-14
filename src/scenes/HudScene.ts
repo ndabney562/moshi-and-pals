@@ -54,6 +54,7 @@ export class HudScene extends Phaser.Scene {
   private pauseTip!: Phaser.GameObjects.Text;
   private resumeItem!: Phaser.GameObjects.Text;
   private soundToggle!: Phaser.GameObjects.Text;
+  private autoRefillToggle!: Phaser.GameObjects.Text;
   private quitItem!: Phaser.GameObjects.Text;
   private quitArmedUntil = 0;
   private paused = false;
@@ -143,10 +144,12 @@ export class HudScene extends Phaser.Scene {
 
     const onEquipment = (p: EquipmentChangedPayload) => {
       this.bottle.set(p);
-      this.toolText.setText(p.name.toUpperCase());
       this.swapButton.setVisible(p.slots > 1);
       this.refillButton.setVisible(!p.selfCharging);
-      this.refillButton.setProgress(p.refillProgress);
+      this.refillButton.setWindow(p.pourWindow).setProgress(p.refillProgress);
+      // Mid-pour the button says when to tap; FRESH BOTTLE shows on the tool label
+      this.refillButton.setLabel(p.refillProgress >= 0 ? 'TAP IN\nGOLD' : 'REFILL');
+      this.toolText.setText(p.fresh ? `${p.name.toUpperCase()} · FRESH!` : p.name.toUpperCase()).setColor(p.fresh ? '#ffe66d' : COLORS.uiText);
       this.refillButton.setUrgent(p.refillProgress < 0 && p.ammo / p.capacity < 0.15);
     };
     const onHealth = (p: HealthPayload) => this.showHealth(p);
@@ -397,7 +400,12 @@ export class HudScene extends Phaser.Scene {
       setSfxMuted(!settings.sound);
       this.refreshSoundToggle();
     });
-    const items: Phaser.GameObjects.Text[] = [this.resumeItem, this.soundToggle];
+    this.autoRefillToggle = item('', () => {
+      settings.autoRefill = !settings.autoRefill;
+      saveSettings();
+      this.refreshAutoRefillToggle();
+    });
+    const items: Phaser.GameObjects.Text[] = [this.resumeItem, this.soundToggle, this.autoRefillToggle];
     if (this.sprayButton) {
       this.autoAimToggle = item('', () => {
         settings.autoAim = !settings.autoAim;
@@ -421,6 +429,11 @@ export class HudScene extends Phaser.Scene {
     this.pauseMenu = this.add.container(0, 0, [this.pauseDim, this.pauseTitle, this.pauseTip, ...items]).setDepth(100).setVisible(false);
     this.refreshSoundToggle();
     this.refreshAutoAimToggle();
+    this.refreshAutoRefillToggle();
+  }
+
+  private refreshAutoRefillToggle(): void {
+    this.autoRefillToggle.setText(`AUTO-REFILL: ${settings.autoRefill ? 'ON' : 'OFF'}`).setColor(settings.autoRefill ? COLORS.uiAccent : '#ffb3b3');
   }
 
   private layoutPauseMenu(width: number, height: number): void {
@@ -428,9 +441,9 @@ export class HudScene extends Phaser.Scene {
     this.pauseDim.input?.hitArea.setSize(width, height);
     this.pauseTitle.setPosition(width / 2, height * 0.15);
     this.pauseTip.setPosition(width / 2, height * 0.15 + 58);
-    const items = [this.resumeItem, this.soundToggle, this.autoAimToggle, this.quitItem].filter((t): t is Phaser.GameObjects.Text => !!t);
-    const top = height * 0.36;
-    const gap = Math.min(76, (height * 0.6) / items.length);
+    const items = [this.resumeItem, this.soundToggle, this.autoRefillToggle, this.autoAimToggle, this.quitItem].filter((t): t is Phaser.GameObjects.Text => !!t);
+    const top = height * 0.33;
+    const gap = Math.min(72, (height * 0.62) / items.length);
     items.forEach((t, i) => t.setPosition(width / 2, top + i * gap));
   }
 

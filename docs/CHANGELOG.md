@@ -16,6 +16,8 @@
 - **Hits and kills feel better.** Germs squash like jelly when hit. Disinfected germs swell and burst, and a tiny halo floats up off each one (a big one off a boss). 10% of droplets land a **STAT!** crit for double damage (yellow number, bright tick). Sounds vary in pitch a little every time, and a limiter keeps a busy room from clipping.
 - **Sanitation Streak.** Kills within 2 s of each other build a streak, shown under the Copays with a countdown bar. Every 5 kills adds 5% to Copays earned, up to 1.5× at 50 kills. The pop sound climbs in pitch as it grows. Streaks of 10+ get a shout-out when they end.
 - **Spotless bonus.** Finish a round without getting hurt for $10 × the round number. The CLEARED banner becomes SPOTLESS.
+- **Perfect Pour.** While the bottle refills, a gold arc shows on the REFILL ring. Tap REFILL again while the ring is in the gold: the bottle fills instantly and FRESH BOTTLE gives +20% damage for 4 s (the tool label says FRESH!). Tap too early or late and it SPILLS: the pour takes half a second longer.
+- **Auto-refill** (on by default, in the pause menu): spraying an empty bottle starts the refill by itself. Perfect Pour still needs the second tap.
 
 ## v0.6.0: Milestone 6, supply crates
 - **Supply crates** (📦 with a big "?") in the waiting room, exam rooms, staff break room, lab and X-ray. Walk up and tap USE ($250 Copays) for a random new tool you don't already have.

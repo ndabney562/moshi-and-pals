@@ -132,6 +132,17 @@ export const BALANCE = {
     /** Purchases this expensive need a press-and-hold on USE (CONTROLS.holdToBuyMs). */
     holdToBuyFrom: 100,
   },
+  /** PERFECT POUR: tap REFILL again while the pour is in its sweet spot. */
+  pour: {
+    /** The sweet spot, as a fraction of the refill time. */
+    windowStart: 0.45,
+    windowEnd: 0.65,
+    /** Nailing it: the bottle is full instantly and FRESH BOTTLE boosts damage this much for this long. */
+    freshMult: 1.2,
+    freshMs: 4000,
+    /** Missing it: the pour takes this much longer (once per refill). */
+    spillMs: 500,
+  },
   /** SINUS PURGE: Eugene's signature honk. A shockwave that damages and blasts germs away. */
   purge: {
     cooldownMs: 18000,

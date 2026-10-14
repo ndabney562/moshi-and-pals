@@ -126,6 +126,33 @@ try {
   await page.waitForFunction(() => window.game.scene.getScene('Game').sprayer.ammo === 120, null, { timeout: 15000 }).catch(() => {});
   const refilled = await game();
   check(refilled.ammo === 120, `Refill button refilled the bottle (${refilled.ammo} mL)`);
+  // Perfect Pour: REFILL again in the gold sweet spot fills instantly and gives FRESH BOTTLE; too early spills
+  await page.evaluate(() => {
+    const scene = window.game.scene.getScene('Game');
+    scene.sprayer.ammo = 10;
+    scene.sprayer.reserve = scene.sprayer.def.reserve;
+    scene.refillPressed(scene.time.now);
+  });
+  await page.waitForFunction(() => {
+    const scene = window.game.scene.getScene('Game');
+    const p = scene.sprayer.refillProgress(scene.time.now);
+    return p >= 0.5 && p <= 0.6;
+  }, null, { timeout: 15000 }).catch(() => {});
+  const pour = await page.evaluate(() => {
+    const scene = window.game.scene.getScene('Game');
+    scene.refillPressed(scene.time.now);
+    return { ammo: scene.sprayer.ammo, fresh: scene.sprayer.fresh(scene.time.now), label: window.game.scene.getScene('Hud').toolText.text };
+  });
+  check(pour.ammo === 120 && pour.fresh, `Perfect Pour fills the bottle at once with FRESH BOTTLE (${JSON.stringify(pour)})`);
+  const spill = await page.evaluate(() => {
+    const scene = window.game.scene.getScene('Game');
+    scene.sprayer.ammo = 10;
+    scene.refillPressed(scene.time.now);
+    scene.refillPressed(scene.time.now); // way too early
+    return { spilled: scene.sprayer.spilled, refilling: scene.sprayer.refilling };
+  });
+  check(spill.spilled && spill.refilling, 'tapping REFILL too early spills (the pour takes longer)');
+  await page.waitForFunction(() => !window.game.scene.getScene('Game').sprayer.refilling, null, { timeout: 15000 }).catch(() => {});
   // Pause: the button freezes the game and opens the menu; AUTO-AIM lives there now
   const pauseAt = await buttonAt('pauseButton');
   await page.touchscreen.tap(pauseAt.x, pauseAt.y);

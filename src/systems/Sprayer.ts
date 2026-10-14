@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import { BALANCE } from '../config/balance';
 import type { EquipmentDef } from '../data/equipment';
 import { events, GameEvents } from '../core/events';
 import type { Droplet } from '../entities/Droplet';
@@ -17,6 +18,10 @@ export class Sprayer {
   private lastUpdateAt = -1;
   /** Total tools carried, for the HUD's SWAP button. Set by the game scene. */
   slots = 1;
+  /** FRESH BOTTLE (a Perfect Pour) boosts damage until then. */
+  private freshUntil = 0;
+  /** This refill already got the spill penalty. */
+  private spilled = false;
 
   constructor(readonly def: EquipmentDef, private readonly droplets: Phaser.Physics.Arcade.Group) {
     this.ammo = def.capacity;
@@ -46,6 +51,7 @@ export class Sprayer {
       const a = angle + Phaser.Math.FloatBetween(-spread / 2, spread / 2);
       const speed = d.dropletSpeed * Phaser.Math.FloatBetween(0.85, 1.1);
       droplet.fire(x, y, a, speed, d.range * Phaser.Math.FloatBetween(0.85, 1.05), d);
+      if (time < this.freshUntil) droplet.damage *= BALANCE.pour.freshMult;
     }
     this.emitChanged(time);
     return 'fired';
@@ -57,8 +63,48 @@ export class Sprayer {
     if (this.refilling || this.ammo >= this.def.capacity) return true;
     if (this.reserve <= 0) return false;
     this.refillStartedAt = time;
+    this.spilled = false;
     this.emitChanged(time);
     return true;
+  }
+
+  /** 0..1 through the current refill, or -1 when not refilling. */
+  refillProgress(time: number): number {
+    return this.refilling ? Math.min(1, (time - this.refillStartedAt) / this.def.refillMs) : -1;
+  }
+
+  /** Whether FRESH BOTTLE is boosting damage right now. */
+  fresh(time: number): boolean {
+    return time < this.freshUntil;
+  }
+
+  /**
+   * PERFECT POUR: REFILL pressed again mid-pour. Inside the sweet spot the bottle fills instantly and
+   * FRESH BOTTLE kicks in; outside it, the pour spills and takes longer (once per refill).
+   */
+  pourTap(time: number): 'perfect' | 'spill' | 'none' {
+    if (!this.refilling) return 'none';
+    const p = this.refillProgress(time);
+    const { windowStart, windowEnd, freshMs, spillMs } = BALANCE.pour;
+    if (p >= windowStart && p <= windowEnd) {
+      this.finishRefill();
+      this.freshUntil = time + freshMs;
+      this.emitChanged(time);
+      return 'perfect';
+    }
+    if (this.spilled) return 'none';
+    this.spilled = true;
+    this.refillStartedAt += spillMs;
+    this.emitChanged(time);
+    return 'spill';
+  }
+
+  private finishRefill(): void {
+    this.refillStartedAt = -1;
+    const poured = Math.min(this.def.capacity - this.ammo, this.reserve);
+    this.ammo += poured;
+    this.reserve -= poured;
+    events.emit(GameEvents.EquipmentRefilled);
   }
 
   get reserveFull(): boolean {
@@ -80,13 +126,7 @@ export class Sprayer {
       this.emitChanged(time);
     }
     if (!this.refilling) return;
-    if (time - this.refillStartedAt >= this.def.refillMs) {
-      this.refillStartedAt = -1;
-      const poured = Math.min(this.def.capacity - this.ammo, this.reserve);
-      this.ammo += poured;
-      this.reserve -= poured;
-      events.emit(GameEvents.EquipmentRefilled);
-    }
+    if (time - this.refillStartedAt >= this.def.refillMs) this.finishRefill();
     this.emitChanged(time);
   }
 
@@ -94,12 +134,14 @@ export class Sprayer {
     events.emit(GameEvents.EquipmentChanged, {
       ammo: this.ammo,
       capacity: this.def.capacity,
-      refillProgress: this.refilling ? Math.min(1, (time - this.refillStartedAt) / this.def.refillMs) : -1,
+      refillProgress: this.refillProgress(time),
       reserve: this.reserve,
       name: this.def.name,
       unit: this.def.unit,
       selfCharging: !!this.def.rechargePerSecond,
       slots: this.slots,
+      pourWindow: [BALANCE.pour.windowStart, BALANCE.pour.windowEnd],
+      fresh: this.fresh(time),
     });
   }
 }
