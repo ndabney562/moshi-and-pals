@@ -1,6 +1,6 @@
 # Changelog
 
-## v0.10.0 (in progress): Milestone 10, outbreak
+## v0.10.0: Milestone 10, outbreak
 - **RESISTANT elites** (from round 8, more often later): a tougher (×2.5 health), bigger version of a normal germ with a spiky aura and a label naming its trait:
   - **Shielded:** a bubble soaks the first half of its health in damage.
   - **Hasty:** 35% faster.
