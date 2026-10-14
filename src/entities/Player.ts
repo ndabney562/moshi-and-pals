@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import { BALANCE } from '../config/balance';
 import type { InputState } from '../core/inputState';
+import { damp } from '../core/math';
 
 /**
  * Dr. Eugene "Moshi" Moshkovich. Moves with the left stick, faces the right
@@ -90,7 +91,7 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     const speed = BALANCE.player.moveSpeed;
     if (this.scene.time.now < this.shovedUntil) {
       const body = this.body as Phaser.Physics.Arcade.Body;
-      body.velocity.scale(Math.pow(0.9, dtMs / 16.67));
+      body.velocity.scale(1 - damp(0.1, dtMs));
     } else {
       const walk = speed * this.moveScale;
       this.setVelocity(input.moveX * walk + this.pull.x, input.moveY * walk + this.pull.y);
@@ -103,7 +104,7 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     else if (input.moveX !== 0 || input.moveY !== 0) face = Math.atan2(input.moveY, input.moveX);
 
     if (face !== undefined) {
-      const t = 1 - Math.pow(1 - BALANCE.player.turnSmoothing, dtMs / 16.67);
+      const t = damp(BALANCE.player.turnSmoothing, dtMs);
       this.rotation = Phaser.Math.Angle.Wrap(this.rotation + Phaser.Math.Angle.Wrap(face - this.rotation) * t);
     }
 
@@ -114,7 +115,8 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
       const bob = Math.sin(this.stride / 18) * 0.06 * moving;
       this.setScale(1 + bob, 1 - bob);
     } else {
-      this.setScale(Phaser.Math.Linear(this.scaleX, 1, 0.2), Phaser.Math.Linear(this.scaleY, 1, 0.2));
+      const settle = damp(0.2, dtMs);
+      this.setScale(Phaser.Math.Linear(this.scaleX, 1, settle), Phaser.Math.Linear(this.scaleY, 1, settle));
     }
 
     this.shadow.setPosition(this.x, this.y + 18);

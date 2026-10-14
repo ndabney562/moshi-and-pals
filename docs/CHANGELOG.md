@@ -7,6 +7,7 @@
 - **Auto-pause** when you leave the game: home screen, app switcher, a call, notification center.
 - **Fix: sound dying for good after a call or app switch.** Any touch now wakes iOS audio back up.
 - **Fix: paused or backgrounded time no longer counts.** Before, cooldowns, refills, intermissions and Diamond's timers all ran out while the game was hidden. Game time now only moves while you're playing.
+- **Fix: same game at any frame rate.** Germ steering and turning, patient turning, Eugene's settle and shove slide, and the camera follow now scale with frame time, so Low Power Mode (30 FPS) plays like 60 FPS.
 
 ## v0.6.0: Milestone 6, supply crates
 - **Supply crates** (📦 with a big "?") in the waiting room, exam rooms, staff break room, lab and X-ray. Walk up and tap USE ($250 Copays) for a random new tool you don't already have.

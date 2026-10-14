@@ -110,7 +110,7 @@ try {
   const refillAt = await buttonAt('refillButton');
   await page.touchscreen.tap(refillAt.x, refillAt.y);
   // Refill takes 1.1 s of game time (which runs slower than real time when frames drop)
-  await page.waitForFunction(() => window.game.scene.getScene('Game').sprayer.ammo === 120, null, { timeout: 8000 }).catch(() => {});
+  await page.waitForFunction(() => window.game.scene.getScene('Game').sprayer.ammo === 120, null, { timeout: 15000 }).catch(() => {});
   const refilled = await game();
   check(refilled.ammo === 120, `Refill button refilled the bottle (${refilled.ammo} mL)`);
   // Pause: the button freezes the game and opens the menu; AUTO-AIM lives there now
@@ -193,7 +193,7 @@ try {
     const cart = scene.carts[0];
     scene.player.setPosition(cart.x + cart.w / 2, cart.y - 50);
   });
-  await page.waitForFunction(() => window.game.scene.getScene('Hud').interactButton.visible, null, { timeout: 3000 });
+  await page.waitForFunction(() => window.game.scene.getScene('Hud').interactButton.visible, null, { timeout: 15000 });
   const restockAt = await buttonAt('interactButton');
   await page.touchscreen.tap(restockAt.x, restockAt.y);
   await page.waitForTimeout(200);
@@ -210,7 +210,7 @@ try {
     const door = scene.lockedDoors.find((d) => d.o.opens === 'bathroom').o;
     scene.player.setPosition(door.x + door.w + 40, door.y + door.h / 2);
   });
-  await page.waitForFunction(() => window.game.scene.getScene('Hud').interactButton.label?.text?.startsWith('OPEN'), null, { timeout: 3000 }).catch(() => {});
+  await page.waitForFunction(() => window.game.scene.getScene('Hud').interactButton.label?.text?.startsWith('OPEN'), null, { timeout: 15000 }).catch(() => {});
   const doorLabel = await page.evaluate(() => window.game.scene.getScene('Hud').interactButton.label?.text);
   const openAt = await buttonAt('interactButton');
   await page.touchscreen.tap(openAt.x, openAt.y);
@@ -227,7 +227,7 @@ try {
   check(opened.unlocked && opened.doorGone && opened.copays === 50, `USE (${JSON.stringify(doorLabel)}) buys the bathroom door open (${JSON.stringify(opened)})`);
   check(opened.room.includes('WAITING ROOM'), `HUD shows which room Eugene is in (${opened.room})`);
   await page.evaluate(() => window.game.scene.getScene('Game').player.setPosition(300, 1650));
-  await page.waitForFunction(() => window.game.scene.getScene('Hud').roomText.text.includes('BATHROOM'), null, { timeout: 3000 }).catch(() => {});
+  await page.waitForFunction(() => window.game.scene.getScene('Hud').roomText.text.includes('BATHROOM'), null, { timeout: 15000 }).catch(() => {});
   check((await page.evaluate(() => window.game.scene.getScene('Hud').roomText.text)).includes('BATHROOM'), 'walking into the bathroom updates the room label');
   await page.screenshot({ path: 'smoke-rooms.png' });
 
@@ -238,7 +238,7 @@ try {
     const crate = scene.crates[0];
     scene.player.setPosition(crate.x + crate.w / 2, crate.y - 45);
   });
-  await page.waitForFunction(() => window.game.scene.getScene('Hud').interactButton.label?.text?.startsWith('CRATE'), null, { timeout: 3000 }).catch(() => {});
+  await page.waitForFunction(() => window.game.scene.getScene('Hud').interactButton.label?.text?.startsWith('CRATE'), null, { timeout: 15000 }).catch(() => {});
   const crateAt = await buttonAt('interactButton');
   await page.touchscreen.tap(crateAt.x, crateAt.y);
   await page.waitForTimeout(200);
@@ -274,7 +274,7 @@ try {
     while (scene.waves.queue.length < 4) scene.waves.queue.push('basic');
     return { germsBefore: scene.germs.countActive(true), id: p.def.id };
   });
-  await page.waitForFunction(() => window.game.scene.getScene('Game').patients.eugeneBubble.text.length > 0, null, { timeout: 4000 }).catch(() => {});
+  await page.waitForFunction(() => window.game.scene.getScene('Game').patients.eugeneBubble.text.length > 0, null, { timeout: 15000 }).catch(() => {});
   const violated = await page.evaluate(() => {
     const scene = window.game.scene.getScene('Game');
     const p = scene.patients.group.getChildren().find((c) => c.active);
@@ -307,8 +307,11 @@ try {
   const farmed = await page.evaluate(() => window.game.scene.getScene('Game').germs.countActive(true));
   check(farmed <= farm.before, `no violations once the round's germs are all in (${farm.before} -> ${farmed} germs)`);
   await page.evaluate(() => window.game.scene.getScene('Game').germs.getChildren().forEach((g) => g.active && g.kill()));
-  await page.waitForTimeout(500);
-  const ended = await page.evaluate(() => !window.game.scene.getScene('Game').waves.roundActive);
+  const ended = await page.waitForFunction(() => {
+    const scene = window.game.scene.getScene('Game');
+    scene.germs.getChildren().forEach((g) => g.active && g.kill()); // stragglers that slipped in
+    return !scene.waves.roundActive;
+  }, null, { timeout: 6000 }).then(() => true, () => false);
   check(ended, `the round ends once the last germ is gone (round ${farm.round})`);
 
 
@@ -322,16 +325,17 @@ try {
     scene.boss.germ.setPosition(1460, 1460);
     scene.boss.nextMeetingAt = 0;
   });
-  await page.waitForTimeout(1000);
+  // Game time follows frames, so on a slow (headless) browser wait for her to speak rather than a fixed time
+  await page.waitForFunction(() => window.game.scene.getScene('Game').boss.bubble.text.length > 0, null, { timeout: 15000 }).catch(() => {});
   const intro = await page.evaluate(() => {
     const scene = window.game.scene.getScene('Game');
     return { said: scene.boss.bubble.text, bar: window.game.scene.getScene('Hud').bossBar?.visible };
   });
   check(intro.said.length > 0, `Diamond talks ("${intro.said}")`);
-  await page.waitForFunction(() => window.game.scene.getScene('Game').boss.mode === 'meeting', null, { timeout: 4000 });
+  await page.waitForFunction(() => window.game.scene.getScene('Game').boss.mode === 'meeting', null, { timeout: 15000 });
   const meetingStart = await page.evaluate(() => window.game.scene.getScene('Game').player.y);
   // Headless frame rates are low, so wait for progress instead of a fixed time
-  await page.waitForFunction((y0) => window.game.scene.getScene('Game').player.y > y0 + 30, meetingStart, { timeout: 6000 }).catch(() => {});
+  await page.waitForFunction((y0) => window.game.scene.getScene('Game').player.y > y0 + 30, meetingStart, { timeout: 15000 }).catch(() => {});
   await page.screenshot({ path: 'smoke-boss.png' });
   const meeting = await page.evaluate(() => {
     const scene = window.game.scene.getScene('Game');
@@ -363,8 +367,8 @@ try {
   });
   // Down to 30% health, below the tantrum threshold
   await hitBoss(await page.evaluate(() => { const b = window.game.scene.getScene('Game').boss.germ; return b.hp - b.maxHp * 0.3; }));
-  await page.waitForFunction(() => window.game.scene.getScene('Game').boss.mode === 'tantrumWindup', null, { timeout: 3000 });
-  await page.waitForFunction(() => window.game.scene.getScene('Game').boss.nextTantrumAt > 0, null, { timeout: 3000 });
+  await page.waitForFunction(() => window.game.scene.getScene('Game').boss.mode === 'tantrumWindup', null, { timeout: 15000 });
+  await page.waitForFunction(() => window.game.scene.getScene('Game').boss.nextTantrumAt > 0, null, { timeout: 15000 });
   check(true, 'Policy Tantrum winds up and stomps at low health');
 
   // Finish her off
@@ -383,7 +387,7 @@ try {
     const g = scene.germs.getChildren().find((c) => c.active) ?? (scene.spawnGerm('basic', { hpMult: 1, speedMult: 1 }), scene.germs.getChildren().find((c) => c.active));
     g.setPosition(scene.player.x + 5, scene.player.y);
   });
-  await page.waitForFunction(() => window.game.scene.isActive('GameOver'), null, { timeout: 8000 });
+  await page.waitForFunction(() => window.game.scene.isActive('GameOver'), null, { timeout: 15000 });
   await page.waitForTimeout(1200);
   await page.screenshot({ path: 'smoke-gameover.png' });
   const saved2 = await page.evaluate(() => JSON.parse(localStorage.getItem('moshi.save.v1') ?? '{}'));
@@ -398,7 +402,7 @@ try {
     return { x: canvas.left + label.x * k, y: canvas.top + label.y * k };
   });
   await page.touchscreen.tap(again.x, again.y);
-  await page.waitForFunction(() => window.game.scene.isActive('Hud') && !window.game.scene.isActive('GameOver'), null, { timeout: 5000 });
+  await page.waitForFunction(() => window.game.scene.isActive('Hud') && !window.game.scene.isActive('GameOver'), null, { timeout: 15000 });
   const fresh = await page.evaluate(() => {
     const scene = window.game.scene.getScene('Game');
     return { hp: scene.player.hp, score: scene.score, round: scene.waves.round };
@@ -462,7 +466,7 @@ try {
   await pp.goto(url);
   await pp.waitForFunction(() => window.game?.scene.isActive('Title'));
   await pp.touchscreen.tap(196, 426);
-  await pp.waitForFunction(() => window.game.scene.isActive('Hud'), null, { timeout: 5000 });
+  await pp.waitForFunction(() => window.game.scene.isActive('Hud'), null, { timeout: 15000 });
   await pp.waitForTimeout(400);
   const shape = await pp.evaluate(() => {
     const r = window.game.canvas.getBoundingClientRect();

@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 import { BALANCE } from '../config/balance';
+import { damp } from '../core/math';
 import type { GermDef } from '../data/germs';
 
 /** Per-round multipliers applied when a germ spawns. */
@@ -58,9 +59,11 @@ export class Germ extends Phaser.Physics.Arcade.Sprite {
       const angle = Phaser.Math.Angle.Between(this.x, this.y, target.x, target.y);
       const body = this.body as Phaser.Physics.Arcade.Body;
       // Ease toward full chase speed so knockback recovers smoothly
-      body.velocity.x = Phaser.Math.Linear(body.velocity.x, Math.cos(angle) * speed, 0.1);
-      body.velocity.y = Phaser.Math.Linear(body.velocity.y, Math.sin(angle) * speed, 0.1);
-      this.rotation = Phaser.Math.Angle.RotateTo(this.rotation, angle, 0.08);
+      const steer = damp(0.1, dtMs);
+      body.velocity.x = Phaser.Math.Linear(body.velocity.x, Math.cos(angle) * speed, steer);
+      body.velocity.y = Phaser.Math.Linear(body.velocity.y, Math.sin(angle) * speed, steer);
+      // RotateTo's step is radians per call: scale it by frame time
+      this.rotation = Phaser.Math.Angle.RotateTo(this.rotation, angle, 0.08 * (dtMs / (1000 / 60)));
     }
     // Jelly wobble
     this.wobble += dtMs / 140;

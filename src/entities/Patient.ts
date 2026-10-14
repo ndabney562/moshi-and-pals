@@ -55,7 +55,7 @@ export class Patient extends Phaser.Physics.Arcade.Sprite {
     } else {
       const a = Phaser.Math.Angle.BetweenPoints(this, target);
       this.setVelocity(Math.cos(a) * speed, Math.sin(a) * speed);
-      this.rotation = Phaser.Math.Angle.RotateTo(this.rotation, a, 0.1);
+      this.rotation = Phaser.Math.Angle.RotateTo(this.rotation, a, 0.1 * (dtMs / (1000 / 60)));
       // Shuffle
       this.step += dtMs / 120;
       const s = Math.sin(this.step) * 0.04;
