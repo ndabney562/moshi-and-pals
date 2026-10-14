@@ -28,7 +28,7 @@
 - Desktop testing: WASD/arrows to move, mouse to aim, hold mouse or Space to spray, R to refill, Q to Sinus Purge, E to restock.
 
 ## Eugene (from Noah)
-Stocky, thinning grey hair, no facial hair, an oddly shaped mouth, glasses. White lab coat over a dark scrub top. Wears a dark patterned scrub cap at work (possible outfit later). Reference photo shared in the project thread (not stored in this public repo).
+In game he looks like the man on Noah's title poster: messy brown-grey hair, blue surgical mask, stethoscope. White lab coat over a dark scrub top. Wears a dark patterned scrub cap at work (possible outfit later). Reference photo shared in the project thread (not stored in this public repo).
 
 ## Bosses
 - **Diamond the Practice Manager** (Noah's pick; replaced the earlier Babushka Bacillus idea): a grouchy practice manager from Trinidad who has it out for Moshi: a big, heavy, slimy germ monster with a bun, a pencil and a clipboard. Fictional. She grumbles in speech bubbles ("Your charts are three days late!"). Moves: Mandatory Meeting (ties Eugene in red tape and drags him to the EXIT; spray to break free), Write-Ups (flings angry pink slips when hurt), Policy Tantrum (clipboard-slam knockback at low health).

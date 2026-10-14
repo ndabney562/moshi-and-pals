@@ -31,8 +31,8 @@ export class BootScene extends Phaser.Scene {
 
   /**
    * Top-down Eugene facing right (+x). 96x96, centered.
-   * Based on Noah's description: stocky, thinning grey hair, glasses,
-   * white lab coat over a dark scrub top.
+   * Matches Noah's title poster: messy brown-grey hair, blue surgical mask,
+   * stethoscope, white lab coat over navy scrubs, white spray bottle.
    */
   private makeEugene(): void {
     const g = this.add.graphics();
@@ -53,28 +53,38 @@ export class BootScene extends Phaser.Scene {
     // Lab coat over broad, stocky shoulders
     g.fillStyle(COLORS.coat).fillEllipse(41, 46, 46, 78).strokeEllipse(41, 46, 46, 78);
     g.fillStyle(COLORS.coatShadow).fillEllipse(34, 46, 20, 58);
-    // Dark scrub top showing at the collar
+    // Dark scrub top showing at the collar, stethoscope around the neck
     g.fillStyle(COLORS.scrubs).fillCircle(49, 46, 20).fillEllipse(58, 46, 22, 26);
+    g.lineStyle(3, COLORS.stethoscope).beginPath()
+      .arc(48, 46, 19, Phaser.Math.DegToRad(-70), Phaser.Math.DegToRad(70), false).strokePath();
+    g.fillStyle(COLORS.coatShadow).fillCircle(66, 58, 3.5);
 
-    // Head
-    g.fillStyle(COLORS.skin).fillCircle(48, 46, 15).strokeCircle(48, 46, 15);
-    // Thinning grey hair: a fringe around the back and sides, bald on top
+    // Messy spiky hair sticking out past his head every which way
+    const spikes: [number, number][] = [[24, 34], [22, 46], [24, 58], [31, 67], [31, 25], [41, 20], [41, 72], [52, 22], [52, 70]];
+    g.fillStyle(COLORS.hair).lineStyle(2, outline);
+    for (const [tx, ty] of spikes) {
+      const a = Math.atan2(ty - 46, tx - 48) + Math.PI / 2;
+      const bx = 48 + (tx - 48) * 0.45;
+      const by = 46 + (ty - 46) * 0.45;
+      const pts = [bx + Math.cos(a) * 6, by + Math.sin(a) * 6, bx - Math.cos(a) * 6, by - Math.sin(a) * 6, tx, ty];
+      g.fillTriangle(...(pts as [number, number, number, number, number, number]));
+      g.strokeTriangle(...(pts as [number, number, number, number, number, number]));
+    }
+
+    // Head, with hair over the back and sides, thinner at the front
+    g.fillStyle(COLORS.skin).fillCircle(48, 46, 15);
     g.fillStyle(COLORS.hair).beginPath()
-      .slice(48, 46, 15, Phaser.Math.DegToRad(70), Phaser.Math.DegToRad(290), false).fillPath();
-    g.fillStyle(COLORS.skinTop).fillCircle(50, 46, 9.5);
-    g.fillStyle(COLORS.skin, 0.6).fillCircle(52, 44, 4);
-    // A few heroic surviving strands
-    g.lineStyle(2, COLORS.hairStrand).lineBetween(42, 42, 54, 40).lineBetween(42, 47, 55, 46).lineBetween(43, 51, 53, 52);
-    g.lineStyle(3, outline).strokeCircle(48, 46, 15);
+      .slice(48, 46, 15, Phaser.Math.DegToRad(60), Phaser.Math.DegToRad(300), false).fillPath();
+    g.fillCircle(42, 46, 13);
+    g.fillStyle(COLORS.skinTop).fillEllipse(54, 46, 8, 12);
+    g.lineStyle(2, COLORS.hairStrand).lineBetween(36, 40, 47, 38).lineBetween(35, 47, 47, 46).lineBetween(37, 53, 47, 54);
+    g.lineStyle(3, outline).beginPath()
+      .arc(48, 46, 15, Phaser.Math.DegToRad(-62), Phaser.Math.DegToRad(62), false).strokePath();
 
-    // Big confident nose leading the way (important for later sinus business)
-    g.fillStyle(COLORS.skin).fillEllipse(65, 46, 12, 9).strokeEllipse(65, 46, 12, 9);
-    // Glasses: lenses in front of the face, arms running back along the head
-    g.lineStyle(2, COLORS.glasses);
-    g.lineBetween(60, 35, 50, 33).lineBetween(60, 57, 50, 59);
-    g.fillStyle(COLORS.lens, 0.85).fillRoundedRect(58, 34, 6, 9, 2).fillRoundedRect(58, 49, 6, 9, 2);
-    g.strokeRoundedRect(58, 34, 6, 9, 2).strokeRoundedRect(58, 49, 6, 9, 2);
-    g.lineBetween(61, 43, 61, 49);
+    // Blue surgical mask over his nose and mouth, ear loops running back
+    g.lineStyle(1.5, COLORS.maskFold).lineBetween(58, 35, 47, 32).lineBetween(58, 57, 47, 60);
+    g.fillStyle(COLORS.mask).lineStyle(2, outline).fillRoundedRect(57, 34, 11, 24, 4).strokeRoundedRect(57, 34, 11, 24, 4);
+    g.lineStyle(1.5, COLORS.maskFold).lineBetween(60, 38, 60, 54).lineBetween(64, 38, 64, 54);
 
     g.generateTexture('eugene', 96, 96);
     g.destroy();

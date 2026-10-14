@@ -2,7 +2,7 @@
 
 | Asset | Status |
 |---|---|
-| Eugene sprite | Placeholder drawn in code, matched to Noah's description (grey thinning hair, glasses, stocky, navy scrubs) |
+| Eugene sprite | Placeholder drawn in code, matched to Noah's title poster (messy brown-grey hair, blue surgical mask, stethoscope, navy scrubs) |
 | Floor tile, furniture | Placeholder, drawn in code |
 | Title screen art | Noah's Moshi and Pals poster (`public/assets/title.jpg`) |
 | App icons | Placeholder (`public/icons/`) |

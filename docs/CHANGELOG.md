@@ -8,6 +8,7 @@
   - **UV Wand**: a purple beam that passes through up to 4 germs and recharges itself (no jug, no REFILL).
   - **Peroxide Foamer** (Claude's addition): fizzy foam that slows germs to 45% speed for 1.6 s. Doesn't slow bosses.
 - You carry the bottle plus one crate tool. A new crate replaces your old crate tool. **SWAP** (X on desktop) switches between them, and each keeps its own supply and jug. The tool's name shows above the bottle meter.
+- Eugene now looks like the man on Noah's title poster: messy, spiky brown-grey hair, a blue surgical mask and a white spray bottle with a red trigger (the glasses are gone).
 
 ## v0.5.6: New title poster
 - The title screen now shows Noah's new Moshi and Pals poster, so the art matches the name.

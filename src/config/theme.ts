@@ -15,15 +15,17 @@ export const COLORS = {
   coat: 0xfafafa,
   coatShadow: 0xd8dde0,
   scrubs: 0x1f2a44,
-  skin: 0xf1c7a5,
-  /** Slightly pinker skin for the bald spot on top of Eugene's head. */
-  skinTop: 0xf4b9a0,
-  hair: 0xb0b0b0,
-  hairStrand: 0x8f8f8f,
-  glasses: 0x2b2b2b,
-  lens: 0xd6ecff,
-  bottle: 0x7fd3ff,
-  bottleCap: 0x1565c0,
+  skin: 0xecbc98,
+  /** Slightly pinker skin where his hair has thinned at the front. */
+  skinTop: 0xf0b394,
+  /** Messy brown-grey hair, like Noah's title poster. */
+  hair: 0x6e5d4c,
+  hairStrand: 0x9a8a78,
+  mask: 0x9fd0ee,
+  maskFold: 0x6fa9cf,
+  stethoscope: 0x2b2f36,
+  bottle: 0xf6f8fa,
+  bottleCap: 0xd32f2f,
   uiText: '#e8fff9',
   uiAccent: '#7fffd4',
 };
