@@ -458,7 +458,7 @@ try {
     return { active: scene.powerups.isActive('priorAuth', scene.time.now), frozen: !!g && g.frozenUntil > scene.time.now, hud: window.game.scene.getScene('Hud').powerRows[0].text.text };
   });
   check(picked && frozen.active && frozen.frozen, `walking over PRIOR AUTHORIZATION freezes the germs (${JSON.stringify(frozen)})`);
-  const cleaned = await page.evaluate(() => {
+  const statCleaned = await page.evaluate(() => {
     const scene = window.game.scene.getScene('Game');
     for (let i = 0; i < 3; i++) scene.spawnGerm('basic', { hpMult: 1, speedMult: 1 });
     for (const g of scene.germs.getChildren()) if (g.active) g.setPosition(scene.player.x + 100 + Math.random() * 200, scene.player.y);
@@ -466,7 +466,7 @@ try {
     scene.onPowerup({ id: 'statClean', name: 'STAT CLEAN', blurb: '', color: 0xffffff, ms: 0 }, scene.time.now);
     return { before, after: scene.germs.countActive(true) };
   });
-  check(cleaned.before > 0 && cleaned.after === 0, `STAT CLEAN disinfects everything nearby (${JSON.stringify(cleaned)})`);
+  check(statCleaned.before > 0 && statCleaned.after === 0, `STAT CLEAN disinfects everything nearby (${JSON.stringify(statCleaned)})`);
 
   // STAIRS (M8 map): buy Upstairs, walk into the west stairs and come out upstairs; germs follow the same way
   await page.evaluate(() => {
