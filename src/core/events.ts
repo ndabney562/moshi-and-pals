@@ -51,11 +51,30 @@ export const GameEvents = {
   PowerupPicked: 'powerup.picked',
   /** { name } a supply crate gave Eugene a new tool */
   ToolUnlocked: 'tool.unlocked',
+  /** RequisitionPayload: the Supply Requisition form is up (or updated after an appeal) */
+  RequisitionOpened: 'requisition.opened',
+  /** { id } the player picked a tool on the form */
+  RequisitionPicked: 'requisition.picked',
+  /** the player appealed for a new pair */
+  RequisitionAppealed: 'requisition.appealed',
+  /** { title, line } the claim was denied (no form; part refund) */
+  ClaimDenied: 'requisition.denied',
 } as const;
+
+export interface RequisitionOption { id: string; name: string; blurb: string; color: number; }
+
+/** The Supply Requisition form: two tools, and what appealing for another pair costs. */
+export interface RequisitionPayload {
+  options: RequisitionOption[];
+  appealCost: number;
+  canAffordAppeal: boolean;
+  /** A line under the title ("APPEAL DENIED..."), or '' for the default. */
+  note: string;
+}
 
 export interface EquipmentChangedPayload {
   ammo: number; capacity: number; refillProgress: number; reserve: number;
-  name: string; unit: 'mL' | '%'; selfCharging: boolean;
+  name: string; unit: string; spareName: string; selfCharging: boolean;
   /** How many tools Eugene is carrying (SWAP shows at 2). */
   slots: number;
   /** Perfect Pour sweet spot (fractions of the refill), shown on the REFILL ring. */

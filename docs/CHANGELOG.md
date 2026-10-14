@@ -1,5 +1,15 @@
 # Changelog
 
+## v0.12.0: Milestone 12, arsenal
+- **Supply Requisition** replaces the random crate. Pay $250 at a crate and a form comes up (the game waits): **pick one of two tools**, never the one you're already carrying. Don't like either? **APPEAL THE DECISION** for a different pair ($100, then $50 more each time). Insurance being insurance, 5% of claims (and appeals) are simply **CLAIM DENIED**: you get a joke item (one cotton ball, a fax confirming your fax...) and half your money back.
+- Three new tools, all on the form alongside the old four:
+  - **Disinfectant Wipes:** a melee sweep across the front of Eugene. Every third swipe is a **DEEP CLEAN** (×2.5, longer reach). Big knockback, great on biofilm and mold. Comes by the box.
+  - **Gel Launcher:** lobs a glob of hand sanitizer over the crowd to where auto-aim is pointing (or as far as it goes, stopping at walls). It bursts for area damage and leaves **sticky gel that slows germs** for a few seconds.
+  - **Defib Paddles:** "CLEAR!" Zaps the closest germ in front, then **jumps through four more**, stunning each. Charges itself.
+  - Each has two Compounding Station upgrades (Thicker Wipes / Bulk Canister, Extra Hold / Family Size, Higher Joules / Crash Cart).
+- Every tool now shares one hit path (type effectiveness, STAT! crits, armor and TINK), so the new tools follow the same rules as the sprays.
+- The supply readout names its own units (wipes, gels, a BOX or CASE instead of a JUG).
+
 ## v0.11.0: Milestone 11, ecology
 Six new germs, each asking for a different answer than "spray harder":
 - **Diplococcus Duo** (round 7+): two germs stuck together. Disinfect it and it splits into two quick **Monococci**.

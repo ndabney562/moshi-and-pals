@@ -149,8 +149,14 @@ export const BALANCE = {
     cleanPatientCopays: 10,
     /** How close Eugene must be to a supply cart or locked door (from its edge) to use it. Door prices live in data/rooms.ts. */
     interactRange: 80,
-    /** Price of opening a supply crate (random new tool). */
+    /** Price of a Supply Requisition at a crate (pick 1 of 2 tools). */
     crateCost: 250,
+    /** Appealing the decision for a fresh pair: the first appeal, then this much more each time. */
+    appealCost: 100,
+    appealStep: 50,
+    /** Chance a claim or an appeal is CLAIM DENIED, and the share of the money that comes back. */
+    claimDeniedChance: 0.05,
+    deniedRefund: 0.5,
     /** SPOTLESS: finish a round without getting hurt for this many Copays × the round number. */
     spotlessPerRound: 10,
     /** ...and this much score × the round number. */

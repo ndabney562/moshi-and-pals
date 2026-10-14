@@ -289,21 +289,49 @@ try {
   check((await page.evaluate(() => window.game.scene.getScene('Hud').roomText.text)).includes('HALLWAYS'), 'walking into the hallways updates the room label');
   await page.screenshot({ path: 'smoke-rooms.png' });
 
-  // Supply crate: buy a random new tool, spray with it, then SWAP back to the bottle
+  // Supply Requisition: pay at a crate, pick 1 of 2 tools (the game waits), appeal for a new pair, then SWAP back
   await page.evaluate(() => {
     const scene = window.game.scene.getScene('Game');
     scene.addCopays(300 - scene.copays);
+    scene.claimDeniedChance = 0;
     const crate = scene.crates[0];
     scene.player.setPosition(crate.x + crate.w / 2, crate.y - 45);
   });
-  await page.waitForFunction(() => window.game.scene.getScene('Hud').interactButton.label?.text?.startsWith('CRATE'), null, { timeout: 15000 }).catch(() => {});
+  await page.waitForFunction(() => window.game.scene.getScene('Hud').interactButton.label?.text?.startsWith('TOOLS'), null, { timeout: 15000 }).catch(() => {});
   const crateAt = await buttonAt('interactButton');
-  await holdAt(crateAt, () => window.game.scene.getScene('Game').loadout.length === 2);
+  await holdAt(crateAt, () => window.game.scene.getScene('Hud').requisitioning);
+  const form = await page.evaluate(() => {
+    const hud = window.game.scene.getScene('Hud');
+    return { open: hud.requisitioning, offered: hud.requisitionPanel.offered, paused: window.game.scene.isPaused('Game'), copays: window.game.scene.getScene('Game').copays };
+  });
+  check(form.open && form.offered.length === 2 && form.offered[0] !== form.offered[1] && form.paused && form.copays === 50,
+    `a supply crate opens a Supply Requisition: 2 tools to pick from, game waiting (${JSON.stringify(form)})`);
+  const panelAt = (what) => page.evaluate((w) => {
+    const p = window.game.scene.getScene('Hud').requisitionPanel;
+    const o = w === 'appeal' ? p.appeal : p.cards[w].bg;
+    const canvas = window.game.canvas.getBoundingClientRect();
+    const k = canvas.width / window.game.scale.width;
+    return { x: canvas.left + o.x * k, y: canvas.top + o.y * k };
+  }, what);
+  await page.evaluate(() => {
+    const scene = window.game.scene.getScene('Game');
+    scene.addCopays(150);
+    scene.showRequisition('');
+  });
+  const appealAt = await panelAt('appeal');
+  await page.touchscreen.tap(appealAt.x, appealAt.y);
+  await page.waitForFunction((first) => !window.game.scene.getScene('Hud').requisitionPanel.offered.includes(first[0]), form.offered, { timeout: 10000 }).catch(() => {});
+  const appealed = await page.evaluate(() => ({ offered: window.game.scene.getScene('Hud').requisitionPanel.offered, copays: window.game.scene.getScene('Game').copays }));
+  check(appealed.copays === 100 && appealed.offered.length === 2 && !appealed.offered.some((id) => form.offered.includes(id)),
+    `APPEAL THE DECISION ($100) swaps in two different tools (${JSON.stringify(appealed)})`);
+  const pickAt = await panelAt(0);
+  await page.touchscreen.tap(pickAt.x, pickAt.y);
+  await page.waitForFunction(() => window.game.scene.getScene('Game').loadout.length === 2, null, { timeout: 10000 }).catch(() => {});
   const crated = await page.evaluate(() => {
     const scene = window.game.scene.getScene('Game');
-    return { tools: scene.loadout.map((t) => t.def.id), slot: scene.slot, copays: scene.copays, swap: window.game.scene.getScene('Hud').swapButton.visible };
+    return { tools: scene.loadout.map((t) => t.def.id), slot: scene.slot, running: !window.game.scene.isPaused('Game'), swap: window.game.scene.getScene('Hud').swapButton.visible };
   });
-  check(crated.tools.length === 2 && crated.slot === 1 && crated.copays === 50 && crated.swap, `supply crate gives a new tool for Copays (${JSON.stringify(crated)})`);
+  check(crated.tools[1] === appealed.offered[0] && crated.slot === 1 && crated.running && crated.swap, `picking a tool hands it over and play resumes (${JSON.stringify(crated)})`);
   await page.screenshot({ path: 'smoke-crate.png' });
   const toolFired = await page.evaluate(async () => {
     const scene = window.game.scene.getScene('Game');
@@ -311,7 +339,7 @@ try {
     scene.sprayer.tryFire(scene.player.x, scene.player.y, 0, scene.time.now + 10000);
     return { before, after: scene.sprayer.ammo, name: scene.sprayer.def.name };
   });
-  check(toolFired.after < toolFired.before, `the crate tool sprays (${toolFired.name}: ${toolFired.before} -> ${toolFired.after})`);
+  check(toolFired.after < toolFired.before, `the crate tool works (${toolFired.name}: ${toolFired.before} -> ${toolFired.after})`);
   const swapAt = await buttonAt('swapButton');
   await page.touchscreen.tap(swapAt.x, swapAt.y);
   await page.waitForTimeout(200);
@@ -530,6 +558,65 @@ try {
   });
   const spored = await page.waitForFunction(() => window.game.scene.getScene('Game').germs.getChildren().some((c) => c.active && c.def.id === 'spore'), null, { timeout: 20000 }).then(() => true, () => false);
   check(spored, 'a Mold Spot lets out spores');
+
+  // ARSENAL (M12): Wipes sweep what's in front, Defib Paddles chain, the Gel Launcher bursts and leaves slowing gel
+  const arsenal = await page.evaluate(() => {
+    const scene = window.game.scene.getScene('Game');
+    const clear = () => { for (const g of scene.germs.getChildren()) if (g.active) g.kill(); };
+    const at = (id, dx, dy) => {
+      const before = new Set(scene.germs.getChildren().filter((c) => c.active));
+      scene.spawnGermAt(id, scene.player.x + dx, scene.player.y + dy, true);
+      const g = scene.germs.getChildren().find((c) => c.active && !before.has(c));
+      g.freezeFor(scene.time.now, 8000); // hold still for the test
+      return g;
+    };
+    const hurt = (g) => !g.active || g.hp < g.maxHp;
+    const use = (id) => {
+      scene.giveTool(id, scene.crates[0], scene.time.now);
+      return scene.sprayer.tryFire(scene.player.x, scene.player.y, 0, scene.time.now);
+    };
+    clear();
+    const front = at('basic', 60, 0);
+    const behind = at('basic', -90, 0);
+    const wiped = use('wipes');
+    const wipes = { fired: wiped, front: hurt(front), behind: hurt(behind), unit: window.game.scene.getScene('Hud').bottle.text.text };
+    clear();
+    const line = [at('basic', 80, 0), at('basic', 170, 40), at('basic', 260, 0)];
+    use('defib');
+    const zapped = line.filter(hurt).length;
+    clear();
+    const target = at('basic', 220, 0);
+    scene.aimLock = target;
+    use('gelLauncher');
+    return { wipes, zapped };
+  });
+  check(arsenal.wipes.fired === 'fired' && arsenal.wipes.front && !arsenal.wipes.behind && /wipes/.test(arsenal.wipes.unit),
+    `Disinfectant Wipes sweep the germ in front, not the one behind (${JSON.stringify(arsenal.wipes)})`);
+  check(arsenal.zapped === 3, `Defib Paddles zap a chain of germs (${arsenal.zapped} of 3)`);
+  const gelled = await page.waitForFunction(() => {
+    const scene = window.game.scene.getScene('Game');
+    const g = scene.germs.getChildren().find((c) => c.active && c.def.id === 'basic');
+    return scene.gel.count > 0 && (!g || g.hp < g.maxHp) ? { gel: scene.gel.count, slowed: !!g && g.slowUntil > scene.time.now } : null;
+  }, null, { timeout: 15000 }).then((h) => h.jsonValue(), () => null);
+  check(gelled && gelled.gel > 0, `the Gel Launcher's glob bursts on its target and leaves sticky gel (${JSON.stringify(gelled)})`);
+
+  // CLAIM DENIED: no form, a joke item, half the money back
+  const denied = await page.evaluate(() => {
+    const scene = window.game.scene.getScene('Game');
+    scene.addCopays(300 - scene.copays);
+    scene.claimDeniedChance = 1;
+    const tools = scene.loadout.map((t) => t.def.id).join();
+    scene.openCrate(scene.crates[0], scene.time.now);
+    scene.claimDeniedChance = 0;
+    const hud = window.game.scene.getScene('Hud');
+    return { copays: scene.copays, form: hud.requisitioning, same: scene.loadout.map((t) => t.def.id).join() === tools, banner: hud.banner.text, line: hud.bannerSub.text };
+  });
+  check(denied.copays === 175 && !denied.form && denied.same && denied.banner === 'CLAIM DENIED', `a denied claim refunds half and sends a joke item (${JSON.stringify(denied)})`);
+  await page.evaluate(() => {
+    const scene = window.game.scene.getScene('Game');
+    scene.slot = 0;
+    scene.sprayer.emitChanged(scene.time.now);
+  });
   await page.evaluate(() => {
     const scene = window.game.scene.getScene('Game');
     for (const g of scene.germs.getChildren()) if (g.active) g.kill();

@@ -12,9 +12,9 @@ export class Puddles {
   private readonly items: Puddle[] = [];
   private next = 0;
 
-  constructor(scene: Phaser.Scene) {
+  constructor(scene: Phaser.Scene, tint = 0xa8c94a) {
     for (let i = 0; i < MAX_PUDDLES; i++) {
-      const img = scene.add.image(0, 0, 'blob').setDepth(1.5).setVisible(false).setTint(0xa8c94a);
+      const img = scene.add.image(0, 0, 'blob').setDepth(1.5).setVisible(false).setTint(tint);
       this.items.push({ img, x: 0, y: 0, r: 0, slow: 1, until: 0, born: 0 });
     }
   }
@@ -40,6 +40,15 @@ export class Puddles {
       const grow = Math.min(1, (time - p.born) / 120);
       p.img.setAlpha(0.6 * Math.min(1, left / 500)).setScale(((p.r * 2) / 16) * grow, ((p.r * 1.7) / 16) * grow);
       if ((x - p.x) ** 2 + (y - p.y) ** 2 < p.r * p.r) slow = Math.min(slow, p.slow);
+    }
+    return slow;
+  }
+
+  /** The slow factor at (x, y) without updating anything (1 = no puddle). For many queries a frame. */
+  slowAt(x: number, y: number): number {
+    let slow = 1;
+    for (const p of this.items) {
+      if (p.img.visible && (x - p.x) ** 2 + (y - p.y) ** 2 < p.r * p.r) slow = Math.min(slow, p.slow);
     }
     return slow;
   }

@@ -4,6 +4,9 @@ import type { EquipmentDef, ToolTier } from '../data/equipment';
 import { events, GameEvents } from '../core/events';
 import type { Droplet } from '../entities/Droplet';
 
+/** A non-spray tool's use (see systems/Arsenal.ts): `shot` counts uses, `damageMult` carries FRESH BOTTLE. */
+export type AttackHandler = (def: EquipmentDef, x: number, y: number, angle: number, time: number, shot: number, damageMult: number) => void;
+
 /**
  * Runs a spray-type piece of equipment: supply, fire rate, spread, refills.
  * Works for anything defined in data/equipment.ts.
@@ -24,13 +27,15 @@ export class Sprayer {
   private freshUntil = 0;
   /** This refill already got the spill penalty. */
   private spilled = false;
+  /** Uses so far (Wipes make every Nth swipe a big one). */
+  private uses = 0;
 
   /** Compounding Station upgrades bought for this tool (0 = generic). */
   tier = 0;
   /** The tool's current numbers (its base definition plus any upgrades). */
   def: EquipmentDef;
 
-  constructor(private readonly base: EquipmentDef, private readonly droplets: Phaser.Physics.Arcade.Group) {
+  constructor(private readonly base: EquipmentDef, private readonly droplets: Phaser.Physics.Arcade.Group, private readonly onAttack?: AttackHandler) {
     this.def = base;
     this.ammo = base.capacity;
     this.reserve = base.reserve;
@@ -53,6 +58,14 @@ export class Sprayer {
     this.nextShotAt = time + d.fireIntervalMs;
     if (!free) this.ammo -= d.costPerShot;
     this.lastFiredAt = time;
+    const freshMult = time < this.freshUntil ? BALANCE.pour.freshMult : 1;
+    if (d.attack) {
+      // Wipes, Gel Launcher, Defib Paddles: no droplets, the arsenal does the rest
+      this.uses++;
+      this.onAttack?.(d, x, y, angle, time, this.uses, freshMult);
+      this.emitChanged(time);
+      return 'fired';
+    }
     const spread = Phaser.Math.DegToRad(d.spreadDeg);
     for (let i = 0; i < d.dropletsPerShot; i++) {
       const droplet = this.droplets.get() as Droplet | null;
@@ -60,7 +73,7 @@ export class Sprayer {
       const a = angle + Phaser.Math.FloatBetween(-spread / 2, spread / 2);
       const speed = d.dropletSpeed * Phaser.Math.FloatBetween(0.85, 1.1);
       droplet.fire(x, y, a, speed, d.range * Phaser.Math.FloatBetween(0.85, 1.05), d);
-      if (time < this.freshUntil) droplet.damage *= BALANCE.pour.freshMult;
+      droplet.damage *= freshMult;
     }
     this.emitChanged(time);
     return 'fired';
@@ -165,6 +178,7 @@ export class Sprayer {
       reserve: this.reserve,
       name: this.tier > 0 ? `${this.def.name} ${'I'.repeat(this.tier + 1)}` : this.def.name,
       unit: this.def.unit,
+      spareName: this.def.spareName ?? 'JUG',
       selfCharging: !!this.def.rechargePerSecond,
       slots: this.slots,
       pourWindow: [BALANCE.pour.windowStart, BALANCE.pour.windowEnd],

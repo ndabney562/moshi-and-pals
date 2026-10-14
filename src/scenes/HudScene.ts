@@ -4,7 +4,7 @@ import { DISPLAY } from '../config/display';
 import { COLORS } from '../config/theme';
 import { BALANCE } from '../config/balance';
 import {
-  events, GameEvents, type BossPayload, type EquipmentChangedPayload, type HealthPayload, type RoomPayload, type RoundPayload, type StationPayload, type StreakPayload,
+  events, GameEvents, type BossPayload, type EquipmentChangedPayload, type HealthPayload, type RequisitionPayload, type RoomPayload, type RoundPayload, type StationPayload, type StreakPayload,
 } from '../core/events';
 import { DEBUG } from '../core/debug';
 import { inputState } from '../core/inputState';
@@ -15,6 +15,7 @@ import { readSafeArea, type Insets } from '../core/safeArea';
 import { saveSettings, settings } from '../core/settings';
 import { Bar } from '../ui/Bar';
 import { BottleMeter } from '../ui/BottleMeter';
+import { RequisitionPanel } from '../ui/RequisitionPanel';
 import type { GameScene } from './GameScene';
 import { HudButton } from '../ui/HudButton';
 import { VirtualJoystick } from '../ui/VirtualJoystick';
@@ -70,6 +71,9 @@ export class HudScene extends Phaser.Scene {
   private quitItem!: Phaser.GameObjects.Text;
   private quitArmedUntil = 0;
   private paused = false;
+  /** The Supply Requisition form is up (the game waits for a pick). */
+  private requisitioning = false;
+  private requisitionPanel!: RequisitionPanel;
   private refillButton!: HudButton;
   private purgeButton!: HudButton;
   private interactButton!: HudButton;
@@ -150,6 +154,14 @@ export class HudScene extends Phaser.Scene {
     // Pause: top-right corner, away from both thumbs. Settings live in the pause menu.
     this.pauseButton = new HudButton(this, CONTROLS.buttons.pauseRadius, 'II', 0xe8fff9, () => this.pause());
     this.buildPauseMenu(style);
+    this.requisitioning = false;
+    this.requisitionPanel = new RequisitionPanel(this, (id) => {
+      this.requisitionPanel.hide();
+      this.requisitioning = false;
+      events.emit(GameEvents.RequisitionPicked, { id });
+      resumeAudio();
+      this.scene.resume('Game');
+    }, () => events.emit(GameEvents.RequisitionAppealed));
 
     this.hintText = this.add.text(0, 0, '', {
       ...style, fontSize: '22px', fontStyle: '900', color: '#0d2b2e', backgroundColor: '#ffe66d', padding: { x: 14, y: 8 }, align: 'center',
@@ -193,11 +205,9 @@ export class HudScene extends Phaser.Scene {
     const onRound = (p: RoundPayload) => {
       if (p.special) {
         this.roundText.setText(`ROUND ${p.round}`);
-        this.showBanner(p.special, p.title.split(': ').slice(1).join(': '), 2600);
-        this.banner.setColor('#ffe66d');
+        this.showBanner(p.special, p.title.split(': ').slice(1).join(': '), 2600, '#ffe66d');
         return;
       }
-      this.banner.setColor(COLORS.uiText);
       this.roundText.setText(`ROUND ${p.round}`);
       this.showBanner(`ROUND ${p.round}`, p.title);
     };
@@ -231,6 +241,18 @@ export class HudScene extends Phaser.Scene {
       this.interactNote.setText(p.near ? [p.note, p.hold && p.affordable ? 'HOLD TO BUY' : ''].filter(Boolean).join('\n') : '').setVisible(p.near);
     };
     const onRoomEntered = (p: RoomPayload) => this.roomText.setText(`📍 ${p.name.toUpperCase()}`);
+    const onRequisition = (p: RequisitionPayload) => {
+      if (!this.requisitioning) {
+        if (this.paused) this.resume();
+        this.requisitioning = true;
+        this.releaseInputs();
+        this.scene.pause('Game');
+      }
+      this.requisitionPanel.show(p);
+    };
+    const onDenied = (p: { title: string; line: string }) => {
+      this.showBanner(p.title, p.line, 2600, '#ff6b6b');
+    };
     const onTool = (p: { name: string }) => this.showBanner(p.name.toUpperCase(), 'New tool! Tap SWAP to switch back to the bottle.', 2000);
     const onRoomUnlocked = (p: RoomPayload) => this.showBanner(`${p.name.toUpperCase()} OPEN`, 'More room to run. More places for germs, too.', 1800);
     const onBossDown = () => this.time.delayedCall(600, () => this.bossBar.setVisible(false));
@@ -264,6 +286,8 @@ export class HudScene extends Phaser.Scene {
       [GameEvents.RoomEntered, onRoomEntered],
       [GameEvents.RoomUnlocked, onRoomUnlocked],
       [GameEvents.ToolUnlocked, onTool],
+      [GameEvents.RequisitionOpened, onRequisition],
+      [GameEvents.ClaimDenied, onDenied],
     ];
     for (const [name, fn] of listeners) events.on(name, fn);
     this.events.once('shutdown', () => {
@@ -480,9 +504,9 @@ export class HudScene extends Phaser.Scene {
     this.tweens.add({ targets: this.vignette, alpha: 0, duration: 400 });
   }
 
-  private showBanner(title: string, subtitle: string, holdMs = 2200): void {
+  private showBanner(title: string, subtitle: string, holdMs = 2200, color: string = COLORS.uiText): void {
     for (const t of [this.banner, this.bannerSub]) this.tweens.killTweensOf(t);
-    this.banner.setText(title).setAlpha(0).setScale(1.6);
+    this.banner.setText(title).setColor(color).setAlpha(0).setScale(1.6);
     this.bannerSub.setText(subtitle).setAlpha(0);
     this.tweens.add({ targets: this.banner, alpha: 1, scale: 1, duration: 350, ease: 'Back.out' });
     this.tweens.add({ targets: this.bannerSub, alpha: 1, duration: 350, delay: 150 });
@@ -525,6 +549,7 @@ export class HudScene extends Phaser.Scene {
     this.fpsText?.setOrigin(1, 0).setPosition(infoX, this.safe.top + m + 30);
     this.roomText.setPosition(infoX, this.safe.top + m + (DEBUG.overlay ? 110 : 8));
     this.layoutPauseMenu(width, height);
+    this.requisitionPanel.layout(width, height);
     const right = width - this.safe.right - m;
     const refillY = rightY - CONTROLS.buttons.sprayRadius - CONTROLS.buttons.refillRadius - 24;
     this.refillButton.setPosition(right - CONTROLS.buttons.refillRadius, refillY);
@@ -653,9 +678,20 @@ export class HudScene extends Phaser.Scene {
   /** Freezes the game and shows the pause menu. Safe to call any time (ignored if already paused or the run is over). */
   pause(): void {
     const game = this.scene.get('Game') as GameScene;
-    if (this.paused || !this.scene.isActive('Game') || game.isRunOver) return;
+    if (this.paused || this.requisitioning || !this.scene.isActive('Game') || game.isRunOver) return;
     this.paused = true;
-    // Let go of everything, so nothing is stuck "held" when play resumes
+    this.releaseInputs();
+    this.scene.pause('Game');
+    this.quitArmedUntil = 0;
+    this.quitItem.setText('QUIT TO MENU').setColor(COLORS.uiText);
+    this.pauseTip.setText(`Tip: ${Phaser.Utils.Array.GetRandom(TIPS)}`);
+    this.refreshSoundToggle();
+    this.refreshAutoAimToggle();
+    this.pauseMenu.setVisible(true);
+  }
+
+  /** Lets go of everything, so nothing is stuck "held" when play resumes. */
+  private releaseInputs(): void {
     this.moveStick.release();
     this.aimStick?.release();
     this.endSprayTouch();
@@ -666,13 +702,6 @@ export class HudScene extends Phaser.Scene {
       moveX: 0, moveY: 0, aiming: false, firing: false,
       refillRequested: false, purgeRequested: false, interactRequested: false, swapRequested: false,
     });
-    this.scene.pause('Game');
-    this.quitArmedUntil = 0;
-    this.quitItem.setText('QUIT TO MENU').setColor(COLORS.uiText);
-    this.pauseTip.setText(`Tip: ${Phaser.Utils.Array.GetRandom(TIPS)}`);
-    this.refreshSoundToggle();
-    this.refreshAutoAimToggle();
-    this.pauseMenu.setVisible(true);
   }
 
   resume(): void {

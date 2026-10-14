@@ -190,6 +190,20 @@ export const sfx = {
     tone(c, o, t, 0.08, 1500, 1500, 0.15, 'square');
     tone(c, o, t + 0.08, 0.3, 2000, 2000, 0.15, 'triangle');
   }),
+  /** Disinfectant Wipes: a quick swish (a lower, longer one for a DEEP CLEAN) */
+  swipe: (big = false) => play('swipe', 60, (c, o, t) => noiseBurst(c, o, t, big ? 0.18 : 0.1, big ? 1400 : 2400, 0.3, 'bandpass')),
+  /** Gel Launcher: a hollow thunk, then a wet splat when it lands (sfx.splat) */
+  lob: () => play('lob', 120, (c, o, t) => tone(c, o, t, 0.12, 260, 120, 0.35, 'triangle')),
+  /** Defib Paddles: a charge whine and a crackling ZAP */
+  zap: () => play('zap', 120, (c, o, t) => {
+    tone(c, o, t, 0.08, 600, 2400, 0.12, 'sawtooth');
+    noiseBurst(c, o, t + 0.08, 0.12, 4500, 0.3, 'highpass');
+  }),
+  /** CLAIM DENIED: a sad rubber stamp */
+  stamp: () => play('stamp', 300, (c, o, t) => {
+    noiseBurst(c, o, t, 0.08, 300, 0.45, 'lowpass');
+    tone(c, o, t + 0.1, 0.4, 220, 110, 0.25, 'square');
+  }),
   /** Can't afford it / nothing to pour */
   denied: () => play('denied', 300, (c, o, t) => {
     tone(c, o, t, 0.12, 200, 200, 0.2, 'square');

@@ -33,8 +33,8 @@ export class BottleMeter extends Phaser.GameObjects.Container {
     this.liquid.height = (BottleMeter.H - 8) * frac;
     // Shift toward orange then red as it runs low
     this.liquid.fillColor = frac > 0.3 ? 0x7fd3ff : frac > 0.12 ? 0xffb347 : 0xff5a5a;
-    const main = refillProgress >= 0 ? 'REFILLING…' : `${Math.ceil(ammo)}${p.unit === '%' ? '%' : ' mL'}`;
-    const spare = p.selfCharging ? 'SELF-CHARGING' : `JUG ${Math.ceil(reserve)}`;
+    const main = refillProgress >= 0 ? 'REFILLING…' : `${Math.ceil(ammo)}${p.unit === '%' ? '%' : ` ${p.unit}`}`;
+    const spare = p.selfCharging ? 'SELF-CHARGING' : `${p.spareName} ${Math.ceil(reserve)}`;
     this.text.setText(`${main}\n${spare}`).setColor(!p.selfCharging && reserve <= 0 ? '#ffb3b3' : '#e8fff9');
   }
 }

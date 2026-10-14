@@ -5,13 +5,14 @@ import { COLORS } from '../config/theme';
 import { DEBUG } from '../core/debug';
 import { useGameTime } from '../core/gameClock';
 import { damp } from '../core/math';
-import { events, GameEvents, type RoomPayload, type RoundPayload, type RunResult, type StationPayload, type StreakPayload } from '../core/events';
+import { events, GameEvents, type RequisitionPayload, type RoomPayload, type RoundPayload, type RunResult, type StationPayload, type StreakPayload } from '../core/events';
 import { inputState } from '../core/inputState';
 import { settings } from '../core/settings';
 import { recordRun } from '../core/save';
 import { newRunStats, type RunStats } from '../core/runStats';
 import { initSfx, sfx } from '../core/sfx';
-import { CRATE_POOL, EQUIPMENT, STARTING_EQUIPMENT } from '../data/equipment';
+import { CRATE_POOL, EQUIPMENT, STARTING_EQUIPMENT, type EquipmentDef } from '../data/equipment';
+import { DENIED_ITEMS } from '../data/requisition';
 import { GERMS } from '../data/germs';
 import { WAVES } from '../data/waves';
 import { CLINIC } from '../data/clinic';
@@ -21,6 +22,7 @@ import { Glob } from '../entities/Glob';
 import { Germ, type GermScaling } from '../entities/Germ';
 import type { Patient } from '../entities/Patient';
 import { Player } from '../entities/Player';
+import { Arsenal } from '../systems/Arsenal';
 import { FlowField } from '../systems/FlowField';
 import { steerCharger, steerHealer, steerSpitter, type BehaviorHost } from '../systems/GermBehaviors';
 import { Puddles } from '../systems/Puddles';
@@ -95,6 +97,14 @@ export class GameScene extends Phaser.Scene {
   private behaviorHost!: BehaviorHost;
   /** Tools carried: the bottle, plus one from a supply crate. */
   private loadout: Sprayer[] = [];
+  /** Wipes, Gel Launcher and Defib Paddles: tools that don't spray. */
+  private arsenal!: Arsenal;
+  /** Gel Launcher puddles: they slow germs, not Eugene. */
+  private gel!: Puddles;
+  /** A Supply Requisition being filled in: the crate, the two tools on the form, appeals so far. */
+  private requisition?: { crate: Obstacle; options: string[]; appeals: number };
+  /** Chance a claim or appeal is denied (tests set it). */
+  claimDeniedChance = 0;
   private slot = 0;
   private fx!: Fx;
   private flow!: FlowField;
@@ -192,6 +202,18 @@ export class GameScene extends Phaser.Scene {
     this.germs = this.physics.add.group({ classType: Germ, maxSize: 60, defaultKey: 'germ-basic' });
     this.globs = this.physics.add.group({ classType: Glob, maxSize: 16, defaultKey: 'glob' });
     this.puddles = new Puddles(this);
+    this.gel = new Puddles(this, 0x80deea);
+    this.arsenal = new Arsenal({
+      scene: this,
+      germs: () => (this.germs.getChildren() as Germ[]).filter((c) => c.active),
+      lineClear: (x1, y1, x2, y2) => this.flow.lineClear(x1, y1, x2, y2),
+      hit: (g, def, damage, angle, knockback, pierces) => this.hitGerm(g, def, damage, angle, knockback, pierces),
+      gel: this.gel,
+      aimTarget: () => (this.aimLock?.active ? this.aimLock : undefined),
+      say: (x, y, text, color, size) => this.fx.number(x, y, text, color, size),
+    });
+    this.requisition = undefined;
+    this.claimDeniedChance = BALANCE.economy.claimDeniedChance;
     this.powerups = new Powerups(this, (def, t) => this.onPowerup(def, t));
     const telegraphs = this.add.graphics().setDepth(7);
     this.behaviorHost = {
@@ -210,7 +232,7 @@ export class GameScene extends Phaser.Scene {
       },
       fireGlob: (g, angle) => this.fireGlob(g, angle),
     };
-    this.loadout = [new Sprayer(EQUIPMENT[STARTING_EQUIPMENT], this.droplets)];
+    this.loadout = [this.makeTool(STARTING_EQUIPMENT)];
     this.stations = this.buildStations();
     this.runStats = newRunStats(this.time.now);
     this.slot = 0;
@@ -275,11 +297,17 @@ export class GameScene extends Phaser.Scene {
       if (p.special) sfx.specialRound();
     };
     const onRoundDone = (p: RoundPayload) => this.onRoundCompleted(p.round);
+    const onPicked = (p: { id: string }) => this.pickRequisition(p.id);
+    const onAppealed = () => this.appealRequisition();
     events.on(GameEvents.RoundStarted, onRoundStart);
     events.on(GameEvents.RoundCompleted, onRoundDone);
+    events.on(GameEvents.RequisitionPicked, onPicked);
+    events.on(GameEvents.RequisitionAppealed, onAppealed);
     this.events.once('shutdown', () => {
       events.off(GameEvents.RoundStarted, onRoundStart);
       events.off(GameEvents.RoundCompleted, onRoundDone);
+      events.off(GameEvents.RequisitionPicked, onPicked);
+      events.off(GameEvents.RequisitionAppealed, onAppealed);
       for (const [name, fn] of sounds) events.off(name, fn);
       this.boss?.destroy();
       this.boss = undefined;
@@ -359,8 +387,10 @@ export class GameScene extends Phaser.Scene {
       const shot = this.sprayer.tryFire(this.nozzle.x, this.nozzle.y, this.player.rotation, time);
       if (shot === 'fired') {
         const d = this.sprayer.def;
-        this.fx.nozzleMist(this.nozzle.x, this.nozzle.y, this.player.rotation, d.spreadDeg, d.color, d.mistPuffs);
-        sfx.spray();
+        if (!d.attack) {
+          this.fx.nozzleMist(this.nozzle.x, this.nozzle.y, this.player.rotation, d.spreadDeg, d.color, d.mistPuffs);
+          sfx.spray();
+        }
       } else if (shot === 'empty' && settings.autoRefill) {
         this.startRefill(time);
       }
@@ -373,8 +403,15 @@ export class GameScene extends Phaser.Scene {
     }
     this.boss?.update(time);
     this.behaviorHost.telegraphs.clear();
+    this.gel.update(time, -1e9, -1e9);
+    const gelOn = this.gel.count > 0;
     for (const g of this.germs.getChildren() as Germ[]) {
       if (!g.active) continue;
+      // Sticky hand-sanitizer gel slows anything (but a boss) that walks through it
+      if (gelOn && !g.def.boss) {
+        const f = this.gel.slowAt(g.x, g.y);
+        if (f < 1) g.slow(time, f, 250);
+      }
       const override = this.boss?.germ === g ? this.boss.movement() : undefined;
       if (override) {
         g.chase(override.target, time, delta, override.speed);
@@ -609,8 +646,6 @@ export class GameScene extends Phaser.Scene {
   private onDropletHit(drop: Droplet, germ: Germ): void {
     if (!drop.active || !germ.active) return;
     if (drop.hit.has(germ)) return; // a piercing beam already hit this one
-    const def = drop.def;
-    const mult = def.effectiveness[germ.def.tag] ?? 1;
     this.fx.dropletSplash(drop.x, drop.y);
     if (drop.pierceLeft > 0) {
       drop.pierceLeft--;
@@ -618,6 +653,13 @@ export class GameScene extends Phaser.Scene {
     } else {
       drop.retire();
     }
+    this.hitGerm(germ, drop.def, drop.damage, drop.rotation, drop.knockback, (drop.def.pierce ?? 0) > 0);
+  }
+
+  /** One hit from any tool: effectiveness by germ type, STAT! crits, foam slow, Spore Pod armor, then the damage. */
+  private hitGerm(germ: Germ, def: EquipmentDef, damage: number, angle: number, knockback: number, pierces: boolean): void {
+    if (!germ.active) return;
+    const mult = def.effectiveness[germ.def.tag] ?? 1;
     // STAT! critical hit
     const fb = BALANCE.feedback;
     const crit = this.powerups.isActive('triage', this.time.now) || Math.random() < fb.critChance;
@@ -630,13 +672,13 @@ export class GameScene extends Phaser.Scene {
     }
     if (def.slow && !germ.def.boss) germ.slow(this.time.now, def.slow.factor, def.slow.ms);
     const time = this.time.now;
-    const armor = this.armorMult(germ, drop.rotation, (def.pierce ?? 0) > 0, time);
+    const armor = this.armorMult(germ, angle, pierces, time);
     if (armor < 1 && time - germ.lastBlockAt > 350) {
       germ.lastBlockAt = time;
       sfx.tink();
       this.fx.number(germ.x, germ.y - germ.def.radius - 10, 'TINK! GET BEHIND IT', '#c8d6e5', 15);
     }
-    this.damageGerm(germ, drop.damage * mult * armor * (crit ? fb.critMult : 1), drop.rotation, drop.knockback * (armor < 1 ? 0.3 : 1));
+    this.damageGerm(germ, damage * mult * armor * (crit ? fb.critMult : 1), angle, knockback * (armor < 1 ? 0.3 : 1));
   }
 
   /** Every way a germ gets hurt goes through here: numbers, boss bar, kills, score and Copays. */
@@ -850,7 +892,7 @@ export class GameScene extends Phaser.Scene {
         info: () => {
           // A crate replaces the crate tool you're carrying; say so (and it's a press-and-hold)
           const replaces = this.loadout[1]?.def.name;
-          return { verb: 'CRATE', cost: eco.crateCost, note: replaces ? `Replaces your ${replaces}` : '', hold: !!replaces };
+          return { verb: 'TOOLS', cost: eco.crateCost, note: replaces ? `Pick 1 of 2. Replaces your ${replaces}` : 'Pick 1 of 2 tools', hold: !!replaces };
         },
       });
     }
@@ -985,15 +1027,98 @@ export class GameScene extends Phaser.Scene {
     this.sprayer.emitChanged(time);
   }
 
-  /** SUPPLY CRATE: pay Copays, get a random tool you don't already have. It replaces your old crate tool. */
-  private openCrate(o: Obstacle, time: number): void {
-    const cost = BALANCE.economy.crateCost;
-    if (!this.canAfford(cost)) return;
+  /** A tool, wired to the arsenal for the ones that don't spray. */
+  private makeTool(id: string): Sprayer {
+    return new Sprayer(EQUIPMENT[id], this.droplets, (def, x, y, a, t, shot, mult) => this.arsenal.fire(def, x, y, a, t, shot, mult));
+  }
+
+  /**
+   * SUPPLY REQUISITION: pay at a crate and fill in the form. Pick one of two tools (never the crate tool
+   * you're carrying), or appeal the decision for a new pair at a rising price. Insurance being insurance,
+   * now and then the claim is simply denied: a joke item and half the money back.
+   */
+  private openCrate(o: Obstacle, _time: number): void {
+    const eco = BALANCE.economy;
+    if (!this.canAfford(eco.crateCost)) return;
+    this.addCopays(-eco.crateCost);
+    if (Math.random() < this.claimDeniedChance) {
+      this.denyClaim(o.x + o.w / 2, o.y + o.h / 2, eco.crateCost);
+      return;
+    }
+    sfx.cash();
+    this.requisition = { crate: o, options: this.requisitionOptions(), appeals: 0 };
+    this.showRequisition('');
+  }
+
+  /** Two tools for the form: not one Eugene carries, and (after an appeal) not the pair he just turned down. */
+  private requisitionOptions(turnedDown: string[] = []): string[] {
     const held = this.loadout.map((t) => t.def.id);
-    const options = CRATE_POOL.filter((id) => !held.includes(id));
-    const def = EQUIPMENT[Phaser.Utils.Array.GetRandom(options.length ? options : CRATE_POOL)];
+    let pool = CRATE_POOL.filter((id) => !held.includes(id) && !turnedDown.includes(id));
+    if (pool.length < 2) pool = CRATE_POOL.filter((id) => !held.includes(id));
+    return Phaser.Utils.Array.Shuffle([...pool]).slice(0, 2);
+  }
+
+  private get appealCost(): number {
+    const eco = BALANCE.economy;
+    return eco.appealCost + eco.appealStep * (this.requisition?.appeals ?? 0);
+  }
+
+  private showRequisition(note: string): void {
+    const r = this.requisition;
+    if (!r) return;
+    const payload: RequisitionPayload = {
+      options: r.options.map((id) => ({ id, name: EQUIPMENT[id].name, blurb: EQUIPMENT[id].blurb ?? '', color: EQUIPMENT[id].color })),
+      appealCost: this.appealCost,
+      canAffordAppeal: this.copays >= this.appealCost,
+      note,
+    };
+    events.emit(GameEvents.RequisitionOpened, payload);
+  }
+
+  /** APPEAL THE DECISION: pay for a fresh pair. The appeal itself can be denied (half of it comes back). */
+  private appealRequisition(): void {
+    const r = this.requisition;
+    if (!r) return;
+    const cost = this.appealCost;
+    if (this.copays < cost) {
+      sfx.denied();
+      return;
+    }
     this.addCopays(-cost);
-    const tool = new Sprayer(def, this.droplets);
+    r.appeals++;
+    if (Math.random() < this.claimDeniedChance) {
+      const refund = Math.round(cost * BALANCE.economy.deniedRefund);
+      this.addCopays(refund);
+      sfx.stamp();
+      this.showRequisition(`APPEAL DENIED. $${refund} refunded. The original decision stands.`);
+      return;
+    }
+    sfx.cash();
+    r.options = this.requisitionOptions(r.options);
+    this.showRequisition(`Appeal #${r.appeals} approved. New options enclosed.`);
+  }
+
+  private pickRequisition(id: string): void {
+    const r = this.requisition;
+    if (!r || !r.options.includes(id)) return;
+    this.requisition = undefined;
+    this.giveTool(id, r.crate, this.time.now);
+  }
+
+  /** CLAIM DENIED: a joke item and half the money back. */
+  private denyClaim(x: number, y: number, cost: number): void {
+    const refund = Math.round(cost * BALANCE.economy.deniedRefund);
+    this.addCopays(refund);
+    sfx.stamp();
+    this.cameras.main.shake(120, 0.004);
+    this.fx.number(x, y - 50, 'CLAIM DENIED', '#ff6b6b', 30);
+    events.emit(GameEvents.ClaimDenied, { title: 'CLAIM DENIED', line: `Enclosed: ${Phaser.Utils.Array.GetRandom(DENIED_ITEMS)}. $${refund} refunded.` });
+  }
+
+  /** Hands Eugene a crate tool (it replaces the one he had) and puts it in his hands. */
+  private giveTool(id: string, o: Obstacle, time: number): void {
+    const def = EQUIPMENT[id];
+    const tool = this.makeTool(id);
     this.loadout[1] = tool;
     this.slot = 1;
     for (const t of this.loadout) t.slots = this.loadout.length;
