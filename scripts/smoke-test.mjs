@@ -362,13 +362,14 @@ try {
     g.setPosition(v.right + 60, scene.player.y);
     g.freeze();
   });
-  await page.waitForFunction(() => window.game.scene.getScene('Hud').arrows.some((a) => a.visible), null, { timeout: 15000 }).catch(() => {});
-  const arrow = await page.evaluate(() => {
+  // Other germs may spawn meanwhile, so look for an arrow at the right edge pointing right
+  const rightArrow = () => {
     const hud = window.game.scene.getScene('Hud');
-    const a = hud.arrows.find((x) => x.visible);
-    return a ? { x: Math.round(a.x), rot: +a.rotation.toFixed(2), w: hud.scale.width } : null;
-  });
-  check(!!arrow && arrow.x > arrow.w * 0.85 && Math.abs(arrow.rot) < 0.4, `off-screen germ gets an edge arrow pointing at it (${JSON.stringify(arrow)})`);
+    return hud.arrows.some((a) => a.visible && a.x > hud.scale.width * 0.85 && Math.abs(a.rotation) < 0.4);
+  };
+  const arrowOk = await page.waitForFunction(rightArrow, null, { timeout: 15000 }).then(() => true, () => false);
+  const arrows = await page.evaluate(() => window.game.scene.getScene('Hud').arrows.filter((a) => a.visible).map((a) => [Math.round(a.x), +a.rotation.toFixed(2)]));
+  check(arrowOk, `off-screen germ gets an edge arrow pointing at it (${JSON.stringify(arrows)})`);
   await page.evaluate(() => window.game.scene.getScene('Game').germs.getChildren().forEach((g) => g.active && g.kill()));
 
   // Spotless: a round without getting hurt pays $10 x the round
