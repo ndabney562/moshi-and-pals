@@ -17,7 +17,8 @@ import { DENIED_ITEMS } from '../data/requisition';
 import { GERMS } from '../data/germs';
 import { WAVES } from '../data/waves';
 import { CLINIC } from '../data/clinic';
-import type { FloorArea, Obstacle, RoomArea, RoomLayout, Stairway } from '../data/rooms';
+import type { FloorArea, Obstacle, ObstacleKind, RoomArea, RoomLayout, Stairway } from '../data/rooms';
+import { SNACKS, type SnackDef } from '../data/vending';
 import { Droplet } from '../entities/Droplet';
 import { Glob } from '../entities/Glob';
 import { Germ, type GermScaling } from '../entities/Germ';
@@ -106,6 +107,12 @@ export class GameScene extends Phaser.Scene {
   private requisition?: { crate: Obstacle; options: string[]; appeals: number };
   /** Chance a claim or appeal is denied (tests set it). */
   claimDeniedChance = 0;
+  /** When each room trap (hand dryer, autoclave, X-ray) can be used again. */
+  private trapReadyAt = new Map<Obstacle, number>();
+  /** Snacks bought this run, the run-long perks they add up to, and the machine's offer while its form is up. */
+  private snacks: string[] = [];
+  private perks = { refill: 1, purge: 1, crit: 1 };
+  private vendingOffer?: string[];
   private slot = 0;
   private fx!: Fx;
   private flow!: FlowField;
@@ -215,6 +222,10 @@ export class GameScene extends Phaser.Scene {
     });
     this.requisition = undefined;
     this.claimDeniedChance = BALANCE.economy.claimDeniedChance;
+    this.trapReadyAt = new Map();
+    this.snacks = [];
+    this.perks = { refill: 1, purge: 1, crit: 1 };
+    this.vendingOffer = undefined;
     this.powerups = new Powerups(this, (def, t) => this.onPowerup(def, t));
     const telegraphs = this.add.graphics().setDepth(7);
     this.behaviorHost = {
@@ -301,6 +312,8 @@ export class GameScene extends Phaser.Scene {
       if (p.round >= 20) this.achieve('attending');
     };
     const onEscaped = () => this.achieve('ama');
+    const onSnack = (p: { id: string }) => this.buySnack(p.id);
+    const onWalkAway = () => { this.vendingOffer = undefined; };
     const onRoundDone = (p: RoundPayload) => this.onRoundCompleted(p.round);
     const onPicked = (p: { id: string }) => this.pickRequisition(p.id);
     const onAppealed = () => this.appealRequisition();
@@ -308,12 +321,16 @@ export class GameScene extends Phaser.Scene {
     events.on(GameEvents.RoundCompleted, onRoundDone);
     events.on(GameEvents.RequisitionPicked, onPicked);
     events.on(GameEvents.BossEscaped, onEscaped);
+    events.on(GameEvents.VendingPicked, onSnack);
+    events.on(GameEvents.VendingCancelled, onWalkAway);
     events.on(GameEvents.RequisitionAppealed, onAppealed);
     this.events.once('shutdown', () => {
       events.off(GameEvents.RoundStarted, onRoundStart);
       events.off(GameEvents.RoundCompleted, onRoundDone);
       events.off(GameEvents.RequisitionPicked, onPicked);
       events.off(GameEvents.BossEscaped, onEscaped);
+      events.off(GameEvents.VendingPicked, onSnack);
+      events.off(GameEvents.VendingCancelled, onWalkAway);
       events.off(GameEvents.RequisitionAppealed, onAppealed);
       for (const [name, fn] of sounds) events.off(name, fn);
       this.boss?.destroy();
@@ -677,7 +694,7 @@ export class GameScene extends Phaser.Scene {
     const mult = def.effectiveness[germ.def.tag] ?? 1;
     // STAT! critical hit
     const fb = BALANCE.feedback;
-    const crit = this.powerups.isActive('triage', this.time.now) || Math.random() < fb.critChance;
+    const crit = this.powerups.isActive('triage', this.time.now) || Math.random() < fb.critChance * this.perks.crit;
     if (crit) {
       germ.pendingCrit = true;
       this.runStats.crits++;
@@ -784,7 +801,7 @@ export class GameScene extends Phaser.Scene {
 
   /** 0..1 while recharging, 1 when ready. */
   private purgeProgress(time: number): number {
-    const cd = BALANCE.purge.cooldownMs;
+    const cd = BALANCE.purge.cooldownMs * this.perks.purge;
     return time >= this.purgeReadyAt ? 1 : 1 - (this.purgeReadyAt - time) / cd;
   }
 
@@ -792,7 +809,7 @@ export class GameScene extends Phaser.Scene {
   private sinusPurge(time: number): void {
     if (time < this.purgeReadyAt || this.player.dead) return;
     const cfg = BALANCE.purge;
-    this.purgeReadyAt = time + cfg.cooldownMs;
+    this.purgeReadyAt = time + cfg.cooldownMs * this.perks.purge;
     this.runStats.purges++;
     const { x, y } = this.player;
     sfx.purge();
@@ -932,6 +949,32 @@ export class GameScene extends Phaser.Scene {
         },
       });
     }
+    // Room traps: use them at their station, then they recharge
+    const traps = BALANCE.traps;
+    const trap = (kind: ObstacleKind, verb: string, cost: number, cooldownMs: number, note: string, fire: (o: Obstacle, t: number) => void) => {
+      for (const o of this.room.obstacles.filter((ob) => ob.kind === kind)) {
+        list.push({
+          o, use: (t) => this.useTrap(o, cost, cooldownMs, t, fire),
+          info: () => {
+            const left = (this.trapReadyAt.get(o) ?? 0) - this.time.now;
+            return left > 0 ? { verb: 'RECHARGING', cost: 0, note: `Ready in ${Math.ceil(left / 1000)} s`, blocked: true } : { verb, cost, note };
+          },
+        });
+      }
+    };
+    trap('handDryer', 'DRY', traps.dryer.cost, traps.dryer.cooldownMs, 'Jet hand dryer: blasts germs back', (o, t) => this.blastDryer(o, t));
+    trap('autoclave', 'STEAM', traps.autoclave.cost, traps.autoclave.cooldownMs, 'Steam cycle: cooks every germ nearby', (o) => this.steamCycle(o));
+    trap('xrayControls', 'X-RAY', traps.xray.cost, traps.xray.cooldownMs, 'A pulse through the walls (you are behind the lead)', () => this.xrayPulse());
+    for (const o of this.room.obstacles.filter((ob) => ob.kind === 'vending')) {
+      list.push({
+        o, use: () => this.openVending(),
+        info: () => {
+          const left = BALANCE.vending.maxPerRun - this.snacks.length;
+          return left <= 0 ? { verb: 'SOLD OUT', cost: 0, note: "That's enough snacks for one shift", blocked: true }
+            : { verb: 'SNACKS', cost: 0, note: `${left} snack${left === 1 ? '' : 's'} left this shift` };
+        },
+      });
+    }
     for (const o of this.room.obstacles.filter((ob) => ob.kind === 'examTable')) {
       list.push({
         o, use: () => this.rest(o),
@@ -965,7 +1008,7 @@ export class GameScene extends Phaser.Scene {
     const eco = BALANCE.economy;
     const info = target?.info();
     const cost = info?.cost ?? 0;
-    const label = info ? (info.blocked ? info.verb : `${info.verb}\n$${cost}`) : '';
+    const label = info ? (info.blocked || cost === 0 ? info.verb : `${info.verb}\n$${cost}`) : '';
     const station: StationPayload = {
       near: !!info, label, affordable: !!info && !info.blocked && this.copays >= cost,
       hold: !!info && !info.blocked && (cost >= eco.holdToBuyFrom || !!info.hold),
@@ -1057,7 +1100,165 @@ export class GameScene extends Phaser.Scene {
 
   /** A tool, wired to the arsenal for the ones that don't spray. */
   private makeTool(id: string): Sprayer {
-    return new Sprayer(EQUIPMENT[id], this.droplets, (def, x, y, a, t, shot, mult) => this.arsenal.fire(def, x, y, a, t, shot, mult));
+    const tool = new Sprayer(EQUIPMENT[id], this.droplets, (def, x, y, a, t, shot, mult) => this.arsenal.fire(def, x, y, a, t, shot, mult));
+    tool.refillScale = this.perks.refill;
+    return tool;
+  }
+
+  private livingGerms(): Germ[] {
+    return (this.germs.getChildren() as Germ[]).filter((g) => g.active);
+  }
+
+  /** Pays for and fires a room trap, then starts its recharge. */
+  private useTrap(o: Obstacle, cost: number, cooldownMs: number, time: number, fire: (o: Obstacle, t: number) => void): void {
+    if ((this.trapReadyAt.get(o) ?? 0) > time) return;
+    if (cost > 0) {
+      if (!this.canAfford(cost)) return;
+      this.addCopays(-cost);
+    }
+    this.trapReadyAt.set(o, time + cooldownMs);
+    fire(o, time);
+  }
+
+  /** Where a wall-mounted trap's effect starts: just in front of it, toward the middle of its room. */
+  private trapOrigin(o: Obstacle, extra = 24): { x: number; y: number } {
+    const cx = o.x + o.w / 2;
+    const cy = o.y + o.h / 2;
+    const room = this.room.rooms.find((r) => cx >= r.x && cx < r.x + r.w && cy >= r.y && cy < r.y + r.h);
+    if (!room) return { x: cx, y: cy };
+    const a = Phaser.Math.Angle.Between(cx, cy, room.x + room.w / 2, room.y + room.h / 2);
+    const d = Math.max(o.w, o.h) / 2 + extra;
+    return { x: cx + Math.cos(a) * d, y: cy + Math.sin(a) * d };
+  }
+
+  /** BATHROOM JET DRYER: VRRRRR. Everything nearby is blown back (and a little dried out). */
+  private blastDryer(o: Obstacle, time: number): void {
+    const cfg = BALANCE.traps.dryer;
+    const { x, y } = this.trapOrigin(o);
+    sfx.dryer();
+    this.cameras.main.shake(220, 0.006);
+    this.fx.number(x, y - 30, 'VRRRRRRRRR!', '#e8fff9', 26);
+    const ring = this.add.circle(x, y, cfg.radius).setStrokeStyle(10, 0xe8fff9, 0.8).setFillStyle(0xe8fff9, 0.12).setDepth(13).setScale(0.1);
+    this.tweens.add({ targets: ring, scale: 1, alpha: 0, duration: 380, ease: 'Cubic.out', onComplete: () => ring.destroy() });
+    let blown = 0;
+    for (const g of this.livingGerms()) {
+      if (Phaser.Math.Distance.Between(x, y, g.x, g.y) > cfg.radius + g.def.radius || !this.flow.lineClear(x, y, g.x, g.y)) continue;
+      blown++;
+      this.damageGerm(g, cfg.damage, Phaser.Math.Angle.Between(x, y, g.x, g.y), cfg.knockback);
+      if (g.active) g.stun(time, cfg.stunMs);
+    }
+    if (blown > 0) this.achieve('airDried');
+  }
+
+  /** LAB AUTOCLAVE: it hisses (get clear!), then a steam cycle cooks every germ in front of it. Armor doesn't help. */
+  private steamCycle(o: Obstacle): void {
+    const cfg = BALANCE.traps.autoclave;
+    const { x, y } = this.trapOrigin(o, cfg.radius * 0.45);
+    sfx.hiss();
+    this.fx.number(x, y - 40, 'HSSSSSSS...', '#e8fff9', 24);
+    const warn = this.add.circle(x, y, cfg.radius).setStrokeStyle(6, 0xffffff, 0.7).setFillStyle(0xffffff, 0.08).setDepth(7);
+    this.tweens.add({ targets: warn, alpha: 0.35, duration: 200, yoyo: true, repeat: -1 });
+    this.time.delayedCall(cfg.windupMs, () => {
+      this.tweens.killTweensOf(warn);
+      warn.destroy();
+      if (this.runOver) return;
+      const puff = this.add.circle(x, y, cfg.radius).setFillStyle(0xffffff, 0.5).setDepth(13).setScale(0.3);
+      this.tweens.add({ targets: puff, scale: 1.15, alpha: 0, duration: 600, ease: 'Cubic.out', onComplete: () => puff.destroy() });
+      this.cameras.main.shake(180, 0.006);
+      let cooked = 0;
+      for (const g of this.livingGerms()) {
+        if (Phaser.Math.Distance.Between(x, y, g.x, g.y) > cfg.radius + g.def.radius || !this.flow.lineClear(x, y, g.x, g.y)) continue;
+        cooked++;
+        this.damageGerm(g, cfg.damage, Phaser.Math.Angle.Between(x, y, g.x, g.y), 200);
+      }
+      this.fx.number(x, y - 40, cooked ? `STERILIZED! ×${cooked}` : 'STERILIZED! (the air)', '#ffe66d', 26);
+      if (cooked > 0) this.achieve('sterilized');
+    });
+  }
+
+  /** X-RAY: a pulse from the machine that goes right through the walls. Eugene is behind the lead partition. */
+  private xrayPulse(): void {
+    const cfg = BALANCE.traps.xray;
+    const m = this.room.obstacles.find((ob) => ob.kind === 'xray');
+    if (!m) return;
+    const x = m.x + m.w / 2;
+    const y = m.y + m.h / 2;
+    sfx.xray();
+    this.cameras.main.shake(260, 0.008);
+    for (const [r, a] of [[1, 0.5], [0.7, 0.35], [0.4, 0.25]]) {
+      const ring = this.add.circle(x, y, cfg.radius * r).setStrokeStyle(8, 0xb2ff59, a + 0.3).setFillStyle(0xb2ff59, a * 0.25).setDepth(13).setScale(0.05);
+      this.tweens.add({ targets: ring, scale: 1, alpha: 0, duration: 520, ease: 'Cubic.out', onComplete: () => ring.destroy() });
+    }
+    let zapped = 0;
+    for (const g of this.livingGerms()) {
+      if (Phaser.Math.Distance.Between(x, y, g.x, g.y) > cfg.radius + g.def.radius) continue;
+      zapped++;
+      this.damageGerm(g, cfg.damage, Phaser.Math.Angle.Between(x, y, g.x, g.y), 120);
+    }
+    this.fx.number(x, y - 60, zapped ? `IMAGING COMPLETE ×${zapped}` : 'IMAGING COMPLETE', '#b2ff59', 26);
+    this.achieve('radiology');
+  }
+
+  /** VENDING MACHINE: three snacks you haven't had this shift; the game waits while you choose. */
+  private openVending(): void {
+    if (this.snacks.length >= BALANCE.vending.maxPerRun) return;
+    const left = SNACKS.filter((s) => !this.snacks.includes(s.id));
+    this.vendingOffer = Phaser.Utils.Array.Shuffle([...left]).slice(0, BALANCE.vending.choices).map((s) => s.id);
+    this.showVending('');
+  }
+
+  private showVending(note: string): void {
+    const offer = this.vendingOffer;
+    if (!offer) return;
+    const left = BALANCE.vending.maxPerRun - this.snacks.length;
+    events.emit(GameEvents.VendingOpened, {
+      note: note || `Exact change only. ${left} snack${left === 1 ? '' : 's'} left this shift.`,
+      options: offer.map((id) => {
+        const s = SNACKS.find((x) => x.id === id)!;
+        return { id, name: `${s.name}  $${s.price}`, blurb: s.blurb, color: s.color };
+      }),
+    });
+  }
+
+  private buySnack(id: string): void {
+    const s = SNACKS.find((x) => x.id === id);
+    if (!s || !this.vendingOffer?.includes(id)) return;
+    if (this.copays < s.price) {
+      sfx.denied();
+      this.showVending(`INSUFFICIENT FUNDS. ${s.name} is $${s.price}; you have $${this.copays}.`);
+      return;
+    }
+    this.addCopays(-s.price);
+    this.snacks.push(id);
+    this.vendingOffer = undefined;
+    this.applySnack(s);
+    sfx.cash();
+    this.fx.number(this.player.x, this.player.y - 70, `${s.name.toUpperCase()}!`, '#ffe66d', 26);
+    this.achieve('snackBreak');
+    events.emit(GameEvents.VendingDone);
+  }
+
+  private applySnack(s: SnackDef): void {
+    switch (s.effect) {
+      case 'maxHp':
+        this.player.maxHp += s.amount;
+        this.player.heal(s.amount);
+        events.emit(GameEvents.PlayerHealthChanged, { hp: this.player.hp, maxHp: this.player.maxHp });
+        break;
+      case 'speed':
+        this.player.setSpeedMod('snack', s.amount);
+        break;
+      case 'refill':
+        this.perks.refill *= s.amount;
+        for (const t of this.loadout) t.refillScale = this.perks.refill;
+        break;
+      case 'purge':
+        this.perks.purge *= s.amount;
+        break;
+      case 'crit':
+        this.perks.crit *= s.amount;
+        break;
+    }
   }
 
   /**
@@ -1524,6 +1725,14 @@ export class GameScene extends Phaser.Scene {
   }
 
   /** Placeholder drawing for each obstacle type. Real sprites replace this later. */
+  /** A small sign over a trap or machine. */
+  private trapLabel(o: Obstacle, text: string): void {
+    this.add.text(o.x + o.w / 2, o.y - 6, text, {
+      fontFamily: 'system-ui, sans-serif', fontSize: '14px', fontStyle: 'bold', color: '#ffffff',
+      backgroundColor: '#0d2b2ecc', padding: { x: 6, y: 2 },
+    }).setOrigin(0.5, 1).setDepth(6);
+  }
+
   private drawObstacle(g: Phaser.GameObjects.Graphics, o: Obstacle): void {
     const outline = 0x1b2b30;
     switch (o.kind) {
@@ -1643,6 +1852,51 @@ export class GameScene extends Phaser.Scene {
           if (tall) g.lineBetween(o.x + 4, o.y + (o.h * i) / 3, o.x + o.w - 4, o.y + (o.h * i) / 3);
           else g.lineBetween(o.x + (o.w * i) / 3, o.y + 4, o.x + (o.w * i) / 3, o.y + o.h - 4);
         }
+        break;
+      }
+      case 'handDryer': {
+        // A steel jet dryer on the wall, with its slot and a little blue light
+        g.fillStyle(0xb0bec5).fillRoundedRect(o.x, o.y, o.w, o.h, 6);
+        g.fillStyle(0x37474f).fillRect(o.x + o.w * 0.2, o.y + o.h * 0.4, o.w * 0.6, o.h * 0.2);
+        g.fillStyle(0x4fc3f7).fillCircle(o.x + o.w * 0.8, o.y + o.h * 0.2 + 3, 3);
+        g.lineStyle(2, outline).strokeRoundedRect(o.x, o.y, o.w, o.h, 6);
+        this.trapLabel(o, '💨 DRYER');
+        break;
+      }
+      case 'autoclave': {
+        // A steel box with a round pressure door and a gauge
+        g.fillStyle(0x90a4ae).fillRoundedRect(o.x, o.y, o.w, o.h, 8);
+        g.fillStyle(0xcfd8dc).fillCircle(o.x + o.w / 2, o.y + o.h / 2 + 4, Math.min(o.w, o.h) * 0.34);
+        g.lineStyle(4, 0x546e7a).strokeCircle(o.x + o.w / 2, o.y + o.h / 2 + 4, Math.min(o.w, o.h) * 0.34);
+        g.fillStyle(0xffffff).fillCircle(o.x + o.w - 12, o.y + 10, 6);
+        g.lineStyle(2, 0xd32f2f).lineBetween(o.x + o.w - 12, o.y + 10, o.x + o.w - 8, o.y + 6);
+        g.lineStyle(3, outline).strokeRoundedRect(o.x, o.y, o.w, o.h, 8);
+        this.trapLabel(o, `♨️ AUTOCLAVE $${BALANCE.traps.autoclave.cost}`);
+        break;
+      }
+      case 'xrayControls':
+        g.fillStyle(0x8d6e63).fillRect(o.x, o.y, o.w, o.h);
+        g.fillStyle(0xd7ccc8).fillRect(o.x + 5, o.y + 5, o.w - 10, o.h - 10);
+        g.fillStyle(0x263238).fillRect(o.x + 12, o.y + 8, o.w * 0.45, o.h - 18); // the screen
+        g.fillStyle(0xb2ff59).fillRect(o.x + 16, o.y + 12, o.w * 0.45 - 8, 4);
+        g.fillStyle(0xd32f2f).fillCircle(o.x + o.w - 18, o.y + o.h / 2, 7); // the big button
+        g.lineStyle(3, outline).strokeRect(o.x, o.y, o.w, o.h);
+        this.trapLabel(o, `☢️ X-RAY $${BALANCE.traps.xray.cost}`);
+        break;
+      case 'vending': {
+        // A tall snack machine: glass front with rows of colourful snacks, a coin slot
+        g.fillStyle(0xc62828).fillRoundedRect(o.x, o.y, o.w, o.h, 6);
+        g.fillStyle(0x263238).fillRect(o.x + 6, o.y + 6, o.w - 12, o.h * 0.68);
+        const colors = [0xffeb3b, 0x76ff03, 0xff9800, 0x80cbc4, 0xa1887f];
+        const rows = 4;
+        for (let r = 0; r < rows; r++) {
+          for (let c = 0; c < 3; c++) {
+            g.fillStyle(colors[(r * 3 + c) % colors.length]).fillRect(o.x + 10 + c * ((o.w - 20) / 3), o.y + 12 + r * ((o.h * 0.68 - 12) / rows), (o.w - 26) / 3, 8);
+          }
+        }
+        g.fillStyle(0x111111).fillRect(o.x + 8, o.y + o.h * 0.8, o.w - 16, 8);
+        g.lineStyle(3, outline).strokeRoundedRect(o.x, o.y, o.w, o.h, 6);
+        this.trapLabel(o, '🥤 SNACKS');
         break;
       }
       case 'compounder': {

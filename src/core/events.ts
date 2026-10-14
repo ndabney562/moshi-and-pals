@@ -59,6 +59,14 @@ export const GameEvents = {
   RequisitionAppealed: 'requisition.appealed',
   /** { title, line } the claim was denied (no form; part refund) */
   ClaimDenied: 'requisition.denied',
+  /** VendingPayload: the vending machine's choices are up (or updated after a failed purchase) */
+  VendingOpened: 'vending.opened',
+  /** { id } the player picked a snack */
+  VendingPicked: 'vending.picked',
+  /** the purchase went through (the HUD closes the form) */
+  VendingDone: 'vending.done',
+  /** the player walked away */
+  VendingCancelled: 'vending.cancelled',
   /** AchievementDef: unlocked for the first time on this device */
   AchievementUnlocked: 'achievement.unlocked',
 } as const;
@@ -71,6 +79,12 @@ export interface RequisitionPayload {
   appealCost: number;
   canAffordAppeal: boolean;
   /** A line under the title ("APPEAL DENIED..."), or '' for the default. */
+  note: string;
+}
+
+/** The vending machine: up to three snacks with prices in their names. */
+export interface VendingPayload {
+  options: RequisitionOption[];
   note: string;
 }
 

@@ -199,6 +199,18 @@ export const sfx = {
     tone(c, o, t, 0.08, 600, 2400, 0.12, 'sawtooth');
     noiseBurst(c, o, t + 0.08, 0.12, 4500, 0.3, 'highpass');
   }),
+  /** Bathroom jet dryer: a long VRRRRR */
+  dryer: () => play('dryer', 400, (c, o, t) => {
+    noiseBurst(c, o, t, 0.7, 900, 0.4, 'bandpass');
+    tone(c, o, t, 0.7, 140, 180, 0.15, 'sawtooth');
+  }),
+  /** Autoclave: a rising hiss */
+  hiss: () => play('hiss', 400, (c, o, t) => noiseBurst(c, o, t, 1.1, 5000, 0.3, 'highpass')),
+  /** X-ray: a charging whine and a thump */
+  xray: () => play('xray', 400, (c, o, t) => {
+    tone(c, o, t, 0.4, 300, 1800, 0.12, 'sine');
+    tone(c, o, t + 0.4, 0.3, 90, 50, 0.4, 'square');
+  }),
   /** CLAIM DENIED: a sad rubber stamp */
   stamp: () => play('stamp', 300, (c, o, t) => {
     noiseBurst(c, o, t, 0.08, 300, 0.45, 'lowpass');

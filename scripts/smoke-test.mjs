@@ -318,13 +318,13 @@ try {
   await holdAt(crateAt, () => window.game.scene.getScene('Hud').requisitioning);
   const form = await page.evaluate(() => {
     const hud = window.game.scene.getScene('Hud');
-    return { open: hud.requisitioning, offered: hud.requisitionPanel.offered, paused: window.game.scene.isPaused('Game'), copays: window.game.scene.getScene('Game').copays };
+    return { open: hud.requisitioning, offered: hud.choicePanel.offered, paused: window.game.scene.isPaused('Game'), copays: window.game.scene.getScene('Game').copays };
   });
   check(form.open && form.offered.length === 2 && form.offered[0] !== form.offered[1] && form.paused && form.copays === 50,
     `a supply crate opens a Supply Requisition: 2 tools to pick from, game waiting (${JSON.stringify(form)})`);
   const panelAt = (what) => page.evaluate((w) => {
-    const p = window.game.scene.getScene('Hud').requisitionPanel;
-    const o = w === 'appeal' ? p.appeal : p.cards[w].bg;
+    const p = window.game.scene.getScene('Hud').choicePanel;
+    const o = w === 'appeal' ? p.extra : w === 'cancel' ? p.cancel : p.cards[w].bg;
     const canvas = window.game.canvas.getBoundingClientRect();
     const k = canvas.width / window.game.scale.width;
     return { x: canvas.left + o.x * k, y: canvas.top + o.y * k };
@@ -336,8 +336,8 @@ try {
   });
   const appealAt = await panelAt('appeal');
   await page.touchscreen.tap(appealAt.x, appealAt.y);
-  await page.waitForFunction((first) => !window.game.scene.getScene('Hud').requisitionPanel.offered.includes(first[0]), form.offered, { timeout: 10000 }).catch(() => {});
-  const appealed = await page.evaluate(() => ({ offered: window.game.scene.getScene('Hud').requisitionPanel.offered, copays: window.game.scene.getScene('Game').copays }));
+  await page.waitForFunction((first) => !window.game.scene.getScene('Hud').choicePanel.offered.includes(first[0]), form.offered, { timeout: 10000 }).catch(() => {});
+  const appealed = await page.evaluate(() => ({ offered: window.game.scene.getScene('Hud').choicePanel.offered, copays: window.game.scene.getScene('Game').copays }));
   check(appealed.copays === 100 && appealed.offered.length === 2 && !appealed.offered.some((id) => form.offered.includes(id)),
     `APPEAL THE DECISION ($100) swaps in two different tools (${JSON.stringify(appealed)})`);
   const pickAt = await panelAt(0);
@@ -628,6 +628,97 @@ try {
     return { copays: scene.copays, form: hud.requisitioning, same: scene.loadout.map((t) => t.def.id).join() === tools, banner: hud.banner.text, line: hud.bannerSub.text };
   });
   check(denied.copays === 175 && !denied.form && denied.same && denied.banner === 'CLAIM DENIED', `a denied claim refunds half and sends a joke item (${JSON.stringify(denied)})`);
+
+  // ROOM TRAPS (M14): the bathroom dryer blasts germs back, the X-ray pulses through walls, the autoclave cooks
+  const traps = await page.evaluate(() => {
+    const scene = window.game.scene.getScene('Game');
+    for (const g of scene.germs.getChildren()) if (g.active) g.kill();
+    for (const id of ['bath2', 'lab', 'xray']) scene.unlockRoom(id);
+    scene.addCopays(500 - scene.copays);
+    const st = (kind) => scene.stations.find((s) => s.o.kind === kind);
+    const at = (x, y) => {
+      const before = new Set(scene.germs.getChildren().filter((c) => c.active));
+      scene.spawnGermAt('basic', x, y, true);
+      const g = scene.germs.getChildren().find((c) => c.active && !before.has(c));
+      g.freezeFor(scene.time.now, 8000);
+      g.maxHp = g.hp = 1000; // tough enough to survive, so no kill Copays muddy the prices
+      return g;
+    };
+    const hurt = (g, hp) => !g.active || g.hp < hp;
+    const dryer = st('handDryer');
+    const p = scene.trapOrigin(dryer.o);
+    const dg = at(p.x, p.y + 10);
+    const dhp = dg.hp;
+    dryer.use(scene.time.now);
+    const dry = { hurt: hurt(dg, dhp), after: dryer.info().verb };
+    const m = scene.room.obstacles.find((o) => o.kind === 'xray');
+    const xg = at(m.x + m.w / 2, m.y - 260); // the other side of the X-ray room's wall
+    const xhp = xg.hp;
+    st('xrayControls').use(scene.time.now);
+    const xray = hurt(xg, xhp);
+    const ac = st('autoclave');
+    const q = scene.trapOrigin(ac.o, 70);
+    window.__steamed = at(q.x, q.y);
+    window.__steamedHp = window.__steamed.hp;
+    ac.use(scene.time.now);
+    return { dry, xray, copays: scene.copays };
+  });
+  check(traps.dry.hurt && traps.dry.after === 'RECHARGING', `the bathroom hand dryer blasts a germ, then recharges (${JSON.stringify(traps.dry)})`);
+  check(traps.xray && traps.copays === 435, `the X-ray pulse goes through walls ($40; the autoclave $25) (${JSON.stringify(traps)})`);
+  const steamed = await page.waitForFunction(() => !window.__steamed.active || window.__steamed.hp < window.__steamedHp, null, { timeout: 15000 }).then(() => true, () => false);
+  check(steamed, 'the autoclave hisses, then its steam cycle cooks the germ in front of it');
+
+  // VENDING MACHINE (M14): three snacks, buy one (a run-long perk), too poor for another, walk away
+  await page.evaluate(() => {
+    const scene = window.game.scene.getScene('Game');
+    for (const g of scene.germs.getChildren()) if (g.active) g.kill();
+    scene.addCopays(1000 - scene.copays);
+    scene.stations.find((s) => s.o.kind === 'vending').use(scene.time.now);
+  });
+  await page.waitForFunction(() => window.game.scene.isPaused('Game'), null, { timeout: 5000 }).catch(() => {});
+  const vend = await page.evaluate(() => {
+    const hud = window.game.scene.getScene('Hud');
+    return { open: hud.choosing === 'vending', offered: hud.choicePanel.offered, paused: window.game.scene.isPaused('Game') };
+  });
+  check(vend.open && vend.offered.length === 3 && vend.paused, `the vending machine offers three snacks while the game waits (${JSON.stringify(vend)})`);
+  const snackAt = await panelAt(0);
+  await page.touchscreen.tap(snackAt.x, snackAt.y);
+  await page.waitForFunction(() => !window.game.scene.getScene('Hud').choosing, null, { timeout: 10000 }).catch(() => {});
+  const bought = await page.evaluate(() => {
+    const scene = window.game.scene.getScene('Game');
+    return { snacks: scene.snacks, copays: scene.copays, running: !window.game.scene.isPaused('Game') };
+  });
+  check(bought.snacks.length === 1 && bought.snacks[0] === vend.offered[0] && bought.copays < 1000 && bought.running, `buying a snack takes the Copays and closes the machine (${JSON.stringify(bought)})`);
+  const broke = await page.evaluate(() => {
+    const scene = window.game.scene.getScene('Game');
+    scene.addCopays(-scene.copays);
+    scene.stations.find((s) => s.o.kind === 'vending').use(scene.time.now);
+    const hud = window.game.scene.getScene('Hud');
+    return { offered: hud.choicePanel.offered };
+  });
+  const brokeAt = await panelAt(0);
+  await page.touchscreen.tap(brokeAt.x, brokeAt.y);
+  await page.waitForTimeout(200);
+  const poor = await page.evaluate(() => {
+    const hud = window.game.scene.getScene('Hud');
+    return { open: hud.choosing === 'vending', note: hud.choicePanel.note.text };
+  });
+  check(poor.open && poor.note.startsWith('INSUFFICIENT FUNDS') && !broke.offered.includes(bought.snacks[0]), `with no Copays the machine says so and stays open (${JSON.stringify(poor)})`);
+  const awayAt = await panelAt('cancel');
+  await page.touchscreen.tap(awayAt.x, awayAt.y);
+  await page.waitForFunction(() => !window.game.scene.getScene('Hud').choosing && !window.game.scene.isPaused('Game'), null, { timeout: 10000 }).catch(() => {});
+  const away = await page.evaluate(() => !window.game.scene.getScene('Hud').choosing && !window.game.scene.isPaused('Game'));
+  check(away, 'WALK AWAY closes the machine and play resumes');
+  await page.evaluate(() => {
+    // Back to a plain Eugene for the rest of the test
+    const scene = window.game.scene.getScene('Game');
+    scene.snacks = [];
+    scene.perks = { refill: 1, purge: 1, crit: 1 };
+    for (const t of scene.loadout) t.refillScale = 1;
+    scene.player.maxHp = 100;
+    scene.player.hp = Math.min(scene.player.hp, 100);
+    scene.player.setSpeedMod('snack', null);
+  });
   await page.evaluate(() => {
     const scene = window.game.scene.getScene('Game');
     scene.slot = 0;

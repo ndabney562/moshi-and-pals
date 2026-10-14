@@ -1,5 +1,20 @@
 # Changelog
 
+## v0.14.0: Milestone 14, the clinic fights back
+- **Room traps.** Stand at one and press USE. Each one recharges after use.
+  - **Bathroom jet hand dryers** (all four bathrooms, free): VRRRRR. Every germ nearby is blown back across the room and stunned. Recharges in 20 s.
+  - **Lab autoclave** ($25): it hisses for a second (get clear), then a steam cycle cooks every germ in front of it for 140, armor or not. Recharges in 30 s.
+  - **X-ray** ($40, at the controls behind the lead partition): a pulse from the machine that goes **through walls**, 60 to every germ within 520 px. Recharges in 25 s.
+- **Vending machine** in the waiting room. The game waits while it offers three snacks you haven't had this shift, and you can buy up to three per run:
+  - **Protein Bar:** +25 max health.
+  - **Energy Drink:** walk 12% faster.
+  - **Cold Brew:** refills pour 30% faster.
+  - **Menthol Lozenge:** Sinus Purge recharges 25% faster.
+  - **Fortune Cookie:** twice the STAT! chance.
+  Too poor? It says so. WALK AWAY closes it.
+- 4 new achievements: Air Dried, Sterile Field, Radiology Consult, Snack Break (25 in all).
+- Free stations show just their verb on USE (no "$0").
+
 ## v0.13.0: Milestone 13, achievements and offline
 - **21 achievements**, each a small joke that points at a mechanic: *Hand Hygiene Compliant* (first germ), *Steady Hands* (a Perfect Pour), *HRRRNNNKKK* (5 germs in one Purge), *Brake Check* (a Bulldozer into a wall), *Out of Network* (a denied claim), *Against Medical Advice* (let Patient Zero walk out), and more.
   - A gold toast drops in under the score when one unlocks.

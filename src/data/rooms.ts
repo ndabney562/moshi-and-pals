@@ -20,6 +20,8 @@ export type ObstacleKind =
   | 'crate'
   /** M8 clinic: railing around the upstairs "open to below" drop, waiting-room lounge chairs and benches, the elevator. */
   | 'railing' | 'lounge' | 'bench' | 'elevator'
+  /** M14 room traps and the vending machine. */
+  | 'handDryer' | 'autoclave' | 'xrayControls' | 'vending'
   /** M9: the Lab's Compounding Station (weapon upgrades). */
   | 'compounder';
 

@@ -30,6 +30,9 @@ export class Sprayer {
   /** Uses so far (Wipes make every Nth swipe a big one). */
   private uses = 0;
 
+  /** Pour time multiplier (Cold Brew). */
+  refillScale = 1;
+
   /** Compounding Station upgrades bought for this tool (0 = generic). */
   tier = 0;
   /** The tool's current numbers (its base definition plus any upgrades). */
@@ -110,7 +113,7 @@ export class Sprayer {
 
   /** 0..1 through the current refill, or -1 when not refilling. */
   refillProgress(time: number): number {
-    return this.refilling ? Math.min(1, (time - this.refillStartedAt) / this.def.refillMs) : -1;
+    return this.refilling ? Math.min(1, (time - this.refillStartedAt) / (this.def.refillMs * this.refillScale)) : -1;
   }
 
   /** Whether FRESH BOTTLE is boosting damage right now. */
@@ -166,7 +169,7 @@ export class Sprayer {
       this.emitChanged(time);
     }
     if (!this.refilling) return;
-    if (time - this.refillStartedAt >= this.def.refillMs) this.finishRefill();
+    if (time - this.refillStartedAt >= this.def.refillMs * this.refillScale) this.finishRefill();
     this.emitChanged(time);
   }
 
