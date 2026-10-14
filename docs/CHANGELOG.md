@@ -1,5 +1,9 @@
 # Changelog
 
+## v0.16.1
+- Tapping START fades the title screen to black, then the clinic (and HUD) fade in from black. Play Again fades in too. Timing in `DISPLAY.fadeOutMs/fadeInMs`.
+- Patients' "cleaned up" lines moved into `src/data/patients.ts` with the rest of the dialogue.
+
 ## v0.16.0: Milestone 16, the Pals
 - **Three playable doctors.** Pick who's on shift on the title screen (bottom right). Everyone uses the same tools; what changes is a small passive and the move on the big green button.
   - **Dr. Moshkovich:** SINUS PURGE, the honk that blasts germs away.

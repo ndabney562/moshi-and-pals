@@ -18,6 +18,9 @@ export interface ViolationDef {
   hair: number;
 }
 
+/** What a violator says once they're sprayed into compliance and head home. */
+export const CLEANED_LINES = ['Okay, okay! Sorry, doc!', "Fine! I'll wash my hands!", "I get it! I'm going!"];
+
 export const VIOLATIONS: ViolationDef[] = [
   { id: 'cougher', action: '*COUGH COUGH*', eugene: ['Elbow! ELBOW!', 'Cover your mouth!'], germId: 'sprinter', germs: 1, shirt: 0xe76f51, hair: 0x3b2417 },
   { id: 'chinMask', action: '*mask under nose*', eugene: ['That is a chin hammock.', 'The nose goes INSIDE the mask.'], germId: 'basic', germs: 1, shirt: 0x2a9d8f, hair: 0x111111 },

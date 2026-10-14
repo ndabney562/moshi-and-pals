@@ -11,4 +11,7 @@ export const DISPLAY = {
   backgroundColor: '#0d2b2e',
   /** FPS counter and build label: only with ?debug (the build label is also in the pause menu). */
   showFps: false,
+  /** START: the title fades to black, then the clinic fades in from black. */
+  fadeOutMs: 450,
+  fadeInMs: 650,
 };

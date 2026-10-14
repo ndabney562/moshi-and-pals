@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import { DISPLAY } from '../config/display';
 import { COLORS } from '../config/theme';
 import { applyUpdate, offerFilesToCache, onUpdateReady } from '../core/updates';
 import { progress } from '../core/progress';
@@ -26,6 +27,7 @@ export class TitleScene extends Phaser.Scene {
 
   create(): void {
     this.started = false;
+    this.input.enabled = true;
     const font = 'system-ui, -apple-system, sans-serif';
     this.art = this.add.image(0, 0, 'title-art').setOrigin(0.5, 0);
     this.tweens.add({ targets: this.art, alpha: { from: 0, to: 1 }, duration: 400 });
@@ -126,6 +128,9 @@ export class TitleScene extends Phaser.Scene {
   private begin(): void {
     if (this.started) return;
     this.started = true;
-    this.scene.start('Game');
+    // Fade to black, then the clinic fades in from black (GameScene/HudScene.create)
+    this.input.enabled = false;
+    this.cameras.main.fadeOut(DISPLAY.fadeOutMs, 0, 0, 0);
+    this.cameras.main.once(Phaser.Cameras.Scene2D.Events.FADE_OUT_COMPLETE, () => this.scene.start('Game'));
   }
 }
