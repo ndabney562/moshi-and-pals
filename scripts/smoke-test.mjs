@@ -1050,7 +1050,7 @@ try {
   check(achLine.includes('Hand Hygiene Compliant'), `the Discharge Summary names the achievements unlocked this shift ("${achLine}")`);
   const cme = await page.evaluate(() => ({
     saved: JSON.parse(localStorage.getItem('moshi.progress.v1') ?? '{}'),
-    line: window.game.scene.getScene('GameOver').children.list.find((c) => typeof c.text === 'string' && c.text.includes('CME CREDITS'))?.text ?? '',
+    line: window.game.scene.getScene('GameOver').children.list.flatMap((c) => (c.list ? [c, ...c.list] : [c])).find((c) => typeof c.text === 'string' && c.text.includes('CME CREDITS'))?.text ?? '',
   }));
   check(cme.saved.credits > 0 && cme.line.includes(`+${cme.saved.credits} CME`) && (cme.saved.kills?.basic ?? 0) > 0,
     `the shift earns CME Credits and banks lifetime kills for the Atlas (${cme.line}, ${cme.saved.credits} CME, ${cme.saved.kills?.basic} basics)`);
@@ -1140,6 +1140,11 @@ try {
   await page.waitForFunction(() => window.game.scene.isActive('Hud'), null, { timeout: 15000 }).catch(() => {});
   const onShift = await page.evaluate(() => window.game.scene.getScene('Game').player.maxHp);
   check(onShift === 90, `a shift under Infectious Disease starts with its catch: 90 max health (${onShift})`);
+  // Back to General Practice, so later pages in this test start with a plain Eugene
+  await page.evaluate(() => {
+    const saved = JSON.parse(localStorage.getItem('moshi.progress.v1') ?? '{}');
+    localStorage.setItem('moshi.progress.v1', JSON.stringify({ ...saved, specialty: '' }));
+  });
 
   check(errors.length === 0, `no console errors${errors.length ? ': ' + errors.join(' | ') : ''}`);
 
