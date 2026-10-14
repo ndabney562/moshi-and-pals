@@ -85,7 +85,9 @@ try {
     const g = germs[0];
     return {
       ammo: scene.sprayer.ammo, kills: scene.kills, germs: germs.length,
-      dist: g ? Math.hypot(g.x - eugene.x, g.y - eugene.y) : Infinity,
+      // Distance to auto-aim's target (only germs Eugene can see count; none = Infinity, so no sample)
+      dist: (() => { const t = scene.aimLock?.active ? scene.aimLock : undefined; return t ? Math.hypot(t.x - eugene.x, t.y - eugene.y) : Infinity; })(),
+      nearest: g ? Math.hypot(g.x - eugene.x, g.y - eugene.y) : Infinity,
       facing: eugene.rotation,
       // Auto-aim sticks with its current target (scene.aimLock) until another is clearly closer, so check against that
       aim: (() => { const t = scene.aimLock?.active ? scene.aimLock : g; return t ? Math.atan2(t.y - eugene.y, t.x - eugene.x) : 0; })(),
