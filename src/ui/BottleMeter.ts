@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import type { EquipmentChangedPayload } from '../core/events';
 
 /** HUD squirt bottle that visibly drains as Eugene sprays. */
 export class BottleMeter extends Phaser.GameObjects.Container {
@@ -26,12 +27,14 @@ export class BottleMeter extends Phaser.GameObjects.Container {
     scene.add.existing(this);
   }
 
-  set(ammo: number, capacity: number, refillProgress: number, reserve: number): void {
+  set(p: EquipmentChangedPayload): void {
+    const { ammo, capacity, refillProgress, reserve } = p;
     const frac = refillProgress >= 0 ? refillProgress : ammo / capacity;
     this.liquid.height = (BottleMeter.H - 8) * frac;
     // Shift toward orange then red as it runs low
     this.liquid.fillColor = frac > 0.3 ? 0x7fd3ff : frac > 0.12 ? 0xffb347 : 0xff5a5a;
-    const main = refillProgress >= 0 ? 'REFILLING…' : `${Math.ceil(ammo)} mL`;
-    this.text.setText(`${main}\nJUG ${Math.ceil(reserve)}`).setColor(reserve <= 0 ? '#ffb3b3' : '#e8fff9');
+    const main = refillProgress >= 0 ? 'REFILLING…' : `${Math.ceil(ammo)}${p.unit === '%' ? '%' : ' mL'}`;
+    const spare = p.selfCharging ? 'SELF-CHARGING' : `JUG ${Math.ceil(reserve)}`;
+    this.text.setText(`${main}\n${spare}`).setColor(!p.selfCharging && reserve <= 0 ? '#ffb3b3' : '#e8fff9');
   }
 }

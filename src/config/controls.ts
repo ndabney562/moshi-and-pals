@@ -23,6 +23,7 @@ export const CONTROLS = {
     sprayRadius: 70,
     purgeRadius: 50,
     interactRadius: 46,
+    swapRadius: 40,
   },
   /** The right stick counts as "aiming" only past this fraction of its radius. */
   aimThreshold: 0.3,

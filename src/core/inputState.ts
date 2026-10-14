@@ -19,6 +19,8 @@ export interface InputState {
   purgeRequested: boolean;
   /** Set by the USE button or E key (shown at supply carts and locked doors). */
   interactRequested: boolean;
+  /** Set by the SWAP button or X key (switch between the bottle and a crate tool). */
+  swapRequested: boolean;
   /** Desktop testing: last mouse position on screen, when a mouse is in use. */
   mouseX: number;
   mouseY: number;
@@ -28,6 +30,6 @@ export interface InputState {
 export const inputState: InputState = {
   moveX: 0, moveY: 0,
   aimX: 1, aimY: 0, aiming: false,
-  firing: false, refillRequested: false, purgeRequested: false, interactRequested: false,
+  firing: false, refillRequested: false, purgeRequested: false, interactRequested: false, swapRequested: false,
   mouseX: 0, mouseY: 0, mouseActive: false,
 };

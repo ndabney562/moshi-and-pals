@@ -39,9 +39,16 @@ export const GameEvents = {
   RoomEntered: 'room.entered',
   /** { id, name, cost } a door was bought open */
   RoomUnlocked: 'room.unlocked',
+  /** { name } a supply crate gave Eugene a new tool */
+  ToolUnlocked: 'tool.unlocked',
 } as const;
 
-export interface EquipmentChangedPayload { ammo: number; capacity: number; refillProgress: number; reserve: number; }
+export interface EquipmentChangedPayload {
+  ammo: number; capacity: number; refillProgress: number; reserve: number;
+  name: string; unit: 'mL' | '%'; selfCharging: boolean;
+  /** How many tools Eugene is carrying (SWAP shows at 2). */
+  slots: number;
+}
 export interface StationPayload { near: boolean; label: string; affordable: boolean; }
 export interface RoomPayload { id: string; name: string; cost?: number; }
 export interface GermKilledPayload { germId: string; x: number; y: number; totalKills: number; }
