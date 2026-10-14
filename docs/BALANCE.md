@@ -72,3 +72,7 @@ Values live in `src/config/balance.ts` and `src/config/controls.ts`.
 | Autoclave (Lab) | $25; 1.2 s hiss, then 140 in 175 px (ignores armor); 30 s recharge | `BALANCE.traps.autoclave` |
 | X-ray (controls) | $40; 60 to everything within 520 px of the machine, through walls; 25 s recharge | `BALANCE.traps.xray` |
 | Vending machine | 3 random of 5 snacks, each once, 3 per run; $100-150 | `src/data/vending.ts`, `BALANCE.vending` |
+| CME Credits | 1 per 2 rounds, 3 per new achievement, 2 per boss | `CME` in `src/data/residency.ts` |
+| Specialties | 8-12 CME each; one active | `SPECIALTIES` in `src/data/residency.ts` |
+| Starter Kit | 15 CME; start with any crate tool | `STARTER_KIT_COST` |
+| Atlas notes | unlock at 25 lifetime kills (bosses 1) | `src/data/atlas.ts` |

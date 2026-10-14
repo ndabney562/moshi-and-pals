@@ -4,6 +4,7 @@ import { DEBUG } from './core/debug';
 import { resumeAudio } from './core/sfx';
 import { registerOffline, watchForUpdates } from './core/updates';
 import { applyOrientation, isPortrait, patchForPortrait } from './core/orientation';
+import { BoardScene } from './scenes/BoardScene';
 import { BootScene } from './scenes/BootScene';
 import { GameOverScene } from './scenes/GameOverScene';
 import { GameScene } from './scenes/GameScene';
@@ -37,7 +38,7 @@ const game = new Phaser.Game({
   physics: { default: 'arcade', arcade: { debug: false } },
   input: { activePointers: 3 },
   render: { antialias: true, powerPreference: 'high-performance' },
-  scene: [BootScene, TitleScene, GameScene, HudScene, GameOverScene],
+  scene: [BootScene, TitleScene, GameScene, HudScene, GameOverScene, BoardScene],
 });
 
 patchForPortrait(game);

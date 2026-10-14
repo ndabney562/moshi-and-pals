@@ -10,6 +10,8 @@ import { inputState } from '../core/inputState';
 import { settings } from '../core/settings';
 import { recordRun } from '../core/save';
 import { unlockAchievement } from '../core/achievements';
+import { activeSpecialty, creditsFor, progress, recordShift } from '../core/progress';
+import type { SpecialtyMods } from '../data/residency';
 import { newRunStats, type RunStats } from '../core/runStats';
 import { initSfx, sfx } from '../core/sfx';
 import { CRATE_POOL, EQUIPMENT, STARTING_EQUIPMENT, type EquipmentDef } from '../data/equipment';
@@ -113,6 +115,10 @@ export class GameScene extends Phaser.Scene {
   private snacks: string[] = [];
   private perks = { refill: 1, purge: 1, crit: 1 };
   private vendingOffer?: string[];
+  /** This shift's Specialty (from the Residency Board), if any. */
+  private mods: SpecialtyMods = {};
+  private specialtyName = '';
+  private bossesDefeated = 0;
   private slot = 0;
   private fx!: Fx;
   private flow!: FlowField;
@@ -248,6 +254,8 @@ export class GameScene extends Phaser.Scene {
     this.loadout = [this.makeTool(STARTING_EQUIPMENT)];
     this.stations = this.buildStations();
     this.runStats = newRunStats(this.time.now);
+    this.bossesDefeated = 0;
+    this.applyResidency();
     this.slot = 0;
     this.waves = new WaveDirector(this.time.now, DEBUG.startRound);
     this.patients = new PatientDirector({
@@ -691,7 +699,8 @@ export class GameScene extends Phaser.Scene {
   /** One hit from any tool: effectiveness by germ type, STAT! crits, foam slow, Spore Pod armor, then the damage. */
   private hitGerm(germ: Germ, def: EquipmentDef, damage: number, angle: number, knockback: number, pierces: boolean): void {
     if (!germ.active) return;
-    const mult = def.effectiveness[germ.def.tag] ?? 1;
+    const vs = this.mods.vs;
+    const mult = (def.effectiveness[germ.def.tag] ?? 1) * (this.mods.toolDamage ?? 1) * (vs && vs.tag === germ.def.tag ? vs.mult : 1);
     // STAT! critical hit
     const fb = BALANCE.feedback;
     const crit = this.powerups.isActive('triage', this.time.now) || Math.random() < fb.critChance * this.perks.crit;
@@ -785,6 +794,7 @@ export class GameScene extends Phaser.Scene {
         this.cameras.main.shake(300, 0.01);
         this.fx.number(germ.x, germ.y + germ.def.radius, `+$${germ.def.copays} COPAYS`, '#7fffd4', 28);
         if (this.boss?.germ === germ) this.boss.onDefeated();
+        this.bossesDefeated++;
         events.emit(GameEvents.BossDefeated, { name: germ.def.name, hp: 0, maxHp: germ.maxHp });
       }
       events.emit(GameEvents.GermKilled, { germId: germ.def.id, x: germ.x, y: germ.y, totalKills: this.kills });
@@ -816,13 +826,14 @@ export class GameScene extends Phaser.Scene {
     this.cameras.main.shake(260, 0.012);
     this.tweens.add({ targets: this.player, scale: 1.3, duration: 90, yoyo: true });
     this.fx.number(x, y - 70, 'HRRRNNNKKK!', '#c8ff6b', 30);
-    const ring = this.add.circle(x, y, cfg.radius).setStrokeStyle(14, 0xc8ff6b, 0.9).setFillStyle(0xc8ff6b, 0.15).setDepth(13).setScale(0.1);
+    const radius = cfg.radius * (this.mods.purgeRadius ?? 1);
+    const ring = this.add.circle(x, y, radius).setStrokeStyle(14, 0xc8ff6b, 0.9).setFillStyle(0xc8ff6b, 0.15).setDepth(13).setScale(0.1);
     this.tweens.add({ targets: ring, scale: 1, alpha: 0, duration: 420, ease: 'Cubic.out', onComplete: () => ring.destroy() });
     let purged = 0;
     for (const g of this.germs.getChildren() as Germ[]) {
       if (!g.active) continue;
       const d = Phaser.Math.Distance.Between(x, y, g.x, g.y);
-      if (d > cfg.radius + g.def.radius) continue;
+      if (d > radius + g.def.radius) continue;
       const angle = Phaser.Math.Angle.Between(x, y, g.x, g.y);
       purged++;
       this.damageGerm(g, cfg.damage, angle, cfg.knockback);
@@ -945,7 +956,7 @@ export class GameScene extends Phaser.Scene {
         info: () => {
           const next = this.sprayer.nextTier;
           if (!next) return { verb: 'MAXED', cost: 0, note: `${this.sprayer.def.name}: Prescription Strength`, blocked: true };
-          return { verb: 'UPGRADE', cost: next.cost, note: `${next.name}: ${next.blurb}` };
+          return { verb: 'UPGRADE', cost: this.upgradeCost(next.cost), note: `${next.name}: ${next.blurb}` };
         },
       });
     }
@@ -1042,8 +1053,8 @@ export class GameScene extends Phaser.Scene {
   /** COMPOUNDING STATION: upgrades the tool in Eugene's hands to its next tier. */
   private compound(time: number): void {
     const next = this.sprayer.nextTier;
-    if (!next || !this.canAfford(next.cost)) return;
-    this.addCopays(-next.cost);
+    if (!next || !this.canAfford(this.upgradeCost(next.cost))) return;
+    this.addCopays(-this.upgradeCost(next.cost));
     this.sprayer.upgrade(time);
     sfx.spotless();
     this.cameras.main.shake(140, 0.005);
@@ -1102,7 +1113,41 @@ export class GameScene extends Phaser.Scene {
   private makeTool(id: string): Sprayer {
     const tool = new Sprayer(EQUIPMENT[id], this.droplets, (def, x, y, a, t, shot, mult) => this.arsenal.fire(def, x, y, a, t, shot, mult));
     tool.refillScale = this.perks.refill;
+    if (this.mods.jugSize) tool.scaleJug(this.mods.jugSize);
     return tool;
+  }
+
+  /**
+   * RESIDENCY BOARD: this shift's Specialty (a perk and its catch) and the Starter Kit tool, chosen between
+   * runs with CME Credits.
+   */
+  private applyResidency(): void {
+    const spec = activeSpecialty();
+    this.mods = spec?.mods ?? {};
+    this.specialtyName = spec?.name ?? '';
+    const m = this.mods;
+    if (m.maxHp) {
+      this.player.maxHp += m.maxHp;
+      this.player.hp = this.player.maxHp;
+    }
+    if (m.moveSpeed) this.player.setSpeedMod('specialty', m.moveSpeed);
+    if (m.startCopays) this.copays += m.startCopays;
+    if (m.jugSize) for (const t of this.loadout) t.scaleJug(m.jugSize);
+    const start = progress().startTool;
+    if (start && EQUIPMENT[start] && CRATE_POOL.includes(start)) {
+      this.loadout[1] = this.makeTool(start);
+      for (const t of this.loadout) t.slots = this.loadout.length;
+    }
+  }
+
+  /** Germ toughness for a spawn, with the Specialty's catch (Emergency Medicine: faster germs). */
+  private scaled(s: GermScaling): GermScaling {
+    return this.mods.germSpeed ? { ...s, speedMult: s.speedMult * this.mods.germSpeed } : s;
+  }
+
+  /** A Compounding Station price, after Pharmacology. */
+  private upgradeCost(cost: number): number {
+    return Math.round(cost * (this.mods.upgradeCost ?? 1));
   }
 
   private livingGerms(): Germ[] {
@@ -1454,12 +1499,12 @@ export class GameScene extends Phaser.Scene {
         const speck = i === 0 ? germ : (this.germs.get() as Germ | null);
         if (!speck) break;
         const a = (i / s.count) * Math.PI * 2;
-        speck.spawn(GERMS[s.id], spot.x + Math.cos(a) * 26, spot.y + Math.sin(a) * 26, scaling);
+        speck.spawn(GERMS[s.id], spot.x + Math.cos(a) * 26, spot.y + Math.sin(a) * 26, this.scaled(scaling));
         this.applyOngoingPowerups(speck);
       }
       return true;
     }
-    germ.spawn(def, spot.x, spot.y, scaling);
+    germ.spawn(def, spot.x, spot.y, this.scaled(scaling));
     this.maybeElite(germ);
     this.applyOngoingPowerups(germ);
     if (def.brain === 'diamond') {
@@ -1502,7 +1547,7 @@ export class GameScene extends Phaser.Scene {
     const def = GERMS[id];
     const germ = this.germs.get() as Germ | null;
     if (!def || !germ) return;
-    germ.spawn(def, x, y, { hpMult: WAVES.hpMult(r), speedMult: WAVES.speedMult(r) });
+    germ.spawn(def, x, y, this.scaled({ hpMult: WAVES.hpMult(r), speedMult: WAVES.speedMult(r) }));
     this.applyOngoingPowerups(germ);
   }
 
@@ -1598,6 +1643,9 @@ export class GameScene extends Phaser.Scene {
     const round = this.waves.round;
     const st = this.runStats;
     const record = recordRun(this.score, round, st.bestStreak, this.kills);
+    // CME Credits for the Residency Board (and lifetime kills for the Atlas)
+    const cme = creditsFor(round, st.achievements.length, this.bossesDefeated);
+    recordShift(cme, st.kills);
     const [favId, favCount] = Object.entries(st.kills).sort((a, b) => b[1] - a[1])[0] ?? [];
     const killer = st.killer ? GERMS[st.killer] : undefined;
     const result: RunResult = {
@@ -1613,6 +1661,8 @@ export class GameScene extends Phaser.Scene {
       favoriteVictim: favId ? { name: GERMS[favId]?.name ?? favId, count: favCount ?? 0 } : undefined,
       totalKills: record.next.totalKills, runs: record.next.runs,
       newAchievements: [...st.achievements],
+      cme,
+      specialty: this.specialtyName,
     };
     this.time.delayedCall(1600, () => {
       this.scene.stop('Hud');

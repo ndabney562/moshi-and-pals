@@ -1,5 +1,13 @@
 # Changelog
 
+## v0.15.0: Milestone 15, residency
+- **CME Credits.** Every shift earns Continuing Medical Education credits: 1 per two rounds reached, 3 per new achievement and 2 per boss defeated. The Discharge Summary shows what you earned.
+- **The Residency Board** (🎓 on the title screen) spends them. It sells options, not raw power:
+  - **Specialties**, one at a time, each a perk with a catch. *Infectious Disease* (+25% vs viruses, −10 health), *Pulmonology* (Purge reaches 30% farther, −10% tool damage), *Sports Medicine* (+10% speed, −10 health), *Emergency Medicine* (start with $150, germs 5% faster), *Pharmacology* (upgrades 20% cheaper, jugs 20% smaller).
+  - **Starter Kit:** pack any crate tool from home and start every shift carrying it.
+- **Microbiology Atlas** on the board. It counts lifetime kills per germ, and each germ's clinical note unlocks at 25 (bosses at 1).
+- The Discharge Summary names the Specialty you worked under.
+
 ## v0.14.0: Milestone 14, the clinic fights back
 - **Room traps.** Stand at one and press USE. Each one recharges after use.
   - **Bathroom jet hand dryers** (all four bathrooms, free): VRRRRR. Every germ nearby is blown back across the room and stunned. Recharges in 20 s.

@@ -125,6 +125,9 @@ export interface RunResult {
   totalKills: number; runs: number;
   /** Achievements unlocked for the first time this run (names). */
   newAchievements: string[];
+  /** CME Credits this shift earned for the Residency Board, and the Specialty worked under ('' = none). */
+  cme: number;
+  specialty: string;
 }
 
 export const events = new Phaser.Events.EventEmitter();
