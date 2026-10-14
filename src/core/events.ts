@@ -43,6 +43,10 @@ export const GameEvents = {
   StreakChanged: 'streak.changed',
   /** { round, copays } finished a round without getting hurt */
   SpotlessRound: 'round.spotless',
+  /** { active: [{ id, name, color, left }] } power-ups running now (left 0..1) */
+  PowerupsChanged: 'powerups.changed',
+  /** { name, blurb, color } a power-up was picked up */
+  PowerupPicked: 'powerup.picked',
   /** { name } a supply crate gave Eugene a new tool */
   ToolUnlocked: 'tool.unlocked',
 } as const;

@@ -18,6 +18,8 @@ export class Sprayer {
   private lastUpdateAt = -1;
   /** Total tools carried, for the HUD's SWAP button. Set by the game scene. */
   slots = 1;
+  /** FREE REFILLS power-up: spraying costs nothing until then. */
+  freeUntil = 0;
   /** FRESH BOTTLE (a Perfect Pour) boosts damage until then. */
   private freshUntil = 0;
   /** This refill already got the spill penalty. */
@@ -41,14 +43,15 @@ export class Sprayer {
   /** Tries to fire from (x, y) toward `angle`. Returns 'fired', 'empty', or 'wait'. */
   tryFire(x: number, y: number, angle: number, time: number): 'fired' | 'empty' | 'wait' {
     if (this.refilling || time < this.nextShotAt) return 'wait';
-    if (this.ammo < this.def.costPerShot) {
+    const free = time < this.freeUntil;
+    if (!free && this.ammo < this.def.costPerShot) {
       this.nextShotAt = time + 250;
       events.emit(GameEvents.EquipmentEmpty);
       return 'empty';
     }
     const d = this.def;
     this.nextShotAt = time + d.fireIntervalMs;
-    this.ammo -= d.costPerShot;
+    if (!free) this.ammo -= d.costPerShot;
     this.lastFiredAt = time;
     const spread = Phaser.Math.DegToRad(d.spreadDeg);
     for (let i = 0; i < d.dropletsPerShot; i++) {

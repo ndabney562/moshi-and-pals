@@ -1,5 +1,20 @@
 # Changelog
 
+## v0.10.0 (in progress): Milestone 10, outbreak
+- **RESISTANT elites** (from round 8, more often later): a tougher (×2.5 health), bigger version of a normal germ with a spiky aura and a label naming its trait:
+  - **Shielded:** a bubble soaks the first half of its health in damage.
+  - **Hasty:** 35% faster.
+  - **Regenerating:** heals 4% of its health every second, so finish it.
+  - **Splitting:** bursts into two germs.
+  Elites pay 3× Copays and points, and **always drop a power-up**.
+- **Power-ups:** pills that drop from elites (and rarely from any germ). They bob, blink, and vanish after 10 s; walk over one to grab it. What's running shows under your health with a draining bar.
+  - **PRIOR AUTHORIZATION:** every germ freezes for 5 s, pending approval.
+  - **FREE REFILLS:** spraying costs nothing for 12 s.
+  - **ER WAIT TIME:** germs move at 30% speed for 8 s (they take a number).
+  - **TRIAGE:** every hit is a STAT! crit for 10 s.
+  - **STAT CLEAN:** a white flash disinfects every germ nearby (bosses lose 15%).
+  - **DOUBLE COPAY:** germs pay double for 15 s.
+
 ## v0.9.0: Milestone 9, grow and learn
 - **Compounding Station** in the Lab (⚗️ UPGRADES): hold USE to upgrade the tool in your hands. Two upgrades per tool, $300 then $700, and each changes how it plays:
   - Squirt Bottle: **Pressure Nozzle** (40% farther), then **Industrial Trigger** (faster, pierces a germ, bigger bottle)

@@ -24,6 +24,8 @@ import { Player } from '../entities/Player';
 import { FlowField } from '../systems/FlowField';
 import { steerSpitter, type BehaviorHost } from '../systems/GermBehaviors';
 import { Puddles } from '../systems/Puddles';
+import { Powerups } from '../systems/Powerups';
+import { ELITE_AFFIXES, type EliteAffix, type PowerupDef } from '../data/powerups';
 import { Fx } from '../systems/Fx';
 import { DiamondBrain, type BossHost } from '../systems/DiamondBrain';
 import { PatientDirector } from '../systems/PatientDirector';
@@ -87,6 +89,7 @@ export class GameScene extends Phaser.Scene {
   /** Sneezer mucus globs in flight, and the puddles they leave. */
   private globs!: Phaser.Physics.Arcade.Group;
   private puddles!: Puddles;
+  private powerups!: Powerups;
   private behaviorHost!: BehaviorHost;
   /** Tools carried: the bottle, plus one from a supply crate. */
   private loadout: Sprayer[] = [];
@@ -187,6 +190,7 @@ export class GameScene extends Phaser.Scene {
     this.germs = this.physics.add.group({ classType: Germ, maxSize: 60, defaultKey: 'germ-basic' });
     this.globs = this.physics.add.group({ classType: Glob, maxSize: 16, defaultKey: 'glob' });
     this.puddles = new Puddles(this);
+    this.powerups = new Powerups(this, (def, t) => this.onPowerup(def, t));
     this.behaviorHost = {
       player: this.player,
       flow: this.flow,
@@ -377,6 +381,7 @@ export class GameScene extends Phaser.Scene {
     this.waves.update(time, alive, (id, scaling) => this.spawnGerm(id, scaling), (id) => this.aliveOf(id));
     // Globs that fly their full range splat where they stop; puddles slow Eugene
     for (const gl of this.globs.getChildren() as Glob[]) if (gl.active && time >= gl.expiresAt) this.globLands(gl);
+    this.powerups.update(time, this.player.x, this.player.y);
     const slow = this.puddles.update(time, this.player.x, this.player.y);
     this.player.setSpeedMod('puddle', slow < 1 ? slow : null);
     this.patients.update(time, delta, this.waves.round, this.waves.spawning, this.waves.isBossRound);
@@ -384,6 +389,9 @@ export class GameScene extends Phaser.Scene {
   }
 
   /** Living germs of one type (for WAVES.aliveLimit). */
+  /** Special rounds can make elites more common (×). */
+  private eliteBoost = 1;
+
   private aliveOf(id: string): number {
     let n = 0;
     for (const g of this.germs.getChildren() as Germ[]) if (g.active && g.def.id === id) n++;
@@ -570,7 +578,7 @@ export class GameScene extends Phaser.Scene {
     }
     // STAT! critical hit
     const fb = BALANCE.feedback;
-    const crit = Math.random() < fb.critChance;
+    const crit = this.powerups.isActive('triage', this.time.now) || Math.random() < fb.critChance;
     if (crit) {
       germ.pendingCrit = true;
       this.runStats.crits++;
@@ -619,7 +627,19 @@ export class GameScene extends Phaser.Scene {
       this.streakUntil = time + BALANCE.streak.windowMs;
       this.lastStreakLeft = 1;
       this.emitStreak(1);
-      this.addCopays(Math.round(germ.def.copays * this.streakMult));
+      const el = BALANCE.elites;
+      const eliteMult = germ.elite ? el.copaysMult : 1;
+      const doubled = this.powerups.isActive('doubleCopay', time) ? 2 : 1;
+      this.addCopays(Math.round(germ.def.copays * this.streakMult * eliteMult * doubled));
+      if (germ.elite) this.score += germ.def.points * (el.pointsMult - 1);
+      // Power-ups: elites always drop one; any other germ now and then
+      if (germ.elite || (!germ.def.boss && Math.random() < BALANCE.powerups.dropChance)) this.powerups.drop(germ.x, germ.y, time);
+      if (germ.elite === 'splitting') {
+        for (let i = 0; i < el.splitInto; i++) {
+          const a = Math.random() * Math.PI * 2;
+          this.spawnGermAt('basic', germ.x + Math.cos(a) * 30, germ.y + Math.sin(a) * 30, true);
+        }
+      }
       this.fx.germSplat(germ.x, germ.y, germ.def.color);
       this.fx.germPop(germ.texture.key, germ.x, germ.y, germ.rotation, germ.scaleX, germ.y - germ.def.radius - 8, !!germ.def.boss);
       this.fx.number(germ.x, germ.y - germ.def.radius - 24, `+${germ.def.points}`, '#ffe66d', germ.def.boss ? 34 : 18);
@@ -1005,6 +1025,8 @@ export class GameScene extends Phaser.Scene {
     const ideal = far.filter((p) => dist(p) <= maxSpawnDistance);
     const spot = Phaser.Utils.Array.GetRandom(ideal.length ? ideal : far.length ? far : spots);
     germ.spawn(def, spot.x, spot.y, scaling);
+    this.maybeElite(germ);
+    this.applyOngoingPowerups(germ);
     if (def.brain === 'diamond') {
       this.boss?.destroy();
       this.boss = new DiamondBrain(this.bossHost(), germ);
@@ -1016,15 +1038,65 @@ export class GameScene extends Phaser.Scene {
     return true;
   }
 
-  /** A germ let loose by a patient's health code violation, at this round's toughness. */
-  private spawnGermAt(id: string, x: number, y: number): void {
+  /** A germ let loose at (x, y) (a patient's violation, a splitting elite), at this round's toughness. */
+  private spawnGermAt(id: string, x: number, y: number, ignoreCap = false): void {
     const r = Math.max(1, this.waves.round);
     // Same on-screen cap as wave spawns, so violations can't flood the room
-    if (this.germs.countActive(true) >= WAVES.maxAlive(r)) return;
+    if (!ignoreCap && this.germs.countActive(true) >= WAVES.maxAlive(r)) return;
     const def = GERMS[id];
     const germ = this.germs.get() as Germ | null;
     if (!def || !germ) return;
     germ.spawn(def, x, y, { hpMult: WAVES.hpMult(r), speedMult: WAVES.speedMult(r) });
+    this.applyOngoingPowerups(germ);
+  }
+
+  /** RESISTANT: from round 8 some germs arrive as elites with a trait. */
+  private maybeElite(germ: Germ, force?: EliteAffix): void {
+    const el = BALANCE.elites;
+    if (germ.def.boss) return;
+    if (!force && Math.random() >= el.chance(this.waves.round) * this.eliteBoost) return;
+    const affix = force ?? Phaser.Utils.Array.GetRandom(Object.keys(ELITE_AFFIXES) as EliteAffix[]);
+    germ.makeElite(affix, el.hpMult, { shield: el.shield, speed: el.hastySpeed });
+  }
+
+  /** Freezes or slows a germ that arrives while Prior Authorization or ER Wait Time is running. */
+  private applyOngoingPowerups(germ: Germ): void {
+    const time = this.time.now;
+    if (this.powerups.isActive('priorAuth', time)) germ.freezeFor(time, this.powerups.until('priorAuth') - time);
+    if (this.powerups.isActive('erWait', time) && !germ.def.boss) germ.slow(time, BALANCE.powerups.erWaitSlow, this.powerups.until('erWait') - time);
+  }
+
+  /** A power-up was picked up: start its effect. */
+  private onPowerup(def: PowerupDef, time: number): void {
+    const cfg = BALANCE.powerups;
+    const living = (this.germs.getChildren() as Germ[]).filter((g) => g.active);
+    sfx.spotless();
+    this.cameras.main.shake(120, 0.004);
+    this.fx.number(this.player.x, this.player.y - 70, `${def.name}!`, '#ffe66d', 26);
+    switch (def.id) {
+      case 'priorAuth':
+        for (const g of living) g.freezeFor(time, def.ms);
+        break;
+      case 'erWait':
+        for (const g of living) if (!g.def.boss) g.slow(time, cfg.erWaitSlow, def.ms);
+        break;
+      case 'freeRefills':
+        for (const t of this.loadout) t.freeUntil = time + def.ms;
+        break;
+      case 'statClean': {
+        const { x, y } = this.player;
+        const ring = this.add.circle(x, y, cfg.statCleanRadius).setStrokeStyle(18, 0xffffff, 0.9).setFillStyle(0xe8fff9, 0.25).setDepth(13).setScale(0.05);
+        this.tweens.add({ targets: ring, scale: 1, alpha: 0, duration: 520, ease: 'Cubic.out', onComplete: () => ring.destroy() });
+        this.cameras.main.flash(160, 255, 255, 255);
+        for (const g of living) {
+          if (Phaser.Math.Distance.Between(x, y, g.x, g.y) > cfg.statCleanRadius) continue;
+          const angle = Phaser.Math.Angle.Between(x, y, g.x, g.y);
+          this.damageGerm(g, g.def.boss ? g.maxHp * cfg.statCleanBoss : g.hp + g.shield + 1, angle, 300);
+        }
+        break;
+      }
+      // triage and doubleCopay are checked where they apply
+    }
   }
 
   private onPatientCleaned(p: Patient): void {

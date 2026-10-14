@@ -83,6 +83,9 @@ export class HudScene extends Phaser.Scene {
   /** Round that just finished without a scratch (the CLEARED banner becomes SPOTLESS). */
   private spotless?: { round: number; copays: number };
   private streakShown = 0;
+  /** Power-ups running now: an icon, a name and a draining bar each, under the health bar. */
+  private readonly powerRows: { icon: Phaser.GameObjects.Image; text: Phaser.GameObjects.Text }[] = [];
+  private powerBars!: Phaser.GameObjects.Graphics;
   /** Pooled edge arrows pointing at off-screen germs. */
   private readonly arrows: Phaser.GameObjects.Image[] = [];
   private readonly threatPicks: { dx: number; dy: number; d: number; color: number; boss: boolean }[] = [];
@@ -129,6 +132,14 @@ export class HudScene extends Phaser.Scene {
       this.arrows.push(this.add.image(0, 0, 'threat-arrow').setVisible(false).setDepth(-0.5));
     }
     this.health = new Bar(this, 240, 22, 0x4cd964, 'EUGENE');
+    this.powerRows.length = 0;
+    for (let i = 0; i < 4; i++) {
+      this.powerRows.push({
+        icon: this.add.image(0, 0, 'pill').setScale(0.6).setVisible(false),
+        text: this.add.text(0, 0, '', { ...tag, fontSize: '14px', fontStyle: 'bold' }).setOrigin(0, 0.5).setVisible(false),
+      });
+    }
+    this.powerBars = this.add.graphics();
     this.bossBar = new Bar(this, 420, 20, 0xd64545, '').setVisible(false);
 
     this.banner = this.add.text(0, 0, '', { ...style, fontSize: '72px', fontStyle: '900' })
@@ -192,6 +203,8 @@ export class HudScene extends Phaser.Scene {
     };
     const onSpotless = (p: { round: number; copays: number }) => { this.spotless = p; };
     const onStreak = (p: StreakPayload) => this.showStreak(p);
+    const onPowerups = (p: { active: { name: string; color: number; left: number }[] }) => this.showPowerups(p.active);
+    const onPicked = (p: { name: string; blurb: string }) => this.showBanner(p.name, p.blurb, 1300);
     const onPurgeUsed = () => this.learn('purge');
     const onBought = () => this.learn('buy');
     const onPerfect = (p: EquipmentChangedPayload) => { if (p.fresh) this.learn('pour'); };
@@ -225,6 +238,8 @@ export class HudScene extends Phaser.Scene {
       [GameEvents.SpotlessRound, onSpotless],
       [GameEvents.StreakChanged, onStreak],
       [GameEvents.PurgeUsed, onPurgeUsed],
+      [GameEvents.PowerupsChanged, onPowerups],
+      [GameEvents.PowerupPicked, onPicked],
       [GameEvents.RoomUnlocked, onBought],
       [GameEvents.ToolUnlocked, onBought],
       [GameEvents.EquipmentChanged, onPerfect],
@@ -389,6 +404,27 @@ export class HudScene extends Phaser.Scene {
       arrow.setVisible(true).setPosition(ex + ux * t, ey + uy * t).setRotation(Math.atan2(uy, ux))
         .setTint(p.color).setScale(p.boss ? 1.6 : 1).setAlpha(0.45 + 0.55 * near);
     }
+  }
+
+  /** Lists running power-ups under the health bar, each with a bar draining as it runs out. */
+  private showPowerups(active: { name: string; color: number; left: number }[]): void {
+    const m = CONTROLS.hudMargin;
+    const x = this.safe.left + m;
+    const y0 = this.safe.top + m + this.health.outerHeight + 22;
+    const g = this.powerBars.clear();
+    this.powerRows.forEach((row, i) => {
+      const p = active[i];
+      row.icon.setVisible(!!p);
+      row.text.setVisible(!!p);
+      if (!p) return;
+      const y = y0 + i * 30;
+      row.icon.setPosition(x + 14, y).setTint(p.color);
+      row.text.setPosition(x + 34, y).setText(p.name);
+      const w = 120;
+      const bx = x + 34, by = y + 12;
+      g.fillStyle(0x000000, 0.45).fillRect(bx, by, w, 4);
+      g.fillStyle(p.color).fillRect(bx, by, w * Math.max(0, p.left), 4);
+    });
   }
 
   /** Shows the streak from 2 kills up; pops a little each time it grows. */

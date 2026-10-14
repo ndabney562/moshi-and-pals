@@ -426,6 +426,48 @@ try {
   });
   check(slowed < 1, `standing in a puddle slows Eugene (speed ×${slowed.toFixed(2)})`);
 
+  // RESISTANT elites: tougher, with a trait; always drop a power-up. Power-ups are picked up by walking over them
+  const elite = await page.evaluate(() => {
+    const scene = window.game.scene.getScene('Game');
+    for (const g of scene.germs.getChildren()) if (g.active) g.kill();
+    scene.spawnGerm('basic', { hpMult: 1, speedMult: 1 });
+    const g = scene.germs.getChildren().find((c) => c.active);
+    const hp0 = g.maxHp;
+    scene.maybeElite(g, 'shielded');
+    const res = { hpx: g.maxHp / hp0, shield: Math.round(g.shield), elite: g.elite };
+    g.setPosition(scene.player.x + 150, scene.player.y);
+    scene.damageGerm(g, 1e6, 0, 0);
+    return { ...res, dead: !g.active, pills: scene.powerups.onFloor };
+  });
+  check(elite.elite === 'shielded' && elite.hpx === 2.5 && elite.shield > 0 && elite.dead && elite.pills >= 1, `a RESISTANT elite is tougher and drops a power-up (${JSON.stringify(elite)})`);
+  const picked = await page.evaluate(() => {
+    const scene = window.game.scene.getScene('Game');
+    scene.spawnGerm('basic', { hpMult: 1, speedMult: 1 });
+    const g = scene.germs.getChildren().find((c) => c.active);
+    g.setPosition(scene.player.x + 300, scene.player.y);
+    scene.powerups.drop(scene.player.x, scene.player.y, scene.time.now, 'priorAuth');
+    return true;
+  });
+  await page.waitForFunction(() => {
+    const scene = window.game.scene.getScene('Game');
+    return scene.powerups.isActive('priorAuth', scene.time.now);
+  }, null, { timeout: 15000 }).catch(() => {});
+  const frozen = await page.evaluate(() => {
+    const scene = window.game.scene.getScene('Game');
+    const g = scene.germs.getChildren().find((c) => c.active);
+    return { active: scene.powerups.isActive('priorAuth', scene.time.now), frozen: !!g && g.frozenUntil > scene.time.now, hud: window.game.scene.getScene('Hud').powerRows[0].text.text };
+  });
+  check(picked && frozen.active && frozen.frozen, `walking over PRIOR AUTHORIZATION freezes the germs (${JSON.stringify(frozen)})`);
+  const cleaned = await page.evaluate(() => {
+    const scene = window.game.scene.getScene('Game');
+    for (let i = 0; i < 3; i++) scene.spawnGerm('basic', { hpMult: 1, speedMult: 1 });
+    for (const g of scene.germs.getChildren()) if (g.active) g.setPosition(scene.player.x + 100 + Math.random() * 200, scene.player.y);
+    const before = scene.germs.countActive(true);
+    scene.onPowerup({ id: 'statClean', name: 'STAT CLEAN', blurb: '', color: 0xffffff, ms: 0 }, scene.time.now);
+    return { before, after: scene.germs.countActive(true) };
+  });
+  check(cleaned.before > 0 && cleaned.after === 0, `STAT CLEAN disinfects everything nearby (${JSON.stringify(cleaned)})`);
+
   // STAIRS (M8 map): buy Upstairs, walk into the west stairs and come out upstairs; germs follow the same way
   await page.evaluate(() => {
     const scene = window.game.scene.getScene('Game');

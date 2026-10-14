@@ -138,6 +138,35 @@ export const BALANCE = {
     /** Purchases this expensive need a press-and-hold on USE (CONTROLS.holdToBuyMs). */
     holdToBuyFrom: 100,
   },
+  /** RESISTANT elites ("antibiotic-resistant" versions of normal germs). */
+  elites: {
+    firstRound: 8,
+    /** Chance a spawning germ is an elite, by round. */
+    chance: (r: number) => (r < 8 ? 0 : Math.min(0.05 + 0.01 * (r - 8), 0.14)),
+    hpMult: 2.5,
+    copaysMult: 3,
+    pointsMult: 3,
+    /** Shielded: a bubble that soaks this fraction of max health first. */
+    shield: 0.5,
+    hastySpeed: 1.35,
+    /** Regenerating: heals this fraction of max health per second. */
+    regenPerSec: 0.04,
+    /** Splitting: bursts into this many basic germs. */
+    splitInto: 2,
+  },
+  /** Power-up pickups. */
+  powerups: {
+    /** Chance any normal germ drops one (elites always do). */
+    dropChance: 0.012,
+    /** Seconds on the floor before it vanishes; it blinks for the last `blinkMs`. */
+    lifeMs: 10000,
+    blinkMs: 3000,
+    pickupRadius: 46,
+    statCleanRadius: 520,
+    /** Stat Clean takes this much of a boss's max health instead of killing it. */
+    statCleanBoss: 0.15,
+    erWaitSlow: 0.3,
+  },
   /** PERFECT POUR: tap REFILL again while the pour is in its sweet spot. */
   pour: {
     /** The sweet spot, as a fraction of the refill time. */
