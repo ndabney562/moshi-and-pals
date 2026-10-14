@@ -245,15 +245,15 @@ try {
   });
   check(restocked.reserve === 480 && restocked.copays === 60, `supply cart restocks the jug for Copays (${JSON.stringify(restocked)})`);
 
-  // Rooms: walk up to the bathroom door and buy it open with Copays.
+  // Rooms: walk up to the HALLWAYS gate and buy it open with Copays.
   // Eugene is made untouchable from here (slow browsers take a while) until the death test.
   await page.evaluate(() => {
     const scene = window.game.scene.getScene('Game');
     scene.player.hp = scene.player.maxHp;
     scene.player.invulnerableUntil = Number.MAX_SAFE_INTEGER;
-    scene.addCopays(250 - scene.copays);
-    const door = scene.lockedDoors.find((d) => d.o.opens === 'bathroom').o;
-    scene.player.setPosition(door.x + door.w + 40, door.y + door.h / 2);
+    scene.addCopays(300 - scene.copays);
+    const door = scene.lockedDoors.find((d) => d.o.opens === 'halls').o;
+    scene.player.setPosition(door.x + door.w / 2, door.y + door.h + 40);
   });
   await page.waitForFunction(() => window.game.scene.getScene('Hud').interactButton.label?.text?.startsWith('OPEN'), null, { timeout: 15000 }).catch(() => {});
   const doorLabel = await page.evaluate(() => window.game.scene.getScene('Hud').interactButton.label?.text);
@@ -261,23 +261,24 @@ try {
   // Purchases of $100+ need a press-and-hold: a quick tap does nothing
   await page.touchscreen.tap(openAt.x, openAt.y);
   await page.waitForTimeout(600);
-  const tapOnly = await page.evaluate(() => window.game.scene.getScene('Game').unlocked.has('bathroom'));
-  check(!tapOnly, 'a quick tap on USE does not buy a $200 door');
-  await holdAt(openAt, () => window.game.scene.getScene('Game').unlocked.has('bathroom'));
+  const tapOnly = await page.evaluate(() => window.game.scene.getScene('Game').unlocked.has('halls'));
+  check(!tapOnly, 'a quick tap on USE does not buy the $250 HALLWAYS gate');
+  await holdAt(openAt, () => window.game.scene.getScene('Game').unlocked.has('halls'));
   const opened = await page.evaluate(() => {
     const scene = window.game.scene.getScene('Game');
     return {
-      unlocked: scene.unlocked.has('bathroom'),
-      doorGone: !scene.lockedDoors.some((d) => d.o.opens === 'bathroom'),
+      unlocked: scene.unlocked.has('halls'),
+      doorGone: !scene.lockedDoors.some((d) => d.o.opens === 'halls'),
       copays: scene.copays,
       room: window.game.scene.getScene('Hud').roomText.text,
     };
   });
-  check(opened.unlocked && opened.doorGone && opened.copays === 50, `USE (${JSON.stringify(doorLabel)}) buys the bathroom door open (${JSON.stringify(opened)})`);
+  check(opened.unlocked && opened.doorGone && opened.copays === 50, `USE (${JSON.stringify(doorLabel)}) buys the HALLWAYS gate open (${JSON.stringify(opened)})`);
   check(opened.room.includes('WAITING ROOM'), `HUD shows which room Eugene is in (${opened.room})`);
-  await page.evaluate(() => window.game.scene.getScene('Game').player.setPosition(300, 1650));
-  await page.waitForFunction(() => window.game.scene.getScene('Hud').roomText.text.includes('BATHROOM'), null, { timeout: 15000 }).catch(() => {});
-  check((await page.evaluate(() => window.game.scene.getScene('Hud').roomText.text)).includes('BATHROOM'), 'walking into the bathroom updates the room label');
+  // Walk into the west hallway (plan 460, 900)
+  await page.evaluate(() => window.game.scene.getScene('Game').player.setPosition(930, 1590));
+  await page.waitForFunction(() => window.game.scene.getScene('Hud').roomText.text.includes('HALLWAYS'), null, { timeout: 15000 }).catch(() => {});
+  check((await page.evaluate(() => window.game.scene.getScene('Hud').roomText.text)).includes('HALLWAYS'), 'walking into the hallways updates the room label');
   await page.screenshot({ path: 'smoke-rooms.png' });
 
   // Supply crate: buy a random new tool, spray with it, then SWAP back to the bottle
@@ -315,7 +316,7 @@ try {
   check(/Replaces your/.test(note), `crate warns which tool it replaces (${JSON.stringify(note)})`);
 
   // Spray zone: a touch anywhere on the right half sprays, and dragging it aims by hand
-  await page.evaluate(() => window.game.scene.getScene('Game').player.setPosition(1500, 1700));
+  await page.evaluate(() => { const sc = window.game.scene.getScene('Game'); sc.player.setPosition(sc.room.playerSpawn.x, sc.room.playerSpawn.y); });
   const zone = await page.evaluate(() => {
     const r = window.game.canvas.getBoundingClientRect();
     return { x: r.left + r.width * 0.62, y: r.top + r.height * 0.55 };
@@ -339,7 +340,8 @@ try {
   // Auto-aim needs line of sight: nothing through walls
   const los = await page.evaluate(() => {
     const f = window.game.scene.getScene('Game').flow;
-    return { throughWall: f.lineClear(500, 1000, 760, 1000), open: f.lineClear(1300, 1800, 1700, 1800) };
+    const sp = window.game.scene.getScene('Game').room.playerSpawn;
+    return { throughWall: f.lineClear(sp.x, sp.y, sp.x, sp.y - 1800), open: f.lineClear(sp.x - 100, sp.y, sp.x + 280, sp.y) };
   });
   check(!los.throughWall && los.open, `line of sight is blocked by walls, clear across open floor (${JSON.stringify(los)})`);
   // Sanitation Streak: quick kills build a Copay multiplier; each kill pops and drops a halo
@@ -358,6 +360,8 @@ try {
   await page.evaluate(() => {
     const scene = window.game.scene.getScene('Game');
     for (const g of scene.germs.getChildren()) if (g.active) g.kill();
+    scene.player.setPosition(1350, 3330); // in front of reception, so the camera isn't against a wall
+    scene.cameras.main.centerOn(1350, 3330);
     scene.spawnGerm('basic', { hpMult: 1, speedMult: 1 });
     const g = scene.germs.getChildren().find((c) => c.active);
     const v = scene.cameras.main.worldView;
@@ -407,10 +411,11 @@ try {
   await page.evaluate(() => {
     const scene = window.game.scene.getScene('Game');
     for (const g of scene.germs.getChildren()) if (g.active) g.kill();
-    scene.player.setPosition(1500, 1700);
+    const sp = scene.room.playerSpawn;
+    scene.player.setPosition(sp.x, sp.y);
     scene.spawnGerm('sneezer', { hpMult: 1, speedMult: 1 });
     const g = scene.germs.getChildren().find((c) => c.active && c.def.id === 'sneezer');
-    g.setPosition(1250, 1800);
+    g.setPosition(sp.x + 280, sp.y);
     g.nextSpitAt = 0;
   });
   const sneezed = await page.waitForFunction(() => window.game.scene.getScene('Game').puddles.count > 0, null, { timeout: 20000 }).then(() => true, () => false);
@@ -422,6 +427,42 @@ try {
     return scene.player.moveScale;
   });
   check(slowed < 1, `standing in a puddle slows Eugene (speed ×${slowed.toFixed(2)})`);
+
+  // STAIRS (M8 map): buy Upstairs, walk into the west stairs and come out upstairs; germs follow the same way
+  await page.evaluate(() => {
+    const scene = window.game.scene.getScene('Game');
+    for (const g of scene.germs.getChildren()) if (g.active) g.kill();
+    scene.unlockRoom('upstairs');
+    const z = scene.room.stairs[0].a.zone;
+    scene.stairsReadyAt = 0;
+    scene.player.setPosition(z.x + z.w / 2, z.y + z.h / 2);
+  });
+  const wentUp = await page.waitForFunction(() => window.game.scene.getScene('Game').player.x >= 3800, null, { timeout: 15000 }).then(() => true, () => false);
+  const upState = await page.evaluate(() => {
+    const scene = window.game.scene.getScene('Game');
+    const cam = scene.cameras.main;
+    return { x: Math.round(scene.player.x), room: window.game.scene.getScene('Hud').roomText.text, camX: Math.round(cam.worldView.x) };
+  });
+  check(wentUp && upState.camX >= 3800, `the stairs take Eugene upstairs, camera follows (${JSON.stringify(upState)})`);
+  const followed = await page.evaluate(() => {
+    const scene = window.game.scene.getScene('Game');
+    scene.spawnGerm('basic', { hpMult: 1, speedMult: 1 });
+    const g = scene.germs.getChildren().find((c) => c.active);
+    const z = scene.room.stairs[0].a.zone;
+    g.setPosition(z.x + z.w / 2, z.y + z.h / 2); // a germ on the ground-floor stairs...
+    return true;
+  });
+  const germUp = await page.waitForFunction(() => window.game.scene.getScene('Game').germs.getChildren().some((g) => g.active && g.x >= 3800), null, { timeout: 15000 }).then(() => true, () => false);
+  check(followed && germUp, 'germs follow Eugene up the stairs');
+  await page.evaluate(() => {
+    const scene = window.game.scene.getScene('Game');
+    for (const g of scene.germs.getChildren()) if (g.active) g.kill();
+    scene.stairsReadyAt = 0;
+    const z = scene.room.stairs[0].b.zone;
+    scene.player.setPosition(z.x + z.w / 2, z.y + z.h / 2);
+  });
+  const wentDown = await page.waitForFunction(() => window.game.scene.getScene('Game').player.x < 3400, null, { timeout: 15000 }).then(() => true, () => false);
+  check(wentDown, 'and back down again');
   await page.evaluate(() => window.game.scene.getScene('Game').germs.getChildren().forEach((g) => g.active && g.kill()));
 
   // Patients: one walks in, commits a health code violation, and gets sprayed into compliance
@@ -485,9 +526,10 @@ try {
     const scene = window.game.scene.getScene('Game');
     for (const g of scene.germs.getChildren()) if (g.active) g.kill();
     scene.player.hp = 100;
-    scene.player.setPosition(1240, 1460);
+    const sp = scene.room.playerSpawn;
+    scene.player.setPosition(sp.x, sp.y);
     scene.spawnGerm('diamond', { hpMult: 1, speedMult: 1 });
-    scene.boss.germ.setPosition(1460, 1460);
+    scene.boss.germ.setPosition(sp.x + 240, sp.y);
     scene.boss.nextMeetingAt = 0;
   });
   // Game time follows frames, so on a slow (headless) browser wait for her to speak rather than a fixed time

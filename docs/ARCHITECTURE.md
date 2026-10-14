@@ -21,6 +21,9 @@ Systems will announce gameplay events on `core/events.ts` (event bus); dialogue,
 - `systems/FlowField` floods a 40 px grid from Eugene every 250 ms; germs step toward the closer neighbor cell, so they route around furniture at a flat cost regardless of germ count.
 - `systems/Fx` owns capped/pooled feedback (particles, stains, damage numbers). `core/sfx` holds placeholder synthesized sounds, one named slot per sound.
 
+## The clinic map (M8)
+`data/clinic.ts` describes rooms as boxes (in floor-plan pixels, converted with `g()`/`u()`) with doors; walls are generated from room outlines and every door/opening is cut out of every wall it touches. A room may have several boxes (open areas like the waiting room and hallways). Floors sit side by side in one world (`RoomLayout.floors`; the camera is bounded to Eugene's floor). `RoomLayout.stairs` are paired zones: walking into one end puts you at the other end's `arrive` point. `FlowField.setPortals` links those cells, so germs path through stairs; `GameScene.updateStairs` moves Eugene and any germ on a different floor from him. The old fictional layout (`MOSHILAND` in `data/rooms.ts`) is no longer used.
+
 ## Special germs (M7)
 - `GermDef.armor` (Spore Pod): `GameScene.armorMult` scales droplet damage by hit direction vs the germ's facing; `Germ.flip` (Sinus Purge) disables it. Armored germs turn at `turnDegPerSec`.
 - `GermDef.spit` (Sneezer): `systems/GermBehaviors.steerSpitter` keeps distance, circles, winds up and calls `fireGlob`; `entities/Glob` (pooled) and `systems/Puddles` (pooled) handle the mucus. Puddles slow Eugene through `Player.setSpeedMod` (a per-source multiplier stack, also used by Diamond's meeting).

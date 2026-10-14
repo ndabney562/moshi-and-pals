@@ -13,7 +13,8 @@ import { initSfx, sfx } from '../core/sfx';
 import { CRATE_POOL, EQUIPMENT, STARTING_EQUIPMENT } from '../data/equipment';
 import { GERMS } from '../data/germs';
 import { WAVES } from '../data/waves';
-import { MOSHILAND, type Obstacle, type RoomArea, type RoomLayout } from '../data/rooms';
+import { CLINIC } from '../data/clinic';
+import type { FloorArea, Obstacle, RoomArea, RoomLayout, Stairway } from '../data/rooms';
 import { Droplet } from '../entities/Droplet';
 import { Glob } from '../entities/Glob';
 import { Germ, type GermScaling } from '../entities/Germ';
@@ -46,7 +47,10 @@ const rectDistance = (o: Obstacle, x: number, y: number): number =>
 /** The playable world: the clinic, Eugene, his equipment, and the germs. */
 export class GameScene extends Phaser.Scene {
   private player!: Player;
-  private room: RoomLayout = MOSHILAND;
+  private room: RoomLayout = CLINIC;
+  /** No stairs again until then (so Eugene doesn't bounce straight back). */
+  private stairsReadyAt = 0;
+  private currentFloor?: FloorArea;
   private solids!: Phaser.Physics.Arcade.StaticGroup;
   /** Rooms bought open so far this run (starts with the waiting room). */
   private unlocked = new Set<string>();
@@ -165,7 +169,8 @@ export class GameScene extends Phaser.Scene {
       scene: this,
       player: this.player,
       room,
-      area: room.rooms.find((r) => r.start) ?? room.rooms[0],
+      // Patients wander the biggest part of the starting room
+      area: room.rooms.filter((r) => r.start).sort((a, b) => b.w * b.h - a.w * a.h)[0] ?? room.rooms[0],
       spawnGermAt: (id, x, y) => this.spawnGermAt(id, x, y),
       onCleaned: (p) => this.onPatientCleaned(p),
     });
@@ -201,7 +206,10 @@ export class GameScene extends Phaser.Scene {
     });
 
     const cam = this.cameras.main;
-    cam.setBounds(0, 0, room.width, room.height);
+    this.currentFloor = undefined;
+    this.stairsReadyAt = 0;
+    this.fitCameraToFloor(true);
+    this.flow.setPortals(this.stairLinks());
     cam.startFollow(this.player, true, BALANCE.camera.followLerp, BALANCE.camera.followLerp);
 
     initSfx(this);
@@ -274,6 +282,8 @@ export class GameScene extends Phaser.Scene {
       inputState.purgeRequested = false;
       this.sinusPurge(time);
     }
+    this.updateStairs(time);
+    this.fitCameraToFloor();
     this.updateRoom();
     this.updateInteract();
     if (inputState.interactRequested) {
@@ -419,8 +429,8 @@ export class GameScene extends Phaser.Scene {
   }
 
   /** For the HUD's off-screen arrows: every germ (check `active`) and Eugene. */
-  get threatSources(): { germs: Germ[]; player: Player } {
-    return { germs: this.germs.getChildren() as Germ[], player: this.player };
+  get threatSources(): { germs: Germ[]; player: Player; floor?: FloorArea } {
+    return { germs: this.germs.getChildren() as Germ[], player: this.player, floor: this.currentFloor };
   }
 
   /** Live entity counts for the debug perf overlay. */
@@ -604,6 +614,74 @@ export class GameScene extends Phaser.Scene {
     events.emit(GameEvents.PurgeUsed);
   }
 
+  /** The floor of the building a point is on. */
+  floorOf(x: number, y: number): FloorArea | undefined {
+    return this.room.floors?.find((f) => x >= f.x && x < f.x + f.w && y >= f.y && y < f.y + f.h);
+  }
+
+  /** Keeps the camera inside the floor Eugene is on (snapping there right after taking the stairs). */
+  private fitCameraToFloor(snap = false): void {
+    const f = this.floorOf(this.player.x, this.player.y);
+    const cam = this.cameras.main;
+    if (!f) {
+      cam.setBounds(0, 0, this.room.width, this.room.height);
+      return;
+    }
+    if (f === this.currentFloor) return;
+    this.currentFloor = f;
+    cam.setBounds(f.x, f.y, f.w, f.h);
+    if (snap) cam.centerOn(this.player.x, this.player.y);
+  }
+
+  private stairsOpen(s: Stairway): boolean {
+    return s.requires.every((id) => this.unlocked.has(id));
+  }
+
+  /** Flow-field links for the open staircases: stand in one end, come out at the other. */
+  private stairLinks(): { from: { x: number; y: number }; to: { x: number; y: number } }[] {
+    const links: { from: { x: number; y: number }; to: { x: number; y: number } }[] = [];
+    const mid = (z: { x: number; y: number; w: number; h: number }) => ({ x: z.x + z.w / 2, y: z.y + z.h / 2 });
+    for (const s of this.room.stairs ?? []) {
+      if (!this.stairsOpen(s)) continue;
+      links.push({ from: mid(s.a.zone), to: s.a.arrive }, { from: mid(s.b.zone), to: s.b.arrive });
+    }
+    return links;
+  }
+
+  /** The staircase end whose zone contains (x, y), if its stairs are open. */
+  private stairAt(x: number, y: number): { arrive: { x: number; y: number } } | undefined {
+    for (const s of this.room.stairs ?? []) {
+      if (!this.stairsOpen(s)) continue;
+      for (const end of [s.a, s.b]) {
+        const z = end.zone;
+        if (x >= z.x && x < z.x + z.w && y >= z.y && y < z.y + z.h) return end;
+      }
+    }
+    return undefined;
+  }
+
+  /** Stairs: Eugene walks into one end and comes out on the other floor; germs follow him the same way. */
+  private updateStairs(time: number): void {
+    const p = this.player;
+    if (!p.dead && time >= this.stairsReadyAt) {
+      const end = this.stairAt(p.x, p.y);
+      if (end) {
+        this.stairsReadyAt = time + 600;
+        (p.body as Phaser.Physics.Arcade.Body).reset(end.arrive.x, end.arrive.y);
+        this.fitCameraToFloor(true);
+        const f = this.floorOf(p.x, p.y);
+        this.fx.number(p.x, p.y - 70, f?.id === 'up' ? 'UPSTAIRS' : 'DOWNSTAIRS', '#e8fff9', 24);
+        sfx.refill();
+      }
+    }
+    const here = this.floorOf(p.x, p.y);
+    for (const g of this.germs.getChildren() as Germ[]) {
+      if (!g.active || g.def.boss) continue;
+      const end = this.stairAt(g.x, g.y);
+      if (end && this.floorOf(g.x, g.y) !== here) (g.body as Phaser.Physics.Arcade.Body).reset(end.arrive.x, end.arrive.y);
+    }
+  }
+
   /** Tracks which room Eugene is in, for the HUD and Diamond. */
   private updateRoom(): void {
     const { x, y } = this.player;
@@ -740,6 +818,7 @@ export class GameScene extends Phaser.Scene {
     }
     this.lockedDoors = this.lockedDoors.filter((d) => d.o.opens !== id);
     this.flow.rebuild(this.blockingObstacles());
+    this.flow.setPortals(this.stairLinks());
     for (const obj of this.fog.get(id) ?? []) {
       this.tweens.add({ targets: obj, alpha: 0, duration: 500, onComplete: () => obj.destroy() });
     }
@@ -888,15 +967,34 @@ export class GameScene extends Phaser.Scene {
   /** Room floor tints, painted signs, and a dark veil over each room still locked. */
   private drawFloors(): void {
     const floor = this.add.graphics().setDepth(0.5);
-    for (const r of this.room.rooms) {
+    const signed = new Set<string>();
+    // Staircases: painted steps on the floor
+    for (const s of this.room.stairs ?? []) {
+      for (const z of [s.a.zone, s.b.zone]) {
+        floor.fillStyle(0x8d6e63, 0.5).fillRect(z.x, z.y, z.w, z.h);
+        const across = z.w > z.h;
+        for (let i = 1; i < 8; i++) {
+          floor.lineStyle(3, 0x4e342e, 0.6);
+          if (across) floor.lineBetween(z.x + (z.w * i) / 8, z.y, z.x + (z.w * i) / 8, z.y + z.h);
+          else floor.lineBetween(z.x, z.y + (z.h * i) / 8, z.x + z.w, z.y + (z.h * i) / 8);
+        }
+      }
+    }
+    for (const r of [...this.room.rooms].sort((a, b) => b.w * b.h - a.w * a.h)) {
       if (r.tint !== undefined) floor.fillStyle(r.tint, 0.16).fillRect(r.x, r.y, r.w, r.h);
       if (this.unlocked.has(r.id)) continue;
       const cheapest = Math.min(...this.room.obstacles.filter((o) => o.opens === r.id).map((o) => o.cost ?? 0));
       const veil = this.add.rectangle(r.x, r.y, r.w, r.h, 0x0d1b1e, 0.55).setOrigin(0).setDepth(9);
-      const sign = this.add.text(r.x + r.w / 2, r.y + r.h / 2, `🔒 ${r.name.toUpperCase()}\n$${cheapest} COPAYS`, {
-        fontFamily: 'system-ui, sans-serif', fontSize: '34px', fontStyle: '900', color: '#fff3c4', align: 'center',
-      }).setOrigin(0.5).setDepth(9).setAlpha(0.8);
-      this.fog.set(r.id, [veil, sign]);
+      const parts: Phaser.GameObjects.GameObject[] = [veil];
+      // One price sign per room, on its biggest part
+      if (!signed.has(r.id)) {
+        signed.add(r.id);
+        const size = Math.max(18, Math.min(34, r.w / 9));
+        parts.push(this.add.text(r.x + r.w / 2, r.y + r.h / 2, `🔒 ${r.name.toUpperCase()}\n$${cheapest} COPAYS`, {
+          fontFamily: 'system-ui, sans-serif', fontSize: `${Math.round(size)}px`, fontStyle: '900', color: '#fff3c4', align: 'center',
+        }).setOrigin(0.5).setDepth(9).setAlpha(0.8));
+      }
+      this.fog.set(r.id, [...(this.fog.get(r.id) ?? []), ...parts]);
     }
     for (const sgn of this.room.signs) {
       this.add.text(sgn.x, sgn.y, sgn.text, {
@@ -1027,6 +1125,31 @@ export class GameScene extends Phaser.Scene {
         }
         break;
       }
+      case 'railing': {
+        // Upstairs "open to below": a drop to the waiting room, fenced off
+        g.fillStyle(0x10262a).fillRect(o.x, o.y, o.w, o.h);
+        g.fillStyle(0x1d3d43, 0.8);
+        for (let yy = o.y + 40; yy < o.y + o.h; yy += 80) g.fillRect(o.x + 20, yy, o.w - 40, 6);
+        g.lineStyle(10, 0xb0bec5).strokeRect(o.x + 5, o.y + 5, o.w - 10, o.h - 10);
+        g.lineStyle(3, 0x607d8b).strokeRect(o.x + 12, o.y + 12, o.w - 24, o.h - 24);
+        break;
+      }
+      case 'lounge':
+        g.fillStyle(0x2f7a6d).fillRoundedRect(o.x, o.y, o.w, o.h, 12);
+        g.fillStyle(0x3fa08f).fillRoundedRect(o.x + 10, o.y + 10, o.w - 20, o.h - 20, 8);
+        g.lineStyle(2, outline).strokeRoundedRect(o.x, o.y, o.w, o.h, 12);
+        break;
+      case 'bench':
+        g.fillStyle(0x9c7a5a).fillRoundedRect(o.x, o.y, o.w, o.h, 8);
+        for (let i = 1; i < 4; i++) g.lineStyle(2, 0x6b4f37).lineBetween(o.x + 6, o.y + (o.h * i) / 4, o.x + o.w - 6, o.y + (o.h * i) / 4);
+        g.lineStyle(2, outline).strokeRoundedRect(o.x, o.y, o.w, o.h, 8);
+        break;
+      case 'elevator':
+        g.fillStyle(0x78909c).fillRect(o.x, o.y, o.w, o.h);
+        g.fillStyle(0xb0bec5).fillRect(o.x + 12, o.y + 12, o.w / 2 - 16, o.h - 24).fillRect(o.x + o.w / 2 + 4, o.y + 12, o.w / 2 - 16, o.h - 24);
+        g.lineStyle(3, outline).strokeRect(o.x, o.y, o.w, o.h);
+        if (o.label) this.furnitureLabel(o);
+        break;
       case 'waterCooler':
         g.fillStyle(0xeeeeee).fillRect(o.x, o.y, o.w, o.h);
         g.fillStyle(0x7fd3ff, 0.9).fillCircle(o.x + o.w / 2, o.y + o.h / 2, o.w / 2.8);

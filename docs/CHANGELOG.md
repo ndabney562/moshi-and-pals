@@ -1,5 +1,13 @@
 # Changelog
 
+## v0.8.0: Milestone 8, the real clinic
+- **MoshiLand now follows the real clinic's floor plan** (Noah's photos of the posted plans; the photos aren't in the repo). Two floors:
+  - **Ground floor:** you start in the waiting room (lounges, two blocks of seats, the big sofa, benches) with reception and its supply cart. Buy the **HALLWAYS** gate ($250) to open the loop around the lab, which reaches **Exam Rooms 1–7** ($150–200 each), the **Supply Closet** (supply cart), **Bathrooms 1 and 2** ($100), the **Lab** ($500, supply cart and crate), **X-Ray** ($600), and the **Egress Stairs** ($200). The **Manager's Office** ($150) opens off reception. Germs come in through the front doors, the side door, the staff door, the egress and the elevator.
+  - **Upstairs ($1000, at the foot of the west stairs):** a second floor with **Exam Rooms 8–15**, **Bathrooms 3 and 4**, **Supply Closet 2** (supply cart), the MA station island, and a fenced-off "open to below" drop. Germs also arrive by the fire escape.
+- **Stairs.** Walk into a staircase to go up or down; the camera stays on your floor. The egress stairs also link the floors once both ends are open. **Germs follow you up and down the stairs** (they path through them).
+- Each exam room is a dead end: quick loot, but easy to get cornered in. The hallway loops around the lab and the MA station are made for kiting.
+- Off-screen arrows only point at germs on your floor.
+
 ## v0.7.0: Milestone 7, feel and fairness
 - **New app icon:** Noah's Moshi and Pals icon (germ splash logo). Already added to your Home Screen? Delete the icon and add it again to see the new one; iOS caches the old icon.
 - **Testing switches** for playtesting on the phone, added to the address: `?round=12` starts at round 12, `?copays=2000` starts with Copays, `?god` makes Eugene unhurtable, `?fps=30` caps the frame rate like Low Power Mode, `?debug` shows a perf overlay (frame time, germ/droplet/particle counts). Combine them: `?round=15&god&debug`. Normal play is unchanged.

@@ -263,7 +263,7 @@ export class HudScene extends Phaser.Scene {
     const game = this.scene.get('Game') as GameScene;
     const cam = game.cameras?.main;
     if (!cam || !game.threatSources) return;
-    const { germs, player } = game.threatSources;
+    const { germs, player, floor } = game.threatSources;
     const view = cam.worldView;
     const range2 = CONTROLS.threatArrowRange ** 2;
     const picks = this.threatPicks;
@@ -271,6 +271,7 @@ export class HudScene extends Phaser.Scene {
     for (const g of germs) {
       if (!g.active) continue;
       if (g.x >= view.x && g.x <= view.right && g.y >= view.y && g.y <= view.bottom) continue;
+      if (floor && (g.x < floor.x || g.x >= floor.x + floor.w)) continue; // other floor
       const dx = g.x - player.x;
       const dy = g.y - player.y;
       const d = dx * dx + dy * dy;
