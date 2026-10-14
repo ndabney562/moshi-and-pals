@@ -150,7 +150,13 @@ try {
   // Refill takes 1.1 s of game time (which runs slower than real time when frames drop)
   await page.waitForFunction(() => window.game.scene.getScene('Game').sprayer.ammo === 120, null, { timeout: 15000 }).catch(() => {});
   const refilled = await game();
-  check(refilled.ammo === 120, `Refill button refilled the bottle (${refilled.ammo} mL)`);
+  const clock = await page.evaluate(async () => {
+    const g = window.game.scene.getScene('Game');
+    const t0 = g.time.now;
+    await new Promise((r) => setTimeout(r, 1000));
+    return { gameMsPerSec: Math.round(g.time.now - t0), fps: Math.round(window.game.loop.actualFps), refilling: g.sprayer.refilling, germs: g.germs.countActive(true), player: [Math.round(g.player.x), Math.round(g.player.y)] };
+  });
+  check(refilled.ammo === 120, `Refill button refilled the bottle (${refilled.ammo} mL; ${JSON.stringify(clock)})`);
   // Perfect Pour: REFILL again in the gold sweet spot fills instantly and gives FRESH BOTTLE; too early spills
   await page.evaluate(() => {
     const scene = window.game.scene.getScene('Game');
