@@ -1,5 +1,8 @@
 # Changelog
 
+## v0.16.2
+- Dr. Kaya (quick, sporty, coach energy) and PA Lucien (calm, polite, dry) now react to every patient violation in their own words.
+
 ## v0.16.1
 - Ready for Noah's rewrite: each patient type can have separate reactions for Dr. Kaya (`kaya`) and PA Lucien (`lucien`); without them they use Dr. Moshkovich's. Diamond's and Patient Zero's lines can say `{SURNAME}` for whoever is on shift.
 - Tapping START fades the title screen to black, then the clinic (and HUD) fade in from black. Play Again fades in too. Timing in `DISPLAY.fadeOutMs/fadeInMs`.
