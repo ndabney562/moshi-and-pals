@@ -1,5 +1,8 @@
 # Changelog
 
+## v0.5.5: Back to Moshi and Pals
+- Noah changed his mind: the game is **Moshi and Pals** again (home screen name "Moshi & Pals", browser tab, docs). The title poster art still says MoshiMonsters since that text is part of the image.
+
 ## v0.5.4: Title fills the screen
 - Noah: the title poster didn't fill his screen. It now re-fits whenever the screen changes shape (rotating, Safari's toolbars showing or hiding). Very wide screens, like Safari in landscape with its toolbars, no longer get dark bars at the sides (widest supported shape raised from 2.4:1 to 3.2:1).
 
