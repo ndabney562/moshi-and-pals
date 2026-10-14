@@ -38,7 +38,23 @@ export interface EquipmentDef {
   slow?: { factor: number; ms: number };
   /** Recharges on its own (supply per second, after a short pause in firing). No jug, no REFILL. */
   rechargePerSecond?: number;
+  /**
+   * COMPOUNDING STATION upgrades (Generic → Brand Name → Prescription Strength). Each one changes how
+   * the tool plays, not just its damage. `mods` override this definition's numbers.
+   */
+  tiers?: ToolTier[];
 }
+
+export interface ToolTier {
+  name: string;
+  /** Short line shown above USE. */
+  blurb: string;
+  cost: number;
+  mods: Partial<Omit<EquipmentDef, 'id' | 'tiers'>>;
+}
+
+/** What each tier is called after the tool's name. */
+export const TIER_NAMES = ['GENERIC', 'BRAND NAME', 'PRESCRIPTION STRENGTH'];
 
 export const EQUIPMENT: Record<string, EquipmentDef> = {
   squirtBottle: {
@@ -59,6 +75,10 @@ export const EQUIPMENT: Record<string, EquipmentDef> = {
     color: 0x9fe7ff,
     unit: 'mL',
     mistPuffs: 5,
+    tiers: [
+      { name: 'Pressure Nozzle', blurb: 'Reaches 40% farther', cost: 300, mods: { range: 280, dropletSpeed: 760 } },
+      { name: 'Industrial Trigger', blurb: 'Sprays faster and pierces a germ', cost: 700, mods: { fireIntervalMs: 60, pierce: 1, capacity: 160 } },
+    ],
   },
 
   // Crate tools (M6). Noah approved the first three; the foamer is Claude's addition.
@@ -81,6 +101,10 @@ export const EQUIPMENT: Record<string, EquipmentDef> = {
     color: 0xd9f7c4,
     unit: 'mL',
     mistPuffs: 12,
+    tiers: [
+      { name: 'Atomizer', blurb: 'A much wider cloud', cost: 300, mods: { spreadDeg: 105, dropletsPerShot: 8, mistPuffs: 16 } },
+      { name: 'Double Tank', blurb: 'Twice the tank, harder hits', cost: 700, mods: { capacity: 400, reserve: 1000, damage: 4 } },
+    ],
   },
   bleachSoaker: {
     id: 'bleachSoaker',
@@ -101,6 +125,10 @@ export const EQUIPMENT: Record<string, EquipmentDef> = {
     color: 0xfff6c2,
     unit: 'mL',
     mistPuffs: 2,
+    tiers: [
+      { name: 'High-Pressure Hose', blurb: 'Hits harder, shoves farther', cost: 300, mods: { damage: 13, knockback: 70 } },
+      { name: 'Splash Zone', blurb: 'Twin streams', cost: 700, mods: { dropletsPerShot: 2, spreadDeg: 10 } },
+    ],
   },
   uvWand: {
     id: 'uvWand',
@@ -123,6 +151,10 @@ export const EQUIPMENT: Record<string, EquipmentDef> = {
     mistPuffs: 1,
     pierce: 3,
     rechargePerSecond: 22,
+    tiers: [
+      { name: 'Wide Lens', blurb: 'Beam passes through 6 germs', cost: 300, mods: { pierce: 6 } },
+      { name: 'Overclocked', blurb: 'Charges twice as fast, burns hotter', cost: 700, mods: { rechargePerSecond: 44, damage: 8 } },
+    ],
   },
   peroxideFoamer: {
     id: 'peroxideFoamer',
@@ -144,6 +176,10 @@ export const EQUIPMENT: Record<string, EquipmentDef> = {
     unit: 'mL',
     mistPuffs: 6,
     slow: { factor: 0.45, ms: 1600 },
+    tiers: [
+      { name: 'Extra Fizz', blurb: 'Germs slow to a crawl', cost: 300, mods: { slow: { factor: 0.3, ms: 2000 } } },
+      { name: 'Foam Party', blurb: 'A wide wall of foam', cost: 700, mods: { dropletsPerShot: 5, spreadDeg: 34, mistPuffs: 9 } },
+    ],
   },
 };
 

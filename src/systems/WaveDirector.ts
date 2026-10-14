@@ -17,6 +17,8 @@ export class WaveDirector {
   /** Germ ids still to spawn this round, in order. */
   private queue: string[] = [];
   private scaling: GermScaling = { hpMult: 1, speedMult: 1 };
+  /** Spawn-interval multiplier the game sets each frame (1 = normal, more = a breather). */
+  pacing = 1;
 
   /** `firstRound` > 1 skips ahead (debug/stress testing). */
   constructor(startTime: number, firstRound = 1) {
@@ -62,7 +64,7 @@ export class WaveDirector {
       }
       if (!atLimit(this.queue[0]) && spawn(this.queue[0], this.scaling)) {
         this.queue.shift();
-        this.nextSpawnAt = time + WAVES.spawnIntervalMs(r) * Phaser.Math.FloatBetween(0.7, 1.3);
+        this.nextSpawnAt = time + WAVES.spawnIntervalMs(r) * this.pacing * Phaser.Math.FloatBetween(0.7, 1.3);
       }
     }
     if (this.queue.length === 0 && alive === 0) {

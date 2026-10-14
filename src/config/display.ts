@@ -9,5 +9,6 @@ export const DISPLAY = {
   minAspect: 4 / 3,
   maxAspect: 3.2,
   backgroundColor: '#0d2b2e',
-  showFps: true,
+  /** FPS counter and build label: only with ?debug (the build label is also in the pause menu). */
+  showFps: false,
 };

@@ -52,8 +52,9 @@ export const BALANCE = {
     killsPerStep: 5,
     /** ...up to this. */
     maxMult: 1.5,
-    /** Streaks this long get a shout-out when they end. */
+    /** Streaks this long get a shout-out when they end, and score this much per kill in them. */
     announceFrom: 10,
+    scorePerKill: 5,
   },
   camera: {
     /** How quickly the camera catches up to Eugene (0..1, higher is snappier). */
@@ -129,6 +130,11 @@ export const BALANCE = {
     crateCost: 250,
     /** SPOTLESS: finish a round without getting hurt for this many Copays × the round number. */
     spotlessPerRound: 10,
+    /** ...and this much score × the round number. */
+    spotlessScorePerRound: 25,
+    /** EXAM TABLE: lie down for a moment. Heals this much for this many Copays, once per table per round. */
+    restCost: 40,
+    restHeal: 50,
     /** Purchases this expensive need a press-and-hold on USE (CONTROLS.holdToBuyMs). */
     holdToBuyFrom: 100,
   },

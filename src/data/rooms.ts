@@ -19,7 +19,9 @@ export type ObstacleKind =
   /** Supply crate: buy it open with Copays for a random new tool (M6). */
   | 'crate'
   /** M8 clinic: railing around the upstairs "open to below" drop, waiting-room lounge chairs and benches, the elevator. */
-  | 'railing' | 'lounge' | 'bench' | 'elevator';
+  | 'railing' | 'lounge' | 'bench' | 'elevator'
+  /** M9: the Lab's Compounding Station (weapon upgrades). */
+  | 'compounder';
 
 export interface Obstacle {
   kind: ObstacleKind;

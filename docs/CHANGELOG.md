@@ -1,5 +1,24 @@
 # Changelog
 
+## v0.9.0: Milestone 9, grow and learn
+- **Compounding Station** in the Lab (⚗️ UPGRADES): hold USE to upgrade the tool in your hands. Two upgrades per tool, $300 then $700, and each changes how it plays:
+  - Squirt Bottle: **Pressure Nozzle** (40% farther), then **Industrial Trigger** (faster, pierces a germ, bigger bottle)
+  - Lysol Fogger: **Atomizer** (much wider cloud), then **Double Tank** (twice the tank, harder hits)
+  - Bleach Super Soaker: **High-Pressure Hose** (harder, shoves farther), then **Splash Zone** (twin streams)
+  - UV Wand: **Wide Lens** (through 6 germs), then **Overclocked** (charges twice as fast, burns hotter)
+  - Peroxide Foamer: **Extra Fizz** (slows to a crawl), then **Foam Party** (a wide wall of foam)
+  The tool name gets a II or III.
+- **Exam tables:** walk up to any exam table and tap USE to lie down: +50 health for $40. Each table works once per round, so the exam rooms are worth opening now.
+- **Germs stop getting spongier at round 13** (health growth capped at ×2.2); bosses scale at most ×1.5. Later rounds get harder through what spawns, not health.
+- **A breather when you're struggling:** below 30% health with a crowd around you, new germs come in a little slower. Nothing already in the room goes away, and it's never announced.
+- **Score rewards skill:** a Sanitation Streak of 10+ adds 5 points per kill when it ends, and a Spotless round adds 25 × the round.
+- **Discharge Summary** game over: cause of death (each germ has its own: "Slipped in someone else's sneeze."), round and score with NEW RECORD badges, germs disinfected, best streak, time on shift, Copays earned, rooms opened, upgrades, Perfect Pours, crits, your most-disinfected germ, and your personal bests. One big **PLAY AGAIN**.
+- **Records survive updates:** the save is now versioned (v2: best score, round and streak, total germs, runs). Old saves are migrated, and a damaged save falls back safely instead of crashing.
+- **Teach as you play:** new players get one hint at a time, right by the control, at the moment it matters: DRAG TO MOVE, HOLD ON THE RIGHT TO SPRAY, SINUS PURGE when surrounded, the gold-ring Perfect Pour, HOLD USE TO BUY. Each disappears for good once you've done it.
+- **Screen shake** can be turned off in the pause menu (reduced motion).
+- Only the floor you're on is drawn (the other floor is hidden), roughly halving the map's drawing work.
+- The FPS counter and build label only show with `?debug`; the build label is at the bottom of the pause menu.
+
 ## v0.8.0: Milestone 8, the real clinic
 - **MoshiLand now follows the real clinic's floor plan** (Noah's photos of the posted plans; the photos aren't in the repo). Two floors:
   - **Ground floor:** you start in the waiting room (lounges, two blocks of seats, the big sofa, benches) with reception and its supply cart. Buy the **HALLWAYS** gate ($250) to open the loop around the lab, which reaches **Exam Rooms 1–7** ($150–200 each), the **Supply Closet** (supply cart), **Bathrooms 1 and 2** ($100), the **Lab** ($500, supply cart and crate), **X-Ray** ($600), and the **Egress Stairs** ($200). The **Manager's Office** ($150) opens off reception. Germs come in through the front doors, the side door, the staff door, the egress and the elevator.
