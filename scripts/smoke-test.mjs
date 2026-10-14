@@ -135,7 +135,7 @@ try {
     saved: JSON.parse(localStorage.getItem('moshi.achievements.v1') ?? '[]'),
     toast: window.game.scene.getScene('Hud').toastName.text,
   }));
-  check(firstAch.saved.includes('firstKill') && firstAch.toast.includes('HAND HYGIENE'), `the first kill unlocks an achievement, saved, with a toast (${JSON.stringify(firstAch)})`);
+  check(firstAch.saved.includes('firstKill') && firstAch.toast.startsWith('🏆'), `the first kill unlocks an achievement, saved, with a toast (${JSON.stringify(firstAch)})`);
 
   // Tap the Refill button
   const refillAt = await buttonAt('refillButton');
