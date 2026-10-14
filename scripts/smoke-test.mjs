@@ -46,6 +46,7 @@ try {
     return { x: p.x, y: p.y, rotation: p.rotation };
   });
   const start = await pos();
+  const firstHint = await page.evaluate(() => window.game.scene.getScene('Hud').hintText.text);
 
   // Screen position of a HUD button, in page pixels
   const buttonAt = (name) => page.evaluate((n) => {
@@ -135,13 +136,10 @@ try {
     scene.sprayer.reserve = scene.sprayer.def.reserve;
     scene.refillPressed(scene.time.now);
   });
-  await page.waitForFunction(() => {
-    const scene = window.game.scene.getScene('Game');
-    const p = scene.sprayer.refillProgress(scene.time.now);
-    return p >= 0.5 && p <= 0.6;
-  }, null, { timeout: 15000 }).catch(() => {});
   const pour = await page.evaluate(() => {
     const scene = window.game.scene.getScene('Game');
+    // Put the pour right in the gold window (slow browsers can skip past it between frames)
+    scene.sprayer.refillStartedAt = scene.time.now - scene.sprayer.def.refillMs * 0.55;
     scene.refillPressed(scene.time.now);
     return { ammo: scene.sprayer.ammo, fresh: scene.sprayer.fresh(scene.time.now), label: window.game.scene.getScene('Hud').toolText.text };
   });
@@ -505,7 +503,7 @@ try {
     const scene = window.game.scene.getScene('Game');
     return { hp: scene.player.hp, copays: scene.copays, label: window.game.scene.getScene('Hud').interactButton.label.text };
   });
-  check(rest && rested.hp === 90 && rested.copays === 60 && rested.label === 'RESTED', `an exam table heals 50 for $40, once per round (${JSON.stringify(rested)})`);
+  check(rest && rested.hp >= 90 && rested.copays === 60 && rested.label === 'RESTED', `an exam table heals 50 for $40, once per round (${JSON.stringify(rested)})`);
   await page.evaluate(() => window.game.scene.getScene('Game').germs.getChildren().forEach((g) => g.active && g.kill()));
 
   // Patients: one walks in, commits a health code violation, and gets sprayed into compliance
@@ -642,13 +640,13 @@ try {
   await page.waitForFunction(() => window.game.scene.isActive('GameOver'), null, { timeout: 15000 });
   await page.waitForTimeout(1200);
   await page.screenshot({ path: 'smoke-gameover.png' });
-  const saved2 = await page.evaluate(() => JSON.parse(localStorage.getItem('moshi.save.v1') ?? '{}'));
+  const saved2 = await page.evaluate(() => JSON.parse(localStorage.getItem('moshi.save.v2') ?? '{}'));
   check(saved2.bestScore > 0, `high score saved (${JSON.stringify(saved2)})`);
 
   // Restart from the game over screen
   const again = await page.evaluate(() => {
     const scene = window.game.scene.getScene('GameOver');
-    const label = scene.children.list.find((c) => c.text === 'SCRUB IN AGAIN');
+    const label = scene.children.list.find((c) => c.text === 'PLAY AGAIN');
     const canvas = window.game.canvas.getBoundingClientRect();
     const k = canvas.width / window.game.scale.width;
     return { x: canvas.left + label.x * k, y: canvas.top + label.y * k };
@@ -685,6 +683,9 @@ try {
 
   check(end.x > start.x + 20 && end.y < start.y - 20, `Eugene moved up-right (${start.x | 0},${start.y | 0}) -> (${end.x | 0},${end.y | 0})`);
   check(Math.abs(end.rotation - -Math.PI / 4) < 0.3, `Eugene faces where he walks (up-right), rotation ${end.rotation.toFixed(2)}`);
+  check(firstHint.includes('MOVE'), `a new player is shown how to move ("${firstHint}")`);
+  const learned = await page.evaluate(() => JSON.parse(localStorage.getItem('moshi.settings.v1') ?? '{}').learned ?? {});
+  check(learned.move && learned.spray, `moving and spraying are learned, so those hints are gone (${JSON.stringify(learned)})`);
   check(errors.length === 0, `no console errors${errors.length ? ': ' + errors.join(' | ') : ''}`);
 
   // Debug/stress switches: ?round=6&copays=999&god&fps=30

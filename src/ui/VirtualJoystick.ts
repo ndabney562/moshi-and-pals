@@ -12,7 +12,8 @@ export class VirtualJoystick {
 
   private readonly base: Phaser.GameObjects.Arc;
   private readonly thumb: Phaser.GameObjects.Arc;
-  private home = new Phaser.Math.Vector2();
+  /** Where it rests when untouched (screen coordinates). */
+  readonly home = new Phaser.Math.Vector2();
   private center = new Phaser.Math.Vector2();
 
   constructor(scene: Phaser.Scene, color: number) {

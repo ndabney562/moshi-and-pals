@@ -9,10 +9,14 @@ export interface Settings {
   sound: boolean;
   /** Start a refill automatically when you spray an empty bottle (pause menu). */
   autoRefill: boolean;
+  /** No screen shake (pause menu). */
+  reducedMotion: boolean;
+  /** One-time gameplay hints already learned (move, spray, pour, purge, buy). */
+  learned: Record<string, boolean>;
 }
 
 const KEY = 'moshi.settings.v1';
-const DEFAULTS: Settings = { autoAim: true, sound: true, autoRefill: true };
+const DEFAULTS: Settings = { autoAim: true, sound: true, autoRefill: true, reducedMotion: false, learned: {} };
 
 function load(): Settings {
   try {

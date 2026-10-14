@@ -14,7 +14,14 @@ export const WAVES = {
   /** Time between spawns while below maxAlive. */
   spawnIntervalMs: (r: number) => Math.max(260, 800 - r * 50),
   /** Health and speed multipliers. Kept gentle: variety should carry difficulty, not sponges. */
-  hpMult: (r: number) => 1 + 0.1 * (r - 1),
+  hpMult: (r: number) => Math.min(1 + 0.1 * (r - 1), 2.2),
+  /** Bosses barely scale: rematches should get harder through new moves, not more health. */
+  bossHpMultMax: 1.5,
+  /**
+   * PACING: when Eugene is below `lowHp` health with at least `crowd` of the round's on-screen
+   * limit around, new germs come in this much slower. A breather, never announced.
+   */
+  breather: { lowHp: 0.3, crowd: 0.5, spawnSlow: 1.6 },
   speedMult: (r: number) => Math.min(1 + 0.035 * (r - 1), 1.6),
 
   /** Relative spawn weights per germ id. Viral Sprinters join from round 3, Sneezers from 4, Spore Pods from 6. */

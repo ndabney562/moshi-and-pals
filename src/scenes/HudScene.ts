@@ -10,6 +10,7 @@ import { DEBUG } from '../core/debug';
 import { inputState } from '../core/inputState';
 import { resumeAudio, setSfxMuted } from '../core/sfx';
 import { TIPS } from '../data/tips';
+import { HINTS, type HintDef } from '../data/tutorial';
 import { readSafeArea, type Insets } from '../core/safeArea';
 import { saveSettings, settings } from '../core/settings';
 import { Bar } from '../ui/Bar';
@@ -56,6 +57,16 @@ export class HudScene extends Phaser.Scene {
   private resumeItem!: Phaser.GameObjects.Text;
   private soundToggle!: Phaser.GameObjects.Text;
   private autoRefillToggle!: Phaser.GameObjects.Text;
+  private motionToggle!: Phaser.GameObjects.Text;
+  /** Teach-as-you-play hint currently shown (one at a time), with an arrow toward its control. */
+  private hintText!: Phaser.GameObjects.Text;
+  private hint?: HintDef;
+  private nextHintCheckAt = 0;
+  /** How long the current "doing it" condition has held (to mark a hint learned). */
+  private hintProgressMs = 0;
+  /** Gold-ring pour hint: shown at most a few refills even if never nailed. */
+  private pourHintsShown = 0;
+  private wasRefilling = false;
   private quitItem!: Phaser.GameObjects.Text;
   private quitArmedUntil = 0;
   private paused = false;
@@ -129,6 +140,11 @@ export class HudScene extends Phaser.Scene {
     this.pauseButton = new HudButton(this, CONTROLS.buttons.pauseRadius, 'II', 0xe8fff9, () => this.pause());
     this.buildPauseMenu(style);
 
+    this.hintText = this.add.text(0, 0, '', {
+      ...style, fontSize: '22px', fontStyle: '900', color: '#0d2b2e', backgroundColor: '#ffe66d', padding: { x: 14, y: 8 }, align: 'center',
+    }).setOrigin(0.5).setDepth(50).setVisible(false);
+    this.tweens.add({ targets: this.hintText, scale: 1.06, duration: 420, yoyo: true, repeat: -1 });
+    this.hint = undefined;
     this.bottle = new BottleMeter(this);
     this.refillButton = new HudButton(this, CONTROLS.buttons.refillRadius, 'REFILL', 0x2a9df4, () => {
       inputState.refillRequested = true;
@@ -176,6 +192,9 @@ export class HudScene extends Phaser.Scene {
     };
     const onSpotless = (p: { round: number; copays: number }) => { this.spotless = p; };
     const onStreak = (p: StreakPayload) => this.showStreak(p);
+    const onPurgeUsed = () => this.learn('purge');
+    const onBought = () => this.learn('buy');
+    const onPerfect = (p: EquipmentChangedPayload) => { if (p.fresh) this.learn('pour'); };
     const onBoss = (p: BossPayload) => {
       this.bossBar.setVisible(true).setValue(p.hp, p.maxHp, p.name.toUpperCase());
     };
@@ -205,6 +224,10 @@ export class HudScene extends Phaser.Scene {
       [GameEvents.RoundCompleted, onCleared],
       [GameEvents.SpotlessRound, onSpotless],
       [GameEvents.StreakChanged, onStreak],
+      [GameEvents.PurgeUsed, onPurgeUsed],
+      [GameEvents.RoomUnlocked, onBought],
+      [GameEvents.ToolUnlocked, onBought],
+      [GameEvents.EquipmentChanged, onPerfect],
       [GameEvents.BossSpawned, onBoss],
       [GameEvents.BossHealth, onBossHealth],
       [GameEvents.BossDefeated, onBossDown],
@@ -254,6 +277,68 @@ export class HudScene extends Phaser.Scene {
 
     // Ask the game for current health/score/bottle so the HUD starts correct
     (this.scene.get('Game') as GameScene).broadcastState();
+  }
+
+  private learn(id: string): void {
+    if (settings.learned[id]) return;
+    settings.learned = { ...settings.learned, [id]: true };
+    saveSettings();
+    if (this.hint?.id === id) this.hint = undefined;
+  }
+
+  /** Marks a hint learned once its action has been held for `ms` (frame deltas accumulate). */
+  private practising(doing: boolean, ms: number, id: string): void {
+    if (this.hint?.id !== id) return;
+    this.hintProgressMs = doing ? this.hintProgressMs + this.game.loop.delta : 0;
+    if (this.hintProgressMs >= ms) this.learn(id);
+  }
+
+  /**
+   * TEACH AS YOU PLAY: picks the first unlearned hint whose moment has come, shows it by its control,
+   * and retires it once the player has done the thing. Nothing shows once everything is learned.
+   */
+  private updateHints(): void {
+    const game = this.scene.get('Game') as GameScene;
+    if (!game.hintState || game.isRunOver) return;
+    const learned = settings.learned;
+    // "Doing it" checks run every frame for the hint on screen
+    this.practising(this.moveStick.value.length() > 0.4 || inputState.moveX !== 0 || inputState.moveY !== 0, 400, 'move');
+    this.practising(inputState.firing, 600, 'spray');
+    const now = this.time.now;
+    if (now >= this.nextHintCheckAt) {
+      this.nextHintCheckAt = now + 200;
+      const st = game.hintState();
+      // The pour hint: shown for a few refills, learned on the first Perfect Pour
+      if (st.refilling && !this.wasRefilling && !learned.pour && !st.selfCharging) this.pourHintsShown++;
+      this.wasRefilling = st.refilling;
+      if (this.pourHintsShown > 3) this.learn('pour');
+      const due = (h: HintDef): boolean => {
+        if (learned[h.id]) return false;
+        switch (h.id) {
+          case 'move': return true;
+          case 'spray': return !!learned.move && st.germsNear > 0;
+          case 'purge': return st.purgeReady && st.crowd >= 4;
+          case 'pour': return st.refilling && !st.selfCharging;
+          case 'buy': return this.interactButton.visible && this.interactNote.text.includes('HOLD');
+        }
+      };
+      const next = HINTS.find(due);
+      if (next !== this.hint) {
+        this.hint = next;
+        this.hintProgressMs = 0;
+      }
+    }
+    const h = this.hint;
+    this.hintText.setVisible(!!h);
+    if (!h) return;
+    const anchor = {
+      moveStick: this.moveStick.home, spray: this.sprayHome,
+      refill: this.refillButton, purge: this.purgeButton, interact: this.interactButton,
+    }[h.near];
+    const { width } = this.scale;
+    this.hintText.setText(`${h.text}  ${h.near === 'moveStick' ? '↓' : h.near === 'interact' ? '↘' : '↓'}`);
+    const half = this.hintText.width / 2 + 12;
+    this.hintText.setPosition(Phaser.Math.Clamp(anchor.x, half, width - half), Math.max(this.safe.top + 150, anchor.y - 120));
   }
 
   /**
@@ -464,7 +549,12 @@ export class HudScene extends Phaser.Scene {
       saveSettings();
       this.refreshAutoRefillToggle();
     });
-    const items: Phaser.GameObjects.Text[] = [this.resumeItem, this.soundToggle, this.autoRefillToggle];
+    this.motionToggle = item('', () => {
+      settings.reducedMotion = !settings.reducedMotion;
+      saveSettings();
+      this.refreshMotionToggle();
+    });
+    const items: Phaser.GameObjects.Text[] = [this.resumeItem, this.soundToggle, this.autoRefillToggle, this.motionToggle];
     if (this.sprayButton) {
       this.autoAimToggle = item('', () => {
         settings.autoAim = !settings.autoAim;
@@ -489,6 +579,11 @@ export class HudScene extends Phaser.Scene {
     this.refreshSoundToggle();
     this.refreshAutoAimToggle();
     this.refreshAutoRefillToggle();
+    this.refreshMotionToggle();
+  }
+
+  private refreshMotionToggle(): void {
+    this.motionToggle.setText(`SCREEN SHAKE: ${settings.reducedMotion ? 'OFF' : 'ON'}`).setColor(settings.reducedMotion ? '#ffb3b3' : COLORS.uiAccent);
   }
 
   private refreshAutoRefillToggle(): void {
@@ -501,9 +596,9 @@ export class HudScene extends Phaser.Scene {
     this.pauseTitle.setPosition(width / 2, height * 0.15);
     this.pauseTip.setPosition(width / 2, height * 0.15 + 58);
     this.pauseVersion.setPosition(width / 2, height - this.safe.bottom - 10);
-    const items = [this.resumeItem, this.soundToggle, this.autoRefillToggle, this.autoAimToggle, this.quitItem].filter((t): t is Phaser.GameObjects.Text => !!t);
-    const top = height * 0.33;
-    const gap = Math.min(72, (height * 0.62) / items.length);
+    const items = [this.resumeItem, this.soundToggle, this.autoRefillToggle, this.motionToggle, this.autoAimToggle, this.quitItem].filter((t): t is Phaser.GameObjects.Text => !!t);
+    const top = height * 0.3;
+    const gap = Math.min(66, (height * 0.62) / items.length);
     items.forEach((t, i) => t.setPosition(width / 2, top + i * gap));
   }
 
@@ -634,6 +729,7 @@ export class HudScene extends Phaser.Scene {
     inputState.firing = !!sprayer || this.spaceDown || inputState.aiming || (this.mouseDown && inputState.mouseActive);
     this.interactButton.tick(this.time.now);
     this.updateThreatArrows();
+    this.updateHints();
 
     this.updateFps();
   }

@@ -128,6 +128,13 @@ export class GameScene extends Phaser.Scene {
   create(): void {
     // time.now stops while paused, so cooldowns and timers don't run out in the background
     useGameTime(this);
+    // Reduced motion (pause menu): every screen shake goes through here and is skipped
+    const mainCam = this.cameras.main as Phaser.Cameras.Scene2D.Camera & { calmed?: boolean };
+    if (!mainCam.calmed) {
+      mainCam.calmed = true;
+      const shake = mainCam.shake.bind(mainCam);
+      mainCam.shake = ((...args: Parameters<typeof shake>) => (settings.reducedMotion ? mainCam : shake(...args))) as typeof mainCam.shake;
+    }
     const room = this.room;
     this.kills = 0;
     this.score = 0;
@@ -363,7 +370,11 @@ export class GameScene extends Phaser.Scene {
       const near = Phaser.Math.Distance.Between(g.x, g.y, this.player.x, this.player.y) < BALANCE.germs.directChaseDistance;
       g.chase(near || !this.flow.nextStep(g.x, g.y, this.step) ? this.player : this.step, time, delta);
     }
-    this.waves.update(time, this.germs.countActive(true), (id, scaling) => this.spawnGerm(id, scaling), (id) => this.aliveOf(id));
+    // A breather when Eugene is hurting and crowded (pacing, not mercy: nothing already here goes away)
+    const b = WAVES.breather;
+    const alive = this.germs.countActive(true);
+    this.waves.pacing = this.player.hp / this.player.maxHp < b.lowHp && alive >= WAVES.maxAlive(Math.max(1, this.waves.round)) * b.crowd ? b.spawnSlow : 1;
+    this.waves.update(time, alive, (id, scaling) => this.spawnGerm(id, scaling), (id) => this.aliveOf(id));
     // Globs that fly their full range splat where they stop; puddles slow Eugene
     for (const gl of this.globs.getChildren() as Glob[]) if (gl.active && time >= gl.expiresAt) this.globLands(gl);
     const slow = this.puddles.update(time, this.player.x, this.player.y);
@@ -440,7 +451,11 @@ export class GameScene extends Phaser.Scene {
       return;
     }
     if (this.streak >= BALANCE.streak.announceFrom) {
-      this.fx.number(this.player.x, this.player.y - 80, `STREAK OF ${this.streak}!`, '#ffe66d', 26);
+      // Long streaks score too (skill, not just Copays)
+      const bonus = this.streak * BALANCE.streak.scorePerKill;
+      this.score += bonus;
+      events.emit(GameEvents.ScoreChanged, { score: this.score });
+      this.fx.number(this.player.x, this.player.y - 80, `STREAK OF ${this.streak}! +${bonus}`, '#ffe66d', 26);
     }
     this.streak = 0;
     this.lastStreakLeft = -1;
@@ -452,6 +467,8 @@ export class GameScene extends Phaser.Scene {
     if (this.hurtThisRound || this.runOver) return;
     const bonus = BALANCE.economy.spotlessPerRound * round;
     this.addCopays(bonus);
+    this.score += BALANCE.economy.spotlessScorePerRound * round;
+    events.emit(GameEvents.ScoreChanged, { score: this.score });
     sfx.spotless();
     this.fx.number(this.player.x, this.player.y - 90, `SPOTLESS! +$${bonus}`, '#7fffd4', 30);
     events.emit(GameEvents.SpotlessRound, { round, copays: bonus });
@@ -460,6 +477,22 @@ export class GameScene extends Phaser.Scene {
   /** For the HUD's off-screen arrows: every germ (check `active`) and Eugene. */
   get threatSources(): { germs: Germ[]; player: Player; floor?: FloorArea } {
     return { germs: this.germs.getChildren() as Germ[], player: this.player, floor: this.currentFloor };
+  }
+
+  /** What the HUD's teach-as-you-play hints need to know right now. */
+  hintState(): { germsNear: number; crowd: number; purgeReady: boolean; refilling: boolean; selfCharging: boolean } {
+    const { x, y } = this.player;
+    let near = 0, crowd = 0;
+    for (const g of this.germs.getChildren() as Germ[]) {
+      if (!g.active) continue;
+      const d = Phaser.Math.Distance.Between(g.x, g.y, x, y);
+      if (d < 420) near++;
+      if (d < BALANCE.purge.radius) crowd++;
+    }
+    return {
+      germsNear: near, crowd, purgeReady: this.purgeProgress(this.time.now) >= 1,
+      refilling: this.sprayer.refilling, selfCharging: !!this.sprayer.def.rechargePerSecond,
+    };
   }
 
   /** Live entity counts for the debug perf overlay. */
@@ -476,6 +509,7 @@ export class GameScene extends Phaser.Scene {
   refillPressed(time: number): void {
     const result = this.sprayer.pourTap(time);
     if (result === 'perfect') {
+      this.runStats.perfectPours++;
       sfx.spotless();
       this.cameras.main.shake(90, 0.003);
       this.fx.number(this.player.x, this.player.y - 64, 'PERFECT POUR! FRESH BOTTLE', '#ffe66d', 24);
@@ -539,6 +573,7 @@ export class GameScene extends Phaser.Scene {
     const crit = Math.random() < fb.critChance;
     if (crit) {
       germ.pendingCrit = true;
+      this.runStats.crits++;
       sfx.crit();
     } else {
       sfx.hit();
@@ -577,8 +612,10 @@ export class GameScene extends Phaser.Scene {
     if (killed) {
       this.kills++;
       this.score += germ.def.points;
+      this.runStats.kills[germ.def.id] = (this.runStats.kills[germ.def.id] ?? 0) + 1;
       // Sanitation Streak: each kill extends it and may raise the Copay multiplier
       this.streak++;
+      this.runStats.bestStreak = Math.max(this.runStats.bestStreak, this.streak);
       this.streakUntil = time + BALANCE.streak.windowMs;
       this.lastStreakLeft = 1;
       this.emitStreak(1);
@@ -605,6 +642,7 @@ export class GameScene extends Phaser.Scene {
 
   private addCopays(amount: number): void {
     this.copays += amount;
+    if (amount > 0) this.runStats.copaysEarned += amount;
     events.emit(GameEvents.CopaysChanged, { copays: this.copays });
   }
 
@@ -619,6 +657,7 @@ export class GameScene extends Phaser.Scene {
     if (time < this.purgeReadyAt || this.player.dead) return;
     const cfg = BALANCE.purge;
     this.purgeReadyAt = time + cfg.cooldownMs;
+    this.runStats.purges++;
     const { x, y } = this.player;
     sfx.purge();
     this.cameras.main.shake(260, 0.012);
@@ -907,6 +946,7 @@ export class GameScene extends Phaser.Scene {
   unlockRoom(id: string, cost = 0): void {
     if (this.unlocked.has(id)) return;
     this.unlocked.add(id);
+    this.runStats.roomsOpened++;
     for (const d of this.lockedDoors.filter((d) => d.o.opens === id)) {
       this.solids.remove(d.zone, true, true);
       d.art.destroy();
@@ -943,6 +983,7 @@ export class GameScene extends Phaser.Scene {
     if (DEBUG.god) return;
     if (this.runOver || !this.player.takeDamage(amount, this.time.now)) return;
     this.hurtThisRound = true;
+    this.runStats.killer = source;
     sfx.hurt();
     this.cameras.main.shake(120, 0.006);
     events.emit(GameEvents.PlayerBumped, { germId: source });
@@ -955,6 +996,7 @@ export class GameScene extends Phaser.Scene {
     const def = GERMS[id];
     const germ = this.germs.get() as Germ | null;
     if (!def || !germ) return false;
+    if (def.boss) scaling = { ...scaling, hpMult: Math.min(scaling.hpMult, WAVES.bossHpMultMax) };
     // Germs come in through every room that's open, but not right on top of Eugene or miles away
     const { minSpawnDistance, maxSpawnDistance } = BALANCE.spawning;
     const spots = this.room.rooms.filter((r) => this.unlocked.has(r.id)).flatMap((r) => r.germSpawns);
@@ -1024,12 +1066,22 @@ export class GameScene extends Phaser.Scene {
     events.emit(GameEvents.PlayerDied);
 
     const round = this.waves.round;
-    const record = recordRun(this.score, round);
+    const st = this.runStats;
+    const record = recordRun(this.score, round, st.bestStreak, this.kills);
+    const [favId, favCount] = Object.entries(st.kills).sort((a, b) => b[1] - a[1])[0] ?? [];
+    const killer = st.killer ? GERMS[st.killer] : undefined;
     const result: RunResult = {
       score: this.score, round, kills: this.kills,
-      bestScore: Math.max(record.previous.bestScore, this.score),
-      bestRound: Math.max(record.previous.bestRound, round),
+      bestScore: record.next.bestScore, bestRound: record.next.bestRound,
       newBestScore: record.newBestScore, newBestRound: record.newBestRound,
+      causeOfDeath: killer?.deathNote ?? 'Exhaustion. Nobody covered your shift.',
+      secondsSurvived: Math.round((this.time.now - st.startedAt) / 1000),
+      bestStreak: st.bestStreak, newBestStreak: record.newBestStreak, recordStreak: record.next.bestStreak,
+      copaysEarned: st.copaysEarned, roomsOpened: st.roomsOpened,
+      roomsTotal: new Set(this.room.rooms.filter((r) => !r.start).map((r) => r.id)).size,
+      upgrades: st.upgrades, crits: st.crits, perfectPours: st.perfectPours,
+      favoriteVictim: favId ? { name: GERMS[favId]?.name ?? favId, count: favCount ?? 0 } : undefined,
+      totalKills: record.next.totalKills, runs: record.next.runs,
     };
     this.time.delayedCall(1600, () => {
       this.scene.stop('Hud');

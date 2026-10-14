@@ -71,6 +71,17 @@ export interface StreakPayload { count: number; mult: number; left: number; }
 export interface HealthPayload { hp: number; maxHp: number; }
 export interface RoundPayload { round: number; title: string; }
 export interface BossPayload { name: string; hp: number; maxHp: number; }
-export interface RunResult { score: number; round: number; kills: number; bestScore: number; bestRound: number; newBestScore: boolean; newBestRound: boolean; }
+export interface RunResult {
+  score: number; round: number; kills: number;
+  bestScore: number; bestRound: number; newBestScore: boolean; newBestRound: boolean;
+  /** Discharge Summary (M9) */
+  causeOfDeath: string;
+  secondsSurvived: number;
+  bestStreak: number; newBestStreak: boolean; recordStreak: number;
+  copaysEarned: number; roomsOpened: number; roomsTotal: number; upgrades: number; crits: number; perfectPours: number;
+  /** The germ this run disinfected most, and how many. */
+  favoriteVictim?: { name: string; count: number };
+  totalKills: number; runs: number;
+}
 
 export const events = new Phaser.Events.EventEmitter();

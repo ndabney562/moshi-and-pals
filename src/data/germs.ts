@@ -25,6 +25,8 @@ export interface GermDef {
   shape: 'blob' | 'spiky' | 'paper' | 'shell' | 'sneezer';
   /** 0 = full knockback from spray, 1 = immovable. */
   knockbackResist: number;
+  /** "Cause of death" on the Discharge Summary when this germ lands the final hit. */
+  deathNote?: string;
   /** Bosses get a health bar and their own round. */
   boss?: boolean;
   /** Extra costume drawn on top of the body. */
@@ -51,6 +53,7 @@ export interface GermDef {
 export const GERMS: Record<string, GermDef> = {
   basic: {
     id: 'basic',
+    deathNote: "Overwhelmed by the common germ. The most common cause.",
     name: 'Basic Germ',
     tag: 'bacteria',
     hp: 40,
@@ -67,6 +70,7 @@ export const GERMS: Record<string, GermDef> = {
   },
   sprinter: {
     id: 'sprinter',
+    deathNote: "A Viral Sprinter got there first.",
     name: 'Viral Sprinter',
     tag: 'virus',
     hp: 16,
@@ -87,6 +91,7 @@ export const GERMS: Record<string, GermDef> = {
    */
   sporePod: {
     id: 'sporePod',
+    deathNote: "Blunt shell trauma. You sprayed its face.",
     name: 'Spore Pod',
     tag: 'spore',
     hp: 50,
@@ -108,6 +113,7 @@ export const GERMS: Record<string, GermDef> = {
    */
   sneezer: {
     id: 'sneezer',
+    deathNote: "Slipped in someone else's sneeze.",
     name: 'Sneezer',
     tag: 'virus',
     hp: 24,
@@ -136,6 +142,7 @@ export const GERMS: Record<string, GermDef> = {
    */
   diamond: {
     id: 'diamond',
+    deathNote: "A fatal performance review.",
     name: 'Diamond the Practice Manager',
     tag: 'bacteria',
     hp: 850,
@@ -156,6 +163,7 @@ export const GERMS: Record<string, GermDef> = {
   /** Diamond's write-ups: angry pink slips she flings when she gets hurt. Tiny, quick, fragile. */
   writeUp: {
     id: 'writeUp',
+    deathNote: "Death by paperwork.",
     name: 'Write-Up',
     tag: 'bacteria',
     hp: 10,

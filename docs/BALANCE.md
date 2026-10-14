@@ -33,7 +33,9 @@ Values live in `src/config/balance.ts` and `src/config/controls.ts`.
 | Viral Sprinter | 16 HP, 165 px/s | From round 3; up to 50% of a round's mix |
 | Round size | 10, 13, 16, 20, 23... | `10 + 3(r-1) + 0.15(r-1)²` (was 6 + ...) |
 | Max alive | 10 at r1, up to 28 | Readability + iPhone performance |
-| HP / speed scaling per round | +10% / +3.5% (speed capped 1.6×) | |
+| HP / speed scaling per round | +10% (capped 2.2×, round 13) / +3.5% (capped 1.6×) | Bosses' HP capped at 1.5× |
+| Breather | spawns ×1.6 slower while Eugene < 30% HP with ≥ half the round's max alive | `WAVES.breather` |
+| Score bonuses | streak ≥ 10: +5 per kill; Spotless: +25 × round | `BALANCE.streak.scorePerKill`, `economy.spotlessScorePerRound` |
 | Spawn interval | 750 ms at r1, -50 ms/round, min 260 | Was 940 ms at r1 |
 | Boss rounds | every 5th, boss + 50% escort | |
 | Diamond | 850 HP, 55 px/s, 92% knockback resist, radius 62 | Tuning in `BALANCE.diamond` |
