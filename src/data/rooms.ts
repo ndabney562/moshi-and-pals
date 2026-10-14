@@ -17,7 +17,9 @@ export type ObstacleKind =
   | 'wall' | 'chairRow' | 'desk' | 'table' | 'plant' | 'waterCooler' | 'door' | 'supplyCart'
   | 'stall' | 'sink' | 'examTable' | 'counter' | 'xray' | 'couch' | 'fridge' | 'cabinet'
   /** Supply crate: buy it open with Copays for a random new tool (M6). */
-  | 'crate';
+  | 'crate'
+  /** M8 clinic: railing around the upstairs "open to below" drop, waiting-room lounge chairs and benches, the elevator. */
+  | 'railing' | 'lounge' | 'bench' | 'elevator';
 
 export interface Obstacle {
   kind: ObstacleKind;
@@ -59,6 +61,28 @@ export interface RoomLayout {
   exit: { x: number; y: number };
   /** Painted floor signs. */
   signs: { x: number; y: number; text: string }[];
+  /** Floors of the building (M8). The camera stays inside the floor Eugene is on. */
+  floors?: FloorArea[];
+  /** Staircases linking floors: walk into one end, come out at the other. Usable once all `requires` rooms are open. */
+  stairs?: Stairway[];
+}
+
+export interface Rect { x: number; y: number; w: number; h: number; }
+
+export interface FloorArea extends Rect { id: string; name: string; }
+
+export interface StairEnd {
+  /** Walking into this zone takes you up (or down) the stairs... */
+  zone: Rect;
+  /** ...and you come out here, on the other floor, just outside the other end's zone. */
+  arrive: { x: number; y: number };
+}
+
+export interface Stairway {
+  id: string;
+  a: StairEnd;
+  b: StairEnd;
+  requires: string[];
 }
 
 const W = 3800;

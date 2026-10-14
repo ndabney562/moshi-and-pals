@@ -19,6 +19,8 @@ export class FlowField {
   private readonly solidCols: number;
   private readonly solidRows: number;
   private static readonly SOLID_CELL = 16;
+  /** Staircases: a germ standing in cell `from` can step to cell `to` on the other floor. */
+  private portals: { from: number; to: number }[] = [];
   private static readonly NEIGHBORS = [
     [1, 0], [-1, 0], [0, 1], [0, -1], [1, 1], [1, -1], [-1, 1], [-1, -1],
   ] as const;
@@ -97,7 +99,18 @@ export class FlowField {
         dist[ni] = dist[i] + 1;
         queue[tail++] = ni;
       }
+      // Stairs: a cell whose staircase comes out here is one step away
+      for (const p of this.portals) {
+        if (p.to !== i || dist[p.from] !== -1) continue;
+        dist[p.from] = dist[i] + 1;
+        queue[tail++] = p.from;
+      }
     }
+  }
+
+  /** Sets the active staircases (germs path through them to reach Eugene on another floor). */
+  setPortals(links: { from: { x: number; y: number }; to: { x: number; y: number } }[]): void {
+    this.portals = links.map((l) => ({ from: this.index(l.from.x, l.from.y), to: this.index(l.to.x, l.to.y) }));
   }
 
   /**
