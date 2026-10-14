@@ -18,6 +18,7 @@
 - **Spotless bonus.** Finish a round without getting hurt for $10 × the round number. The CLEARED banner becomes SPOTLESS.
 - **Perfect Pour.** While the bottle refills, a gold arc shows on the REFILL ring. Tap REFILL again while the ring is in the gold: the bottle fills instantly and FRESH BOTTLE gives +20% damage for 4 s (the tool label says FRESH!). Tap too early or late and it SPILLS: the pour takes half a second longer.
 - **Auto-refill** (on by default, in the pause menu): spraying an empty bottle starts the refill by itself. Perfect Pour still needs the second tap.
+- **Off-screen threat arrows.** Germs that are off screen but within ~900 px get an arrow at the screen edge pointing at them, tinted like the germ (bigger for bosses, brighter the closer they are). Up to 8 at once.
 
 ## v0.6.0: Milestone 6, supply crates
 - **Supply crates** (📦 with a big "?") in the waiting room, exam rooms, staff break room, lab and X-ray. Walk up and tap USE ($250 Copays) for a random new tool you don't already have.

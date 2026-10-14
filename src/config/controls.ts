@@ -35,6 +35,9 @@ export const CONTROLS = {
   holdToBuyMs: 350,
   /** Auto-aim keeps its current target unless another visible germ is this much closer (0.75 = 25% closer). */
   aimStickiness: 0.75,
+  /** Off-screen germs within this distance of Eugene get an arrow at the screen edge (at most `maxThreatArrows`). */
+  threatArrowRange: 900,
+  maxThreatArrows: 8,
   /** The right stick counts as "aiming" only past this fraction of its radius. */
   aimThreshold: 0.3,
   /** Extra space kept clear of the iPhone notch/home bar, on top of the safe area. */

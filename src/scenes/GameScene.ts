@@ -339,6 +339,11 @@ export class GameScene extends Phaser.Scene {
     events.emit(GameEvents.SpotlessRound, { round, copays: bonus });
   }
 
+  /** For the HUD's off-screen arrows: every germ (check `active`) and Eugene. */
+  get threatSources(): { germs: Germ[]; player: Player } {
+    return { germs: this.germs.getChildren() as Germ[], player: this.player };
+  }
+
   /** Live entity counts for the debug perf overlay. */
   stats(): { germs: number; droplets: number; particles: number; patients: number } {
     return {

@@ -71,6 +71,9 @@ export class HudScene extends Phaser.Scene {
   /** Round that just finished without a scratch (the CLEARED banner becomes SPOTLESS). */
   private spotless?: { round: number; copays: number };
   private streakShown = 0;
+  /** Pooled edge arrows pointing at off-screen germs. */
+  private readonly arrows: Phaser.GameObjects.Image[] = [];
+  private readonly threatPicks: { dx: number; dy: number; d: number; color: number; boss: boolean }[] = [];
   private bottle!: BottleMeter;
   private mouseDown = false;
   private spaceDown = false;
@@ -109,6 +112,10 @@ export class HudScene extends Phaser.Scene {
     this.streakText = this.add.text(0, 0, '', { ...style, fontSize: '18px', fontStyle: '900', color: '#ffe66d' })
       .setOrigin(0.5, 0).setShadow(0, 2, '#000', 4).setVisible(false);
     this.streakBar = this.add.graphics();
+    this.arrows.length = 0;
+    for (let i = 0; i < CONTROLS.maxThreatArrows; i++) {
+      this.arrows.push(this.add.image(0, 0, 'threat-arrow').setVisible(false).setDepth(-0.5));
+    }
     this.health = new Bar(this, 240, 22, 0x4cd964, 'EUGENE');
     this.bossBar = new Bar(this, 420, 20, 0xd64545, '').setVisible(false);
 
@@ -246,6 +253,55 @@ export class HudScene extends Phaser.Scene {
 
     // Ask the game for current health/score/bottle so the HUD starts correct
     (this.scene.get('Game') as GameScene).broadcastState();
+  }
+
+  /**
+   * Off-screen threat arrows: for the nearest germs that are off camera but within range,
+   * an arrow at the screen edge (inside the safe area) pointing at them, tinted like the germ.
+   */
+  private updateThreatArrows(): void {
+    const game = this.scene.get('Game') as GameScene;
+    const cam = game.cameras?.main;
+    if (!cam || !game.threatSources) return;
+    const { germs, player } = game.threatSources;
+    const view = cam.worldView;
+    const range2 = CONTROLS.threatArrowRange ** 2;
+    const picks = this.threatPicks;
+    picks.length = 0;
+    for (const g of germs) {
+      if (!g.active) continue;
+      if (g.x >= view.x && g.x <= view.right && g.y >= view.y && g.y <= view.bottom) continue;
+      const dx = g.x - player.x;
+      const dy = g.y - player.y;
+      const d = dx * dx + dy * dy;
+      if (d > range2) continue;
+      picks.push({ dx, dy, d, color: g.def.color, boss: !!g.def.boss });
+    }
+    picks.sort((a, b) => a.d - b.d);
+    // Eugene's spot on screen; arrows sit where the line toward each germ meets the (safe-area) screen edge
+    const { width, height } = this.scale;
+    const ex = player.x - view.x;
+    const ey = player.y - view.y;
+    const pad = 26;
+    const x0 = this.safe.left + pad, x1 = width - this.safe.right - pad;
+    const y0 = this.safe.top + pad, y1 = height - this.safe.bottom - pad;
+    for (let i = 0; i < this.arrows.length; i++) {
+      const arrow = this.arrows[i];
+      const p = picks[i];
+      if (!p) {
+        arrow.setVisible(false);
+        continue;
+      }
+      const len = Math.sqrt(p.d) || 1;
+      const ux = p.dx / len, uy = p.dy / len;
+      const tx = ux > 0 ? (x1 - ex) / ux : ux < 0 ? (x0 - ex) / ux : Infinity;
+      const ty = uy > 0 ? (y1 - ey) / uy : uy < 0 ? (y0 - ey) / uy : Infinity;
+      const t = Math.max(0, Math.min(tx, ty));
+      // Closer germs: more opaque
+      const near = 1 - Math.sqrt(p.d / range2);
+      arrow.setVisible(true).setPosition(ex + ux * t, ey + uy * t).setRotation(Math.atan2(uy, ux))
+        .setTint(p.color).setScale(p.boss ? 1.6 : 1).setAlpha(0.45 + 0.55 * near);
+    }
   }
 
   /** Shows the streak from 2 kills up; pops a little each time it grows. */
@@ -573,6 +629,7 @@ export class HudScene extends Phaser.Scene {
     // Spray: SPRAY button or spray-zone touch, or the aim stick in twin-stick mode, or the mouse on desktop
     inputState.firing = !!sprayer || this.spaceDown || inputState.aiming || (this.mouseDown && inputState.mouseActive);
     this.interactButton.tick(this.time.now);
+    this.updateThreatArrows();
 
     this.updateFps();
   }

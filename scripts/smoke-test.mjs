@@ -85,7 +85,9 @@ try {
     const g = germs[0];
     return {
       ammo: scene.sprayer.ammo, kills: scene.kills, germs: germs.length,
-      dist: g ? Math.hypot(g.x - eugene.x, g.y - eugene.y) : Infinity,
+      // Distance to auto-aim's target (only germs Eugene can see count; none = Infinity, so no sample)
+      dist: (() => { const t = scene.aimLock?.active ? scene.aimLock : undefined; return t ? Math.hypot(t.x - eugene.x, t.y - eugene.y) : Infinity; })(),
+      nearest: g ? Math.hypot(g.x - eugene.x, g.y - eugene.y) : Infinity,
       facing: eugene.rotation,
       // Auto-aim sticks with its current target (scene.aimLock) until another is clearly closer, so check against that
       aim: (() => { const t = scene.aimLock?.active ? scene.aimLock : g; return t ? Math.atan2(t.y - eugene.y, t.x - eugene.x) : 0; })(),
@@ -352,6 +354,26 @@ try {
   check(streak.streak >= 6 && streak.mult > 1 && streak.halos > 0, `kills build a Sanitation Streak with a Copay multiplier and halos (${JSON.stringify(streak)})`);
   await page.waitForFunction(() => window.game.scene.getScene('Hud').streakText.text.startsWith('STREAK'), null, { timeout: 15000 }).catch(() => {});
   check((await page.evaluate(() => window.game.scene.getScene('Hud').streakText.text)).startsWith('STREAK ×'), 'HUD shows the streak');
+  // Off-screen threat arrows: a germ just off the right edge of the screen gets an arrow pointing at it
+  await page.evaluate(() => {
+    const scene = window.game.scene.getScene('Game');
+    for (const g of scene.germs.getChildren()) if (g.active) g.kill();
+    scene.spawnGerm('basic', { hpMult: 1, speedMult: 1 });
+    const g = scene.germs.getChildren().find((c) => c.active);
+    const v = scene.cameras.main.worldView;
+    g.setPosition(v.right + 60, scene.player.y);
+    g.freeze();
+  });
+  // Other germs may spawn meanwhile, so look for an arrow at the right edge pointing right
+  const rightArrow = () => {
+    const hud = window.game.scene.getScene('Hud');
+    return hud.arrows.some((a) => a.visible && a.x > hud.scale.width * 0.85 && Math.abs(a.rotation) < 0.4);
+  };
+  const arrowOk = await page.waitForFunction(rightArrow, null, { timeout: 15000 }).then(() => true, () => false);
+  const arrows = await page.evaluate(() => window.game.scene.getScene('Hud').arrows.filter((a) => a.visible).map((a) => [Math.round(a.x), +a.rotation.toFixed(2)]));
+  check(arrowOk, `off-screen germ gets an edge arrow pointing at it (${JSON.stringify(arrows)})`);
+  await page.evaluate(() => window.game.scene.getScene('Game').germs.getChildren().forEach((g) => g.active && g.kill()));
+
   // Spotless: a round without getting hurt pays $10 x the round
   const spotless = await page.evaluate(() => {
     const scene = window.game.scene.getScene('Game');
@@ -365,6 +387,8 @@ try {
   // Patients: one walks in, commits a health code violation, and gets sprayed into compliance
   const violation = await page.evaluate(() => {
     const scene = window.game.scene.getScene('Game');
+    // Only the test's patient (others may have wandered in during a slow run)
+    for (const other of scene.patients.group.getChildren()) if (other.active) other.retire();
     scene.patients.spawn(scene.time.now);
     const p = scene.patients.group.getChildren().find((c) => c.active);
     p.setPosition(scene.player.x + 150, scene.player.y);

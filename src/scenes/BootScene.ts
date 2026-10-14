@@ -27,6 +27,7 @@ export class BootScene extends Phaser.Scene {
     this.makeSplat();
     this.makePuff();
     this.makeHalo();
+    this.makeArrow();
     this.scene.start('Title');
   }
 
@@ -293,6 +294,15 @@ export class BootScene extends Phaser.Scene {
     g.fillStyle(0xffffff, 0.35).fillCircle(8, 8, 8);
     g.fillStyle(0xffffff).fillCircle(8, 8, 4.5);
     g.generateTexture('droplet', 16, 16);
+    g.destroy();
+  }
+
+  /** Edge-of-screen pointer toward an off-screen germ (points right; tinted per germ). */
+  private makeArrow(): void {
+    const g = this.add.graphics();
+    g.fillStyle(0x0d2b2e, 0.85).fillTriangle(2, 2, 30, 14, 2, 26);
+    g.fillStyle(0xffffff).fillTriangle(6, 7, 24, 14, 6, 21);
+    g.generateTexture('threat-arrow', 32, 28);
     g.destroy();
   }
 
