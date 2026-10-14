@@ -485,6 +485,11 @@ try {
   // EXAM TABLE: rest for $40 to heal 50, once per table per round
   const rest = await page.evaluate(() => {
     const scene = window.game.scene.getScene('Game');
+    // Hold the round still: a new round would (correctly) make the table usable again mid-check
+    for (const g of scene.germs.getChildren()) if (g.active) g.kill();
+    scene.waves.queue.length = 0;
+    scene.waves.phase = 'intermission';
+    scene.waves.nextRoundAt = Number.MAX_SAFE_INTEGER;
     scene.unlockRoom('exam1');
     const room = scene.room.rooms.find((r) => r.id === 'exam1');
     const o = scene.room.obstacles.find((ob) => ob.kind === 'examTable' && ob.x >= room.x && ob.x < room.x + room.w && ob.y >= room.y && ob.y < room.y + room.h);
@@ -503,6 +508,7 @@ try {
     const scene = window.game.scene.getScene('Game');
     return { hp: scene.player.hp, copays: scene.copays, label: window.game.scene.getScene('Hud').interactButton.label.text };
   });
+  await page.evaluate(() => { const scene = window.game.scene.getScene('Game'); scene.waves.nextRoundAt = scene.time.now + 2000; });
   check(rest && rested.hp >= 90 && rested.copays === 60 && rested.label === 'RESTED', `an exam table heals 50 for $40, once per round (${JSON.stringify(rested)})`);
   await page.evaluate(() => window.game.scene.getScene('Game').germs.getChildren().forEach((g) => g.active && g.kill()));
 
