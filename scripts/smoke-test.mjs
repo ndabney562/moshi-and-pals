@@ -22,6 +22,7 @@ const context = await browser.newContext({
 const page = await context.newPage();
 /** Timeouts say what they were waiting for (CI logs aren't readable, only the failure message). */
 const labelWaits = (p) => {
+  p.setDefaultNavigationTimeout(90000); // slow machines take a while to load the bundle
   const wait = p.waitForFunction.bind(p);
   p.waitForFunction = (fn, arg, opts) => wait(fn, arg, opts).catch((e) => {
     throw new Error(`${e.message.split('\n')[0]} waiting for: ${String(fn).replace(/\s+/g, ' ').slice(0, 160)}`);
@@ -109,7 +110,17 @@ try {
   await page.waitForFunction(() => window.game.scene.getScene('Game').germs.countActive(true) > 0, null, { timeout: 90000 });
   await page.evaluate(() => {
     const scene = window.game.scene.getScene('Game');
-    for (const g of scene.germs.getChildren()) if (g.active) g.setPosition(scene.player.x + 300 + Math.random() * 40, scene.player.y - 20 + Math.random() * 40);
+    // Back to the open middle of the waiting room (the stick test may have walked him anywhere), and untouchable
+    // until the death test: these checks are about spraying and menus, not about getting hurt
+    scene.player.setPosition(scene.room.playerSpawn.x, scene.room.playerSpawn.y);
+    scene.player.invulnerableUntil = Number.MAX_SAFE_INTEGER;
+    // Three germs to aim at (a crowd makes auto-aim legitimately switch targets every frame)
+    scene.germs.getChildren().filter((g) => g.active).slice(3).forEach((g) => g.kill());
+    for (const g of scene.germs.getChildren()) {
+      if (!g.active) continue;
+      g.setPosition(scene.player.x + 300 + Math.random() * 40, scene.player.y - 20 + Math.random() * 40);
+      g.maxHp = g.hp = 150; // tough enough to stay up while auto-aim is sampled
+    }
   });
   // Let the germs come to Eugene (within spray range) before spraying
   await page.waitForFunction(() => {
@@ -150,7 +161,13 @@ try {
   // Refill takes 1.1 s of game time (which runs slower than real time when frames drop)
   await page.waitForFunction(() => window.game.scene.getScene('Game').sprayer.ammo === 120, null, { timeout: 15000 }).catch(() => {});
   const refilled = await game();
-  check(refilled.ammo === 120, `Refill button refilled the bottle (${refilled.ammo} mL)`);
+  const clock = await page.evaluate(async () => {
+    const g = window.game.scene.getScene('Game');
+    const t0 = g.time.now;
+    await new Promise((r) => setTimeout(r, 1000));
+    return { gameMsPerSec: Math.round(g.time.now - t0), fps: Math.round(window.game.loop.actualFps), refilling: g.sprayer.refilling, germs: g.germs.countActive(true), player: [Math.round(g.player.x), Math.round(g.player.y)] };
+  });
+  check(refilled.ammo === 120, `Refill button refilled the bottle (${refilled.ammo} mL; ${JSON.stringify(clock)})`);
   // Perfect Pour: REFILL again in the gold sweet spot fills instantly and gives FRESH BOTTLE; too early spills
   await page.evaluate(() => {
     const scene = window.game.scene.getScene('Game');
@@ -248,7 +265,7 @@ try {
   });
   const purgeAt = await buttonAt('purgeButton');
   await page.touchscreen.tap(purgeAt.x, purgeAt.y);
-  await page.waitForTimeout(300);
+  await page.waitForFunction(() => { const sc = window.game.scene.getScene('Game'); return sc.purgeReadyAt > sc.time.now; }, null, { timeout: 10000 }).catch(() => {});
   const purged = await page.evaluate(() => {
     const scene = window.game.scene.getScene('Game');
     const g = window.__purgeTarget;
@@ -609,6 +626,7 @@ try {
     const zapped = line.filter(hurt).length;
     clear();
     const target = at('basic', 220, 0);
+    window.__gelTarget = target;
     scene.aimLock = target;
     use('gelLauncher');
     return { wipes, zapped };
@@ -618,8 +636,8 @@ try {
   check(arsenal.zapped === 3, `Defib Paddles zap a chain of germs (${arsenal.zapped} of 3)`);
   const gelled = await page.waitForFunction(() => {
     const scene = window.game.scene.getScene('Game');
-    const g = scene.germs.getChildren().find((c) => c.active && c.def.id === 'basic');
-    return scene.gel.count > 0 && (!g || g.hp < g.maxHp) ? { gel: scene.gel.count, slowed: !!g && g.slowUntil > scene.time.now } : null;
+    const g = window.__gelTarget;
+    return scene.gel.count > 0 && (!g.active || g.hp < g.maxHp) ? { gel: scene.gel.count, slowed: g.active && g.slowUntil > scene.time.now } : null;
   }, null, { timeout: 15000 }).then((h) => h.jsonValue(), () => null);
   check(gelled && gelled.gel > 0, `the Gel Launcher's glob bursts on its target and leaves sticky gel (${JSON.stringify(gelled)})`);
 
@@ -832,7 +850,8 @@ try {
     const scene = window.game.scene.getScene('Game');
     return { tier: scene.sprayer.tier, range: scene.sprayer.def.range, copays: scene.copays, note: window.game.scene.getScene('Hud').interactNote.text };
   });
-  check(upgraded.tier === 1 && upgraded.range === 280 && upgraded.copays === 700, `Compounding Station upgrades the bottle (${JSON.stringify(upgraded)})`);
+  check(upgraded.tier === 1 && upgraded.range === 280 && upgraded.copays >= 700 && upgraded.copays < 1000, // (kill Copays may land during the hold)
+     `Compounding Station upgrades the bottle (${JSON.stringify(upgraded)})`);
 
   // EXAM TABLE: rest for $40 to heal 50, once per table per round
   const rest = await page.evaluate(() => {
@@ -1237,7 +1256,7 @@ try {
   }, null, { timeout: 30000, polling: 500 }).then((h) => h.jsonValue(), () => 0);
   check(cached > 0, `the service worker caches the game (${cached} files)`);
   await swc.setOffline(true);
-  await sw.reload();
+  await sw.reload({ waitUntil: 'domcontentloaded', timeout: 60000 });
   const offline = await sw.waitForFunction(() => window.game?.scene.isActive('Title'), null, { timeout: 20000 }).then(() => true, () => false);
   check(offline, 'with no network, the game still launches to the title screen');
   check(swErrors.length === 0, `no errors offline${swErrors.length ? ': ' + swErrors.join(' | ') : ''}`);

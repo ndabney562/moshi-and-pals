@@ -33,8 +33,14 @@ const game = new Phaser.Game({
     width: logicalWidth(),
     height: DISPLAY.logicalHeight,
   },
-  // ?fps=30 caps the frame rate, like iPhone Low Power Mode does
-  ...(DEBUG.fpsLimit ? { fps: { limit: DEBUG.fpsLimit } } : {}),
+  fps: {
+    // ?fps=30 caps the frame rate, like iPhone Low Power Mode does
+    ...(DEBUG.fpsLimit ? { limit: DEBUG.fpsLimit } : {}),
+    // Phaser treats frames slower than 5 fps as glitches and swaps in 16.7 ms, so game time crawls on the
+    // slow headless browsers the smoke test uses (~4 fps); it also clamps every frame for a while after any focus
+    // event, which test drivers send constantly. Automated browsers take frames as they are.
+    ...(navigator.webdriver ? { min: 1, panicMax: 0 } : {}),
+  },
   physics: { default: 'arcade', arcade: { debug: false } },
   input: { activePointers: 3 },
   render: { antialias: true, powerPreference: 'high-performance' },
