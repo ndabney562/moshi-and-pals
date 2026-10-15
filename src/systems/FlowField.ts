@@ -65,11 +65,16 @@ export class FlowField {
   lineClear(x0: number, y0: number, x1: number, y1: number): boolean {
     const sc = FlowField.SOLID_CELL;
     const steps = Math.ceil(Math.hypot(x1 - x0, y1 - y0) / (sc * 0.75));
+    // The cells the two ends stand in don't count: a cell is solid if furniture covers any of it, so someone
+    // standing flush against a desk is "inside" a solid cell and would otherwise see nothing at all
+    const ax = Math.floor(x0 / sc), ay = Math.floor(y0 / sc);
+    const bx = Math.floor(x1 / sc), by = Math.floor(y1 / sc);
     for (let i = 1; i < steps; i++) {
       const t = i / steps;
       const cx = Math.floor((x0 + (x1 - x0) * t) / sc);
       const cy = Math.floor((y0 + (y1 - y0) * t) / sc);
       if (cx < 0 || cy < 0 || cx >= this.solidCols || cy >= this.solidRows) return false;
+      if ((cx === ax && cy === ay) || (cx === bx && cy === by)) continue;
       if (this.solid[cy * this.solidCols + cx]) return false;
     }
     return true;
