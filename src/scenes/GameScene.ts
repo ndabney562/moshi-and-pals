@@ -11,7 +11,7 @@ import { inputState } from '../core/inputState';
 import { settings } from '../core/settings';
 import { recordRun } from '../core/save';
 import { unlockAchievement } from '../core/achievements';
-import { activeSpecialty, creditsFor, progress, recordShift } from '../core/progress';
+import { activeSpecialty, creditsFor, progress, recordShift, scribeUnlocked } from '../core/progress';
 import type { SpecialtyMods } from '../data/residency';
 import { newRunStats, type RunStats } from '../core/runStats';
 import { initSfx, sfx } from '../core/sfx';
@@ -39,6 +39,8 @@ import { DiamondBrain, type BossHost } from '../systems/DiamondBrain';
 import type { BossBrain } from '../systems/BossBrain';
 import { PatientZeroBrain } from '../systems/PatientZeroBrain';
 import { PatientDirector } from '../systems/PatientDirector';
+import { Scribes } from '../systems/Scribes';
+import { scribeById } from '../data/scribes';
 import { Sprayer } from '../systems/Sprayer';
 import { WaveDirector } from '../systems/WaveDirector';
 
@@ -132,6 +134,10 @@ export class GameScene extends Phaser.Scene {
   private readonly step = new Phaser.Math.Vector2();
   private waves!: WaveDirector;
   private patients!: PatientDirector;
+  /** Omar and Alan, the scribes (a power-up, once unlocked on the Residency Board). */
+  private scribes!: Scribes;
+  /** Patients the scribes cleaned up this shift (the Delegation achievement). */
+  private scribeCleans = 0;
   private kills = 0;
   private score = 0;
   private runOver = false;
@@ -215,7 +221,7 @@ export class GameScene extends Phaser.Scene {
 
     this.fx = new Fx(this);
     this.flow = new FlowField(room.width, room.height, this.blockingObstacles());
-    this.character = characterById(settings.character);
+    this.character = characterById(DEBUG.doctor ?? settings.character);
     this.player = new Player(this, room.playerSpawn.x, room.playerSpawn.y, this.character.id);
     const passive = this.character.passive;
     if (passive.maxHp) this.player.maxHp = this.player.hp = this.player.maxHp + passive.maxHp;
@@ -243,7 +249,9 @@ export class GameScene extends Phaser.Scene {
     this.snacks = [];
     this.perks = { refill: 1, purge: 1, crit: 1 };
     this.vendingOffer = undefined;
-    this.powerups = new Powerups(this, (def, t) => this.onPowerup(def, t));
+    // Scribe pills only drop once that scribe is unlocked (or forced with ?scribe=)
+    this.powerups = new Powerups(this, (def, t) => this.onPowerup(def, t),
+      (def) => !def.scribe || scribeUnlocked(def.scribe) || DEBUG.scribe === def.scribe);
     const telegraphs = this.add.graphics().setDepth(7);
     this.behaviorHost = {
       player: this.player,
@@ -279,6 +287,33 @@ export class GameScene extends Phaser.Scene {
       onCleaned: (p) => this.onPatientCleaned(p),
       doctor: this.character.id,
     });
+    this.scribeCleans = 0;
+    this.scribes = new Scribes({
+      scene: this,
+      player: this.player,
+      flow: this.flow,
+      fx: this.fx,
+      patients: this.patients,
+      germs: () => this.livingGerms(),
+      hit: (g, damage, angle, knockback) => this.damageGerm(g, damage, angle, knockback),
+      sameFloor: (x0, y0, x1, y1) => this.floorOf(x0, y0) === this.floorOf(x1, y1),
+      sameRoom: (x0, y0, x1, y1) => {
+        const id = (x: number, y: number) => this.room.rooms.find((r) => x >= r.x && x < r.x + r.w && y >= r.y && y < r.y + r.h)?.id;
+        const a = id(x0, y0);
+        return a !== undefined && a === id(x1, y1);
+      },
+      onClean: () => {
+        this.scribeCleans++;
+        if (this.scribeCleans >= 5) this.achieve('delegation');
+      },
+    });
+    const forced = scribeById(DEBUG.scribe);
+    if (forced) {
+      // ?scribe=omar: they work the whole shift
+      const whole = 1e9;
+      this.powerups.start(forced.powerup, this.time.now, whole);
+      this.scribes.summon(forced.id, this.time.now, whole);
+    }
 
     this.physics.add.collider(this.player, solids);
     this.physics.add.collider(this.germs, solids);
@@ -503,6 +538,7 @@ export class GameScene extends Phaser.Scene {
     const slow = this.puddles.update(time, this.player.x, this.player.y);
     this.player.setSpeedMod('puddle', slow < 1 ? slow : null);
     this.patients.update(time, delta, this.waves.round, this.waves.spawning, this.waves.isBossRound);
+    this.scribes.update(time, delta);
     this.updateStreak(time);
   }
 
@@ -740,6 +776,9 @@ export class GameScene extends Phaser.Scene {
   private damageGerm(germ: Germ, damage: number, fromAngle: number, knockback: number): void {
     const time = this.time.now;
     if (this.boss?.germ === germ) damage *= this.boss.damageTaken ?? 1;
+    // Ken's passive: everything he does hits Diamond harder
+    const vsDiamond = germ.def.brain === 'diamond' && !!this.character.passive.diamondDamage;
+    if (vsDiamond) damage *= this.character.passive.diamondDamage!;
     if (germ.chargeState === 'dazed' && germ.def.charge) damage *= germ.def.charge.stunnedDamageTaken;
     const killed = germ.hurt(damage, fromAngle, knockback, time);
     if (this.boss?.germ === germ) this.boss.onHurt(damage, time);
@@ -748,6 +787,7 @@ export class GameScene extends Phaser.Scene {
     if (killed || time - germ.lastNumberAt > 180) {
       const n = Math.round(germ.pendingDamage);
       if (germ.pendingCrit) this.fx.number(germ.x, germ.y - germ.def.radius, `STAT! ${n}`, '#ffe66d', 24);
+      else if (vsDiamond) this.fx.number(germ.x, germ.y - germ.def.radius, `${n}`, '#ffab40', 24);
       else this.fx.number(germ.x, germ.y - germ.def.radius, `${n}`);
       germ.pendingCrit = false;
       germ.pendingDamage = 0;
@@ -773,6 +813,7 @@ export class GameScene extends Phaser.Scene {
       if (germ.def.id === 'healer') this.achieve('cultureShock');
       if (germ.def.id === 'moldSpot') this.achieve('remediation');
       if (germ.def.brain === 'diamond') this.achieve('meetingAdjourned');
+      if (germ.def.brain === 'diamond' && this.character.id === 'ken') this.achieve('exitInterview');
       if (germ.def.brain === 'patientZero') this.achieve('discharged');
       if ((this.runStats.kills.sneezer ?? 0) >= 10) this.achieve('gesundheit');
       const el = BALANCE.elites;
@@ -826,7 +867,8 @@ export class GameScene extends Phaser.Scene {
   /** The signature move's recharge (Sinus Purge, Code Blue, Clean Field), after snacks. */
   private get signatureCooldown(): number {
     const sig = this.character.signature;
-    const base = sig === 'codeBlue' ? BALANCE.codeBlue.cooldownMs : sig === 'cleanField' ? BALANCE.cleanField.cooldownMs : BALANCE.purge.cooldownMs;
+    const base = sig === 'codeBlue' ? BALANCE.codeBlue.cooldownMs : sig === 'cleanField' ? BALANCE.cleanField.cooldownMs
+      : sig === 'grievance' ? BALANCE.grievance.cooldownMs : BALANCE.purge.cooldownMs;
     return base * this.perks.purge;
   }
 
@@ -834,7 +876,48 @@ export class GameScene extends Phaser.Scene {
   private signature(time: number): void {
     if (this.character.signature === 'codeBlue') this.codeBlue(time);
     else if (this.character.signature === 'cleanField') this.cleanField(time);
+    else if (this.character.signature === 'grievance') this.fileGrievance(time);
     else this.sinusPurge(time);
+  }
+
+  /**
+   * KEN'S FILE A GRIEVANCE: he slams a form down and paperwork flies everywhere, hitting and stunning
+   * every germ nearby. If Diamond is anywhere close, she's summoned to HR: frozen, no meetings, no tantrums.
+   */
+  private fileGrievance(time: number): void {
+    if (time < this.purgeReadyAt || this.player.dead) return;
+    const cfg = BALANCE.grievance;
+    this.purgeReadyAt = time + this.signatureCooldown;
+    this.runStats.purges++;
+    const { x, y } = this.player;
+    sfx.stamp();
+    this.cameras.main.shake(160, 0.006);
+    this.fx.number(x, y - 70, 'GRIEVANCE FILED!', '#fff3c4', 28);
+    const ring = this.add.circle(x, y, cfg.radius).setStrokeStyle(10, 0xfff3c4, 0.9).setFillStyle(0xffffff, 0.12).setDepth(13).setScale(0.1);
+    this.tweens.add({ targets: ring, scale: 1, alpha: 0, duration: 380, ease: 'Cubic.out', onComplete: () => ring.destroy() });
+    // Sheets of paper flying out
+    for (let i = 0; i < 12; i++) {
+      const a = (i / 12) * Math.PI * 2 + Math.random() * 0.3;
+      const sheet = this.add.rectangle(x, y, 14, 18, 0xffffff).setStrokeStyle(2, 0x90a4ae).setDepth(13).setRotation(a);
+      this.tweens.add({
+        targets: sheet, x: x + Math.cos(a) * cfg.radius, y: y + Math.sin(a) * cfg.radius, rotation: a + 4, alpha: 0,
+        duration: 480, ease: 'Cubic.out', onComplete: () => sheet.destroy(),
+      });
+    }
+    let hit = 0;
+    for (const g of this.livingGerms()) {
+      if (Phaser.Math.Distance.Between(x, y, g.x, g.y) > cfg.radius + g.def.radius) continue;
+      hit++;
+      this.damageGerm(g, cfg.damage, Phaser.Math.Angle.Between(x, y, g.x, g.y), cfg.knockback);
+      if (g.active) g.stun(time, cfg.stunMs);
+    }
+    const boss = this.boss;
+    if (boss?.summonToHr && boss.germ.active && Phaser.Math.Distance.Between(x, y, boss.germ.x, boss.germ.y) < cfg.hrRange) {
+      boss.summonToHr(time, cfg.hrMs);
+      this.fx.number(boss.germ.x, boss.germ.y - boss.germ.def.radius - 30, 'SUMMONED TO HR!', '#ffab40', 26);
+    }
+    if (hit >= 5) this.achieve('honk');
+    events.emit(GameEvents.PurgeUsed);
   }
 
   /**
@@ -1716,6 +1799,10 @@ export class GameScene extends Phaser.Scene {
         }
         break;
       }
+      case 'scribeOmar':
+      case 'scribeAlan':
+        if (def.scribe) this.scribes.summon(def.scribe, time, def.ms);
+        break;
       // triage and doubleCopay are checked where they apply
     }
   }
@@ -1744,6 +1831,7 @@ export class GameScene extends Phaser.Scene {
       },
       damagePlayer: (amount) => this.hurtPlayer(amount, 'diamond'),
       surname: this.character.surname,
+      doctor: this.character.id,
       canMeet: () => !!this.currentRoom?.start,
     };
   }

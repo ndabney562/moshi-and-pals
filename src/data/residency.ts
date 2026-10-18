@@ -2,6 +2,7 @@
  * THE RESIDENCY BOARD: what CME Credits (Continuing Medical Education, earned per shift) unlock between runs.
  * Unlocks are mostly new options, not raw power: a Specialty is a trade-off you choose before a shift,
  * and the Starter Kit lets you bring a crate tool from home. Pick one Specialty at a time (or none).
+ * The scribes (Omar and Alan) are hired here too; their prices are in data/scribes.ts.
  */
 export interface SpecialtyDef {
   id: string;

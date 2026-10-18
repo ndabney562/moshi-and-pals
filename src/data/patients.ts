@@ -10,9 +10,10 @@ export interface ViolationDef {
   action: string;
   /** Dr. Moshkovich's reaction; one is picked at random. Also used for anyone without their own lines. */
   eugene: string[];
-  /** Dr. Kaya's and PA Lucien's own reactions (if missing, they say Eugene's). */
+  /** Dr. Kaya's, PA Lucien's and Ken's own reactions (if missing, they say Eugene's). */
   kaya?: string[];
   lucien?: string[];
+  ken?: string[];
   /** Germs let loose by each violation. */
   germId: string;
   germs: number;
