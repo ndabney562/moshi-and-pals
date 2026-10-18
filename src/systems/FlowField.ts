@@ -108,6 +108,11 @@ export class FlowField {
     }
   }
 
+  /** After `update`: true if (x, y) can be walked to from the flood's start (coarse: narrow gaps may read as closed). */
+  reaches(x: number, y: number): boolean {
+    return this.dist[this.index(x, y)] >= 0;
+  }
+
   /** Sets the active staircases (germs path through them to reach Eugene on another floor). */
   setPortals(links: { from: { x: number; y: number }; to: { x: number; y: number } }[]): void {
     this.portals = links.map((l) => ({ from: this.index(l.from.x, l.from.y), to: this.index(l.to.x, l.to.y) }));

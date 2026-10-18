@@ -10,6 +10,8 @@ import { DEBUG } from '../core/debug';
 import { inputState } from '../core/inputState';
 import { resumeAudio, setSfxMuted } from '../core/sfx';
 import { TIPS } from '../data/tips';
+import { modifierById } from '../data/modifiers';
+import { difficultyById } from '../data/difficulties';
 import { HINTS, type HintDef } from '../data/tutorial';
 import { readSafeArea, type Insets } from '../core/safeArea';
 import { saveSettings, settings } from '../core/settings';
@@ -97,6 +99,8 @@ export class HudScene extends Phaser.Scene {
   private swapButton!: HudButton;
   private toolText!: Phaser.GameObjects.Text;
   private roomText!: Phaser.GameObjects.Text;
+  /** M17: Today's Shift / modifiers / difficulty in play, under the room name. */
+  private shiftText!: Phaser.GameObjects.Text;
   private copaysText!: Phaser.GameObjects.Text;
   /** SANITATION STREAK ×N under the Copays, with a bar for the time left to keep it going. */
   private streakText!: Phaser.GameObjects.Text;
@@ -146,6 +150,12 @@ export class HudScene extends Phaser.Scene {
     if (DISPLAY.showFps || DEBUG.overlay) this.fpsText = this.add.text(0, 0, '', { ...tag, fontSize: '16px', align: 'right' });
     this.scoreText = this.add.text(0, 0, 'SCORE 0', { ...tag, fontSize: '18px', fontStyle: 'bold' }).setOrigin(0.5, 0);
     this.roomText = this.add.text(0, 0, '', { ...tag, fontSize: '15px' }).setOrigin(1, 0);
+    const shift = (this.scene.get('Game') as GameScene).shift;
+    const parts = shift.mods.map((id) => modifierById(id)).filter((m) => !!m).map((m) => `${m!.icon} ${m!.name.toUpperCase()}`);
+    if (shift.difficulty !== 'urgent') parts.unshift(difficultyById(shift.difficulty).name.toUpperCase());
+    if (shift.daily) parts.unshift("📋 TODAY'S SHIFT");
+    this.shiftText = this.add.text(0, 0, parts.join('  ·  '), { ...tag, fontSize: '14px', fontStyle: 'bold', color: '#ffe66d' })
+      .setOrigin(1, 0).setVisible(parts.length > 0);
     this.copaysText = this.add.text(0, 0, '$0 COPAYS', { ...tag, fontSize: '17px', fontStyle: 'bold', color: COLORS.uiAccent }).setOrigin(0.5, 0);
     this.streakText = this.add.text(0, 0, '', { ...style, fontSize: '18px', fontStyle: '900', color: '#ffe66d' })
       .setOrigin(0.5, 0).setShadow(0, 2, '#000', 4).setVisible(false);
@@ -612,6 +622,7 @@ export class HudScene extends Phaser.Scene {
     this.versionText.setPosition(infoX, this.safe.top + m);
     this.fpsText?.setOrigin(1, 0).setPosition(infoX, this.safe.top + m + 30);
     this.roomText.setPosition(infoX, this.safe.top + m + (DEBUG.overlay ? 110 : 8));
+    this.shiftText.setPosition(infoX, this.roomText.y + 34);
     this.layoutPauseMenu(width, height);
     this.choicePanel.layout(width, height);
     this.achievementList.layout(width, height);

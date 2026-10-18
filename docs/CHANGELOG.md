@@ -1,5 +1,18 @@
 # Changelog
 
+## v0.19.0: Milestone 17, Today's Shift
+- **Today's Shift** (📋 on the title screen): a daily challenge. Everyone gets the same shift on the same day: the date picks the random rolls and two modifiers, shown before you CLOCK IN. Always on Urgent. The title screen and the Discharge Summary show today's best, and your first finished Today's Shift each day earns +2 CME.
+- **Six modifiers:**
+  - **Flu Season:** Viral Sprinters come in twice as often, from round 1.
+  - **Power Outage:** the clinic is dark except your flashlight's circle around you. The HUD stays lit.
+  - **Inspection Day:** Spotless rounds pay triple.
+  - **Short-Staffed:** nobody restocks the carts, so restocks cost triple ($120).
+  - **Construction:** each round from round 2, one room you opened closes for "renovations" until the round ends. Never the room you're in, and never one you'd need to get back to the waiting room. Germs fit under the door.
+  - **Full Moon:** germs come in odd sizes (their hitboxes don't change), the floor is moonlit, and patients walk backwards.
+- **Difficulty** (🩺 on the title screen, tap to switch): **Walk-In** (softer germs, gentler bumps, better Copays), **Urgent** (the game as before) and **Trauma Center** (tougher germs that hit harder and keep coming). Records are kept per difficulty, so a Walk-In shift never beats your Urgent record. Your old records count as Urgent. The Discharge Summary names the difficulty.
+- 3 new achievements: *Clocked In* (finish a Today's Shift), *Level One Trauma* (round 10 on Trauma Center), *Working in the Dark* (round 8 in a Power Outage). The achievement list goes to three columns on phones.
+- For testers: `?mods=powerOutage,fullMoon` forces modifiers, `?seed=123` fixes the run's random rolls.
+
 ## v0.18.0: Milestone 18, Ken and the scribes
 - New title poster from Noah: all four doctors (Moshkovich, Kaya, Lucien and Ken) spraying side by side.
 - **Ken is playable**, the fourth Pal (pick him on the title screen). Black fleece over light-blue scrubs, a chunky black watch.
