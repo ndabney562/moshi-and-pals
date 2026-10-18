@@ -374,8 +374,8 @@ export class BootScene extends Phaser.Scene {
    * Diamond: a big, slimy germ monster in the style of cold-medicine ad
    * creatures. Stubby arms (one holding her clipboard), furious eyebrows and a toothy scowl.
    * Her look follows Noah's reference picture (v0.18): a striped red-gold-green knit headwrap,
-   * long beaded dreadlocks, gold hoops, bead necklaces and bracelets, and her Trinidad and Tobago
-   * flag pin. Faces right (+x) like every germ.
+   * long beaded dreadlocks, gold hoops, bead necklaces and bracelets.
+   * Faces right (+x) like every germ.
    */
   private makeManagerMonster(def: GermDef): void {
     const r = def.radius;
@@ -467,14 +467,6 @@ export class BootScene extends Phaser.Scene {
         }
       }
     }
-    // Her Trinidad and Tobago flag pin, on the necklace
-    const fw = r * 0.3, fh = r * 0.2;
-    const fx = c + r * 0.02, fy = c + r * 0.56;
-    g.fillStyle(0xce1126).fillRect(fx, fy, fw, fh);
-    g.lineStyle(fh * 0.5, 0xffffff).lineBetween(fx, fy, fx + fw, fy + fh);
-    g.lineStyle(fh * 0.3, 0x000000).lineBetween(fx, fy, fx + fw, fy + fh);
-    g.lineStyle(1.5, ink).strokeRect(fx, fy, fw, fh);
-
     // Eyes and furious eyebrows
     for (const dy of [-0.3, 0.3]) {
       g.fillStyle(0xffffff).fillCircle(c + r * 0.42, c + r * dy, r * 0.2);

@@ -479,7 +479,7 @@ try {
     g.setPosition(sp.x + 280, sp.y);
     g.nextSpitAt = 0;
   });
-  const sneezed = await page.waitForFunction(() => window.game.scene.getScene('Game').puddles.count > 0, null, { timeout: 20000 }).then(() => true, () => false);
+  const sneezed = await page.waitForFunction(() => window.game.scene.getScene('Game').puddles.count > 0, null, { timeout: 60000 }).then(() => true, () => false);
   check(sneezed, 'a Sneezer winds up, sneezes, and its glob leaves a puddle');
   const slowed = await page.evaluate(async () => {
     const scene = window.game.scene.getScene('Game');
@@ -674,7 +674,7 @@ try {
   });
   check(traps.dry.hurt && traps.dry.after === 'RECHARGING', `the bathroom hand dryer blasts a germ, then recharges (${JSON.stringify(traps.dry)})`);
   check(traps.xray && traps.copays === 435, `the X-ray pulse goes through walls ($40; the autoclave $25) (${JSON.stringify(traps)})`);
-  const steamed = await page.waitForFunction(() => !window.__steamed.active || window.__steamed.hp < window.__steamedHp, null, { timeout: 15000 }).then(() => true, () => false);
+  const steamed = await page.waitForFunction(() => !window.__steamed.active || window.__steamed.hp < window.__steamedHp, null, { timeout: 45000 }).then(() => true, () => false);
   check(steamed, 'the autoclave hisses, then its steam cycle cooks the germ in front of it');
 
   // VENDING MACHINE (M14): three snacks, buy one (a run-long perk), too poor for another, walk away
@@ -881,7 +881,7 @@ try {
     while (scene.waves.queue.length < 4) scene.waves.queue.push('basic');
     return { germsBefore: scene.germs.countActive(true), id: p.def.id };
   });
-  await page.waitForFunction(() => window.game.scene.getScene('Game').patients.eugeneBubble.text.length > 0, null, { timeout: 15000 }).catch(() => {});
+  await page.waitForFunction(() => window.game.scene.getScene('Game').patients.eugeneBubble.text.length > 0, null, { timeout: 45000 }).catch(() => {});
   const violated = await page.evaluate(() => {
     const scene = window.game.scene.getScene('Game');
     const p = scene.patients.group.getChildren().find((c) => c.active);
@@ -1054,7 +1054,8 @@ try {
     const g = scene.germs.getChildren().find((c) => c.active) ?? (scene.spawnGerm('basic', { hpMult: 1, speedMult: 1 }), scene.germs.getChildren().find((c) => c.active));
     g.setPosition(scene.player.x + 5, scene.player.y);
   });
-  await page.waitForFunction(() => window.game.scene.isActive('GameOver'), null, { timeout: 15000 });
+  // Slow CI browsers (~5 fps) run game time far behind real time, so game-time waits get generous timeouts
+  await page.waitForFunction(() => window.game.scene.isActive('GameOver'), null, { timeout: 60000 });
   await page.waitForTimeout(1200);
   await page.screenshot({ path: 'smoke-gameover.png' });
   const saved2 = await page.evaluate(() => JSON.parse(localStorage.getItem('moshi.save.v2') ?? '{}'));
@@ -1240,7 +1241,7 @@ try {
   check(cached > 0, `the service worker caches the game (${cached} files)`);
   await swc.setOffline(true);
   await sw.reload();
-  const offline = await sw.waitForFunction(() => window.game?.scene.isActive('Title'), null, { timeout: 20000 }).then(() => true, () => false);
+  const offline = await sw.waitForFunction(() => window.game?.scene.isActive('Title'), null, { timeout: 60000 }).then(() => true, () => false);
   check(offline, 'with no network, the game still launches to the title screen');
   check(swErrors.length === 0, `no errors offline${swErrors.length ? ': ' + swErrors.join(' | ') : ''}`);
   await swc.close();
