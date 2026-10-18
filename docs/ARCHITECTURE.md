@@ -42,7 +42,7 @@ Systems will announce gameplay events on `core/events.ts` (event bus); dialogue,
 The HUD owns pause (`HudScene.pause/resume`): it releases all touches, clears `inputState` and pauses the Game scene; it also auto-pauses on Phaser's `hidden`/`blur` events. `core/gameClock.useGameTime` makes the Game scene's `time.now` advance only by frame deltas while it runs, so every `time.now + ms` timer freezes with the game. Game code must use `this.time.now` (or the `time` GameScene.update passes along), never the loop's wall-clock time. Any touch calls `sfx.resumeAudio()` because iOS suspends audio after interruptions.
 
 ## Settings
-`core/settings.ts` holds player settings saved in localStorage (wrapped in try/catch; falls back to defaults). Currently: `autoAim`, `sound` (both in the pause menu).
+`core/settings.ts` holds player settings saved in localStorage (wrapped in try/catch; falls back to defaults). Currently: `autoAim`, `sound` (both in the pause menu), `character` and `difficulty` (title screen).
 
 ## Tools (M12)
 Every tool is a `Sprayer` (supply, fire rate, refills, upgrades). Spray tools launch pooled droplets; tools with an `attack` (Wipes `swipe`, Gel Launcher `lob`, Defib Paddles `chain`) hand each shot to `systems/Arsenal.ts`. Both paths end in `GameScene.hitGerm` (effectiveness, crits, slow, armor, then `damageGerm`). Crates open the Supply Requisition: `GameScene` emits `RequisitionOpened`, the HUD pauses the game and shows `ui/RequisitionPanel`, and the pick or appeal comes back as an event.
@@ -58,11 +58,17 @@ Traps are stations (`GameScene.buildStations`, kinds `handDryer`, `autoclave`, `
 ## Residency (M15)
 `core/progress.ts` keeps between-run progress under its own key (credits, owned board items, the chosen Specialty and Starter Kit tool, lifetime kills per germ). `GameScene.applyResidency` applies the Specialty's `mods` at the start of a shift (max health, speed, start Copays, jug size; `hitGerm`, `sinusPurge`, `scaled` and `upgradeCost` read the rest), and `endRun` banks the shift's credits and kills. `scenes/BoardScene.ts` is the board (Specialties, Starter Kit, Atlas), opened from the title screen.
 
+## Today's Shift, modifiers, difficulty (M17)
+- `core/rng.ts`: seeded mulberry32. `seedRun(seed)` at the start of every shift reseeds named streams (`runRng.wave`, `spawn`, `loot`, `patients`, `ai`, `world`), so one system's frame-dependent rolls can't shift another's. Gameplay rolls use them; cosmetic ones (particles, shake, sound, dialogue) stay on `Math.random`.
+- `core/shift.ts`: the title picks the next shift's kind (`chooseShift`); `GameScene.create` asks `nextShift()` for `{ daily?, difficulty, mods, seed }`, so PLAY AGAIN repeats it. `dailyShift(date)` hashes the local date into the seed and 2 modifiers.
+- Modifiers are data (`data/modifiers.ts`), numbers in `BALANCE.modifiers`; `GameScene.hasMod(id)` gates each effect. Power Outage is one pre-drawn canvas texture (dark with a soft hole) moved to Eugene's screen position each frame. Construction adds the room's doors to a static group that collides with Eugene only, after a coarse `FlowField` check that he can still walk back to the waiting room.
+- Difficulty multipliers (`BALANCE.difficulty`) apply in `scaled()` (germ HP), `hurtPlayer` (damage), `WaveDirector.intervalMult` and kill Copays. Save v3 keeps records per difficulty plus the day's best (`core/save.ts`).
+
 ## Content as data
 - `src/config/`: tuning numbers (balance, controls, display, theme colors).
 - `src/data/`: content (rooms now; germs, equipment, waves, dialogue later).
 
 ## Testing
-Debug switches live in `core/debug.ts` (`?round`, `?copays`, `?god`, `?fps`, `?debug`); see the changelog for usage. They also run in the smoke test.
+Debug switches live in `core/debug.ts` (`?round`, `?copays`, `?god`, `?fps`, `?debug`, `?mods`, `?seed`); see the changelog for usage. They also run in the smoke test.
 `npm run build && npm run smoke` serves the build, opens it in a phone-sized touch browser, drives both sticks, checks Eugene moves and faces the aim direction, waits for germs, sprays them until some die, taps Refill, and fails on console errors. CI runs it on every pull request.
 - Orientation: `core/orientation.ts` keeps the game landscape. On a touch screen taller than wide it rotates `#game` 90° with CSS, and patches Phaser's parent measuring, centering and pointer mapping to match; `safeArea.ts` rotates the insets too.

@@ -35,4 +35,7 @@ export const ACHIEVEMENTS: AchievementDef[] = [
   { id: 'ama', name: 'Against Medical Advice', how: 'Let Patient Zero walk out' },
   { id: 'doubleShift', name: 'Double Shift', how: 'Reach round 10' },
   { id: 'attending', name: 'Attending Physician', how: 'Reach round 20' },
+  { id: 'clockedIn', name: 'Clocked In', how: "Finish a Today's Shift" },
+  { id: 'traumaTen', name: 'Level One Trauma', how: 'Reach round 10 on Trauma Center' },
+  { id: 'darkShift', name: 'Working in the Dark', how: 'Reach round 8 during a Power Outage' },
 ];

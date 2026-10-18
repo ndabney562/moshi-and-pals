@@ -16,6 +16,7 @@
 - Made the title poster (title screen since v0.5.2; redone as Moshi and Pals in v0.5.6).
 
 ## Requested now
+- Playtest v0.17.0 **Today's Shift** (📋 on the title screen) for a few days, and try Walk-In and Trauma Center. Rename any modifier, rewrite their jokes (`src/data/modifiers.ts`), or pitch new ones. Testers can force any: `?mods=powerOutage,fullMoon`.
 - Playtest v0.12.0: the six new germs (rounds 7-11; `?round=11&copays=2000` to jump ahead), the Supply Requisition form, and the Wipes, Gel Launcher and Defib Paddles. Which tool feels best, which feels useless?
 - Any time: more CLAIM DENIED joke items (`src/data/requisition.ts`) and achievement names (`src/data/achievements.ts`).
 - v0.13.0 offline check: add the game to the Home Screen, open it once, then turn on Airplane Mode and open it again.

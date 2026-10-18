@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 import { BALANCE } from '../config/balance';
+import { runRng } from '../core/rng';
 import { CLEANED_LINES, VIOLATIONS } from '../data/patients';
 import type { RoomArea, RoomLayout } from '../data/rooms';
 import { Patient } from '../entities/Patient';
@@ -15,6 +16,8 @@ export interface PatientHost {
   readonly area: RoomArea;
   /** Who's on shift (picks whose reaction lines are said). */
   readonly doctor?: 'eugene' | 'kaya' | 'lucien';
+  /** Full Moon: patients walk backwards (facing where they came from). */
+  readonly backwards?: boolean;
   /** Lets a germ loose at (x, y). */
   spawnGermAt(id: string, x: number, y: number): void;
   /** A patient was sprayed into compliance. */
@@ -35,7 +38,7 @@ export class PatientDirector {
   constructor(private readonly host: PatientHost) {
     this.group = host.scene.physics.add.group({ classType: Patient, maxSize: 3 });
     this.eugeneBubble = new SpeechBubble(host.scene);
-    this.nextSpawnAt = host.scene.time.now + Phaser.Math.Between(...this.cfg.spawnEveryMs) / 2;
+    this.nextSpawnAt = host.scene.time.now + runRng.patients.between(this.cfg.spawnEveryMs) / 2;
   }
 
   /**
@@ -55,7 +58,7 @@ export class PatientDirector {
 
     const spot = (out: Phaser.Math.Vector2) => this.openSpot(out);
     for (const p of active) {
-      p.walk(time, dtMs, spot);
+      p.walk(time, dtMs, spot, !!this.host.backwards);
       if (p.state === 'wander') {
         if (time >= p.leaveAt) this.sendHome(p, time);
         else if (violating && time >= p.nextViolationAt) this.violate(p, time);
@@ -94,20 +97,20 @@ export class PatientDirector {
   }
 
   private spawn(time: number): void {
-    this.nextSpawnAt = time + Phaser.Math.Between(...this.cfg.spawnEveryMs);
+    this.nextSpawnAt = time + runRng.patients.between(this.cfg.spawnEveryMs);
     const { area, player } = this.host;
     const p = this.group.get() as Patient | null;
     if (!p) return;
     const far = area.germSpawns.filter((s) => Phaser.Math.Distance.Between(s.x, s.y, player.x, player.y) > 300);
-    const door = Phaser.Utils.Array.GetRandom(far.length ? far : area.germSpawns);
-    p.enter(Phaser.Utils.Array.GetRandom(VIOLATIONS), door.x, door.y, time);
+    const door = runRng.patients.pick(far.length ? far : area.germSpawns);
+    p.enter(runRng.patients.pick(VIOLATIONS), door.x, door.y, time);
   }
 
   private violate(p: Patient, time: number): void {
-    p.nextViolationAt = time + Phaser.Math.Between(...this.cfg.violationEveryMs);
+    p.nextViolationAt = time + runRng.patients.between(this.cfg.violationEveryMs);
     p.bubble.say(p.def.action, p, 34, 1800);
     for (let i = 0; i < p.def.germs; i++) {
-      const a = Math.random() * Math.PI * 2;
+      const a = runRng.patients.float(0, Math.PI * 2);
       this.host.spawnGermAt(p.def.germId, p.x + Math.cos(a) * 44, p.y + Math.sin(a) * 44);
     }
     const { player } = this.host;
@@ -127,8 +130,8 @@ export class PatientDirector {
     const { room, area } = this.host;
     const m = 50;
     for (let tries = 0; tries < 20; tries++) {
-      const x = Phaser.Math.Between(area.x + 80, area.x + area.w - 80);
-      const y = Phaser.Math.Between(area.y + 80, area.y + area.h - 80);
+      const x = runRng.patients.int(area.x + 80, area.x + area.w - 80);
+      const y = runRng.patients.int(area.y + 80, area.y + area.h - 80);
       if (!room.obstacles.some((o) => x > o.x - m && x < o.x + o.w + m && y > o.y - m && y < o.y + o.h + m)) {
         out.set(x, y);
         return;

@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import { runRng } from '../core/rng';
 import type { Germ } from '../entities/Germ';
 import type { Player } from '../entities/Player';
 import type { FlowField } from './FlowField';
@@ -44,7 +45,7 @@ export function steerSpitter(g: Germ, host: BehaviorHost, time: number, dtMs: nu
     if (time >= g.windupUntil) {
       g.windupUntil = 0;
       g.clearTint();
-      g.nextSpitAt = time + Phaser.Math.Between(...s.cooldownMs);
+      g.nextSpitAt = time + runRng.ai.between(s.cooldownMs);
       host.fireGlob(g, Phaser.Math.Angle.Between(g.x, g.y, p.x, p.y));
     }
     return;
@@ -66,7 +67,7 @@ export function steerSpitter(g: Germ, host: BehaviorHost, time: number, dtMs: nu
     g.chase(target, time, dtMs);
   } else {
     // Circle around Eugene; switch direction now and then so it doesn't grind into a wall
-    if (Math.random() < dtMs / 3000) g.strafe = -g.strafe;
+    if (runRng.ai.chance(dtMs / 3000)) g.strafe = -g.strafe;
     target.set(g.x + (-dy / d) * g.strafe * 120, g.y + (dx / d) * g.strafe * 120);
     g.chase(target, time, dtMs, g.def.speed * 0.6);
   }
@@ -107,7 +108,7 @@ export function steerCharger(g: Germ, host: BehaviorHost, time: number, dtMs: nu
       }
       if (time >= g.chargeUntil) {
         g.chargeState = 'none';
-        g.nextChargeAt = time + Phaser.Math.Between(...c.cooldownMs);
+        g.nextChargeAt = time + runRng.ai.between(c.cooldownMs);
         return;
       }
       g.setVelocity(Math.cos(g.chargeAngle) * c.speed, Math.sin(g.chargeAngle) * c.speed);
@@ -118,7 +119,7 @@ export function steerCharger(g: Germ, host: BehaviorHost, time: number, dtMs: nu
       g.rotation += dtMs * 0.01;
       if (time >= g.chargeUntil) {
         g.chargeState = 'none';
-        g.nextChargeAt = time + Phaser.Math.Between(...c.cooldownMs);
+        g.nextChargeAt = time + runRng.ai.between(c.cooldownMs);
       }
       return;
     default: {
@@ -151,7 +152,7 @@ export function steerHealer(g: Germ, host: BehaviorHost, time: number, dtMs: num
     target.set(g.x + (dx / d) * 120, g.y + (dy / d) * 120);
     g.chase(target, time, dtMs);
   } else {
-    if (Math.random() < dtMs / 3000) g.strafe = -g.strafe;
+    if (runRng.ai.chance(dtMs / 3000)) g.strafe = -g.strafe;
     target.set(g.x + (-dy / d) * g.strafe * 120, g.y + (dx / d) * g.strafe * 120);
     g.chase(target, time, dtMs, g.def.speed * 0.5);
   }

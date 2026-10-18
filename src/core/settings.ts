@@ -15,10 +15,12 @@ export interface Settings {
   learned: Record<string, boolean>;
   /** Who you play (title screen): eugene, kaya or lucien. */
   character: string;
+  /** Difficulty for normal shifts (title screen): walkIn, urgent or trauma. Today's Shift is always Urgent. */
+  difficulty: string;
 }
 
 const KEY = 'moshi.settings.v1';
-const DEFAULTS: Settings = { autoAim: true, sound: true, autoRefill: true, reducedMotion: false, learned: {}, character: 'eugene' };
+const DEFAULTS: Settings = { autoAim: true, sound: true, autoRefill: true, reducedMotion: false, learned: {}, character: 'eugene', difficulty: 'urgent' };
 
 function load(): Settings {
   try {

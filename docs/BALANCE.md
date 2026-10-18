@@ -78,3 +78,19 @@ Values live in `src/config/balance.ts` and `src/config/controls.ts`.
 | Atlas notes | unlock at 25 lifetime kills (bosses 1) | `src/data/atlas.ts` |
 | Dr. Kaya: CODE BLUE | 320 px sprint in 0.23 s, untouchable +0.25 s; 90 px lane, 30 damage, 650 knockback, 0.7 s stun; 9 s recharge. Passive ×1.08 speed | `BALANCE.codeBlue`, `src/data/characters.ts` |
 | PA Lucien: CLEAN FIELD | 180 px zone for 6 s; germs ×0.4 speed, 22 damage/s; 20 s recharge. Passive +20 health | `BALANCE.cleanField` |
+
+## M17: Today's Shift, modifiers, difficulty (`BALANCE.difficulty`, `daily`, `modifiers`)
+
+| Value | Current | Notes |
+|---|---|---|
+| Walk-In | germ HP ×0.75, damage to Eugene ×0.6, spawn interval ×1.25, kill Copays ×1.2 | Own records |
+| Urgent | all ×1 | The game as tuned; Today's Shift always uses it. v2 records became Urgent's |
+| Trauma Center | germ HP ×1.35, damage ×1.4, spawn interval ×0.8, kill Copays ×0.85 | Own records |
+| Today's Shift | 2 modifiers from the date; first finished shift each day +2 CME | Day's best kept apart from difficulty records |
+| Flu Season | Sprinter spawn weight ×2; weight 0.15 (×2) in rounds 1-2 | |
+| Power Outage | dark at 90% opacity, light radius 330 px, soft outer 45% | Texture drawn at 1/4 size |
+| Inspection Day | Spotless ×3 | Stacks with the Inspection Day special round (×9) |
+| Short-Staffed | restock ×3 ($120) | Not "no restocks": runs must stay winnable |
+| Construction | from round 2, one opened room per round closes to Eugene | Not his room, no door within 140 px, only if he can still walk to the waiting room; germs pass |
+| Full Moon | germ looks ×0.7-1.45 (hitboxes unchanged), moonlit floor, patients walk backwards | |
+

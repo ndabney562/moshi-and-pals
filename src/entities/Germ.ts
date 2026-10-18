@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import { BALANCE } from '../config/balance';
 import { damp } from '../core/math';
+import { runRng } from '../core/rng';
 import { ELITE_AFFIXES, type EliteAffix } from '../data/powerups';
 import type { GermDef } from '../data/germs';
 
@@ -57,6 +58,8 @@ export class Germ extends Phaser.Physics.Arcade.Sprite {
   /** Elite trait label (so traits don't rely on color alone). */
   private tag?: Phaser.GameObjects.Text;
   private sizeMul = 1;
+  /** Full Moon: looks bigger or smaller than it is (the hitbox stays the same). */
+  private moonSize = 1;
 
   spawn(def: GermDef, x: number, y: number, scaling: GermScaling = { hpMult: 1, speedMult: 1 }): void {
     this.def = def;
@@ -66,9 +69,9 @@ export class Germ extends Phaser.Physics.Arcade.Sprite {
     this.pendingCrit = false;
     this.squash = 0;
     const now = this.scene.time.now;
-    this.nextSpitAt = now + Phaser.Math.Between(1200, 2200);
+    this.nextSpitAt = now + runRng.ai.int(1200, 2200);
     this.windupUntil = 0;
-    this.strafe = Math.random() < 0.5 ? -1 : 1;
+    this.strafe = runRng.ai.chance(0.5) ? -1 : 1;
     this.flippedUntil = 0;
     this.lastBlockAt = 0;
     this.elite = undefined;
@@ -76,9 +79,10 @@ export class Germ extends Phaser.Physics.Arcade.Sprite {
     this.frozenUntil = 0;
     this.chargeState = 'none';
     this.chargeUntil = 0;
-    this.nextChargeAt = now + Phaser.Math.Between(1500, 2500);
+    this.nextChargeAt = now + runRng.ai.int(1500, 2500);
     this.nextSpawnAt = now + (def.spawner?.everyMs ?? 0) / 2;
     this.sizeMul = 1;
+    this.moonSize = 1;
     this.ring?.setVisible(false);
     this.tag?.setVisible(false);
     this.slowUntil = 0;
@@ -94,6 +98,14 @@ export class Germ extends Phaser.Physics.Arcade.Sprite {
     this.setScale(0.1);
     this.scene.tweens.add({ targets: this, scale: 1, duration: def.boss ? 900 : 350, ease: 'Back.out' });
     this.stunnedUntil = this.scene.time.now + 350;
+  }
+
+  /** FULL MOON: drawn at `k` × its size from now on (looks only). */
+  setMoonSize(k: number): void {
+    this.moonSize = k;
+    // Re-aim the squeeze-out-of-the-doorway tween at the new size
+    this.scene.tweens.killTweensOf(this);
+    this.scene.tweens.add({ targets: this, scale: k * this.sizeMul, duration: 350, ease: 'Back.out' });
   }
 
   /** Turns this germ into a RESISTANT elite: much tougher, bigger, with an aura showing its trait. */
@@ -160,7 +172,7 @@ export class Germ extends Phaser.Physics.Arcade.Sprite {
     if (!this.scene.tweens.isTweening(this)) {
       const s = Math.sin(this.wobble) * 0.07;
       const q = this.squash;
-      const k = this.sizeMul;
+      const k = this.sizeMul * this.moonSize;
       this.setScale(k * (1 + s + 0.22 * q), k * (1 - s - 0.18 * q));
     }
     if (this.ring?.visible) {
