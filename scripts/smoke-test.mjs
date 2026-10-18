@@ -22,6 +22,7 @@ const context = await browser.newContext({
   viewport: { width: 852, height: 393 }, deviceScaleFactor: 3, isMobile: true, hasTouch: true,
 });
 const page = await context.newPage();
+page.setDefaultNavigationTimeout(120000); // slow machines take a while to load the bundle
 /**
  * GitHub's runners draw the game in software at ~5 fps, so game time crawls and every wait there takes a few
  * times longer than on a laptop. On CI, timeouts and fixed pauses stretch by this factor (locally they're as written).
@@ -128,6 +129,9 @@ try {
   }, null, { timeout: 90000 });
   const before = await game();
   check(before.germs > 0, `germs spawned and approached (${before.germs} alive)`);
+  // The SPRAY hint is learned by spraying while it's on screen; it appears at the HUD's next 200 ms check, which
+  // on a slow runner can come after a quick spray is over, so spray once it's up
+  await page.waitForFunction(() => window.game.scene.getScene('Hud').hint?.id === 'spray', null, { timeout: 20000 }).catch(() => {});
   const spray = await buttonAt('sprayButton');
   await touch('touchStart', [{ ...spray, id: 3 }]);
   let aimSamples = 0;
@@ -1248,7 +1252,7 @@ try {
   }, null, { timeout: 30000, polling: 500 }).then((h) => h.jsonValue(), () => 0);
   check(cached > 0, `the service worker caches the game (${cached} files)`);
   await swc.setOffline(true);
-  await sw.reload();
+  await sw.reload({ waitUntil: 'domcontentloaded', timeout: 120000 });
   const offline = await sw.waitForFunction(() => window.game?.scene.isActive('Title'), null, { timeout: 60000 }).then(() => true, () => false);
   check(offline, 'with no network, the game still launches to the title screen');
   check(swErrors.length === 0, `no errors offline${swErrors.length ? ': ' + swErrors.join(' | ') : ''}`);
