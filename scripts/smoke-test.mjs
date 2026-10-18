@@ -611,6 +611,7 @@ try {
     const zapped = line.filter(hurt).length;
     clear();
     const target = at('basic', 220, 0);
+    window.__gelTarget = target;
     scene.aimLock = target;
     use('gelLauncher');
     return { wipes, zapped };
@@ -620,8 +621,8 @@ try {
   check(arsenal.zapped === 3, `Defib Paddles zap a chain of germs (${arsenal.zapped} of 3)`);
   const gelled = await page.waitForFunction(() => {
     const scene = window.game.scene.getScene('Game');
-    const g = scene.germs.getChildren().find((c) => c.active && c.def.id === 'basic');
-    return scene.gel.count > 0 && (!g || g.hp < g.maxHp) ? { gel: scene.gel.count, slowed: !!g && g.slowUntil > scene.time.now } : null;
+    const g = window.__gelTarget; // the germ the glob was aimed at (others may be about)
+    return scene.gel.count > 0 && (!g.active || g.hp < g.maxHp) ? { gel: scene.gel.count, slowed: g.active && g.slowUntil > scene.time.now } : null;
   }, null, { timeout: 15000 }).then((h) => h.jsonValue(), () => null);
   check(gelled && gelled.gel > 0, `the Gel Launcher's glob bursts on its target and leaves sticky gel (${JSON.stringify(gelled)})`);
 
