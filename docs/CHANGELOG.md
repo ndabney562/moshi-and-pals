@@ -1,5 +1,12 @@
 # Changelog
 
+## v0.18.1: The Pals talk like themselves
+- Dr. Kaya, PA Lucien and Ken now react to patients in their own voices, from Noah's notes on the real people. Three lines each for every health code violation:
+  - **Dr. Kaya** stays chill, talks like a gym bro, reminds you he's an ER doc, prescribes prednisone, Afrin, a Z-Pak and saline for everything, and brings up his old smoking days.
+  - **PA Lucien** laughs at everything and turns every violation into a lesson for the patient and the scribes.
+  - **Ken** finds every patient fucking ridiculous, wants a smoke break, pushes guaifenesin, leans on Omar and Alan, and takes shots at Diamond.
+- New patient: the **MTA worker** in an orange safety vest, sprinting for the bathroom and letting in 2 germs. Lucien has a diagnosis: MTAitis.
+
 ## v0.18.0: Milestone 18, Ken and the scribes
 - New title poster from Noah: all four doctors (Moshkovich, Kaya, Lucien and Ken) spraying side by side.
 - **Ken is playable**, the fourth Pal (pick him on the title screen). Black fleece over light-blue scrubs, a chunky black watch.
