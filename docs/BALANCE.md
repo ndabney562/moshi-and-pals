@@ -75,10 +75,13 @@ Values live in `src/config/balance.ts` and `src/config/controls.ts`.
 | CME Credits | 1 per 2 rounds, 3 per new achievement, 2 per boss | `CME` in `src/data/residency.ts` |
 | Specialties | 8-12 CME each; one active | `SPECIALTIES` in `src/data/residency.ts` |
 | Starter Kit | 15 CME; start with any crate tool | `STARTER_KIT_COST` |
+| NPS Scores | 1 per round reached, 1 per patient cleaned, 3 per boss | `BALANCE.nps`; a round-8 shift with a few patients is ~12 |
+| Hiring the Pals | Kaya 30, Lucien 45, Ken 60 NPS (Eugene free) | `BALANCE.nps.prices` |
+| Hired Pals' edge | All ×1.1 tool damage; Kaya ×1.12 speed, Lucien +30 health, Ken +15 health | `BALANCE.doctors` |
 | Atlas notes | unlock at 25 lifetime kills (bosses 1) | `src/data/atlas.ts` |
-| Dr. Kaya: CODE BLUE | 320 px sprint in 0.23 s, untouchable +0.25 s; 90 px lane, 30 damage, 650 knockback, 0.7 s stun; 9 s recharge. Passive ×1.08 speed | `BALANCE.codeBlue`, `src/data/characters.ts` |
-| PA Lucien: CLEAN FIELD | 180 px zone for 6 s; germs ×0.4 speed, 22 damage/s; 20 s recharge. Passive +20 health | `BALANCE.cleanField` |
-| Ken: FILE A GRIEVANCE | 35 damage in 210 px, 420 knockback, 0.9 s stun; Diamond within 900 px goes to HR for 3.5 s (frozen, no meeting or tantrum, a meeting ends); 15 s recharge. Passive ×1.5 damage to Diamond from every source | `BALANCE.grievance`, `src/data/characters.ts` |
+| Dr. Kaya: CODE BLUE | 320 px sprint in 0.23 s, untouchable +0.25 s; 90 px lane, 30 damage, 650 knockback, 0.7 s stun; 9 s recharge. Passive ×1.12 speed, ×1.1 damage | `BALANCE.codeBlue`, `src/data/characters.ts` |
+| PA Lucien: CLEAN FIELD | 180 px zone for 6 s; germs ×0.4 speed, 22 damage/s; 20 s recharge. Passive +30 health, ×1.1 damage | `BALANCE.cleanField` |
+| Ken: FILE A GRIEVANCE | 35 damage in 210 px, 420 knockback, 0.9 s stun; Diamond within 900 px goes to HR for 3.5 s (frozen, no meeting or tantrum, a meeting ends); 15 s recharge. Passive ×1.5 damage to Diamond from every source, +15 health, ×1.1 damage | `BALANCE.grievance`, `src/data/characters.ts` |
 | Scribes | 12 CME each to hire; pill joins the drop pool once hired; 20 s per visit; follow 85 px behind, 300 px/s (×1.5 when 220 px+ away); teleport past 650 px or 1.5 s stuck | `BALANCE.scribes`, costs in `src/data/scribes.ts` |
 | Omar | 13 damage every 0.42 s to the nearest germ within 280 px | `BALANCE.scribes.omar` |
 | Alan | 26 damage every 0.95 s, jumps to 2 more germs within 160 px, 0.4 s stun | `BALANCE.scribes.alan` |

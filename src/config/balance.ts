@@ -261,4 +261,20 @@ export const BALANCE = {
     /** Alan zaps: slower, harder, jumps to `chain` more germs and stuns each. */
     alan: { everyMs: 950, damage: 26, knockback: 60, chain: 2, chainRange: 160, stunMs: 400 },
   },
+  /**
+   * NPS SCORES: the saved currency that hires the Pals. Eugene is free; everyone else is bought once with NPS
+   * and is a bit stronger than him. Earned at the end of every shift.
+   */
+  nps: {
+    perRound: 1,
+    perPatient: 1,
+    perBoss: 3,
+    prices: { kaya: 30, lucien: 45, ken: 60 } as Record<string, number>,
+  },
+  /** What a hired Pal has over Eugene (on top of their signature move). toolDamage = damage × with every tool. */
+  doctors: {
+    kaya: { moveSpeed: 1.12, toolDamage: 1.1 },
+    lucien: { maxHp: 30, toolDamage: 1.1 },
+    ken: { maxHp: 15, toolDamage: 1.1 },
+  },
 };

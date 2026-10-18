@@ -1080,6 +1080,7 @@ try {
   }));
   check(cme.saved.credits > 0 && cme.line.includes(`+${cme.saved.credits} CME`) && (cme.saved.kills?.basic ?? 0) > 0,
     `the shift earns CME Credits and banks lifetime kills for the Atlas (${cme.line}, ${cme.saved.credits} CME, ${cme.saved.kills?.basic} basics)`);
+  check(cme.saved.nps > 0 && cme.line.includes(`+${cme.saved.nps} NPS`), `the shift earns NPS Scores (${cme.line}, ${cme.saved.nps} NPS)`);
 
   // Restart from the game over screen
   const again = await page.evaluate(() => {
@@ -1258,10 +1259,51 @@ try {
   check(swErrors.length === 0, `no errors offline${swErrors.length ? ': ' + swErrors.join(' | ') : ''}`);
   await swc.close();
 
-  // THE PALS (M16): Dr. Kaya and PA Lucien are playable, each with their own signature move
+  // NPS SCORES: a Pal who hasn't been hired can't go on shift; on the title, tap a locked Pal twice to hire them
+  {
+    const hc = await browser.newContext({ viewport: { width: 852, height: 393 }, deviceScaleFactor: 1, isMobile: true, hasTouch: true });
+    await hc.addInitScript(() => {
+      if (localStorage.getItem('moshi.progress.v1')) return;
+      localStorage.setItem('moshi.settings.v1', JSON.stringify({ character: 'kaya', learned: { move: true, spray: true, pour: true, purge: true, buy: true } }));
+      localStorage.setItem('moshi.progress.v1', JSON.stringify({ credits: 0, earned: 0, nps: 35, npsEarned: 35, owned: [], specialty: '', startTool: '', kills: {} }));
+    });
+    const hp = await hc.newPage();
+    labelWaits(hp);
+    const hireErrors = [];
+    hp.on('pageerror', (e) => hireErrors.push(where(e)));
+    await hp.goto(url);
+    await hp.waitForFunction(() => window.game?.scene.isActive('Title'));
+    const hire = await hp.evaluate(() => {
+      const t = window.game.scene.getScene('Title');
+      const label = (id) => t.picks.find((p) => p.id === id).name.text;
+      const before = { info: t.pickInfo.text, kaya: label('kaya') };
+      t.pick('lucien');
+      const tooPoor = { info: t.pickInfo.text, nps: JSON.parse(localStorage.getItem('moshi.progress.v1')).nps };
+      t.pick('lucien');
+      const stillLocked = JSON.parse(localStorage.getItem('moshi.progress.v1')).owned.includes('doctor:lucien');
+      t.pick('kaya');
+      const asked = t.pickInfo.text;
+      t.pick('kaya');
+      const saved = JSON.parse(localStorage.getItem('moshi.progress.v1'));
+      return { before, tooPoor, stillLocked, asked, owned: saved.owned, nps: saved.nps, kaya: label('kaya'), on: JSON.parse(localStorage.getItem('moshi.settings.v1')).character };
+    });
+    check(hire.before.info.startsWith('DR. MOSHKOVICH') && hire.before.kaya.includes('30 NPS'),
+      `a saved pick of an unhired Pal falls back to Dr. Moshkovich, and locked Pals show their NPS price (${JSON.stringify(hire.before)})`);
+    check(/NEED 10 MORE/.test(hire.tooPoor.info) && !hire.stillLocked && /TAP AGAIN/.test(hire.asked),
+      `a Pal you can't afford stays locked, one you can asks for a second tap (${JSON.stringify({ tooPoor: hire.tooPoor, asked: hire.asked })})`);
+    check(hire.owned.includes('doctor:kaya') && hire.nps === 5 && hire.kaya === 'KAYA' && hire.on === 'kaya',
+      `the second tap hires Dr. Kaya for 30 NPS and puts him on shift (${JSON.stringify({ owned: hire.owned, nps: hire.nps, on: hire.on })})`);
+    check(hireErrors.length === 0, `no errors hiring a Pal${hireErrors.length ? ': ' + hireErrors.join(' | ') : ''}`);
+    await hc.close();
+  }
+
+  // THE PALS (M16): Dr. Kaya and PA Lucien are playable (once hired with NPS), each with their own signature move
   for (const who of ['kaya', 'lucien']) {
     const pc = await browser.newContext({ viewport: { width: 852, height: 393 }, deviceScaleFactor: 1, isMobile: true, hasTouch: true });
-    await pc.addInitScript((w) => localStorage.setItem('moshi.settings.v1', JSON.stringify({ character: w, learned: { move: true, spray: true, pour: true, purge: true, buy: true } })), who);
+    await pc.addInitScript((w) => {
+      localStorage.setItem('moshi.settings.v1', JSON.stringify({ character: w, learned: { move: true, spray: true, pour: true, purge: true, buy: true } }));
+      localStorage.setItem('moshi.progress.v1', JSON.stringify({ credits: 0, earned: 0, nps: 0, npsEarned: 0, owned: [`doctor:${w}`], specialty: '', startTool: '', kills: {} }));
+    }, who);
     const pp2 = await pc.newPage();
     labelWaits(pp2);
     const palErrors = [];
@@ -1290,8 +1332,8 @@ try {
       check(start.texture === 'kaya' && /CODE/.test(start.label) && start.cooling && moved.hurt >= 2,
         `Dr. Kaya's CODE BLUE sprints through germs (${JSON.stringify({ ...start, ...moved })})`);
     } else {
-      check(start.texture === 'lucien' && start.maxHp === 120 && /CLEAN/.test(start.label) && start.cooling && moved.hurt >= 2,
-        `PA Lucien (+20 health) puts down a CLEAN FIELD that burns germs (${JSON.stringify({ ...start, ...moved })})`);
+      check(start.texture === 'lucien' && start.maxHp === 130 && /CLEAN/.test(start.label) && start.cooling && moved.hurt >= 2,
+        `PA Lucien (+30 health) puts down a CLEAN FIELD that burns germs (${JSON.stringify({ ...start, ...moved })})`);
     }
     check(palErrors.length === 0, `no errors playing ${who}${palErrors.length ? ': ' + palErrors.join(' | ') : ''}`);
     await pc.close();

@@ -7,7 +7,7 @@
  *   ?copays=2000      start with Copays
  *   ?god              Eugene can't be hurt
  *   ?fps=30           cap the frame rate (simulates iPhone Low Power Mode)
- *   ?doctor=ken       play this shift as eugene, kaya, lucien or ken (not saved)
+ *   ?doctor=ken       play this shift as eugene, kaya, lucien or ken (not saved, hired or not)
  *   ?scribe=omar      a scribe (omar or alan) works the whole shift, and their pill drops even if locked
  *
  * Combine them: .../moshi-and-pals/?round=15&god&debug

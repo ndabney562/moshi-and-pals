@@ -11,7 +11,7 @@ import { inputState } from '../core/inputState';
 import { settings } from '../core/settings';
 import { recordRun } from '../core/save';
 import { unlockAchievement } from '../core/achievements';
-import { activeSpecialty, creditsFor, progress, recordShift, scribeUnlocked } from '../core/progress';
+import { activeSpecialty, creditsFor, doctorUnlocked, npsFor, progress, recordShift, scribeUnlocked } from '../core/progress';
 import type { SpecialtyMods } from '../data/residency';
 import { newRunStats, type RunStats } from '../core/runStats';
 import { initSfx, sfx } from '../core/sfx';
@@ -221,7 +221,8 @@ export class GameScene extends Phaser.Scene {
 
     this.fx = new Fx(this);
     this.flow = new FlowField(room.width, room.height, this.blockingObstacles());
-    this.character = characterById(DEBUG.doctor ?? settings.character);
+    // A Pal who hasn't been hired with NPS Scores can't go on shift (?doctor= skips that, for testing)
+    this.character = characterById(DEBUG.doctor ?? (doctorUnlocked(settings.character) ? settings.character : 'eugene'));
     this.player = new Player(this, room.playerSpawn.x, room.playerSpawn.y, this.character.id);
     const passive = this.character.passive;
     if (passive.maxHp) this.player.maxHp = this.player.hp = this.player.maxHp + passive.maxHp;
@@ -750,7 +751,7 @@ export class GameScene extends Phaser.Scene {
   private hitGerm(germ: Germ, def: EquipmentDef, damage: number, angle: number, knockback: number, pierces: boolean): void {
     if (!germ.active) return;
     const vs = this.mods.vs;
-    const mult = (def.effectiveness[germ.def.tag] ?? 1) * (this.mods.toolDamage ?? 1) * (vs && vs.tag === germ.def.tag ? vs.mult : 1);
+    const mult = (def.effectiveness[germ.def.tag] ?? 1) * (this.mods.toolDamage ?? 1) * (this.character.passive.toolDamage ?? 1) * (vs && vs.tag === germ.def.tag ? vs.mult : 1);
     // STAT! critical hit
     const fb = BALANCE.feedback;
     const crit = this.powerups.isActive('triage', this.time.now) || Math.random() < fb.critChance * this.perks.crit;
@@ -1808,6 +1809,7 @@ export class GameScene extends Phaser.Scene {
   }
 
   private onPatientCleaned(p: Patient): void {
+    this.runStats.patientsCleaned++;
     const points = BALANCE.patients.cleanPoints;
     this.score += points;
     this.addCopays(BALANCE.economy.cleanPatientCopays);
@@ -1852,7 +1854,9 @@ export class GameScene extends Phaser.Scene {
     const record = recordRun(this.score, round, st.bestStreak, this.kills);
     // CME Credits for the Residency Board (and lifetime kills for the Atlas)
     const cme = creditsFor(round, st.achievements.length, this.bossesDefeated);
-    recordShift(cme, st.kills);
+    // NPS Scores hire the Pals
+    const nps = npsFor(round, st.patientsCleaned, this.bossesDefeated);
+    recordShift(cme, st.kills, nps);
     const [favId, favCount] = Object.entries(st.kills).sort((a, b) => b[1] - a[1])[0] ?? [];
     const killer = st.killer ? GERMS[st.killer] : undefined;
     const result: RunResult = {
@@ -1870,6 +1874,7 @@ export class GameScene extends Phaser.Scene {
       newAchievements: [...st.achievements],
       chart: this.character.chart,
       cme,
+      nps,
       specialty: this.specialtyName,
     };
     this.time.delayedCall(1600, () => {

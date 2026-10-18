@@ -1,5 +1,11 @@
 # Changelog
 
+## v0.20.0: NPS Scores hire the Pals
+- **NPS Scores**, a new currency that stays between shifts. Every shift earns 1 per round reached, 1 per patient you clean up and 3 per boss beaten. The Discharge Summary shows what you earned; the title screen shows what you have.
+- **Dr. Moshkovich is the only doctor on shift at first.** Dr. Kaya (30 NPS), PA Lucien (45) and Ken (60) are locked: tap a locked portrait to see the price, tap again to hire them for good.
+- **Hired Pals are stronger than Eugene:** all three do 10% more damage with every tool, on top of their own signature move. Kaya is now 12% faster (was 8%), Lucien has +30 health (was +20) and Ken gets +15 health along with his +50% against Diamond.
+- If you'd picked a Pal before this update, you're back to Dr. Moshkovich until you hire them. `?doctor=` still plays anyone, for testing.
+
 ## v0.18.0: Milestone 18, Ken and the scribes
 - New title poster from Noah: all four doctors (Moshkovich, Kaya, Lucien and Ken) spraying side by side.
 - **Ken is playable**, the fourth Pal (pick him on the title screen). Black fleece over light-blue scrubs, a chunky black watch.

@@ -10,6 +10,8 @@ export interface RunStats {
   rests: number;
   perfectPours: number;
   purges: number;
+  /** Health code violators sprayed into compliance. */
+  patientsCleaned: number;
   /** Germ id (or 'diamond') that landed the last hit. */
   killer?: string;
   /** Achievements unlocked for the first time during this run (names). */
@@ -19,5 +21,5 @@ export interface RunStats {
 }
 
 export const newRunStats = (now: number): RunStats => ({
-  kills: {}, bestStreak: 0, copaysEarned: 0, crits: 0, roomsOpened: 0, upgrades: 0, rests: 0, perfectPours: 0, purges: 0, achievements: [], startedAt: now,
+  kills: {}, bestStreak: 0, copaysEarned: 0, crits: 0, roomsOpened: 0, upgrades: 0, rests: 0, perfectPours: 0, purges: 0, patientsCleaned: 0, achievements: [], startedAt: now,
 });
