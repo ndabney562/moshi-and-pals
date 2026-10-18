@@ -1,6 +1,7 @@
 # Changelog
 
 ## v0.18.0: Milestone 18, Ken and the scribes
+- New title poster from Noah: all four doctors (Moshkovich, Kaya, Lucien and Ken) spraying side by side.
 - **Ken is playable**, the fourth Pal (pick him on the title screen). Black fleece over light-blue scrubs, a chunky black watch.
   - **Passive:** everything he does hits Diamond 50% harder. His hits on her show up in orange.
   - **FILE A GRIEVANCE** (the big green button): he slams down a form and paperwork flies everywhere. Every germ close by takes 35 and is stunned for a moment. If Diamond is nearby, she's **summoned to HR** for 3.5 s: she freezes, can't start a meeting or a tantrum, and a meeting already going lets you go. Recharges in 15 s.

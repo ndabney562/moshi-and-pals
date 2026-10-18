@@ -14,11 +14,12 @@
 - Shared photos of the real clinic's ground floor and upstairs plans for the M8 map; made the new app icon.
 - Named the Pals and shared reference photos: Dr. Kaya and PA Lucien are playable alongside Moshi (v0.16.0).
 - Shared reference pictures for Ken, Diamond, Omar and Alan: Ken is playable, Diamond has a new look, and Omar and Alan are scribe power-ups (v0.18.0).
-- Made the title poster (title screen since v0.5.2; redone as Moshi and Pals in v0.5.6).
+- Made the title poster (title screen since v0.5.2; redone as Moshi and Pals in v0.5.6; all four doctors in v0.18.0).
+- Decided Ken shows as just "Ken" and Diamond loses her flag pin.
 
 ## Requested now
 - Playtest v0.18.0: play as Ken against Diamond (`?round=5&doctor=ken`), and hire the scribes on the Residency Board (or try `?scribe=omar` / `?scribe=alan`). Too strong, too weak, funny enough?
-- Confirm Ken's title (he shows as plain "Ken": Dr. Ken? PA Ken? a surname?) and his move's name, FILE A GRIEVANCE.
+- Is FILE A GRIEVANCE the right name for Ken's move?
 - Any time: Ken's own reactions to patients (`ken` in `src/data/patients.ts`) and more lines for Omar and Alan (`src/data/scribes.ts`).
 - Playtest v0.12.0: the six new germs (rounds 7-11; `?round=11&copays=2000` to jump ahead), the Supply Requisition form, and the Wipes, Gel Launcher and Defib Paddles. Which tool feels best, which feels useless?
 - Any time: more CLAIM DENIED joke items (`src/data/requisition.ts`) and achievement names (`src/data/achievements.ts`).
