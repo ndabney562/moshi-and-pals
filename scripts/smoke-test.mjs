@@ -22,10 +22,17 @@ const context = await browser.newContext({
   viewport: { width: 852, height: 393 }, deviceScaleFactor: 3, isMobile: true, hasTouch: true,
 });
 const page = await context.newPage();
+/**
+ * GitHub's runners draw the game in software at ~5 fps, so game time crawls and every wait there takes a few
+ * times longer than on a laptop. On CI, timeouts and fixed pauses stretch by this factor (locally they're as written).
+ */
+const SLOW = process.env.CI ? 3 : 1;
 /** Timeouts say what they were waiting for (CI logs aren't readable, only the failure message). */
 const labelWaits = (p) => {
   const wait = p.waitForFunction.bind(p);
-  p.waitForFunction = (fn, arg, opts) => wait(fn, arg, opts).catch((e) => {
+  const pause = p.waitForTimeout.bind(p);
+  p.waitForTimeout = (ms) => pause(ms * SLOW);
+  p.waitForFunction = (fn, arg, opts) => wait(fn, arg, { ...opts, timeout: (opts?.timeout ?? 30000) * SLOW }).catch((e) => {
     throw new Error(`${e.message.split('\n')[0]} waiting for: ${String(fn).replace(/\s+/g, ' ').slice(0, 160)}`);
   });
 };
