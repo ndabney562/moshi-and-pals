@@ -14,6 +14,8 @@ export interface BossBrain {
   readonly priorityTarget: Germ | undefined;
   /** Touching Eugene doesn't hurt right now. */
   readonly ignoresContact: boolean;
+  /** Ken's FILE A GRIEVANCE: called away to HR for `ms` (bosses without an HR department ignore it). */
+  summonToHr?(time: number, ms: number): void;
   /** Extra damage multiplier the boss takes right now (e.g. a masked Patient Zero). */
   readonly damageTaken?: number;
 }

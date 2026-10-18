@@ -10,6 +10,8 @@ import { SpeechBubble } from '../ui/SpeechBubble';
 export class Patient extends Phaser.Physics.Arcade.Sprite {
   def!: ViolationDef;
   hits = 0;
+  /** Health code violations committed this visit (scribes only go after patients with one on record). */
+  violations = 0;
   /** 'wander' while in the room, 'leaving' once cleaned up or done. */
   state: 'wander' | 'leaving' = 'wander';
   readonly bubble: SpeechBubble;
@@ -29,6 +31,7 @@ export class Patient extends Phaser.Physics.Arcade.Sprite {
     const cfg = BALANCE.patients;
     this.def = def;
     this.hits = 0;
+    this.violations = 0;
     this.state = 'wander';
     this.setTexture(`patient-${def.id}`);
     this.enableBody(true, x, y, true, true);

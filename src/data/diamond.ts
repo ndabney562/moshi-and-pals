@@ -48,6 +48,18 @@ export const DIAMOND_LINES = {
     'Do you know how many complaints I get?!',
     'NOBODY follows the schedule!',
   ],
+  /** Ken filed a grievance: she's summoned to HR (FILE A GRIEVANCE). */
+  hr: [
+    'HR?! On a TUESDAY?!',
+    'Who filed this?! KEN!',
+    'I am being... REVIEWED?',
+    'This grievance is NOT in the right font!',
+  ],
+  /** When Ken is on shift, she arrives saying one of these instead. */
+  arriveKen: [
+    'Oh no. Not KEN.',
+    'KEN! Put down that grievance form!',
+  ],
   defeat: [
     'This is not over. I am calling corporate.',
     'Fine. Take your lunch break.',

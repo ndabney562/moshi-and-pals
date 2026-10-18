@@ -9,8 +9,10 @@
 import { chromium } from 'playwright-core';
 import { preview } from 'vite';
 
-const server = await preview({ preview: { port: 4173, strictPort: true } });
-const url = 'http://localhost:4173/moshi-and-pals/';
+// SMOKE_PORT lets two checkouts run the smoke test at once
+const port = Number(process.env.SMOKE_PORT ?? 4173);
+const server = await preview({ preview: { port, strictPort: true } });
+const url = `http://localhost:${port}/moshi-and-pals/`;
 
 const browser = await chromium.launch({
   executablePath: process.env.CHROMIUM_PATH ?? '/opt/pw-browsers/chromium-1194/chrome-linux/chrome',
@@ -1280,6 +1282,192 @@ try {
     }
     check(palErrors.length === 0, `no errors playing ${who}${palErrors.length ? ': ' + palErrors.join(' | ') : ''}`);
     await pc.close();
+  }
+
+  // KEN (M18): ?doctor=ken; FILE A GRIEVANCE hits germs and sends Diamond to HR; he hits Diamond harder than Eugene
+  {
+    const kc = await browser.newContext({ viewport: { width: 852, height: 393 }, deviceScaleFactor: 1, isMobile: true, hasTouch: true });
+    await kc.addInitScript(() => localStorage.setItem('moshi.settings.v1', JSON.stringify({ learned: { move: true, spray: true, pour: true, purge: true, buy: true } })));
+    const kp = await kc.newPage();
+    labelWaits(kp);
+    const kenErrors = [];
+    kp.on('pageerror', (e) => kenErrors.push(where(e)));
+    await kp.goto(url + '?god&doctor=ken', { timeout: 90000 });
+    await kp.waitForFunction(() => window.game?.scene.isActive('Title'));
+    await kp.touchscreen.tap(426, 120);
+    await kp.waitForFunction(() => window.game.scene.isActive('Hud'), null, { timeout: 15000 });
+    const ken = await kp.evaluate(() => {
+      const sc = window.game.scene.getScene('Game');
+      sc.waves.queue.length = 0;
+      sc.waves.phase = 'intermission';
+      sc.waves.nextRoundAt = Number.MAX_SAFE_INTEGER;
+      const p = sc.player;
+      for (let i = 0; i < 4; i++) sc.spawnGermAt('basic', p.x + 70 + i * 40, p.y, true);
+      for (const g of sc.germs.getChildren()) if (g.active) { g.maxHp = g.hp = 500; g.freezeFor(sc.time.now, 20000); }
+      sc.signature(sc.time.now);
+      const hurt = sc.germs.getChildren().filter((g) => g.active && g.hp < g.maxHp).length;
+      return { id: sc.character.id, texture: p.texture.key, label: window.game.scene.getScene('Hud').purgeButton.label?.text ?? '', cooling: sc.purgeReadyAt > sc.time.now, hurt };
+    });
+    check(ken.id === 'ken' && ken.texture === 'ken' && /GRIEVANCE/.test(ken.label) && ken.cooling && ken.hurt >= 3,
+      `Ken (?doctor=ken) files a GRIEVANCE that hits the germs around him (${JSON.stringify(ken)})`);
+    const vsDiamond = await kp.evaluate(() => {
+      const sc = window.game.scene.getScene('Game');
+      for (const g of sc.germs.getChildren()) if (g.active) g.kill();
+      sc.perks.crit = 0; // no random STAT! crits in this comparison
+      const sp = sc.room.playerSpawn;
+      sc.player.setPosition(sp.x, sp.y);
+      sc.spawnGerm('diamond', { hpMult: 1, speedMult: 1 });
+      const boss = sc.boss;
+      boss.germ.setPosition(sp.x + 260, sp.y);
+      boss.nextMeetingAt = Number.MAX_SAFE_INTEGER;
+      boss.germ.maxHp = boss.germ.hp = 100000;
+      const hit = () => {
+        const before = boss.germ.hp;
+        const d = sc.droplets.get();
+        d.fire(boss.germ.x, boss.germ.y, 0, 1, 100, { ...sc.loadout[0].def, damage: 100, knockback: 0, effectiveness: {} });
+        sc.onDropletHit(d, boss.germ);
+        return before - boss.germ.hp;
+      };
+      const kenDmg = hit();
+      const real = sc.character;
+      sc.character = { ...real, passive: {} }; // the same hit from someone without Ken's passive
+      const plainDmg = hit();
+      sc.character = real;
+      sc.purgeReadyAt = 0;
+      sc.signature(sc.time.now);
+      return { kenDmg, plainDmg, hr: boss.atHr, said: boss.bubble.text, frozen: boss.germ.frozenUntil > sc.time.now };
+    });
+    check(vsDiamond.kenDmg > vsDiamond.plainDmg * 1.3, `Ken hits Diamond harder than Dr. Moshkovich does (${vsDiamond.kenDmg} vs ${vsDiamond.plainDmg})`);
+    check(vsDiamond.hr && vsDiamond.frozen && vsDiamond.said.length > 0, `his GRIEVANCE summons Diamond to HR ("${vsDiamond.said}")`);
+    check(kenErrors.length === 0, `no errors playing Ken${kenErrors.length ? ': ' + kenErrors.join(' | ') : ''}`);
+    await kc.close();
+  }
+
+  // THE SCRIBES (M18): hired on the Residency Board, then their pill drops; ?scribe= brings one for the whole shift.
+  // Each one follows Eugene, disinfects a germ and shames a violating patient into cleaning up (with the reward).
+  const scribeWorks = async (pg, id) => {
+    await pg.waitForFunction(() => window.game.scene.isActive('Hud'), null, { timeout: 60000 });
+    const here = await pg.evaluate((who) => {
+      const sc = window.game.scene.getScene('Game');
+      sc.waves.queue.length = 0;
+      sc.waves.phase = 'intermission';
+      sc.waves.nextRoundAt = Number.MAX_SAFE_INTEGER;
+      for (const g of sc.germs.getChildren()) if (g.active) g.kill();
+      const s = sc.scribes.get(who);
+      if (!s) return { here: false };
+      const p = sc.player;
+      sc.spawnGermAt('basic', p.x + 160, p.y + 20, true);
+      const g = sc.germs.getChildren().find((c) => c.active);
+      // One or two hits (headless frame rates are low, and game time follows frames)
+      g.maxHp = g.hp = 20;
+      g.freezeFor(sc.time.now, 60000);
+      window.__scribeGerm = g;
+      return { here: true, near: Math.round(Math.hypot(s.img.x - p.x, s.img.y - p.y)) };
+    }, id);
+    const killed = await pg.waitForFunction((who) => {
+      const sc = window.game.scene.getScene('Game');
+      const s = sc.scribes.get(who);
+      return !window.__scribeGerm.active && s.kills > 0 ? s.kills : null;
+    }, id, { timeout: 90000 }).then((h) => h.jsonValue(), () => 0);
+    check(here.here && here.near < 300 && killed > 0, `${id} shows up by Eugene and disinfects a germ (${JSON.stringify({ ...here, killed })})`);
+    const copays0 = await pg.evaluate(() => {
+      const sc = window.game.scene.getScene('Game');
+      for (const g of sc.germs.getChildren()) if (g.active) g.kill();
+      for (const other of sc.patients.group.getChildren()) if (other.active) other.retire();
+      sc.patients.spawn(sc.time.now);
+      const pt = sc.patients.group.getChildren().find((c) => c.active);
+      pt.setPosition(sc.player.x + 30, sc.player.y + 130);
+      pt.violations = 1;
+      pt.hits = sc.patients.cfg.hitsToClean - 3; // already mostly shamed, so a slow test browser gets there
+      pt.nextViolationAt = Number.MAX_SAFE_INTEGER;
+      pt.leaveAt = Number.MAX_SAFE_INTEGER;
+      window.__scribePatient = pt;
+      return sc.copays;
+    });
+    const cleaned = await pg.waitForFunction((who) => {
+      const sc = window.game.scene.getScene('Game');
+      const s = sc.scribes.get(who);
+      return s.cleaned > 0 ? { cleaned: s.cleaned, state: window.__scribePatient.state, copays: sc.copays } : null;
+    }, id, { timeout: 90000 }).then((h) => h.jsonValue(), () => ({ cleaned: 0 }));
+    check(cleaned.cleaned > 0 && cleaned.state === 'leaving' && cleaned.copays > copays0,
+      `${id} gets a violating patient to clean up, for the usual reward (${JSON.stringify({ ...cleaned, copays0 })})`);
+  };
+  {
+    // A device with CME to spend: hire Omar on the board, then play a shift with Alan forced in
+    const sc1 = await browser.newContext({ viewport: { width: 852, height: 393 }, deviceScaleFactor: 1, isMobile: true, hasTouch: true });
+    await sc1.addInitScript(() => {
+      if (!localStorage.getItem('moshi.progress.v1')) localStorage.setItem('moshi.progress.v1', JSON.stringify({ credits: 30, earned: 30, owned: [], specialty: '', startTool: '', kills: {} }));
+      localStorage.setItem('moshi.settings.v1', JSON.stringify({ learned: { move: true, spray: true, pour: true, purge: true, buy: true } }));
+    });
+    const sp1 = await sc1.newPage();
+    labelWaits(sp1);
+    const scribeErrors = [];
+    sp1.on('pageerror', (e) => scribeErrors.push(where(e)));
+    await sp1.goto(url, { timeout: 90000 });
+    await sp1.waitForFunction(() => window.game?.scene.isActive('Title'));
+    const tapIn = async (scene, match) => {
+      const at = await sp1.evaluate(([key, m]) => {
+        const list = window.game.scene.getScene(key).children.list;
+        const t = list.concat(...list.filter((c) => c.list).map((c) => c.list)).find((c) => typeof c.text === 'string' && c.text.includes(m) && c.visible);
+        if (!t) return null;
+        const b = t.getBounds();
+        const canvas = window.game.canvas.getBoundingClientRect();
+        const k = canvas.width / window.game.scale.width;
+        return { x: canvas.left + b.centerX * k, y: canvas.top + b.centerY * k };
+      }, [scene, match]);
+      if (at) await sp1.touchscreen.tap(at.x, at.y);
+      await sp1.waitForTimeout(250);
+      return !!at;
+    };
+    await tapIn('Title', 'RESIDENCY BOARD');
+    await sp1.waitForFunction(() => window.game.scene.isActive('Board'), null, { timeout: 10000 }).catch(() => {});
+    await tapIn('Board', 'SCRIBES');
+    const hired = await tapIn('Board', 'HIRE');
+    const afterHire = await sp1.evaluate(() => JSON.parse(localStorage.getItem('moshi.progress.v1') ?? '{}'));
+    check(hired && afterHire.owned.includes('scribe:omar') && afterHire.credits === 18,
+      `the Residency Board hires Omar for 12 CME (${JSON.stringify({ owned: afterHire.owned, credits: afterHire.credits })})`);
+    await sp1.goto(url + '?god&scribe=alan', { timeout: 90000 });
+    await sp1.waitForFunction(() => window.game?.scene.isActive('Title'));
+    await sp1.touchscreen.tap(426, 120);
+    await scribeWorks(sp1, 'alan');
+    const pool1 = await sp1.evaluate(() => window.game.scene.getScene('Game').powerups.dropPool);
+    check(pool1.includes('scribeOmar') && pool1.includes('scribeAlan'), `a hired scribe's pill is in the drop pool (${pool1.join(', ')})`);
+    // Picking up Omar's pill brings him in too
+    const omarIn = await sp1.evaluate(() => {
+      const sc = window.game.scene.getScene('Game');
+      sc.powerups.drop(sc.player.x, sc.player.y, sc.time.now, 'scribeOmar');
+      return true;
+    });
+    const omarHere = await sp1.waitForFunction(() => !!window.game.scene.getScene('Game').scribes.get('omar'), null, { timeout: 10000 }).then(() => true, () => false);
+    check(omarIn && omarHere, "grabbing Omar's pill brings Omar in");
+    check(scribeErrors.length === 0, `no errors with the scribes${scribeErrors.length ? ': ' + scribeErrors.join(' | ') : ''}`);
+    await sc1.close();
+
+    // A fresh device: nobody hired. ?scribe=omar brings Omar anyway; Alan is locked, so his pill never drops
+    const sc2 = await browser.newContext({ viewport: { width: 852, height: 393 }, deviceScaleFactor: 1, isMobile: true, hasTouch: true });
+    await sc2.addInitScript(() => localStorage.setItem('moshi.settings.v1', JSON.stringify({ learned: { move: true, spray: true, pour: true, purge: true, buy: true } })));
+    const sp2 = await sc2.newPage();
+    labelWaits(sp2);
+    const scribeErrors2 = [];
+    sp2.on('pageerror', (e) => scribeErrors2.push(where(e)));
+    await sp2.goto(url + '?god&scribe=omar', { timeout: 90000 });
+    await sp2.waitForFunction(() => window.game?.scene.isActive('Title'));
+    await sp2.touchscreen.tap(426, 120);
+    await scribeWorks(sp2, 'omar');
+    const drops = await sp2.evaluate(() => {
+      const sc = window.game.scene.getScene('Game');
+      const seen = new Set();
+      for (let i = 0; i < 300; i++) {
+        sc.powerups.drop(-1000, -1000, sc.time.now);
+        for (const p of sc.powerups.pills) if (p.img.visible) seen.add(p.id);
+      }
+      for (const p of sc.powerups.pills) p.img.setVisible(false);
+      return { pool: sc.powerups.dropPool, seen: [...seen] };
+    });
+    check(!drops.pool.includes('scribeAlan') && !drops.seen.includes('scribeAlan') && drops.seen.includes('scribeOmar'),
+      `a locked scribe never drops (${drops.seen.join(', ')})`);
+    check(scribeErrors2.length === 0, `no errors with Omar${scribeErrors2.length ? ': ' + scribeErrors2.join(' | ') : ''}`);
+    await sc2.close();
   }
 } catch (e) {
   check(false, String(e) + (errors.length ? " | errors: " + errors.join(" | ") : ""));

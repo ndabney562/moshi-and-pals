@@ -21,6 +21,9 @@ export class BootScene extends Phaser.Scene {
     this.makeEugene();
     this.makeKaya();
     this.makeLucien();
+    this.makeKen();
+    this.makeOmar();
+    this.makeAlan();
     this.makeFloorTile();
     this.makeShadow();
     for (const def of Object.values(GERMS)) this.makeGerm(def);
@@ -99,17 +102,18 @@ export class BootScene extends Phaser.Scene {
 
   /** Two-tone clinic linoleum, tiled across the floor. */
   /** The parts every doctor shares, seen from above facing +x: arms (one holding the bottle) and the lab coat. */
-  private drawDoctorBody(g: Phaser.GameObjects.Graphics, skin: number, under: number, coatW: number): void {
+  private drawDoctorBody(g: Phaser.GameObjects.Graphics, skin: number, under: number, coatW: number,
+    coat: number = COLORS.coat, coatShadow: number = COLORS.coatShadow): void {
     const outline = 0x1b2b30;
-    g.fillStyle(COLORS.coat).lineStyle(3, outline).fillRoundedRect(46, 60, 30, 13, 6).strokeRoundedRect(46, 60, 30, 13, 6);
+    g.fillStyle(coat).lineStyle(3, outline).fillRoundedRect(46, 60, 30, 13, 6).strokeRoundedRect(46, 60, 30, 13, 6);
     g.fillStyle(skin).fillCircle(78, 66, 6).strokeCircle(78, 66, 6);
     g.fillStyle(COLORS.bottle).fillRoundedRect(76, 70, 14, 20, 4).strokeRoundedRect(76, 70, 14, 20, 4);
     g.fillStyle(COLORS.bottleCap).fillRect(79, 64, 8, 7).strokeRect(79, 64, 8, 7);
     g.fillStyle(COLORS.bottleCap).fillTriangle(87, 65, 94, 67, 87, 69);
-    g.fillStyle(COLORS.coat).fillRoundedRect(44, 18, 22, 13, 6).strokeRoundedRect(44, 18, 22, 13, 6);
+    g.fillStyle(coat).fillRoundedRect(44, 18, 22, 13, 6).strokeRoundedRect(44, 18, 22, 13, 6);
     g.fillStyle(skin).fillCircle(68, 24, 6).strokeCircle(68, 24, 6);
-    g.fillStyle(COLORS.coat).fillEllipse(41, 46, coatW, 78).strokeEllipse(41, 46, coatW, 78);
-    g.fillStyle(COLORS.coatShadow).fillEllipse(34, 46, coatW * 0.43, 58);
+    g.fillStyle(coat).fillEllipse(41, 46, coatW, 78).strokeEllipse(41, 46, coatW, 78);
+    g.fillStyle(coatShadow).fillEllipse(34, 46, coatW * 0.43, 58);
     g.fillStyle(under).fillCircle(49, 46, 19).fillEllipse(58, 46, 22, 26);
   }
 
@@ -163,6 +167,117 @@ export class BootScene extends Phaser.Scene {
     // Mustache and goatee at the front
     g.fillStyle(0x1a1410).fillEllipse(63.5, 46, 3, 12);
     g.generateTexture('lucien', 96, 96);
+    g.destroy();
+  }
+
+  /**
+   * KEN (from Noah's photo): stocky, short dark receding hair, clean-shaven, a black zip fleece over
+   * light-blue scrubs and a grey tee, a chunky black wristwatch. Plain fleece, no logos.
+   */
+  private makeKen(): void {
+    const g = this.add.graphics();
+    const outline = 0x1b2b30;
+    const skin = 0xe2ae8a;
+    // Broad, stocky shoulders in the fleece, light-blue scrubs at the collar
+    this.drawDoctorBody(g, skin, 0x9fd0e3, 54, 0x2b2e34, 0x1c1e22);
+    // Fleece collar and zip line running forward from it
+    g.lineStyle(2, 0x45494f).beginPath().arc(48, 46, 21, Phaser.Math.DegToRad(-80), Phaser.Math.DegToRad(80), false).strokePath();
+    // Grey tee in the scrubs' V
+    g.fillStyle(0xbfc4c8).fillEllipse(63, 46, 7, 14);
+    g.lineStyle(2, 0x6fa9bf).lineBetween(58, 33, 66, 46).lineBetween(58, 59, 66, 46);
+    // Chunky black watch with a silver face on the left wrist
+    g.fillStyle(0x0e0e10).lineStyle(1.5, outline).fillRoundedRect(55, 16, 8, 17, 3).strokeRoundedRect(55, 16, 8, 17, 3);
+    g.fillStyle(0xb8c2cc).fillCircle(59, 24.5, 2.6);
+    // Ears
+    g.fillStyle(skin).lineStyle(2, outline).fillCircle(46, 30, 4).strokeCircle(46, 30, 4).fillCircle(46, 62, 4).strokeCircle(46, 62, 4);
+    // Head: short dark hair over the back and sides, receding at the front
+    g.fillStyle(skin).lineStyle(3, outline).fillCircle(48, 46, 16).strokeCircle(48, 46, 16);
+    g.fillStyle(0x3b2d25).beginPath().slice(48, 46, 15, Phaser.Math.DegToRad(100), Phaser.Math.DegToRad(260), false).fillPath();
+    g.fillEllipse(43, 36, 13, 7).fillEllipse(43, 56, 13, 7);
+    g.fillStyle(0x56443a).fillEllipse(44, 46, 7, 9); // a little left on top
+    g.fillStyle(0xeebc9a).fillEllipse(54, 46, 9, 15); // light on the high forehead
+    g.lineStyle(3, outline).strokeCircle(48, 46, 16);
+    // Nose
+    g.fillStyle(0xd59c78).fillCircle(64, 46, 3);
+    g.generateTexture('ken', 96, 96);
+    g.destroy();
+  }
+
+  /**
+   * The scribes' shared top-down body (facing +x, 96x96): shoulders and arms in `top`, and a laptop held
+   * out front in both hands (they chart while they fight).
+   */
+  private drawScribeBody(g: Phaser.GameObjects.Graphics, skin: number, top: number, shade: number, sleeves: number): void {
+    const outline = 0x1b2b30;
+    // Arms forward to the laptop
+    g.fillStyle(sleeves).lineStyle(3, outline).fillRoundedRect(44, 20, 22, 12, 6).strokeRoundedRect(44, 20, 22, 12, 6)
+      .fillRoundedRect(44, 60, 22, 12, 6).strokeRoundedRect(44, 60, 22, 12, 6);
+    // Laptop: open, screen toward them, a little blue glow
+    g.fillStyle(0x9aa4ad).lineStyle(2, outline).fillRoundedRect(66, 26, 14, 40, 3).strokeRoundedRect(66, 26, 14, 40, 3);
+    g.fillStyle(0x263238).fillRect(66, 29, 4, 34);
+    g.fillStyle(0x7fd3ff, 0.8).fillRect(70, 30, 2, 32);
+    g.fillStyle(skin).lineStyle(2, outline).fillCircle(68, 28, 5).strokeCircle(68, 28, 5).fillCircle(68, 64, 5).strokeCircle(68, 64, 5);
+    // Shoulders
+    g.fillStyle(top).lineStyle(3, outline).fillEllipse(42, 46, 40, 72).strokeEllipse(42, 46, 40, 72);
+    g.fillStyle(shade).fillEllipse(35, 46, 16, 52);
+  }
+
+  /**
+   * OMAR, scribe (from Noah's photo): short dark hair, a short beard, a big smile, an N95 pulled down
+   * under his chin, a black jacket over black scrubs. Plain mask, no brand.
+   */
+  private makeOmar(): void {
+    const g = this.add.graphics();
+    const outline = 0x1b2b30;
+    const skin = 0xd8a47f;
+    this.drawScribeBody(g, skin, 0x23262c, 0x16181c, 0x2b2f36);
+    // Jacket collar
+    g.lineStyle(2, 0x3c4048).beginPath().arc(48, 46, 18, Phaser.Math.DegToRad(-75), Phaser.Math.DegToRad(75), false).strokePath();
+    // Head: short dark hair on top and back, beard around the front of the jaw
+    g.fillStyle(skin).lineStyle(3, outline).fillCircle(47, 46, 14).strokeCircle(47, 46, 14);
+    g.fillStyle(0x2a1d17).beginPath().slice(47, 46, 14, Phaser.Math.DegToRad(70), Phaser.Math.DegToRad(290), false).fillPath();
+    g.fillCircle(45, 46, 12);
+    g.lineStyle(1.5, 0x4a362b).lineBetween(38, 40, 50, 39).lineBetween(37, 46, 51, 46).lineBetween(38, 52, 50, 53);
+    g.lineStyle(4, 0x2a1d17, 0.85).beginPath().arc(47, 46, 12, Phaser.Math.DegToRad(-50), Phaser.Math.DegToRad(50), false).strokePath();
+    g.lineStyle(3, outline).beginPath().arc(47, 46, 14, Phaser.Math.DegToRad(-70), Phaser.Math.DegToRad(70), false).strokePath();
+    // N95 pulled down under his chin: a white cup hanging at his throat, blue straps running back
+    g.lineStyle(1.5, 0x6f9fd8).lineBetween(58, 33, 42, 31).lineBetween(58, 59, 42, 61);
+    g.lineStyle(8, outline).beginPath().arc(47, 46, 18, Phaser.Math.DegToRad(-50), Phaser.Math.DegToRad(50), false).strokePath();
+    g.lineStyle(5.5, 0xf4f1e6).beginPath().arc(47, 46, 18, Phaser.Math.DegToRad(-50), Phaser.Math.DegToRad(50), false).strokePath();
+    g.fillStyle(0xf4f1e6).lineStyle(2, outline).fillEllipse(65, 46, 7, 16).strokeEllipse(65, 46, 7, 16);
+    // Nose out front
+    g.fillStyle(0xc98f6a).fillCircle(60, 46, 2.5);
+    g.generateTexture('scribe-omar', 96, 96);
+    g.destroy();
+  }
+
+  /**
+   * ALAN, scribe (from Noah's photo): slim, a black buzz cut, a blue-grey t-shirt and a black backpack.
+   * Plain shirt, no print.
+   */
+  private makeAlan(): void {
+    const g = this.add.graphics();
+    const outline = 0x1b2b30;
+    const skin = 0xe8c4a0;
+    // Black backpack on his back (-x), straps over the shoulders
+    g.fillStyle(0x15171b).lineStyle(3, outline).fillRoundedRect(16, 30, 18, 32, 6).strokeRoundedRect(16, 30, 18, 32, 6);
+    g.fillStyle(0x2a2e35).fillRoundedRect(19, 36, 10, 20, 3);
+    this.drawScribeBody(g, skin, 0x5d7189, 0x4b5d73, skin);
+    // Short sleeves at the shoulders
+    g.fillStyle(0x5d7189).fillEllipse(46, 23, 10, 12).fillEllipse(46, 69, 10, 12);
+    // Backpack straps
+    g.lineStyle(4, 0x15171b).lineBetween(30, 32, 54, 30).lineBetween(30, 60, 54, 62);
+    // Collar
+    g.fillStyle(0x4b5d73).fillEllipse(56, 46, 10, 18);
+    // Head: a black buzz cut all over, the face out front
+    g.fillStyle(skin).lineStyle(3, outline).fillCircle(48, 46, 13).strokeCircle(48, 46, 13);
+    g.fillStyle(0x1e1e1e).beginPath().slice(48, 46, 12.5, Phaser.Math.DegToRad(60), Phaser.Math.DegToRad(300), false).fillPath();
+    g.fillCircle(46, 46, 10.5);
+    g.fillStyle(0x3a3a3a);
+    for (const [dx, dy] of [[-6, -4], [-2, 5], [2, -6], [-7, 3], [3, 2], [-3, -1], [0, 8], [0, -9]]) g.fillCircle(46 + dx, 46 + dy, 0.9);
+    g.lineStyle(3, outline).strokeCircle(48, 46, 13);
+    g.fillStyle(0xd6ad86).fillCircle(61, 46, 2.5);
+    g.generateTexture('scribe-alan', 96, 96);
     g.destroy();
   }
 
@@ -257,13 +372,14 @@ export class BootScene extends Phaser.Scene {
 
   /**
    * Diamond: a big, slimy germ monster in the style of cold-medicine ad
-   * creatures. Stubby arms (one holding her clipboard), a bun with a pencil,
-   * furious eyebrows, a toothy scowl, and a lanyard with a Trinidad and Tobago
+   * creatures. Stubby arms (one holding her clipboard), furious eyebrows and a toothy scowl.
+   * Her look follows Noah's reference picture (v0.18): a striped red-gold-green knit headwrap,
+   * long beaded dreadlocks, gold hoops, bead necklaces and bracelets, and her Trinidad and Tobago
    * flag pin. Faces right (+x) like every germ.
    */
   private makeManagerMonster(def: GermDef): void {
     const r = def.radius;
-    const size = (r + 14) * 2;
+    const size = (r + 22) * 2;
     const c = size / 2;
     const ink = def.outline;
     const g = this.add.graphics();
@@ -271,6 +387,20 @@ export class BootScene extends Phaser.Scene {
     // Stubby arms out to the sides, reaching forward
     g.fillStyle(def.color).fillEllipse(c + r * 0.35, c - r * 0.95, r * 0.7, r * 0.42).fillEllipse(c + r * 0.35, c + r * 0.95, r * 0.7, r * 0.42);
     g.lineStyle(3, ink).strokeEllipse(c + r * 0.35, c - r * 0.95, r * 0.7, r * 0.42).strokeEllipse(c + r * 0.35, c + r * 0.95, r * 0.7, r * 0.42);
+
+    const hair = 0x3a2416;
+    const beads = [0xd7263d, 0xf2c14e, 0x1f8a3b];
+    // Long dreadlocks hanging past her back and sides (drawn first, so only their ends show past the body)
+    const locks: number[] = [];
+    for (let i = 0; i < 11; i++) locks.push(Math.PI - 1.9 + (i / 10) * 3.8);
+    for (const [i, a] of locks.entries()) {
+      const len = r * (1.22 + (i % 3) * 0.05);
+      const x1 = c + Math.cos(a) * len, y1 = c + Math.sin(a) * len;
+      g.lineStyle(r * 0.2, 0x24160d).lineBetween(c, c, x1, y1);
+      g.lineStyle(r * 0.13, i % 2 ? hair : 0x4f3322).lineBetween(c, c, x1, y1);
+      g.fillStyle(beads[i % 3]).fillCircle(x1, y1, r * 0.085);
+      g.lineStyle(1.5, 0x24160d).strokeCircle(x1, y1, r * 0.085);
+    }
 
     // Lumpy, slimy body: a ring of bumps under the main blob
     g.fillStyle(def.color);
@@ -288,16 +418,58 @@ export class BootScene extends Phaser.Scene {
     g.fillStyle(0xffffff, 0.3).fillEllipse(c - r * 0.3, c - r * 0.35, r * 0.5, r * 0.3);
     g.fillStyle(0x000000, 0.12).fillCircle(c - r * 0.5, c + r * 0.4, r * 0.14).fillCircle(c - r * 0.1, c + r * 0.6, r * 0.09);
 
-    // Hair cap and bun on the back of the head, pencil through the bun
-    const hair = 0x2a1a12;
-    g.fillStyle(hair).slice(c, c, r * 0.8, Math.PI - 1.1, Math.PI + 1.1, false).fillPath();
-    g.fillStyle(hair).fillCircle(c - r * 0.8, c, r * 0.28);
-    g.lineStyle(2, 0x5a3a26).strokeCircle(c - r * 0.8, c, r * 0.17);
-    g.lineStyle(4, 0xffc93c).lineBetween(c - r * 1.05, c - r * 0.3, c - r * 0.55, c + r * 0.3);
-
-    // Lanyard with a Trinidad and Tobago flag pin
-    g.lineStyle(3, 0x222222).beginPath().arc(c, c, r * 0.62, -1.0, 1.0, false).strokePath();
-    const fx = c + r * 0.12, fy = c + r * 0.5, fw = r * 0.34, fh = r * 0.22;
+    // A few locks falling over her back from under the wrap
+    for (const a of [Math.PI - 0.75, Math.PI - 0.25, Math.PI + 0.25, Math.PI + 0.75]) {
+      const x0 = c + Math.cos(a) * r * 0.55, y0 = c + Math.sin(a) * r * 0.55;
+      const x1 = c + Math.cos(a) * r * 1.05, y1 = c + Math.sin(a) * r * 1.05;
+      g.lineStyle(r * 0.16, 0x24160d).lineBetween(x0, y0, x1, y1);
+      g.lineStyle(r * 0.1, 0x4f3322).lineBetween(x0, y0, x1, y1);
+    }
+    // Bracelets of beads on both stubby arms
+    for (const side of [-1, 1]) {
+      for (let k = 0; k < 4; k++) {
+        const bx = c + r * (0.2 + k * 0.1), by = c + side * r * 0.95;
+        g.fillStyle(beads[(k + (side > 0 ? 1 : 0)) % 3]).fillCircle(bx, by - side * r * 0.16, r * 0.065);
+        g.lineStyle(1, 0x24160d, 0.8).strokeCircle(bx, by - side * r * 0.16, r * 0.065);
+      }
+    }
+    // The striped knit headwrap over the back of her head: red, gold and green bands (seen from above,
+    // each band a smaller cap sitting further back, so they read as stripes running across it)
+    const back = c - r * 0.98;
+    const capW = r * 0.98, capH = r * 1.5;
+    const bands = [0xd7263d, 0x24160d, 0xf2c14e, 0x24160d, 0x1f8a3b, 0xd7263d, 0xf2c14e];
+    bands.forEach((col, k) => {
+      const w = capW * (1 - k * 0.13);
+      const h = capH * (1 - k * 0.06);
+      g.fillStyle(col).fillEllipse(back + w / 2, c, w, h);
+    });
+    g.lineStyle(3, 0x24160d).strokeEllipse(back + capW / 2, c, capW, capH);
+    // Knit ribbing along the brim
+    g.lineStyle(1.5, 0x000000, 0.25);
+    for (let i = -5; i <= 5; i++) {
+      const t = i / 6;
+      const ex = back + capW / 2 + Math.cos(Math.asin(t)) * capW * 0.5;
+      g.lineBetween(ex - r * 0.1, c + t * capH * 0.5, ex - 1, c + t * capH * 0.5);
+    }
+    // Gold hoop earrings at the sides of her face
+    for (const side of [-1, 1]) {
+      const hx = c - r * 0.02, hy = c + side * r * 0.7;
+      g.lineStyle(5, 0x8a6200).strokeCircle(hx, hy, r * 0.14);
+      g.lineStyle(3, 0xffd34d).strokeCircle(hx, hy, r * 0.14);
+    }
+    // Bead necklaces draped round her sides (clear of the face)
+    for (const [rad, size] of [[0.9, 0.075]] as const) {
+      for (const side of [-1, 1]) {
+        for (let k = 0; k <= 6; k++) {
+          const a = side * (0.9 + k * 0.1);
+          g.fillStyle(beads[(k + (rad > 0.85 ? 1 : 0)) % 3]).fillCircle(c + Math.cos(a) * r * rad, c + Math.sin(a) * r * rad, r * size);
+          g.lineStyle(1, 0x24160d, 0.8).strokeCircle(c + Math.cos(a) * r * rad, c + Math.sin(a) * r * rad, r * size);
+        }
+      }
+    }
+    // Her Trinidad and Tobago flag pin, on the necklace
+    const fw = r * 0.3, fh = r * 0.2;
+    const fx = c + r * 0.02, fy = c + r * 0.56;
     g.fillStyle(0xce1126).fillRect(fx, fy, fw, fh);
     g.lineStyle(fh * 0.5, 0xffffff).lineBetween(fx, fy, fx + fw, fy + fh);
     g.lineStyle(fh * 0.3, 0x000000).lineBetween(fx, fy, fx + fw, fy + fh);

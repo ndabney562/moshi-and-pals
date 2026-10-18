@@ -18,7 +18,12 @@ export class Powerups {
   private readonly active = new Map<PowerupId, number>();
   private nextEmitAt = 0;
 
-  constructor(private readonly scene: Phaser.Scene, private readonly onPickup: (def: PowerupDef, time: number) => void) {
+  /** `canDrop`: which pills random drops may pick (locked scribes never drop). */
+  constructor(
+    private readonly scene: Phaser.Scene,
+    private readonly onPickup: (def: PowerupDef, time: number) => void,
+    private readonly canDrop: (def: PowerupDef) => boolean = () => true,
+  ) {
     for (let i = 0; i < MAX_PILLS; i++) {
       this.pills.push({ img: scene.add.image(0, 0, 'pill').setDepth(8.5).setVisible(false), id: 'statClean', until: 0 });
     }
@@ -26,7 +31,7 @@ export class Powerups {
 
   /** Drops a pill (a random one unless `id` is given). */
   drop(x: number, y: number, time: number, id?: PowerupId): void {
-    const ids = Object.keys(POWERUPS) as PowerupId[];
+    const ids = (Object.keys(POWERUPS) as PowerupId[]).filter((k) => this.canDrop(POWERUPS[k]));
     const pick = id ?? Phaser.Utils.Array.GetRandom(ids);
     const p = this.pills[this.next];
     this.next = (this.next + 1) % MAX_PILLS;
@@ -35,6 +40,17 @@ export class Powerups {
     this.scene.tweens.killTweensOf(p.img);
     p.img.setPosition(x, y).setVisible(true).setAlpha(1).setScale(0.2).setTint(POWERUPS[pick].color);
     this.scene.tweens.add({ targets: p.img, scale: 1.2, duration: 260, ease: 'Back.out' });
+  }
+
+  /** Starts (or extends) an effect without a pill (debug switches). */
+  start(id: PowerupId, time: number, ms = POWERUPS[id].ms): void {
+    this.active.set(id, Math.max(this.active.get(id) ?? 0, time + ms));
+    this.nextEmitAt = 0;
+  }
+
+  /** The ids random drops can pick right now (tests). */
+  get dropPool(): PowerupId[] {
+    return (Object.keys(POWERUPS) as PowerupId[]).filter((k) => this.canDrop(POWERUPS[k]));
   }
 
   isActive(id: PowerupId, time: number): boolean {
@@ -70,7 +86,7 @@ export class Powerups {
     if (time >= this.nextEmitAt) {
       this.nextEmitAt = time + 100;
       const list = [...this.active.entries()].filter(([, until]) => until > time).map(([id, until]) => ({
-        id, name: POWERUPS[id].name, color: POWERUPS[id].color, left: (until - time) / POWERUPS[id].ms,
+        id, name: POWERUPS[id].name, color: POWERUPS[id].color, left: Math.min(1, (until - time) / POWERUPS[id].ms),
       }));
       for (const [id, until] of this.active) if (until <= time) this.active.delete(id);
       events.emit(GameEvents.PowerupsChanged, { active: list });

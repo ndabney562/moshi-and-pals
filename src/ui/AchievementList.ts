@@ -47,11 +47,13 @@ export class AchievementList extends Phaser.GameObjects.Container {
     this.dim.input?.hitArea.setSize(width, height);
     this.title.setPosition(width / 2, 52);
     this.back.setPosition(width / 2, height - 44);
-    const perCol = Math.ceil(this.rows.length / 2);
     const top = 100;
+    // Two columns while they fit comfortably, then three
+    const cols = (height - top - 100) / Math.ceil(this.rows.length / 2) >= 42 ? 2 : 3;
+    const perCol = Math.ceil(this.rows.length / cols);
     const rowH = Math.min(50, (height - top - 100) / perCol);
-    const colW = Math.min(560, (width - 120) / 2);
-    const left = width / 2 - colW;
+    const colW = Math.min(560, (width - 120) / cols);
+    const left = width / 2 - (colW * cols) / 2;
     this.rows.forEach((r, i) => {
       const x = left + Math.floor(i / perCol) * colW + 20;
       const y = top + (i % perCol) * rowH;

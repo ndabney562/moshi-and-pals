@@ -33,6 +33,8 @@ export const ACHIEVEMENTS: AchievementDef[] = [
   { id: 'meetingAdjourned', name: 'Meeting Adjourned', how: 'Defeat Diamond the Practice Manager' },
   { id: 'discharged', name: 'Discharged', how: 'Defeat Patient Zero before he leaves' },
   { id: 'ama', name: 'Against Medical Advice', how: 'Let Patient Zero walk out' },
+  { id: 'exitInterview', name: 'Exit Interview', how: 'Defeat Diamond as Ken' },
+  { id: 'delegation', name: 'Delegation', how: 'Scribes clean up 5 patients in one shift' },
   { id: 'doubleShift', name: 'Double Shift', how: 'Reach round 10' },
   { id: 'attending', name: 'Attending Physician', how: 'Reach round 20' },
 ];

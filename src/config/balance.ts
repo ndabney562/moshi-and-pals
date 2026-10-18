@@ -231,4 +231,34 @@ export const BALANCE = {
   codeBlue: { cooldownMs: 9000, distance: 320, ms: 230, guardMs: 250, width: 90, damage: 30, knockback: 650, stunMs: 700 },
   /** PA LUCIEN's signature: a sterile zone where he stands; germs inside are slowed and take damage. */
   cleanField: { cooldownMs: 20000, ms: 6000, radius: 180, slow: 0.4, dps: 22 },
+  /**
+   * KEN: his passive (damage × against Diamond, from everything) and his signature, FILE A GRIEVANCE: a blast
+   * of paperwork that hits and stuns germs around him, and summons Diamond to HR (frozen, no meetings,
+   * no tantrums) if she's within `hrRange`. Breaks a Mandatory Meeting in progress.
+   */
+  grievance: {
+    diamondDamage: 1.5,
+    cooldownMs: 15000, radius: 210, damage: 35, knockback: 420, stunMs: 900,
+    hrRange: 900, hrMs: 3500,
+  },
+  /**
+   * SCRIBES (Omar and Alan), unlocked on the Residency Board, then dropped as power-ups. They follow Eugene for
+   * `ms`, attack germs in `range` and shame violating patients (one "spray" every `cleanEveryMs`, the same
+   * hitsToClean as Eugene's droplets). They can't be hurt and teleport back if left behind or stuck.
+   */
+  scribes: {
+    ms: 20000,
+    speed: 300,
+    /** Where they stand: this far behind Eugene, off to one side. */
+    followDistance: 85,
+    teleportDistance: 650,
+    stuckMs: 1500,
+    range: 280,
+    cleanRange: 240,
+    cleanEveryMs: 300,
+    /** Omar sprays: quick, light hits on the nearest germ. */
+    omar: { everyMs: 420, damage: 13, knockback: 120 },
+    /** Alan zaps: slower, harder, jumps to `chain` more germs and stuns each. */
+    alan: { everyMs: 950, damage: 26, knockback: 60, chain: 2, chainRange: 160, stunMs: 400 },
+  },
 };

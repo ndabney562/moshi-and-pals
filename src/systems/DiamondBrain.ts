@@ -20,6 +20,8 @@ export interface BossHost {
   canMeet(): boolean;
   /** What she yells (whoever's on shift). */
   readonly surname?: string;
+  /** Who's on shift (Ken gets his own welcome). */
+  readonly doctor?: string;
 }
 
 type Mode = 'chase' | 'meetingWindup' | 'meeting' | 'tantrumWindup';
@@ -36,6 +38,8 @@ export class DiamondBrain {
   private readonly tape: Phaser.GameObjects.Graphics;
   private readonly hint: Phaser.GameObjects.Text;
   private mode: Mode = 'chase';
+  /** Summoned to HR (Ken's grievance) until then: frozen, no meetings, no tantrums. */
+  private hrUntil = 0;
   private modeUntil = 0;
   private nextMeetingAt: number;
   private nextTantrumAt = 0;
@@ -56,7 +60,7 @@ export class DiamondBrain {
     this.nextMeetingAt = now + this.cfg.meetingFirstMs;
     this.nextChatterAt = now + Phaser.Math.Between(...this.cfg.chatterMs);
     // Let her finish squeezing through the door before the first complaint
-    host.scene.time.delayedCall(700, () => this.say(pick(DIAMOND_LINES.arrive)));
+    host.scene.time.delayedCall(700, () => this.say(pick(host.doctor === 'ken' ? DIAMOND_LINES.arriveKen : DIAMOND_LINES.arrive)));
   }
 
   get active(): boolean {
@@ -96,6 +100,7 @@ export class DiamondBrain {
     if (!this.active) return;
     const { player, exit } = this.host;
     if (player.dead) return;
+    if (time < this.hrUntil) return;
     const toPlayer = Phaser.Math.Distance.Between(this.germ.x, this.germ.y, player.x, player.y);
 
     switch (this.mode) {
@@ -155,6 +160,23 @@ export class DiamondBrain {
       this.batches = owed;
       this.throwWriteUps();
     }
+  }
+
+  /** FILE A GRIEVANCE: drops whatever she's doing (a meeting lets Eugene go) and stands there being reviewed. */
+  summonToHr(time: number, ms: number): void {
+    if (!this.active) return;
+    if (this.mode === 'meeting' || this.mode === 'meetingWindup') this.endMeeting(time);
+    this.mode = 'chase';
+    this.hrUntil = time + ms;
+    this.germ.freezeFor(time, ms);
+    this.nextTantrumAt = Math.max(this.nextTantrumAt, time + ms);
+    this.nextMeetingAt = Math.max(this.nextMeetingAt, time + ms + 1500);
+    this.say(pick(DIAMOND_LINES.hr), ms);
+  }
+
+  /** At HR right now. */
+  get atHr(): boolean {
+    return this.active && this.host.scene.time.now < this.hrUntil;
   }
 
   onDefeated(): void {

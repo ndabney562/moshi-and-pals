@@ -1,4 +1,5 @@
 import { CME, SPECIALTIES, STARTER_KIT_COST, type SpecialtyDef } from '../data/residency';
+import { SCRIBES, scribeUnlockId, type ScribeId } from '../data/scribes';
 
 /**
  * Between-run progress on this device: CME Credits, what's been bought on the Residency Board, what's
@@ -9,7 +10,7 @@ export interface Progress {
   credits: number;
   /** Lifetime credits (for the board's header). */
   earned: number;
-  /** Bought specialty ids, plus 'starterKit'. */
+  /** Bought specialty ids, plus 'starterKit' and unlocked scribes ('scribe:omar'). Older saves simply have none. */
   owned: string[];
   /** Active specialty for the next shift (must be owned), or ''. */
   specialty: string;
@@ -71,9 +72,15 @@ export function recordShift(credits: number, kills: Record<string, number>): voi
   save();
 }
 
-/** Buys a board item (a specialty id or 'starterKit'). Returns false if it's owned or too expensive. */
+/** Whether a scribe has been unlocked on the Residency Board (their pill can drop). */
+export function scribeUnlocked(id: ScribeId): boolean {
+  return state.owned.includes(scribeUnlockId(id));
+}
+
+/** Buys a board item (a specialty id, 'starterKit' or 'scribe:<id>'). Returns false if it's owned or too expensive. */
 export function buy(id: string): boolean {
-  const cost = id === 'starterKit' ? STARTER_KIT_COST : SPECIALTIES.find((s) => s.id === id)?.cost;
+  const cost = id === 'starterKit' ? STARTER_KIT_COST
+    : SPECIALTIES.find((s) => s.id === id)?.cost ?? SCRIBES.find((s) => scribeUnlockId(s.id) === id)?.cost;
   if (cost === undefined || state.owned.includes(id) || state.credits < cost) return false;
   state = { ...state, credits: state.credits - cost, owned: [...state.owned, id] };
   save();
