@@ -1,6 +1,6 @@
 # Changelog
 
-## v0.17.0: Milestone 17, Today's Shift
+## v0.19.0: Milestone 17, Today's Shift
 - **Today's Shift** (📋 on the title screen): a daily challenge. Everyone gets the same shift on the same day: the date picks the random rolls and two modifiers, shown before you CLOCK IN. Always on Urgent. The title screen and the Discharge Summary show today's best, and your first finished Today's Shift each day earns +2 CME.
 - **Six modifiers:**
   - **Flu Season:** Viral Sprinters come in twice as often, from round 1.
@@ -12,6 +12,22 @@
 - **Difficulty** (🩺 on the title screen, tap to switch): **Walk-In** (softer germs, gentler bumps, better Copays), **Urgent** (the game as before) and **Trauma Center** (tougher germs that hit harder and keep coming). Records are kept per difficulty, so a Walk-In shift never beats your Urgent record. Your old records count as Urgent. The Discharge Summary names the difficulty.
 - 3 new achievements: *Clocked In* (finish a Today's Shift), *Level One Trauma* (round 10 on Trauma Center), *Working in the Dark* (round 8 in a Power Outage). The achievement list goes to three columns on phones.
 - For testers: `?mods=powerOutage,fullMoon` forces modifiers, `?seed=123` fixes the run's random rolls.
+
+## v0.18.0: Milestone 18, Ken and the scribes
+- New title poster from Noah: all four doctors (Moshkovich, Kaya, Lucien and Ken) spraying side by side.
+- **Ken is playable**, the fourth Pal (pick him on the title screen). Black fleece over light-blue scrubs, a chunky black watch.
+  - **Passive:** everything he does hits Diamond 50% harder. His hits on her show up in orange.
+  - **FILE A GRIEVANCE** (the big green button): he slams down a form and paperwork flies everywhere. Every germ close by takes 35 and is stunned for a moment. If Diamond is nearby, she's **summoned to HR** for 3.5 s: she freezes, can't start a meeting or a tantrum, and a meeting already going lets you go. Recharges in 15 s.
+  - Diamond has something to say when she sees him.
+- **Diamond's new look**, from Noah's picture: a striped red, gold and green knit headwrap, long dreadlocks with colored beads, gold hoops, bead necklaces and bracelets. Same moves, same attitude.
+- **Scribes: Omar and Alan.** Hire them on the Residency Board (new SCRIBES tab, 12 CME each). Once hired, their pill can drop like any power-up; locked scribes never drop. Grab it and the scribe walks in and follows you for 20 s, laptop out:
+  - **Omar** sprays the nearest germ, fast and light. "Charting that!"
+  - **Alan** zaps a germ and the two next to it, harder and slower, and stuns them. "Documented. Next."
+  - Both go after patients with a health code violation on record and shame them into cleaning up, for the usual points and Copays.
+  - They can't be hurt, never block you, and catch up if they're left behind or stuck.
+- 2 new achievements: **Exit Interview** (beat Diamond as Ken) and **Delegation** (the scribes clean up 5 patients in one shift). The achievements list goes to three columns when it needs to.
+- Long button labels shrink to fit their button.
+- Testing switches: `?doctor=ken` (or eugene, kaya, lucien) plays a shift as that Pal, `?scribe=omar` (or alan) brings that scribe for the whole shift. The smoke test takes `SMOKE_PORT`.
 
 ## v0.16.1
 - Ready for Noah's rewrite: each patient type can have separate reactions for Dr. Kaya (`kaya`) and PA Lucien (`lucien`); without them they use Dr. Moshkovich's. Diamond's and Patient Zero's lines can say `{SURNAME}` for whoever is on shift.

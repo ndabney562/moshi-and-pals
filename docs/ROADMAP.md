@@ -146,7 +146,7 @@ On a phone screen the map stays readable thanks to **off-screen threat arrows** 
 
 ### Replayability
 
-- **DONE (v0.17.0, M17):** **Today's Shift** (daily challenge: the date seeds the run and picks 2 modifiers; `core/rng.ts`) · **Modifiers:** Flu Season · Power Outage · Inspection Day · Short-Staffed (restocks ×3, not none, so runs stay winnable) · Construction (a door closes for a round, to Eugene only) · Full Moon · **Difficulties:** Walk-In / Urgent / Trauma Center, records per difficulty.
+- **DONE (v0.19.0, M17):** **Today's Shift** (daily challenge: the date seeds the run and picks 2 modifiers; `core/rng.ts`) · **Modifiers:** Flu Season · Power Outage · Inspection Day · Short-Staffed (restocks ×3, not none, so runs stay winnable) · Construction (a door closes for a round, to Eugene only) · Full Moon · **Difficulties:** Walk-In / Urgent / Trauma Center, records per difficulty.
 - **Leaderboards:** GitHub Pages can't host them, so defer until the Capacitor/TestFlight wrapper (Game Center).
 
 ### Humor kit (samples to build on)
@@ -245,7 +245,7 @@ On a phone screen the map stays readable thanks to **off-screen threat arrows** 
 |---|---|---|---|
 | P4-1 | Bosses: Diamond 2.0, Patient Zero, Methicillin, H & N | 6–8 each | One per sprint, from Sprint 4 |
 | P4-2 | Miracle Cure Easter egg + Fax Machine + alternate ending | 8 | After P2-6 rooms |
-| P4-3 | ~~Today's Shift dailies, modifiers, difficulty modes~~ DONE v0.17.0 | 5 | After P2-9 |
+| P4-3 | ~~Today's Shift dailies, modifiers, difficulty modes~~ DONE v0.19.0 | 5 | After P2-9 |
 | P4-4 | Night Shift map variant (lighting, then layout) | 6 | Late |
 | P4-5 | Leaderboards / Game Center | 6 | With Capacitor |
 | — | **Recommend cutting:** the first-person raycast view in the backlog. Costly, and a separate game. | — | — |

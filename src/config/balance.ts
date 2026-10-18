@@ -269,4 +269,34 @@ export const BALANCE = {
     /** Full Moon: germ size range (looks only, hitboxes stay put), the moonlit floor tint. Patients walk backwards. */
     fullMoon: { sizeMin: 0.7, sizeMax: 1.45, floorTint: 0xb8a8ff },
   },
+  /**
+   * KEN: his passive (damage × against Diamond, from everything) and his signature, FILE A GRIEVANCE: a blast
+   * of paperwork that hits and stuns germs around him, and summons Diamond to HR (frozen, no meetings,
+   * no tantrums) if she's within `hrRange`. Breaks a Mandatory Meeting in progress.
+   */
+  grievance: {
+    diamondDamage: 1.5,
+    cooldownMs: 15000, radius: 210, damage: 35, knockback: 420, stunMs: 900,
+    hrRange: 900, hrMs: 3500,
+  },
+  /**
+   * SCRIBES (Omar and Alan), unlocked on the Residency Board, then dropped as power-ups. They follow Eugene for
+   * `ms`, attack germs in `range` and shame violating patients (one "spray" every `cleanEveryMs`, the same
+   * hitsToClean as Eugene's droplets). They can't be hurt and teleport back if left behind or stuck.
+   */
+  scribes: {
+    ms: 20000,
+    speed: 300,
+    /** Where they stand: this far behind Eugene, off to one side. */
+    followDistance: 85,
+    teleportDistance: 650,
+    stuckMs: 1500,
+    range: 280,
+    cleanRange: 240,
+    cleanEveryMs: 300,
+    /** Omar sprays: quick, light hits on the nearest germ. */
+    omar: { everyMs: 420, damage: 13, knockback: 120 },
+    /** Alan zaps: slower, harder, jumps to `chain` more germs and stuns each. */
+    alan: { everyMs: 950, damage: 26, knockback: 60, chain: 2, chainRange: 160, stunMs: 400 },
+  },
 };

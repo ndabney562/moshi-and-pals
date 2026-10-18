@@ -3,6 +3,7 @@ import { BALANCE } from '../config/balance';
 import { runRng } from '../core/rng';
 import { CLEANED_LINES, VIOLATIONS } from '../data/patients';
 import type { RoomArea, RoomLayout } from '../data/rooms';
+import type { CharacterId } from '../data/characters';
 import { Patient } from '../entities/Patient';
 import type { Player } from '../entities/Player';
 import { SpeechBubble } from '../ui/SpeechBubble';
@@ -15,7 +16,7 @@ export interface PatientHost {
   /** The room patients wait in (they never wander past its walls). */
   readonly area: RoomArea;
   /** Who's on shift (picks whose reaction lines are said). */
-  readonly doctor?: 'eugene' | 'kaya' | 'lucien';
+  readonly doctor?: CharacterId;
   /** Full Moon: patients walk backwards (facing where they came from). */
   readonly backwards?: boolean;
   /** Lets a germ loose at (x, y). */
@@ -70,9 +71,9 @@ export class PatientDirector {
     }
   }
 
-  /** A droplet hit a patient. */
-  sprayed(p: Patient): void {
-    if (!p.active || p.state !== 'wander') return;
+  /** A droplet (or a scribe) hit a patient. Returns true if that hit cleaned them up. */
+  sprayed(p: Patient): boolean {
+    if (!p.active || p.state !== 'wander') return false;
     p.hits++;
     p.setTintFill(0xffffff);
     p.scene.time.delayedCall(60, () => p.clearTint());
@@ -81,7 +82,9 @@ export class PatientDirector {
       p.setTint(0xbff7ff);
       this.sendHome(p, p.scene.time.now);
       this.host.onCleaned(p);
+      return true;
     }
+    return false;
   }
 
   /** The closest wandering patient within `range`, for auto-aim when no germ is near. */
@@ -108,6 +111,7 @@ export class PatientDirector {
 
   private violate(p: Patient, time: number): void {
     p.nextViolationAt = time + runRng.patients.between(this.cfg.violationEveryMs);
+    p.violations++;
     p.bubble.say(p.def.action, p, 34, 1800);
     for (let i = 0; i < p.def.germs; i++) {
       const a = runRng.patients.float(0, Math.PI * 2);
@@ -115,7 +119,8 @@ export class PatientDirector {
     }
     const { player } = this.host;
     if (!player.dead && Phaser.Math.Distance.BetweenPoints(player, p) < this.cfg.grumbleRange) {
-      const lines = (this.host.doctor && this.host.doctor !== 'eugene' && p.def[this.host.doctor]?.length) ? p.def[this.host.doctor]! : p.def.eugene;
+      const own = this.host.doctor && this.host.doctor !== 'eugene' ? p.def[this.host.doctor] : undefined;
+      const lines = own?.length ? own : p.def.eugene;
       this.eugeneBubble.say(Phaser.Utils.Array.GetRandom(lines), player, 52, 2000);
     }
   }

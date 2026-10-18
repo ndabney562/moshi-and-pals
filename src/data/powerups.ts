@@ -2,7 +2,9 @@
  * Power-ups: pills that drop from RESISTANT elites (always) and now and then from any germ.
  * They blink before they vanish, so grabbing one is a choice. Effects live in systems/Powerups.ts.
  */
-export type PowerupId = 'priorAuth' | 'freeRefills' | 'erWait' | 'triage' | 'statClean' | 'doubleCopay';
+import { BALANCE } from '../config/balance';
+
+export type PowerupId = 'priorAuth' | 'freeRefills' | 'erWait' | 'triage' | 'statClean' | 'doubleCopay' | 'scribeOmar' | 'scribeAlan';
 
 export interface PowerupDef {
   id: PowerupId;
@@ -12,6 +14,8 @@ export interface PowerupDef {
   color: number;
   /** How long it lasts (0 = instant). */
   ms: number;
+  /** A scribe pill (data/scribes.ts): only drops once that scribe is unlocked on the Residency Board. */
+  scribe?: 'omar' | 'alan';
 }
 
 export const POWERUPS: Record<PowerupId, PowerupDef> = {
@@ -21,6 +25,9 @@ export const POWERUPS: Record<PowerupId, PowerupDef> = {
   triage: { id: 'triage', name: 'TRIAGE', blurb: 'Every hit is a STAT! crit', color: 0xff8a80, ms: 10000 },
   statClean: { id: 'statClean', name: 'STAT CLEAN', blurb: 'Everything nearby: disinfected', color: 0xffffff, ms: 0 },
   doubleCopay: { id: 'doubleCopay', name: 'DOUBLE COPAY', blurb: 'Germs pay double', color: 0x7fffd4, ms: 15000 },
+  // Scribes (data/scribes.ts): they stay for BALANCE.scribes.ms
+  scribeOmar: { id: 'scribeOmar', name: 'SCRIBE: OMAR', blurb: 'Charting that!', color: 0xffd54f, ms: BALANCE.scribes.ms, scribe: 'omar' },
+  scribeAlan: { id: 'scribeAlan', name: 'SCRIBE: ALAN', blurb: 'Documented. Next.', color: 0xb39ddb, ms: BALANCE.scribes.ms, scribe: 'alan' },
 };
 
 /** RESISTANT elite traits. Each changes how the germ fights; all of them always drop a power-up. */

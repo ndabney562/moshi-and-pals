@@ -78,6 +78,11 @@ Values live in `src/config/balance.ts` and `src/config/controls.ts`.
 | Atlas notes | unlock at 25 lifetime kills (bosses 1) | `src/data/atlas.ts` |
 | Dr. Kaya: CODE BLUE | 320 px sprint in 0.23 s, untouchable +0.25 s; 90 px lane, 30 damage, 650 knockback, 0.7 s stun; 9 s recharge. Passive ×1.08 speed | `BALANCE.codeBlue`, `src/data/characters.ts` |
 | PA Lucien: CLEAN FIELD | 180 px zone for 6 s; germs ×0.4 speed, 22 damage/s; 20 s recharge. Passive +20 health | `BALANCE.cleanField` |
+| Ken: FILE A GRIEVANCE | 35 damage in 210 px, 420 knockback, 0.9 s stun; Diamond within 900 px goes to HR for 3.5 s (frozen, no meeting or tantrum, a meeting ends); 15 s recharge. Passive ×1.5 damage to Diamond from every source | `BALANCE.grievance`, `src/data/characters.ts` |
+| Scribes | 12 CME each to hire; pill joins the drop pool once hired; 20 s per visit; follow 85 px behind, 300 px/s (×1.5 when 220 px+ away); teleport past 650 px or 1.5 s stuck | `BALANCE.scribes`, costs in `src/data/scribes.ts` |
+| Omar | 13 damage every 0.42 s to the nearest germ within 280 px | `BALANCE.scribes.omar` |
+| Alan | 26 damage every 0.95 s, jumps to 2 more germs within 160 px, 0.4 s stun | `BALANCE.scribes.alan` |
+| Scribes vs patients | one "spray" every 0.3 s on a patient with a violation within 240 px (8 to clean, as Eugene's droplets) | `BALANCE.scribes.cleanEveryMs`, `BALANCE.patients.hitsToClean` |
 
 ## M17: Today's Shift, modifiers, difficulty (`BALANCE.difficulty`, `daily`, `modifiers`)
 

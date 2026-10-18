@@ -15,6 +15,10 @@ Fixed logical height of 720 px; width follows the screen's aspect ratio (`src/co
 `Hud` → `core/inputState` → `Game` → `entities/Player`.
 Systems will announce gameplay events on `core/events.ts` (event bus); dialogue, audio, scoring and Easter eggs listen there instead of being wired into combat code.
 
+## Pals and scribes (M16, M18)
+- `data/characters.ts` lists the playable Pals (passive + signature id); GameScene runs the signature (`sinusPurge`, `codeBlue`, `cleanField`, `grievance`). Ken's passive multiplies damage to Diamond inside `damageGerm`, so every source counts.
+- `systems/Scribes` runs Omar and Alan (no physics bodies; steer toward a spot behind Eugene, FlowField steps when a wall is in the way, straight over furniture to a patient in the same room, teleport when far or stuck). They hurt germs through `damageGerm` and patients through `PatientDirector.sprayed`, the same paths as Eugene. Unlocks are `scribe:<id>` in progress `owned`; `Powerups` filters its drop pool with them.
+
 ## Combat (M2)
 - `systems/Sprayer` runs any spray-type equipment from `data/equipment.ts` (supply, fire rate, spread, refill) and fires pooled `entities/Droplet`s.
 - `entities/Germ` is one pooled class configured by `data/germs.ts`; damage = droplet damage × equipment effectiveness for the germ's tag.

@@ -20,6 +20,8 @@ export class HudButton extends Phaser.GameObjects.Container {
     this.label = scene.add.text(0, 0, text, {
       fontFamily: 'system-ui, sans-serif', fontSize: '17px', fontStyle: 'bold', color: '#ffffff', align: 'center',
     }).setOrigin(0.5).setShadow(0, 2, '#000', 3);
+    // Long labels (FILE GRIEVANCE) shrink to fit inside the disc
+    if (this.label.width > radius * 1.7) this.label.setScale((radius * 1.7) / this.label.width);
     this.add([this.disc, this.ring, this.label]);
     scene.add.existing(this);
 
