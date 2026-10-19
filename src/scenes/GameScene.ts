@@ -503,6 +503,7 @@ export class GameScene extends Phaser.Scene {
         ?? this.patients.nearestViolator(x, y, CONTROLS.autoAimRange, (p) => this.flow.lineClear(x, y, p.x, p.y));
     }
     this.player.drive(inputState, delta, aimTarget);
+    this.player.hold(this.sprayer.def.id);
     this.updateDarkness();
     // Camera follow eases per frame in Phaser; keep it the same at any frame rate
     const follow = damp(BALANCE.camera.followLerp, delta);
