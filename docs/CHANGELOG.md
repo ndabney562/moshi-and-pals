@@ -1,5 +1,10 @@
 # Changelog
 
+## v0.27.1: Germs stop getting stuck
+- **Germs no longer jam together.** A crowd of germs used to brake each other to a crawl wherever they touched, so packs looked glued in place. They now shove each other aside and keep coming.
+- **Germs always find the stairs.** A germ squeezed against a wall or a stair rail lost its way and pushed into the wall forever; it now steps back onto the path. Germs at the foot of the stairs walk onto the steps instead of stopping beside them.
+- Germs keep to the middle of halls and doorways instead of scraping along walls, so big ones like the Chonk Coccus don't wedge on corners.
+
 ## v0.27.0: Donald, the X-ray tech
 - **Donald joins the helpers.** Walk into the X-ray room during a shift and he unlocks for good: he comes out right then and helps you for 20 s, like Omar and Alan.
 - After that, he comes out to help the first time you visit X-ray on every shift, and his pill (**X-RAY TECH: DONALD**) can drop from germs too.
