@@ -4,7 +4,8 @@
  */
 import { BALANCE } from '../config/balance';
 
-export type PowerupId = 'priorAuth' | 'freeRefills' | 'erWait' | 'triage' | 'statClean' | 'doubleCopay' | 'scribeOmar' | 'scribeAlan';
+export type PowerupId = 'priorAuth' | 'freeRefills' | 'erWait' | 'triage' | 'statClean' | 'doubleCopay' | 'scribeOmar' | 'scribeAlan'
+  | 'fluShot' | 'prescription';
 
 export interface PowerupDef {
   id: PowerupId;
@@ -16,6 +17,10 @@ export interface PowerupDef {
   ms: number;
   /** A scribe pill (data/scribes.ts): only drops once that scribe is unlocked on the Residency Board. */
   scribe?: 'omar' | 'alan';
+  /** How often random drops pick it, next to the others (default 1). */
+  weight?: number;
+  /** Never a random drop: only a boss leaves it. */
+  bossOnly?: boolean;
 }
 
 export const POWERUPS: Record<PowerupId, PowerupDef> = {
@@ -28,6 +33,10 @@ export const POWERUPS: Record<PowerupId, PowerupDef> = {
   // Scribes (data/scribes.ts): they stay for BALANCE.scribes.ms
   scribeOmar: { id: 'scribeOmar', name: 'SCRIBE: OMAR', blurb: 'Charting that!', color: 0xffd54f, ms: BALANCE.scribes.ms, scribe: 'omar' },
   scribeAlan: { id: 'scribeAlan', name: 'SCRIBE: ALAN', blurb: 'Documented. Next.', color: 0xb39ddb, ms: BALANCE.scribes.ms, scribe: 'alan' },
+  // Rare from any germ; the Influenza Twins always leave one
+  fluShot: { id: 'fluShot', name: 'FLU SHOT', blurb: `+${BALANCE.powerups.fluShotHp} max health for this shift`, color: 0x80cbc4, ms: 0, weight: BALANCE.powerups.fluShotWeight },
+  // Methicillin's reward: the tool in hand compounded all the way up, on the house
+  prescription: { id: 'prescription', name: 'PRESCRIPTION STRENGTH', blurb: 'Your tool, fully compounded. No copay.', color: 0xffb74d, ms: 0, bossOnly: true },
 };
 
 /** RESISTANT elite traits. Each changes how the germ fights; all of them always drop a power-up. */

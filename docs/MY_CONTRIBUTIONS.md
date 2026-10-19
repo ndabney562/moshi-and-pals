@@ -32,7 +32,7 @@
 - Optional: round titles and game over lines (`src/data/waves.ts`, `src/scenes/GameOverScene.ts`).
 
 ## Coming up
-- Try the Miracle Cure (v0.24.0; walkthrough in ROADMAP, or `?secret=records&god` to jump to the Records Room). Is the quest too obscure, and is the Last Fax Machine a fair fight? Any lines for the fax, the operator or the credits (`src/data/miracleCure.ts`)?
+- Try the Miracle Cure (v0.25.0; walkthrough in ROADMAP, or `?secret=records&god` to jump to the Records Room). Is the quest too obscure, and is the Last Fax Machine a fair fight? Any lines for the fax, the operator or the credits (`src/data/miracleCure.ts`)?
 - Any time: a real Sinus Purge recording (the HRRRNNNKKK) to replace the placeholder.
 - Playtest M6 crate tools: which feels best, which feels useless, and is $250 right?
 - More crate tool ideas any time (each one is one entry in `src/data/equipment.ts`).

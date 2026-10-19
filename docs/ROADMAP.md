@@ -119,8 +119,8 @@ From the brief: STAT CLEAN, DOUBLE COPAY, STERILE FIELD, CODE BLUE. New ones:
 |---|---|---|---|---|---|---|
 | **Diamond 2.0** (rematch, R10+) | Same, now with a headset | Mandatory Meeting, Write-Ups, Tantrum, **Performance Review** (ring of red-tape zones), **Schedule Change** (relocks one door for the round) | At 50% she "calls corporate" and sets up clipboard turrets | Purge cuts the tape. Hits on her back (the clipboard) are crits. | Doors | Upgrade voucher |
 | **Patient Zero** | A huge man in a hospital gown with tissues stuck to him, holding a "WAITING 9 HRS" ticket | Cough cone (warned by an inhale), sneeze line, "It's just allergies" (spawns Sprinters) | P2 fever aura · P3 tries to **leave against medical advice** through the EXIT | Spraying fills a Compliance meter. When it's full he puts on a mask: no coughing for 8 s and he takes ×2. | Shoot the wall sanitizer dispensers to make slick puddles he slips on | Unlock a Pal: Nurse |
-| **Methicillin the Unkillable** (DONE v0.23.0; tier-unlock reward not built) | A bunch of armored grape-like clusters (that's what staph looks like) | Cluster Shot (grapes hatch into germs), bowling-ball Roll | Three layers peel off | **Adaptive resistance:** once one tool has dealt enough damage, he resists it 80%. Switch tools, Purge, use traps. | Lure him into the lab Autoclave (unresisted damage) | Prescription Strength tier unlock |
-| **The Influenza Twins, H & N** (DONE v0.23.0: any wall snaps the strand, no curtains yet; reward is a guaranteed pill) | Two balloon-like virions joined by a strand | The tether hurts if you cross it, plus spiral spit | P2 "antigenic shift": they swap which one is vulnerable | Kill both within 6 s of each other, or the survivor revives the other | Close the exam curtains between them to break the tether and stun both | Guaranteed Flu Shot + CME credits |
+| **Methicillin the Unkillable** (DONE v0.23.0; reward v0.24.0: a Prescription that compounds the tool in hand to tier III) | A bunch of armored grape-like clusters (that's what staph looks like) | Cluster Shot (grapes hatch into germs), bowling-ball Roll | Three layers peel off | **Adaptive resistance:** once one tool has dealt enough damage, he resists it 80%. Switch tools, Purge, use traps. | Lure him into the lab Autoclave (unresisted damage) | Prescription Strength tier unlock |
+| **The Influenza Twins, H & N** (DONE v0.23.0; curtains and Flu Shot v0.24.0) | Two balloon-like virions joined by a strand | The tether hurts if you cross it, plus spiral spit | P2 "antigenic shift": they swap which one is vulnerable | Kill both within 6 s of each other, or the survivor revives the other | Close the exam curtains between them to break the tether and stun both | Guaranteed Flu Shot + CME credits |
 | **The Last Fax Machine** (secret) | A beige 1998 fax with a paper tongue and a red LED eye | Paper Jam (paper walls), Dial-Up Screech (warned stun ring), Toner Cloud (hides germs) | P2 "OUT OF PAPER" (vulnerable) · P3 cord exposed | Unplug it from 3 wall outlets during P2 | Records Room | Alternate ending + scrub-cap cosmetic |
 
 No boss gets the per-round HP multiplier. Bosses get harder through new moves, not more HP.
@@ -156,7 +156,7 @@ On a phone screen the map stays readable thanks to **off-screen threat arrows** 
 - **Item warnings:** Bottle: "70% isopropyl, 30% hope." · Bleach: "Do not mix with ammonia, sanity, or other weapons." · Fogger: "Not for indoor use. This is indoors." · UV Wand: "Do not look directly into wand." · Peroxide: "Fizzing means it's working. Or that it's angry."
 - **Visual gags:** germs wear tiny masks under their chins · a "Wait time" sign climbs from 3 hrs to 14 hrs to ∞ each round · Diamond's office has an "Employee of the Month" frame holding a germ · killed germs lose a tiny halo that floats up · elites wear "RESISTANT" sashes.
 
-### Easter egg quest: "The Miracle Cure" (DONE v0.24.0; as built, below the original spec)
+### Easter egg quest: "The Miracle Cure" (DONE v0.25.0; as built, below the original spec)
 
 1. **The 2009 magazine** (waiting-room table, interact during a break between rounds): an ad reads "IONIZER 9000! Call now!" and gives half a phone number.
 2. **The front-desk phone:** call it and stay near the desk through 20 s of hold music *during a live round*. The operator gives code half A.
@@ -165,7 +165,7 @@ On a phone screen the map stays readable thanks to **off-screen threat arrows** 
 5. **Flush the third stall three times during a boss round.** A panel slides open: **RECORDS**. Key + code opens it.
 6. **The Records Room:** fight The Last Fax Machine and take the **Ionizer 9000**. Win the run afterwards and you get the alternate ending ("SHIFT COMPLETE": Eugene clocks out, credits roll) plus the scrub cap from the backlog.
 
-**As built (v0.24.0; logic in `systems/MiracleCure.ts`, words in `data/miracleCure.ts`).** Each step only appears once the one before it is done. The map has no break room, so the fish and fridge are in the Manager's Office (Diamond's). The code is two random 2-digit halves per run (seeded).
+**As built (v0.25.0; logic in `systems/MiracleCure.ts`, words in `data/miracleCure.ts`).** Each step only appears once the one before it is done. The map has no break room, so the fish and fridge are in the Manager's Office (Diamond's). The code is two random 2-digit halves per run (seeded).
 1. READ the magazine table in the waiting room **between rounds**: the IONIZER 9000 ad, 1-800-466-.... (During a round you get an old headline instead.)
 2. The RECEPTION desk now offers CALL **during a round**: stay within 260 px for 20 s of hold music. The operator gives half A.
 3. FISH at the office microwave ($5): 25 s of stench. Meanwhile READ behind the fridge: half B.
@@ -254,7 +254,7 @@ Testing: `?secret=records` (everything found, panel open) or `?secret=clockout`.
 | ID | Change | Diff | When |
 |---|---|---|---|
 | P4-1 | Bosses: Diamond 2.0, ~~Patient Zero, Methicillin, H & N~~ (done) | 6–8 each | One per sprint, from Sprint 4 |
-| P4-2 | ~~Miracle Cure Easter egg + Fax Machine + alternate ending~~ DONE v0.24.0 | 8 | After P2-6 rooms |
+| P4-2 | ~~Miracle Cure Easter egg + Fax Machine + alternate ending~~ DONE v0.25.0 | 8 | After P2-6 rooms |
 | P4-3 | ~~Today's Shift dailies, modifiers, difficulty modes~~ DONE v0.19.0 | 5 | After P2-9 |
 | P4-4 | Night Shift map variant (lighting, then layout) | 6 | Late |
 | P4-5 | Leaderboards / Game Center | 6 | With Capacitor |

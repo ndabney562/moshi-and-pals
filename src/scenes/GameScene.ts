@@ -79,6 +79,14 @@ interface Station {
   gone?(): boolean;
 }
 
+/** An exam-room privacy curtain across a doorway. While shut it's a wall (`zone`) and snaps the flu strand. */
+interface Curtain {
+  o: Obstacle;
+  art: Phaser.GameObjects.Graphics;
+  zone?: Phaser.GameObjects.Zone;
+  closedUntil: number;
+}
+
 /** How far (x, y) is from the edge of a rectangle; 0 inside it. */
 const rectDistance = (o: Obstacle, x: number, y: number): number =>
   Math.hypot(Math.max(o.x - x, 0, x - (o.x + o.w)), Math.max(o.y - y, 0, y - (o.y + o.h)));
@@ -126,6 +134,8 @@ export class GameScene extends Phaser.Scene {
   claimDeniedChance = 0;
   /** When each room trap (hand dryer, autoclave, X-ray) can be used again. */
   private trapReadyAt = new Map<Obstacle, number>();
+  /** Exam-room privacy curtains: shut (a wall) until `closedUntil`. */
+  private curtains: Curtain[] = [];
   /** Snacks bought this run, the run-long perks they add up to, and the machine's offer while its form is up. */
   private snacks: string[] = [];
   private perks = { refill: 1, purge: 1, crit: 1 };
@@ -302,6 +312,11 @@ export class GameScene extends Phaser.Scene {
       fireGlob: (g, angle) => this.fireGlob(g, angle),
     };
     this.loadout = [this.makeTool(STARTING_EQUIPMENT)];
+    this.curtains = (room.curtains ?? []).map((r) => {
+      const c: Curtain = { o: { kind: 'curtain', ...r }, art: this.add.graphics().setDepth(5), closedUntil: 0 };
+      this.drawCurtain(c);
+      return c;
+    });
     this.cure = new MiracleCure(this.cureHost(), DEBUG.secret);
     this.stations = this.buildStations();
     this.runStats = newRunStats(this.time.now);
@@ -504,6 +519,7 @@ export class GameScene extends Phaser.Scene {
     this.updateStairs(time);
     this.fitCameraToFloor();
     this.updateRoom();
+    this.updateCurtains(time);
     this.updateInteract();
     if (inputState.interactRequested) {
       inputState.interactRequested = false;
@@ -925,8 +941,9 @@ export class GameScene extends Phaser.Scene {
         const bar = boss?.bar?.();
         boss?.onDefeated();
         this.bossesDefeated++;
-        // The twins always leave a pill behind
-        if (germ.def.brain === 'influenza') this.powerups.drop(germ.x, germ.y, time);
+        // Rewards: the twins always leave a Flu Shot, Methicillin a Prescription
+        if (germ.def.brain === 'influenza') this.powerups.drop(germ.x, germ.y, time, 'fluShot');
+        if (germ.def.brain === 'methicillin') this.powerups.drop(germ.x, germ.y, time, 'prescription');
         events.emit(GameEvents.BossDefeated, { name: bar?.name ?? germ.def.name, hp: 0, maxHp: bar?.maxHp ?? germ.maxHp });
       }
       events.emit(GameEvents.GermKilled, { germId: germ.def.id, x: germ.x, y: germ.y, totalKills: this.kills });
@@ -1264,6 +1281,19 @@ export class GameScene extends Phaser.Scene {
         },
       });
     }
+    const curtain = traps.curtain;
+    for (const c of this.curtains) {
+      list.push({
+        o: c.o, use: (t) => this.useTrap(c.o, curtain.cost, curtain.cooldownMs, t, () => this.closeCurtain(c, t)),
+        info: () => {
+          const now = this.time.now;
+          if (c.zone) return { verb: 'CURTAIN SHUT', cost: 0, note: `Opens in ${Math.ceil((c.closedUntil - now) / 1000)} s`, blocked: true };
+          const left = (this.trapReadyAt.get(c.o) ?? 0) - now;
+          return left > 0 ? { verb: 'RECHARGING', cost: 0, note: `Ready in ${Math.ceil(left / 1000)} s`, blocked: true }
+            : { verb: 'CURTAIN', cost: curtain.cost, note: `Privacy curtain: a wall for ${curtain.closedMs / 1000} s` };
+        },
+      });
+    }
     for (const o of this.room.obstacles.filter((ob) => ob.kind === 'examTable')) {
       list.push({
         o, use: () => this.rest(o),
@@ -1342,6 +1372,26 @@ export class GameScene extends Phaser.Scene {
     this.fx.number(this.player.x, this.player.y - 40, next.blurb, '#e8fff9', 18);
     this.runStats.upgrades++;
     if (!this.sprayer.nextTier) this.achieve('rxStrength');
+  }
+
+  /**
+   * METHICILLIN'S REWARD: the tool in hand is compounded all the way to Prescription Strength for free
+   * (or the other tool, if this one is maxed). Both maxed: the Copays a top tier would have cost.
+   */
+  private prescribe(time: number): void {
+    const tool = [this.sprayer, ...this.loadout].find((t) => t.nextTier);
+    if (!tool) {
+      const refund = BALANCE.economy.prescriptionMaxedCopays;
+      this.addCopays(refund);
+      this.fx.number(this.player.x, this.player.y - 40, `ALREADY MAXED: +$${refund}`, '#7fffd4', 20);
+      return;
+    }
+    while (tool.nextTier) {
+      tool.upgrade(time);
+      this.runStats.upgrades++;
+    }
+    this.fx.number(this.player.x, this.player.y - 40, `${tool.def.name}: PRESCRIPTION STRENGTH`, '#ffb74d', 20);
+    this.achieve('rxStrength');
   }
 
   /** EXAM TABLE: lie down for a moment and get patched up. Once per table per round. */
@@ -1740,9 +1790,80 @@ export class GameScene extends Phaser.Scene {
     events.emit(GameEvents.RoomUnlocked, { id, name: area?.name ?? id, cost } satisfies RoomPayload);
   }
 
-  /** Everything solid right now: furniture, walls, and doors not yet bought. */
+  /** Everything solid right now: furniture, walls, doors not yet bought, and curtains pulled shut. */
   private blockingObstacles(): Obstacle[] {
-    return this.room.obstacles.filter((o) => !(o.opens && this.unlocked.has(o.opens)));
+    return [...this.room.obstacles.filter((o) => !(o.opens && this.unlocked.has(o.opens))), ...this.curtains.filter((c) => c.zone).map((c) => c.o)];
+  }
+
+  /** EXAM ROOM PRIVACY CURTAIN: pulled across the doorway, it's a wall until it slides back open. */
+  private closeCurtain(c: Curtain, time: number): void {
+    const { o } = c;
+    // Anyone standing in the doorway is nudged out to whichever side they were nearer
+    const across = o.w >= o.h ? 'y' : 'x';
+    const mid = across === 'y' ? o.y + o.h / 2 : o.x + o.w / 2;
+    const half = (across === 'y' ? o.h : o.w) / 2;
+    for (const body of [this.player, ...this.livingGerms()] as Phaser.Physics.Arcade.Sprite[]) {
+      const r = (body.body as Phaser.Physics.Arcade.Body).halfWidth;
+      if (rectDistance(o, body.x, body.y) > r) continue;
+      const side = (across === 'y' ? body.y : body.x) < mid ? -1 : 1;
+      const to = mid + side * (half + r + 2);
+      if (across === 'y') body.setY(to);
+      else body.setX(to);
+    }
+    c.zone = this.add.zone(o.x + o.w / 2, o.y + o.h / 2, o.w, o.h);
+    this.solids.add(c.zone);
+    c.closedUntil = time + BALANCE.traps.curtain.closedMs;
+    this.flow.rebuild(this.blockingObstacles());
+    this.drawCurtain(c);
+    sfx.tapeRip();
+    this.fx.number(o.x + o.w / 2, o.y - 10, 'SWISH!', '#e8fff9', 22);
+  }
+
+  /** Slides shut curtains back open when their time is up. */
+  private updateCurtains(time: number): void {
+    let changed = false;
+    for (const c of this.curtains) {
+      if (!c.zone || time < c.closedUntil) continue;
+      this.solids.remove(c.zone, true, true);
+      c.zone = undefined;
+      this.drawCurtain(c);
+      changed = true;
+    }
+    if (changed) this.flow.rebuild(this.blockingObstacles());
+  }
+
+  /** Whether a shut curtain lies on the straight line between two points (only those snap the twins' strand). */
+  private curtainBetween(ax: number, ay: number, bx: number, by: number): boolean {
+    const line = new Phaser.Geom.Line(ax, ay, bx, by);
+    return this.curtains.some((c) => c.zone && Phaser.Geom.Intersects.LineToRectangle(line, new Phaser.Geom.Rectangle(c.o.x, c.o.y, c.o.w, c.o.h)));
+  }
+
+  /** A curtain: bunched at both ends of the doorway when open, pleated right across it when shut. */
+  private drawCurtain(c: Curtain): void {
+    const { o, art: g } = c;
+    g.clear();
+    const along = o.w >= o.h;
+    const len = along ? o.w : o.h;
+    const thick = along ? o.h : o.w;
+    const panel = (from: number, to: number) => {
+      const folds = Math.max(2, Math.round((to - from) / 14));
+      const step = (to - from) / folds;
+      for (let i = 0; i < folds; i++) {
+        const a = from + i * step;
+        const color = i % 2 ? 0x80cbc4 : 0xb2dfdb;
+        if (along) g.fillStyle(color).fillRect(o.x + a, o.y + thick * 0.25, step, thick * 0.5);
+        else g.fillStyle(color).fillRect(o.x + thick * 0.25, o.y + a, thick * 0.5, step);
+      }
+    };
+    // The rail
+    g.lineStyle(3, 0x90a4ae);
+    if (along) g.lineBetween(o.x, o.y + thick / 2, o.x + o.w, o.y + thick / 2);
+    else g.lineBetween(o.x + thick / 2, o.y, o.x + thick / 2, o.y + o.h);
+    if (c.zone) panel(0, len);
+    else {
+      panel(0, 18);
+      panel(len - 18, len);
+    }
   }
 
   private onGermBump(germ: Germ): void {
@@ -1854,6 +1975,7 @@ export class GameScene extends Phaser.Scene {
             this.launchGlob(x, y, angle, s.globSpeed, s.globRange, s);
           },
           lineClear: (ax, ay, bx, by) => this.flow.lineClear(ax, ay, bx, by),
+          curtainBetween: (ax, ay, bx, by) => this.curtainBetween(ax, ay, bx, by),
           finish: (g) => this.finishGerm(g),
           emitBar: (bar) => events.emit(GameEvents.BossHealth, bar),
         }, germ, partner);
@@ -1933,6 +2055,17 @@ export class GameScene extends Phaser.Scene {
         }
         break;
       }
+      case 'fluShot': {
+        const hp = cfg.fluShotHp;
+        this.player.maxHp += hp;
+        this.player.heal(hp);
+        this.fx.number(this.player.x, this.player.y - 40, `+${hp} MAX HEALTH`, '#80cbc4', 20);
+        events.emit(GameEvents.PlayerHealthChanged, { hp: this.player.hp, maxHp: this.player.maxHp });
+        break;
+      }
+      case 'prescription':
+        this.prescribe(time);
+        break;
       case 'scribeOmar':
       case 'scribeAlan':
         if (def.scribe) this.scribes.summon(def.scribe, time, def.ms);

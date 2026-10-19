@@ -161,7 +161,7 @@ export const BALANCE = {
     tetherWidth: 18,
     tetherDamage: 12,
     tetherMaxLength: 620,
-    /** A wall between them snaps the strand: both stunned, and it takes a while to grow back. */
+    /** A closed exam curtain between them snaps the strand: both stunned, and it takes a while to grow back. */
     snapStunMs: 2200,
     regrowMs: 5000,
     /** They circle Eugene from opposite sides, this far out, so the strand sweeps across him. */
@@ -199,6 +199,8 @@ export const BALANCE = {
   },
   /** Copays (currency). Per-germ payouts live in data/germs.ts. */
   economy: {
+    /** Methicillin's Prescription when every tool you carry is already at Prescription Strength: Copays instead. */
+    prescriptionMaxedCopays: 700,
     /** Cost to refill the jug at the supply cart. */
     restockCost: 40,
     /** Paid for spraying a health code violator into compliance. */
@@ -248,6 +250,9 @@ export const BALANCE = {
     blinkMs: 3000,
     pickupRadius: 46,
     statCleanRadius: 520,
+    /** FLU SHOT: max health it adds (and heals), and how often random drops pick it next to the others (1). */
+    fluShotHp: 15,
+    fluShotWeight: 0.25,
     /** Stat Clean takes this much of a boss's max health instead of killing it. */
     statCleanBoss: 0.15,
     erWaitSlow: 0.3,
@@ -280,6 +285,8 @@ export const BALANCE = {
     autoclave: { cost: 25, cooldownMs: 30000, windupMs: 1200, radius: 175, damage: 140 },
     /** X-RAY: a pulse from the machine through walls and all (Eugene's behind the lead partition). */
     xray: { cost: 40, cooldownMs: 25000, radius: 520, damage: 60 },
+    /** EXAM ROOM privacy curtain: free, pulled across the doorway as a wall for `closedMs`. It snaps the Influenza Twins' strand. */
+    curtain: { cost: 0, cooldownMs: 20000, closedMs: 8000 },
   },
   /** Break-time snacks from the waiting-room vending machine: three random choices, each once, a few per run. */
   vending: { maxPerRun: 3, choices: 3 },

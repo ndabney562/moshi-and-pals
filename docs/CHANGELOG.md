@@ -1,10 +1,16 @@
 # Changelog
 
-## v0.24.0: The Miracle Cure (a secret)
+## v0.25.0: The Miracle Cure (a secret)
 - **There's a secret in the clinic.** No spoilers here. A hint: the 2009 magazines on the waiting-room table are worth a read between rounds. The full walkthrough is in the roadmap, for anyone who gives up.
 - Finishing it unlocks a new boss, a new tool, a new ending and something for Eugene to wear.
 - The stalls are numbered now, and every toilet in the clinic flushes. Nobody asked for this.
 - Two new achievements with deliberately vague hints.
+
+## v0.24.0: Boss rewards and exam curtains
+- **Exam-room privacy curtains:** every exam room's doorway has one. Press USE by an open exam room's door to pull it shut: it's a wall for 8 s (germs have to go round), then it slides back open. Free, 20 s to recharge.
+- **The Influenza Twins' strand now only snaps on a curtain.** Plain walls don't cut it any more: lure one twin into an exam room, step out and pull the curtain between them to stun both.
+- **Methicillin leaves a Prescription:** grab it and the tool in your hands is compounded straight to **Prescription Strength**, free (the other tool if that one's maxed, or $700 if both are).
+- **Flu Shot**, a new rare pill: +15 max health for the rest of the shift. The Influenza Twins always leave one instead of a random pill.
 
 ## v0.23.0: Two new bosses
 - **Bosses now take turns in fours:** Diamond (round 5), Patient Zero (10), **Methicillin** (15), **the Influenza Twins** (20), then around again.

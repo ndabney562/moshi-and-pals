@@ -56,11 +56,11 @@ Values live in `src/config/balance.ts` and `src/config/controls.ts`.
 | Compounding Station | tier II $300, tier III $700, per tool | `tiers` in `src/data/equipment.ts` |
 | Exam table rest | $40 for +50 HP, once per table per round | `BALANCE.economy.restCost/restHeal` |
 | RESISTANT elites | from r8, 5% +1%/round (max 14%); ×2.5 HP, ×1.25 size, ×3 Copays/points | Shielded 50% bubble, Hasty ×1.35, Regenerating 4%/s, Splitting into 2 basics; `BALANCE.elites` |
-| Power-ups | elites always drop; others 1.2%; 10 s on the floor (blinks last 3 s) | Durations in `src/data/powerups.ts`, tuning in `BALANCE.powerups` |
+| Power-ups | elites always drop; others 1.2%; 10 s on the floor (blinks last 3 s); Flu Shot +15 max HP, ×0.25 as likely as the others | Durations in `src/data/powerups.ts`, tuning in `BALANCE.powerups` |
 | Special rounds | 7 Rush, 9 Slow Tuesday, 12 Outbreak, 14 Inspection, 17 Superbug; then odd non-boss rounds | `SPECIAL_ROUNDS` and `WAVES.specialFor` in `src/data/waves.ts` |
 | Patient Zero | 1100 HP, 52 px/s, 20 contact, $150 | Cough every 4.2-6 s (55° × 330 px, 14 dmg, 3 Sprinters); sneeze below 60% every 9 s (5 globs); mask after 70 hits for 8 s (×2 damage); leaves below 25%; `BALANCE.patientZero` |
-| Methicillin | 1300 HP, 48 px/s, 20 contact (26 rolling), $175 | Resists a source for 14 s (×0.2) after 260 damage from it; autoclave ×1.5, never resisted; layers peel at 2/3 and 1/3 (4 Basic Germs each, attacks ×0.8 interval); Cluster Shot every 4.5-6.5 s (3 grapes); Roll every 7-9.5 s (560 px/s, 1.5 s); `BALANCE.methicillin` |
-| Influenza Twins | H and N 520 HP each, 70 px/s, 16 contact, $90 each | Strand 12 dmg; wall snaps it (2.2 s stun, 5 s regrow); revive after 6 s at 50%; shift below 50% combined (other twin ×0.15, swap every 6 s); spiral of 8 globs every 5-7 s; always drops a pill; `BALANCE.influenza` |
+| Methicillin | 1300 HP, 48 px/s, 20 contact (26 rolling), $175 | Resists a source for 14 s (×0.2) after 260 damage from it; autoclave ×1.5, never resisted; drops a Prescription (tool in hand to tier III free; $700 if all maxed, `BALANCE.economy.prescriptionMaxedCopays`); layers peel at 2/3 and 1/3 (4 Basic Germs each, attacks ×0.8 interval); Cluster Shot every 4.5-6.5 s (3 grapes); Roll every 7-9.5 s (560 px/s, 1.5 s); `BALANCE.methicillin` |
+| Influenza Twins | H and N 520 HP each, 70 px/s, 16 contact, $90 each | Strand 12 dmg; only a shut exam curtain snaps it (2.2 s stun, 5 s regrow); revive after 6 s at 50%; shift below 50% combined (other twin ×0.15, swap every 6 s); spiral of 8 globs every 5-7 s; always drops a Flu Shot; `BALANCE.influenza` |
 | Diplococcus Duo | 46 HP, 90 px/s, 14 contact, $10; from r7, 10% +2%/round (max 20%) | Splits into 2 Monococci (16 HP, 135 px/s, 8 contact, $3) |
 | Bacillus Bulldozer | 60 HP, 80 px/s, 12 contact, $14; from r8, 7% +1%/round (max 14%), 2-4 alive | Charges within 420 px with line of sight: 0.8 s aim, 560 px/s for 0.9 s, 24 damage; cooldown 2.8-4.2 s; a wall dazes it 1.5 s at ×2 damage taken |
 | Chonk Coccus | 380 HP, 55 px/s, 22 contact, $35, no knockback; from r8, 2.5%, 1 alive | Bursts into 6 Basic Germs |
@@ -73,6 +73,7 @@ Values live in `src/config/balance.ts` and `src/config/controls.ts`.
 | Defib Paddles | 26 to the first germ within 170 px in front, then 4 jumps of 170 px at ×0.85 each; 0.35 s stun | 25% charge per zap, 30%/s recharge; tiers 6 jumps and 32 damage, then 60%/s and 0.9 s stun |
 | Hand dryer (bathrooms) | free; 240 px; 20 damage, 950 knockback, 0.9 s stun; 20 s recharge | `BALANCE.traps.dryer` |
 | Autoclave (Lab) | $25; 1.2 s hiss, then 140 in 175 px (ignores armor); 30 s recharge | `BALANCE.traps.autoclave` |
+| Exam curtains (each exam doorway) | free; a wall for 8 s; 20 s recharge | `BALANCE.traps.curtain` |
 | X-ray (controls) | $40; 60 to everything within 520 px of the machine, through walls; 25 s recharge | `BALANCE.traps.xray` |
 | Vending machine | 3 random of 5 snacks, each once, 3 per run; $100-150 | `src/data/vending.ts`, `BALANCE.vending` |
 | CME Credits | 1 per 2 rounds, 3 per new achievement, 2 per boss | `CME` in `src/data/residency.ts` |

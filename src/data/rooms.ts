@@ -25,7 +25,9 @@ export type ObstacleKind =
   /** M9: the Lab's Compounding Station (weapon upgrades). */
   | 'compounder'
   /** The Miracle Cure (secret): the waiting-room magazine table, the office microwave, the Records Room's way out. */
-  | 'magTable' | 'microwave' | 'recordsDoor';
+  | 'magTable' | 'microwave' | 'recordsDoor'
+  /** Exam-room privacy curtain across a doorway (layout `curtains`; solid only while pulled shut). */
+  | 'curtain';
 
 export interface Obstacle {
   kind: ObstacleKind;
@@ -75,6 +77,8 @@ export interface RoomLayout {
   stairs?: Stairway[];
   /** Plan pixel to world point, for layouts drawn from a floor plan (tests use it to stand somewhere specific). */
   fromPlan?: (floor: 'ground' | 'up', px: number, py: number) => { x: number; y: number };
+  /** Exam-room doorways with a privacy curtain: pulled shut, it's a wall for a few seconds. */
+  curtains?: Rect[];
 }
 
 export interface Rect { x: number; y: number; w: number; h: number; }
