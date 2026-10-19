@@ -8,4 +8,5 @@ export const TIPS = [
   'Spraying your manager is grounds for a write-up. Worth it.',
   'Refill between rounds. The germs will not wait for you.',
   'If symptoms persist past round 20, consult a physician. You are the physician.',
+  'Exam-room curtains: for privacy, and for separating flu twins.',
 ];

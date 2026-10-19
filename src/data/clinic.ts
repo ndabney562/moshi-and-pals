@@ -265,6 +265,7 @@ function build(): RoomLayout {
   const holes: Rect[] = [];
   const obstacles: Obstacle[] = [];
   const rooms: RoomArea[] = [];
+  const curtains: Rect[] = [];
 
   // Outer walls of each floor, plus the solid gap between the floors
   for (const f of ['g', 'u'] as Floor[]) {
@@ -287,6 +288,7 @@ function build(): RoomLayout {
         ? { x: hole.x, y: wallPart.y, w, h: T }
         : { x: wallPart.x, y: hole.y, w: T, h: w };
       obstacles.push({ kind: 'door', ...door, label: spec.name.toUpperCase(), opens: spec.id, cost: spec.cost ?? 0 });
+      if (spec.id.startsWith('exam')) curtains.push(door);
     }
     parts.forEach((p, i) => rooms.push({
       id: spec.id, name: spec.name, ...p, start: spec.start, tint: spec.tint,
@@ -334,6 +336,7 @@ function build(): RoomLayout {
       { id: 'up', name: 'Upstairs', x: U0.x, y: 0, w: UP_W, h: fy(OUTLINE.u[3]) + 40 },
     ] satisfies FloorArea[],
     stairs: STAIRS,
+    curtains,
     fromPlan: (floor, px, py) => pt(floor === 'up' ? 'u' : 'g', px, py),
   };
 }
