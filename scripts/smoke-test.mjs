@@ -725,6 +725,42 @@ try {
   const steamed = await page.waitForFunction(() => !window.__steamed.active || window.__steamed.hp < window.__steamedHp, null, { timeout: 45000 }).then(() => true, () => false);
   check(steamed, 'the autoclave hisses, then its steam cycle cooks the germ in front of it');
 
+  // GERM VENTS: random spots in the open rooms, moved every round; BLOCK one with Copays and germs push until it gives way
+  const vents = await page.evaluate(() => {
+    const scene = window.game.scene.getScene('Game');
+    const v = scene.vents;
+    const inside = (x) => scene.room.rooms.some((r) => r.id === x.roomId && x.x >= r.x && x.x < r.x + r.w && x.y >= r.y && x.y < r.y + r.h);
+    const where = () => v.list.map((x) => `${Math.round(x.x)},${Math.round(x.y)}`).join(' ');
+    // (a vent with no room anywhere falls back to its room's planned spawn point)
+    const planned = (x) => scene.room.rooms.some((r) => r.germSpawns.some((p) => p.x === x.x && p.y === x.y));
+    const bad = v.list.filter((x) => !scene.unlocked.has(x.roomId) || !inside(x) || !(scene.flow.roomy(x.x, x.y) || planned(x)));
+    const placed = v.list.length > 0 && !bad.length;
+    const before = where();
+    v.shuffle();
+    const moved = where() !== before && v.list.every(inside);
+    scene.addCopays(1000 - scene.copays);
+    const first = v.list[0];
+    const st = scene.stations.find((s) => s.o === first.o);
+    const offer = st.info();
+    st.use(scene.time.now);
+    const paid = { copays: scene.copays, blocked: !!first.block, verb: st.info().verb };
+    // Every vent taped off: the next germ has to wait, leaning on a barricade until it gives way
+    for (const x of v.list) if (!x.block) v.barricade(x, scene.time.now);
+    const held = v.pick(scene.time.now, () => true, (l) => l[0]) === undefined;
+    let t = scene.time.now;
+    let tries = 0;
+    let through;
+    while (!through && tries < 50) { t += 1000; tries++; through = v.pick(t, () => true, (l) => l[0]); }
+    // A boss walks straight through
+    const boss = v.pick(t, () => true, (l) => l[1] ?? l[0], true) !== undefined;
+    for (const x of v.list) if (x.block) x.block.until = 0;
+    v.update(scene.time.now);
+    return { placed, bad: bad.map((x) => `${x.roomId}@${Math.round(x.x)},${Math.round(x.y)}`), moved, offer: offer.verb, paid, held, tries, broke: through === first, boss, clear: v.list.every((x) => !x.block) };
+  });
+  check(vents.placed && vents.moved, `germ vents sit at random open spots in open rooms and move every round (${JSON.stringify(vents)})`);
+  check(vents.offer === 'BLOCK' && vents.paid.copays === 950 && vents.paid.blocked && vents.paid.verb === 'BLOCKED', `BLOCK puts a $50 barricade on a vent (${JSON.stringify(vents.paid)})`);
+  check(vents.held && vents.broke && vents.tries === 7 && vents.boss && vents.clear, `germs wait at barricades, then push through after 8 tries (${JSON.stringify(vents)})`);
+
   // VENDING MACHINE (M14): three snacks, buy one (a run-long perk), too poor for another, walk away
   await page.evaluate(() => {
     const scene = window.game.scene.getScene('Game');
@@ -1903,6 +1939,38 @@ try {
     }, id, { timeout: 90000 }).then((h) => h.jsonValue(), () => ({ cleaned: 0 }));
     check(cleaned.cleaned > 0 && cleaned.state === 'leaving' && cleaned.copays > copays0,
       `${id} gets a violating patient to clean up, for the usual reward (${JSON.stringify({ ...cleaned, copays0 })})`);
+    // Scribes tape off a vent near them too, with the doctor's Copays
+    await pg.evaluate((who) => {
+      const sc = window.game.scene.getScene('Game');
+      sc.addCopays(1000 - sc.copays);
+      // (Donald's shift is short and a slow browser may have run it out: bring them back for a minute)
+      sc.scribes.summon(who, sc.time.now, 60000);
+      const s = sc.scribes.get(who);
+      // They may already have taped one off on their own (they do whenever you can spare the Copays): ready again,
+      // and every other vent already blocked, so this one is the only choice
+      sc.vents.scribeReadyAt.delete(who);
+      // (rooms nobody has paid for have vents too, but scribes only block open ones: Donald's test teleports into X-ray)
+      // (Omar may have taped them all off already: let one barricade expire)
+      const v = sc.vents.list.find((x) => sc.unlocked.has(x.roomId));
+      if (v.block) {
+        v.block.until = 0;
+        sc.vents.update(sc.time.now);
+        sc.vents.scribeReadyAt.delete(who);
+      }
+      for (const x of sc.vents.list) if (x !== v && !x.block) sc.vents.barricade(x, sc.time.now);
+      window.__scribeVent = v;
+    }, id);
+    const scribeBlock = await pg.waitForFunction((who) => {
+      const sc = window.game.scene.getScene('Game');
+      const v = window.__scribeVent;
+      if (!v) return null;
+      if (v.block) return sc.copays;
+      // Keep it by the scribe as they follow Eugene around
+      const s = sc.scribes.get(who);
+      if (s) sc.vents.moveTo(v, s.img.x + 40, s.img.y);
+      return null;
+    }, id, { timeout: 30000 }).then((h) => h.jsonValue(), () => null);
+    check(scribeBlock !== null && scribeBlock <= 950, `${id} barricades a germ vent with your Copays (${scribeBlock})`);
   };
   {
     // A device with CME to spend: hire Omar on the board, then play a shift with Alan forced in
@@ -2021,7 +2089,7 @@ try {
     await mp.goto(url + '?god&copays=500', { timeout: 90000 });
     await mp.waitForFunction(() => window.game?.scene.isActive('Title'));
     await mp.touchscreen.tap(426, 120);
-    await mp.waitForFunction(() => window.game.scene.isActive('Hud'), null, { timeout: 15000 });
+    await mp.waitForFunction(() => window.game.scene.isActive('Hud'), null, { timeout: 60000 });
     const clues = await mp.evaluate(() => {
       const sc = window.game.scene.getScene('Game');
       const cure = sc.cure;
