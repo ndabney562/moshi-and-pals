@@ -105,7 +105,7 @@ export class GameOverScene extends Phaser.Scene {
       ['Germs disinfected', `${result.kills}`],
       ['Best Sanitation Streak', `${result.bestStreak}`, result.newBestStreak],
       ['Time on shift', mmss(result.secondsSurvived)],
-      ['Copays earned', `$${result.copaysEarned.toLocaleString()}`],
+      ['Copays earned · to the Locker', `$${result.copaysEarned.toLocaleString()} · 🧰 $${(result.bank ?? 0).toLocaleString()}`],
       ['Rooms opened', `${result.roomsOpened} of ${result.roomsTotal}`],
       ['Upgrades · Perfect Pours · STAT! crits', `${result.upgrades} · ${result.perfectPours} · ${result.crits}`],
     ];

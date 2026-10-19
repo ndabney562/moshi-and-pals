@@ -15,7 +15,7 @@ import { nextShift, type ShiftSetup } from '../core/shift';
 import { CONSTRUCTION_LINES, CONSTRUCTION_SIGN, modifierById, type ModifierId } from '../data/modifiers';
 import { difficultyById } from '../data/difficulties';
 import { unlockAchievement } from '../core/achievements';
-import { activeSpecialty, creditsFor, doctorUnlocked, grant, npsFor, progress, recordShift, scribeUnlocked, unlockScribe } from '../core/progress';
+import { activeSpecialty, bankFor, creditsFor, doctorUnlocked, grant, lockerLevel, npsFor, progress, recordShift, scribeUnlocked, unlockScribe } from '../core/progress';
 import type { SpecialtyMods } from '../data/residency';
 import { newRunStats, type RunStats } from '../core/runStats';
 import { initSfx, sfx } from '../core/sfx';
@@ -1465,7 +1465,7 @@ export class GameScene extends Phaser.Scene {
 
   /** A tool, wired to the arsenal for the ones that don't spray. */
   private makeTool(id: string): Sprayer {
-    const tool = new Sprayer(EQUIPMENT[id], this.droplets, (def, x, y, a, t, shot, mult) => this.arsenal.fire(def, x, y, a, t, shot, mult));
+    const tool = new Sprayer(EQUIPMENT[id], this.droplets, (def, x, y, a, t, shot, mult) => this.arsenal.fire(def, x, y, a, t, shot, mult), lockerLevel(id));
     tool.refillScale = this.perks.refill;
     if (this.mods.jugSize) tool.scaleJug(this.mods.jugSize);
     return tool;
@@ -2344,7 +2344,9 @@ export class GameScene extends Phaser.Scene {
     const cme = creditsFor(round, st.achievements.length, this.bossesDefeated) + dailyBonus;
     // NPS Scores hire the Pals
     const nps = npsFor(round, st.patientsCleaned, this.bossesDefeated);
-    recordShift(cme, st.kills, nps);
+    // A share of the shift's Copays goes home to the Equipment Locker
+    const bank = bankFor(st.copaysEarned);
+    recordShift(cme, st.kills, nps, bank);
     const [favId, favCount] = Object.entries(st.kills).sort((a, b) => b[1] - a[1])[0] ?? [];
     const killer = st.killer ? GERMS[st.killer] : undefined;
     const result: RunResult = {
@@ -2363,6 +2365,7 @@ export class GameScene extends Phaser.Scene {
       chart: this.character.chart,
       cme,
       nps,
+      bank,
       specialty: this.specialtyName,
       difficulty: difficultyById(sh.difficulty).name,
       modifiers: sh.mods.map((id) => modifierById(id)?.name ?? id),

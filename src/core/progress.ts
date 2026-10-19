@@ -2,6 +2,7 @@ import { CME, SPECIALTIES, STARTER_KIT_COST, type SpecialtyDef } from '../data/r
 import { SCRIBES, scribeUnlockId, type ScribeId } from '../data/scribes';
 import { BALANCE } from '../config/balance';
 import { characterById } from '../data/characters';
+import { LOCKER } from '../config/locker';
 
 /**
  * Between-run progress on this device: CME Credits, NPS Scores (which hire the Pals), what's been bought on the Residency Board, what's
@@ -23,6 +24,9 @@ export interface Progress {
   startTool: string;
   /** Lifetime kills by germ id. */
   kills: Record<string, number>;
+  /** Copays banked for the Equipment Locker (a share of every shift's), and Locker levels bought per tool id. */
+  bank: number;
+  locker: Record<string, number>;
 }
 
 const KEY = 'moshi.progress.v1';
@@ -30,7 +34,7 @@ const KEY = 'moshi.progress.v1';
 const whole = (v: unknown): number => (typeof v === 'number' && Number.isFinite(v) && v >= 0 ? Math.floor(v) : 0);
 
 function load(): Progress {
-  const fresh: Progress = { credits: 0, earned: 0, nps: 0, npsEarned: 0, owned: [], specialty: '', startTool: '', kills: {} };
+  const fresh: Progress = { credits: 0, earned: 0, nps: 0, npsEarned: 0, owned: [], specialty: '', startTool: '', kills: {}, bank: 0, locker: {} };
   try {
     const raw: unknown = JSON.parse(localStorage.getItem(KEY) ?? 'null');
     if (!raw || typeof raw !== 'object') return fresh;
@@ -38,9 +42,13 @@ function load(): Progress {
     const owned = Array.isArray(r.owned) ? r.owned.filter((x): x is string => typeof x === 'string') : [];
     const kills: Record<string, number> = {};
     if (r.kills && typeof r.kills === 'object') for (const [k, v] of Object.entries(r.kills as Record<string, unknown>)) kills[k] = whole(v);
+    const locker: Record<string, number> = {};
+    if (r.locker && typeof r.locker === 'object') {
+      for (const [k, v] of Object.entries(r.locker as Record<string, unknown>)) locker[k] = Math.min(LOCKER.levels.length, whole(v));
+    }
     const specialty = typeof r.specialty === 'string' && owned.includes(r.specialty) ? r.specialty : '';
     const startTool = typeof r.startTool === 'string' && owned.includes('starterKit') ? r.startTool : '';
-    return { credits: whole(r.credits), earned: whole(r.earned), nps: whole(r.nps), npsEarned: whole(r.npsEarned), owned, specialty, startTool, kills };
+    return { credits: whole(r.credits), earned: whole(r.earned), nps: whole(r.nps), npsEarned: whole(r.npsEarned), owned, specialty, startTool, kills, bank: whole(r.bank), locker };
   } catch {
     return fresh;
   }
@@ -76,11 +84,16 @@ export function npsFor(round: number, patientsCleaned: number, bossesDefeated: n
   return round * n.perRound + patientsCleaned * n.perPatient + bossesDefeated * n.perBoss;
 }
 
-/** Banks a finished shift: credits, NPS Scores and per-germ kills. */
-export function recordShift(credits: number, kills: Record<string, number>, nps = 0): void {
+/** Copays a finished shift sends home to the Equipment Locker. */
+export function bankFor(copaysEarned: number): number {
+  return Math.floor(copaysEarned * LOCKER.bankShare);
+}
+
+/** Banks a finished shift: credits, NPS Scores, Locker Copays and per-germ kills. */
+export function recordShift(credits: number, kills: Record<string, number>, nps = 0, bank = 0): void {
   state = {
     ...state, credits: state.credits + credits, earned: state.earned + credits,
-    nps: state.nps + nps, npsEarned: state.npsEarned + nps, kills: { ...state.kills },
+    nps: state.nps + nps, npsEarned: state.npsEarned + nps, bank: state.bank + bank, kills: { ...state.kills },
   };
   for (const [id, n] of Object.entries(kills)) state.kills[id] = (state.kills[id] ?? 0) + n;
   save();
@@ -144,4 +157,19 @@ export function grant(id: string): void {
   if (state.owned.includes(id)) return;
   state = { ...state, owned: [...state.owned, id] };
   save();
+}
+
+/** Equipment Locker levels bought for a tool (0 = none). */
+export function lockerLevel(toolId: string): number {
+  return state.locker[toolId] ?? 0;
+}
+
+/** Buys a tool's next Equipment Locker level with banked Copays. Returns false if it's maxed or too expensive. */
+export function buyLockerLevel(toolId: string): boolean {
+  const level = lockerLevel(toolId);
+  const next = LOCKER.levels[level];
+  if (!next || state.bank < next.cost) return false;
+  state = { ...state, bank: state.bank - next.cost, locker: { ...state.locker, [toolId]: level + 1 } };
+  save();
+  return true;
 }

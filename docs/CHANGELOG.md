@@ -1,5 +1,10 @@
 # Changelog
 
+## v0.28.0: The Equipment Locker
+- **Tool upgrades that stay.** A new **🧰 EQUIPMENT LOCKER** button on the title screen opens a page with every tool on it. Each one has three upgrades you keep for good: **Labeled & Dated** ($400, +10% damage), **Extra Refills** ($1,000, +25% tank, jug and charge rate) and **Name Engraved** ($2,000, +10% damage and 10% faster).
+- **A quarter of the Copays you earn on a shift come home** to pay for them. The Discharge Summary shows how much went to the Locker.
+- Locker upgrades stack with the Compounding Station's in-shift upgrades, and work on crate tools too, whenever you find them.
+
 ## v0.27.1: Germs stop getting stuck
 - **Germs no longer jam together.** A crowd of germs used to brake each other to a crawl wherever they touched, so packs looked glued in place. They now shove each other aside and keep coming.
 - **Germs always find the stairs.** A germ squeezed against a wall or a stair rail lost its way and pushed into the wall forever; it now steps back onto the path. Germs at the foot of the stairs walk onto the steps instead of stopping beside them.
