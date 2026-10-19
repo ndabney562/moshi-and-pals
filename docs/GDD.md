@@ -23,7 +23,7 @@
 - **Sinus Purge** button: a honking shockwave that damages and blasts away nearby germs, on a cooldown.
 - **Supply Requisition** at the crates in most rooms: $250 Copays, then pick 1 of 2 tools (Lysol Fogger, Bleach Super Soaker, UV Wand, Peroxide Foamer, Disinfectant Wipes, Gel Launcher, Defib Paddles). Appeal for a new pair at a rising price; 5% of claims are denied (joke item, half back). Carry the bottle plus one crate tool; SWAP switches.
 - Score per kill; death shows the Discharge Summary (cause of death, records, achievements this shift); restart in one tap.
-- Room traps: bathroom hand dryers (free blast), the Lab autoclave (steam cycle), the X-ray (pulse through walls). A waiting-room vending machine sells run-long snacks (3 per run).
+- Room traps: bathroom hand dryers (free blast), the Lab autoclave (steam cycle), the X-ray (pulse through walls). A waiting-room vending machine sells run-long snacks, as many as you can pay for (they stack; seconds cost more).
 - 27 achievements (pause menu list, toasts). Shifts earn CME Credits for the Residency Board (Specialties with trade-offs, a Starter Kit tool) and fill the Microbiology Atlas. Works offline from the Home Screen; the title screen offers updates.
 
 ## Controls
