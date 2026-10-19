@@ -1,8 +1,11 @@
 # Changelog
 
-## v0.28.3: The gel burns
+## v0.28.4: The gel burns
 - **Gel Launcher gel now burns.** Germs standing in it take 12 damage a second (18 with Family Size), and keep burning for 1.5 s after they crawl out. Bosses aren't slowed by gel, but they do burn. Burning germs flicker orange.
 - Overlapping gel doesn't stack the burn; the hottest puddle counts. Tool effectiveness and damage bonuses (Pals, perks) apply; STAT! crits don't.
+
+## v0.28.3: Cheaper supply crates
+- **Supply crates now cost $200** (was $250).
 
 ## v0.28.2: The scribes wait in the exam rooms
 - **No more scribe pills.** Once you hire Omar or Alan, each one waits every shift in a random locked exam room on the first floor (Exam Rooms 1 to 7).
