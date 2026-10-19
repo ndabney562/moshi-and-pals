@@ -15,6 +15,7 @@
 - Named the Pals and shared reference photos: Dr. Kaya and PA Lucien are playable alongside Moshi (v0.16.0).
 - Shared reference pictures for Ken, Diamond, Omar and Alan: Ken is playable, Diamond has a new look, and Omar and Alan are scribe power-ups (v0.18.0).
 - Asked for Donald, the X-ray tech, with a reference photo: he unlocks in the X-ray room and helps the doctor (v0.27.0).
+- Asked for Selina and Elaine, the front desk PSRs, with reference photos (patients line up and complain about the wait), and for upgradable helpers (v0.30.0).
 - Made the title poster (title screen since v0.5.2; redone as Moshi and Pals in v0.5.6; all four doctors in v0.18.0).
 - Decided Ken shows as just "Ken" and Diamond loses her flag pin.
 

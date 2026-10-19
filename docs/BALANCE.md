@@ -92,6 +92,8 @@ Values live in `src/config/balance.ts` and `src/config/controls.ts`.
 | Omar | 13 damage every 0.42 s to the nearest germ within 280 px | `BALANCE.scribes.omar` |
 | Alan | 26 damage every 0.95 s, jumps to 2 more germs within 160 px, 0.4 s stun | `BALANCE.scribes.alan` |
 | Donald | unlocked by walking into X-ray during a shift (free); comes out for 20 s on the first X-ray visit each shift, pill drops once unlocked; beam every 1.3 s toward the nearest germ within 420 px on his floor, through walls, 30 damage to every germ within 26 px of the line, 0.25 s stun | `BALANCE.scribes.donald` |
+| Front desk PSRs (v0.30.0) | 15 CME each to hire; 20 s a visit; while one is at RECEPTION, patients line up 52 px apart in front of it, commit no violations and don't leave; a complaint every 1.8–3.2 s; Selina checks the patient at the head of the line (within 320 px) in every 2.5 s for +$5, Elaine every 4 s for +$25, on top of the usual clean-up reward; 3 s grace before violations resume | `BALANCE.frontDesk`, costs in `src/data/scribes.ts` |
+| Staff upgrades (v0.30.0) | per helper, once unlocked, from banked Copays: $500 ×1.2 damage (PSR: check-in Copays), $1,200 ×1.5 time on the floor, $2,500 ×1.15 damage and ×0.8 time between attacks/check-ins; $4,200 per helper, $21,000 for all 5 | `STAFF` in `src/config/locker.ts` |
 | Scribes vs patients | one "spray" every 0.3 s on a patient with a violation within 240 px (8 to clean, as Eugene's droplets) | `BALANCE.scribes.cleanEveryMs`, `BALANCE.patients.hitsToClean` |
 
 ## M17: Today's Shift, modifiers, difficulty (`BALANCE.difficulty`, `daily`, `modifiers`)

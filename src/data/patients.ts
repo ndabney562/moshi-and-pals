@@ -29,6 +29,14 @@ export interface ViolationDef {
 }
 
 /** What a violator says once they're sprayed into compliance and head home. */
+/** What patients in line at the front desk say (Selina and Elaine, systems/FrontDesk.ts). */
+export const WAIT_COMPLAINTS = [
+  "I've been here since NINE.", 'The sign said 15 minutes!', 'Is the doctor even IN today?', 'Google said no wait!',
+  "I'm leaving a review.", 'I was here before HIM.', 'My appointment was at two!', 'Do you know who I am?',
+  'Can I just get a Z-Pak?', 'My parking meter is running!', 'Why is HE going first?', 'This is urgent care. URGENT.',
+];
+export const CHECKED_IN_LINES = ['FINALLY.', 'About time!', 'Was that so hard?', "I'm still leaving a review."];
+
 export const CLEANED_LINES = ['Okay, okay! Sorry, doc!', "Fine! I'll wash my hands!", "I get it! I'm going!"];
 
 export const VIOLATIONS: ViolationDef[] = [

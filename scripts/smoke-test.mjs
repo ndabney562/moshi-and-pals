@@ -1900,7 +1900,7 @@ try {
     };
     await tapIn('Title', 'RESIDENCY BOARD');
     await sp1.waitForFunction(() => window.game.scene.isActive('Board'), null, { timeout: 10000 }).catch(() => {});
-    await tapIn('Board', 'SCRIBES');
+    await tapIn('Board', 'STAFF');
     const hired = await tapIn('Board', 'HIRE');
     const afterHire = await sp1.evaluate(() => JSON.parse(localStorage.getItem('moshi.progress.v1') ?? '{}'));
     check(hired && afterHire.owned.includes('scribe:omar') && afterHire.credits === 18,
@@ -1967,6 +1967,86 @@ try {
     await scribeWorks(sp2, 'donald');
     check(scribeErrors2.length === 0, `no errors with Omar and Donald${scribeErrors2.length ? ': ' + scribeErrors2.join(' | ') : ''}`);
     await sc2.close();
+  }
+
+  // THE FRONT DESK (Selina and Elaine) and STAFF UPGRADES: buy Omar's first upgrade on the Locker's STAFF shelf, then a
+  // shift with Selina at the desk: patients line up there, she checks them in for Copays, and the upgrades apply.
+  {
+    const fd = await browser.newContext({ viewport: { width: 852, height: 393 }, deviceScaleFactor: 1, isMobile: true, hasTouch: true });
+    await fd.addInitScript(() => {
+      if (!localStorage.getItem('moshi.progress.v1')) {
+        localStorage.setItem('moshi.progress.v1', JSON.stringify({
+          credits: 0, earned: 0, owned: ['scribe:omar', 'scribe:selina'], specialty: '', startTool: '', kills: {}, bank: 600, locker: {}, staff: { selina: 2 },
+        }));
+      }
+      localStorage.setItem('moshi.settings.v1', JSON.stringify({ learned: { move: true, spray: true, pour: true, purge: true, buy: true } }));
+    });
+    const fp = await fd.newPage();
+    labelWaits(fp);
+    const deskErrors = [];
+    fp.on('pageerror', (e) => deskErrors.push(where(e)));
+    await fp.goto(url + '?god&scribe=selina', { timeout: 90000 });
+    await fp.waitForFunction(() => window.game?.scene.isActive('Title'));
+    const tapIn = async (key, match) => {
+      const at = await fp.evaluate(([k, m]) => {
+        const list = window.game.scene.getScene(k).children.list;
+        const t = list.concat(...list.filter((c) => c.list).map((c) => c.list)).find((c) => typeof c.text === 'string' && c.text.includes(m) && c.visible);
+        if (!t) return null;
+        const b = t.getBounds();
+        const canvas = window.game.canvas.getBoundingClientRect();
+        const k2 = canvas.width / window.game.scale.width;
+        return { x: canvas.left + b.centerX * k2, y: canvas.top + b.centerY * k2 };
+      }, [key, match]);
+      if (at) await fp.touchscreen.tap(at.x, at.y);
+      await fp.waitForTimeout(300);
+      return !!at;
+    };
+    await tapIn('Title', 'EQUIPMENT LOCKER');
+    await fp.waitForFunction(() => window.game.scene.isActive('Locker'), null, { timeout: 10000 }).catch(() => {});
+    await tapIn('Locker', 'STAFF');
+    await tapIn('Locker', 'UPGRADE');
+    const staff = await fp.evaluate(() => JSON.parse(localStorage.getItem('moshi.progress.v1')));
+    check(staff.staff?.omar === 1 && staff.bank === 100 && !staff.staff?.alan,
+      `the Locker's STAFF shelf sells Omar's first upgrade for $500, and locked helpers can't be upgraded (${JSON.stringify({ staff: staff.staff, bank: staff.bank })})`);
+    await tapIn('Locker', 'BACK');
+    await fp.waitForFunction(() => window.game.scene.isActive('Title'), null, { timeout: 10000 }).catch(() => {});
+    await fp.touchscreen.tap(426, 120);
+    await fp.waitForFunction(() => window.game.scene.isActive('Hud'), null, { timeout: 60000 });
+    const setup = await fp.evaluate(() => {
+      const sc = window.game.scene.getScene('Game');
+      sc.waves.queue.length = 0;
+      sc.waves.phase = 'intermission';
+      sc.waves.nextRoundAt = Number.MAX_SAFE_INTEGER;
+      for (const g of sc.germs.getChildren()) if (g.active) g.kill();
+      const selina = sc.frontDesk.get('selina');
+      const line = sc.frontDesk.line;
+      for (const other of sc.patients.group.getChildren()) if (other.active) other.retire();
+      for (let i = 0; i < 2; i++) {
+        sc.patients.spawn(sc.time.now);
+        const pt = sc.patients.group.getChildren().filter((c) => c.active)[i];
+        pt.setPosition(line[Math.min(i + 1, line.length - 1)].x - 30, line[0].y + 20);
+        pt.leaveAt = Number.MAX_SAFE_INTEGER;
+      }
+      sc.summonHelper('omar', sc.time.now, 1000);
+      const omar = sc.scribes.get('omar');
+      return {
+        here: !!selina, duration: selina?.boost.duration, omarPower: omar?.boost.power, spots: line.length,
+        pool: sc.powerups.dropPool, copays: sc.copays,
+      };
+    });
+    check(setup.here && setup.duration === 1.5 && Math.abs(setup.omarPower - 1.2) < 1e-9 && setup.spots >= 3,
+      `Selina works the front desk, and staff upgrades apply to her and Omar (${JSON.stringify(setup)})`);
+    check(setup.pool.includes('psrSelina') && !setup.pool.includes('psrElaine'), `a hired PSR's pill drops, a locked one's doesn't (${setup.pool.join(', ')})`);
+    const lined = await fp.waitForFunction(() => {
+      const sc = window.game.scene.getScene('Game');
+      // (Only patients in line get checked in)
+      return sc.frontDesk.checkedIn >= 1
+        ? { queue: sc.patients.queue.length, checkedIn: sc.frontDesk.checkedIn, copays: sc.copays } : null;
+    }, null, { timeout: 90000 }).then((h) => h.jsonValue(), () => null);
+    check(!!lined && lined.copays > setup.copays,
+      `patients line up at the front desk and Selina checks them in for Copays (${JSON.stringify(lined)})`);
+    check(deskErrors.length === 0, `no errors at the front desk${deskErrors.length ? ': ' + deskErrors.join(' | ') : ''}`);
+    await fd.close();
   }
 
   // THE MIRACLE CURE: every step of the secret quest, driven through its stations, then the Records Room,

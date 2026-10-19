@@ -15,7 +15,7 @@ import { nextShift, type ShiftSetup } from '../core/shift';
 import { CONSTRUCTION_LINES, CONSTRUCTION_SIGN, modifierById, type ModifierId } from '../data/modifiers';
 import { difficultyById } from '../data/difficulties';
 import { unlockAchievement } from '../core/achievements';
-import { activeSpecialty, bankFor, creditsFor, doctorUnlocked, grant, lockerLevel, npsFor, progress, recordShift, scribeUnlocked, unlockScribe } from '../core/progress';
+import { activeSpecialty, bankFor, creditsFor, doctorUnlocked, grant, lockerLevel, npsFor, progress, recordShift, scribeUnlocked, staffBoost, unlockScribe } from '../core/progress';
 import type { SpecialtyMods } from '../data/residency';
 import { newRunStats, type RunStats } from '../core/runStats';
 import { initSfx, sfx } from '../core/sfx';
@@ -51,7 +51,8 @@ import { FaxMachineBrain } from '../systems/FaxMachineBrain';
 import { MiracleCure } from '../systems/MiracleCure';
 import { PatientDirector } from '../systems/PatientDirector';
 import { Scribes } from '../systems/Scribes';
-import { SCRIBES, scribeById } from '../data/scribes';
+import { FrontDesk } from '../systems/FrontDesk';
+import { SCRIBES, scribeById, type ScribeId } from '../data/scribes';
 import { Sprayer } from '../systems/Sprayer';
 import { WaveDirector } from '../systems/WaveDirector';
 
@@ -157,6 +158,8 @@ export class GameScene extends Phaser.Scene {
   private patients!: PatientDirector;
   /** Omar and Alan, the scribes (a power-up, once unlocked on the Residency Board). */
   private scribes!: Scribes;
+  /** Selina and Elaine, the front desk PSRs (a power-up, once hired on the Residency Board). */
+  private frontDesk!: FrontDesk;
   /** Patients the scribes cleaned up this shift (the Delegation achievement). */
   private scribeCleans = 0;
   /** Rooms where a helper already came out to help this shift (Donald in X-ray). */
@@ -371,12 +374,25 @@ export class GameScene extends Phaser.Scene {
         if (this.scribeCleans >= 5) this.achieve('delegation');
       },
     });
+    this.frontDesk = new FrontDesk({
+      scene: this,
+      fx: this.fx,
+      patients: this.patients,
+      obstacles: room.obstacles,
+      fallback: room.playerSpawn,
+      onCheckIn: (p, copays) => {
+        if (copays > 0) {
+          this.addCopays(copays);
+          this.fx.number(p.x, p.y - 64, `CHECKED IN  +$${copays}`, '#ffb3c7', 20);
+        }
+      },
+    });
     const forced = scribeById(DEBUG.scribe);
     if (forced) {
       // ?scribe=omar: they work the whole shift
       const whole = 1e9;
       this.powerups.start(forced.powerup, this.time.now, whole);
-      this.scribes.summon(forced.id, this.time.now, whole);
+      this.summonHelper(forced.id, this.time.now, whole);
     }
 
     this.physics.add.collider(this.player, solids);
@@ -623,6 +639,7 @@ export class GameScene extends Phaser.Scene {
     this.player.setSpeedMod('puddle', slow < 1 ? slow : null);
     this.patients.update(time, delta, this.waves.round, this.waves.spawning, this.waves.isBossRound);
     this.scribes.update(time, delta);
+    this.frontDesk.update(time, this.player.dead);
     this.updateStreak(time);
   }
 
@@ -1239,8 +1256,21 @@ export class GameScene extends Phaser.Scene {
     for (const def of SCRIBES) {
       if (def.unlockRoom !== id) continue;
       if (unlockScribe(def.id) && def.unlockBanner) events.emit(GameEvents.SecretFound, def.unlockBanner);
-      this.scribes.summon(def.id, this.time.now, BALANCE.scribes.ms);
+      this.summonHelper(def.id, this.time.now, BALANCE.scribes.ms);
     }
+  }
+
+  /**
+   * Brings a helper in for `ms`, stretched by their Overtime upgrade: a scribe or Donald follows the doctor, a PSR
+   * goes to the front desk. Their pill's HUD timer matches.
+   */
+  private summonHelper(id: ScribeId, time: number, ms: number): void {
+    const def = scribeById(id);
+    if (!def) return;
+    const long = ms * staffBoost(id).duration;
+    if (long > ms) this.powerups.start(def.powerup, time, long);
+    if (def.desk) this.frontDesk.summon(id, time, long);
+    else this.scribes.summon(id, time, long);
   }
 
   /** Every station in the clinic. */
@@ -2088,7 +2118,9 @@ export class GameScene extends Phaser.Scene {
       case 'scribeOmar':
       case 'scribeAlan':
       case 'techDonald':
-        if (def.scribe) this.scribes.summon(def.scribe, time, def.ms);
+      case 'psrSelina':
+      case 'psrElaine':
+        if (def.scribe) this.summonHelper(def.scribe, time, def.ms);
         break;
       // triage and doubleCopay are checked where they apply
     }

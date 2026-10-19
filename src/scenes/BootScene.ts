@@ -26,6 +26,8 @@ export class BootScene extends Phaser.Scene {
     this.makeOmar();
     this.makeAlan();
     this.makeDonald();
+    this.makeSelina();
+    this.makeElaine();
     this.makeFloorTile();
     this.makeShadow();
     for (const def of Object.values(GERMS)) this.makeGerm(def);
@@ -327,6 +329,85 @@ export class BootScene extends Phaser.Scene {
     // Nose out front
     g.fillStyle(0xcf9e7c).fillCircle(61, 46, 2.5);
     g.generateTexture('scribe-donald', 96, 96);
+    g.destroy();
+  }
+
+  /**
+   * SELINA, front desk PSR (from Noah's photo): long wavy brown hair with honey highlights down her back, a tiny nose
+   * stud, a gold cuff bracelet, burgundy scrubs (her dress's color). Holds a check-in clipboard out front.
+   */
+  private makeSelina(): void {
+    const g = this.add.graphics();
+    const outline = 0x1b2b30;
+    const skin = 0xd9a77f;
+    const top = 0x5a1f2e;
+    // Arms forward to the clipboard
+    g.fillStyle(skin).lineStyle(3, outline).fillRoundedRect(44, 20, 22, 11, 6).strokeRoundedRect(44, 20, 22, 11, 6)
+      .fillRoundedRect(44, 61, 22, 11, 6).strokeRoundedRect(44, 61, 22, 11, 6);
+    g.fillStyle(0xd4a017).fillRect(55, 60, 6, 13); // gold cuff
+    // Clipboard: brown board, white sheet, silver clip
+    g.fillStyle(0x8d6e63).lineStyle(2, outline).fillRoundedRect(64, 27, 15, 38, 2).strokeRoundedRect(64, 27, 15, 38, 2);
+    g.fillStyle(0xfafafa).fillRect(66, 31, 11, 31);
+    g.lineStyle(1, 0x9e9e9e).lineBetween(68, 36, 75, 36).lineBetween(68, 41, 75, 41).lineBetween(68, 46, 75, 46).lineBetween(68, 51, 73, 51);
+    g.fillStyle(0xb0bec5).fillRect(73, 41, 5, 10);
+    g.fillStyle(skin).lineStyle(2, outline).fillCircle(67, 27, 5).strokeCircle(67, 27, 5).fillCircle(67, 65, 5).strokeCircle(67, 65, 5);
+    // Shoulders: burgundy scrubs, a V neck
+    g.fillStyle(top).lineStyle(3, outline).fillEllipse(42, 46, 38, 70).strokeEllipse(42, 46, 38, 70);
+    g.fillStyle(0x45161f).fillEllipse(35, 46, 15, 50);
+    g.fillStyle(skin).fillTriangle(54, 40, 54, 52, 61, 46);
+    // Long wavy hair falling down her back, over the shoulders
+    const hair = 0x4a3020;
+    g.fillStyle(hair).lineStyle(3, outline);
+    for (const [hx, hy, r] of [[28, 34, 9], [24, 46, 10], [28, 58, 9], [36, 28, 8], [36, 64, 8], [20, 40, 7], [20, 53, 7]]) g.fillCircle(hx, hy, r);
+    // Head
+    g.fillStyle(skin).lineStyle(3, outline).fillCircle(48, 46, 13).strokeCircle(48, 46, 13);
+    g.fillStyle(hair).beginPath().slice(48, 46, 13, Phaser.Math.DegToRad(50), Phaser.Math.DegToRad(310), false).fillPath();
+    g.fillEllipse(44, 46, 20, 24);
+    // Honey highlights and a few waves
+    g.lineStyle(2, 0xc9925a).beginPath().arc(30, 38, 7, 0.4, 2.6).strokePath().beginPath().arc(26, 54, 7, 0.4, 2.6).strokePath();
+    g.lineStyle(1.5, 0xb07a48).lineBetween(53, 40, 38, 38).lineBetween(53, 52, 38, 54).lineBetween(54, 46, 36, 46);
+    g.lineStyle(3, outline).strokeCircle(48, 46, 13);
+    // Nose, with a tiny stud
+    g.fillStyle(0xc4906a).fillCircle(61, 46, 2.5);
+    g.fillStyle(0xfff3c4).fillCircle(61, 48.5, 1);
+    g.generateTexture('scribe-selina', 96, 96);
+    g.destroy();
+  }
+
+  /**
+   * ELAINE, front desk PSR (from Noah's photo): dark wavy shoulder-length hair parted in the middle, a light pink top,
+   * silver rings, and her phone (in a pale sage case) in hand.
+   */
+  private makeElaine(): void {
+    const g = this.add.graphics();
+    const outline = 0x1b2b30;
+    const skin = 0xd6a07c;
+    const top = 0xf3d3dc;
+    // Arms: one forward to the phone, one resting on the desk side
+    g.fillStyle(skin).lineStyle(3, outline).fillRoundedRect(44, 20, 22, 11, 6).strokeRoundedRect(44, 20, 22, 11, 6)
+      .fillRoundedRect(44, 61, 18, 11, 6).strokeRoundedRect(44, 61, 18, 11, 6);
+    // Phone in a sage case
+    g.fillStyle(0xc8d5b9).lineStyle(2, outline).fillRoundedRect(64, 16, 12, 20, 3).strokeRoundedRect(64, 16, 12, 20, 3);
+    g.fillStyle(0x37474f).fillCircle(72, 20, 2);
+    g.fillStyle(skin).lineStyle(2, outline).fillCircle(66, 27, 5).strokeCircle(66, 27, 5).fillCircle(63, 66, 5).strokeCircle(63, 66, 5);
+    g.fillStyle(0xe0e0e0).fillCircle(68, 25, 1.4).fillCircle(65, 64, 1.4); // rings
+    // Shoulders: light pink top
+    g.fillStyle(top).lineStyle(3, outline).fillEllipse(42, 46, 38, 70).strokeEllipse(42, 46, 38, 70);
+    g.fillStyle(0xe2b9c5).fillEllipse(35, 46, 15, 50);
+    // Dark wavy hair to the shoulders
+    const hair = 0x1f1714;
+    g.fillStyle(hair).lineStyle(3, outline);
+    for (const [hx, hy, r] of [[32, 33, 9], [29, 46, 10], [32, 59, 9], [38, 28, 7], [38, 64, 7]]) g.fillCircle(hx, hy, r);
+    // Head
+    g.fillStyle(skin).lineStyle(3, outline).fillCircle(48, 46, 13).strokeCircle(48, 46, 13);
+    g.fillStyle(hair).beginPath().slice(48, 46, 13, Phaser.Math.DegToRad(55), Phaser.Math.DegToRad(305), false).fillPath();
+    g.fillEllipse(44, 46, 20, 24);
+    // Middle part, front to back, and a couple of waves
+    g.lineStyle(1.5, 0xa77c66).lineBetween(55, 46, 36, 46);
+    g.lineStyle(1.5, 0x3a2c26).beginPath().arc(32, 36, 6, 0.4, 2.6).strokePath().beginPath().arc(32, 57, 6, 0.4, 2.6).strokePath();
+    g.lineStyle(3, outline).strokeCircle(48, 46, 13);
+    g.fillStyle(0xc28d6a).fillCircle(61, 46, 2.5);
+    g.generateTexture('scribe-elaine', 96, 96);
     g.destroy();
   }
 

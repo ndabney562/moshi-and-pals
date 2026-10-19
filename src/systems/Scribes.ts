@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 import { BALANCE } from '../config/balance';
+import { staffBoost } from '../core/progress';
 import { sfx } from '../core/sfx';
 import { SCRIBES, type ScribeDef, type ScribeId } from '../data/scribes';
 import type { Germ } from '../entities/Germ';
@@ -45,6 +46,8 @@ class Scribe {
   step = 0;
   kills = 0;
   cleaned = 0;
+  /** Their staff upgrades (read when they're summoned). */
+  boost = { power: 1, speed: 1, duration: 1 };
 
   constructor(scene: Phaser.Scene, readonly def: ScribeDef, readonly side: number) {
     this.shadow = scene.add.image(0, 0, 'shadow').setDepth(9).setVisible(false);
@@ -69,13 +72,15 @@ export class Scribes {
 
   constructor(private readonly host: ScribeHost) {
     // Omar off one shoulder, Alan off the other, Donald right behind
-    this.list = SCRIBES.map((def, i) => new Scribe(host.scene, def, [-1, 1, 0][i % 3]));
+    // (The front desk PSRs work the desk instead: systems/FrontDesk.ts)
+    this.list = SCRIBES.filter((d) => !d.desk).map((def, i) => new Scribe(host.scene, def, [-1, 1, 0][i % 3]));
   }
 
   /** Brings a scribe in for `ms` (or keeps one already here for longer). */
   summon(id: ScribeId, time: number, ms: number): void {
     const s = this.list.find((x) => x.def.id === id);
     if (!s) return;
+    s.boost = staffBoost(id);
     s.until = Math.max(s.until, time + ms);
     if (s.here) return;
     const { player, flow } = this.host;
@@ -204,13 +209,13 @@ export class Scribes {
     const a = Phaser.Math.Angle.Between(img.x, img.y, germ.x, germ.y);
     if (s.def.id === 'omar') {
       const c = this.cfg.omar;
-      s.nextAttackAt = time + c.everyMs;
+      s.nextAttackAt = time + c.everyMs * s.boost.speed;
       fx.nozzleMist(img.x + Math.cos(a) * 26, img.y + Math.sin(a) * 26, a, 18, s.def.color, 4);
       sfx.spray();
       this.strike(s, germ, c.damage, a, c.knockback);
     } else if (s.def.id === 'donald') {
       const c = this.cfg.donald;
-      s.nextAttackAt = time + c.everyMs;
+      s.nextAttackAt = time + c.everyMs * s.boost.speed;
       const ux = Math.cos(a), uy = Math.sin(a);
       this.beam(img.x + ux * 24, img.y + uy * 24, a, c.range, c.width, s.def.color);
       sfx.zap();
@@ -225,7 +230,7 @@ export class Scribes {
       }
     } else {
       const c = this.cfg.alan;
-      s.nextAttackAt = time + c.everyMs;
+      s.nextAttackAt = time + c.everyMs * s.boost.speed;
       const chain: Germ[] = [germ];
       let from = germ;
       for (let i = 0; i < c.chain; i++) {
@@ -259,7 +264,7 @@ export class Scribes {
 
   private strike(s: Scribe, g: Germ, damage: number, angle: number, knockback: number): void {
     if (!g.active) return;
-    this.host.hit(g, damage, angle, knockback);
+    this.host.hit(g, damage * s.boost.power, angle, knockback);
     if (!g.active) s.kills++;
   }
 

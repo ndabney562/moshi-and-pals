@@ -1,5 +1,11 @@
 # Changelog
 
+## v0.30.0: Selina and Elaine at the front desk, and staff upgrades
+- **Two new helpers: Selina and Elaine, the front desk PSRs.** Hire them on the Residency Board (15 CME each, under the new **STAFF** tab) and their pills join the power-up drops.
+- **Grab one and she opens the front desk.** Every patient lines up in front of RECEPTION and complains about the wait ("I've been here since NINE.") instead of committing health code violations, and she checks them in and sends them home one at a time. Each check-in counts as cleaning up the patient, with the usual reward.
+- **Selina** checks people in fast (every 2.5 s, +$5). **Elaine** is slower (every 4 s) but collects the copay at check-in (+$25).
+- **Staff upgrades.** The Equipment Locker has a new **STAFF** shelf: Omar, Alan, Donald, Selina and Elaine each get three upgrades you keep for good, paid with banked Copays once they're on staff: **Coffee Run** ($500, +20% damage; the PSRs bring in 20% more Copays per check-in), **Overtime** ($1,200, they stay 50% longer) and **Employee of the Month** ($2,500, +15% damage and they work 20% faster).
+
 ## v0.28.0: The Equipment Locker
 - **Tool upgrades that stay.** A new **🧰 EQUIPMENT LOCKER** button on the title screen opens a page with every tool on it. Each one has three upgrades you keep for good: **Labeled & Dated** ($400, +10% damage), **Extra Refills** ($1,000, +25% tank, jug and charge rate) and **Name Engraved** ($2,000, +10% damage and 10% faster).
 - **A quarter of the Copays you earn on a shift come home** to pay for them. The Discharge Summary shows how much went to the Locker.

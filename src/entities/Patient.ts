@@ -68,6 +68,11 @@ export class Patient extends Phaser.Physics.Arcade.Sprite {
     this.bubble.follow();
   }
 
+  /** Pick a new goal on the next step (the front desk line just formed or broke up). */
+  repick(): void {
+    this.goalSetAt = -Infinity;
+  }
+
   get home(): boolean {
     return this.state === 'leaving' && Phaser.Math.Distance.BetweenPoints(this, this.exit) < 20;
   }

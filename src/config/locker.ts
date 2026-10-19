@@ -23,3 +23,23 @@ export const LOCKER = {
     { cost: 2000, damage: 1.1, interval: 0.9 },
   ] as LockerLevel[],
 };
+
+/**
+ * STAFF UPGRADES (the locker's STAFF shelf): the helpers (scribes, Donald, the PSRs) level up the same way, once
+ * they're unlocked. `power` × their damage (a PSR: the Copays a check-in brings), `speed` × the time between their
+ * attacks or check-ins (less = faster), `duration` × how long they stay.
+ */
+export interface StaffLevel {
+  cost: number;
+  power?: number;
+  speed?: number;
+  duration?: number;
+}
+
+export const STAFF = {
+  levels: [
+    { cost: 500, power: 1.2 },
+    { cost: 1200, duration: 1.5 },
+    { cost: 2500, power: 1.15, speed: 0.8 },
+  ] as StaffLevel[],
+};

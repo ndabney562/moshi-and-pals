@@ -5,7 +5,7 @@
 import { BALANCE } from '../config/balance';
 import type { ScribeId } from './scribes';
 
-export type PowerupId = 'priorAuth' | 'freeRefills' | 'erWait' | 'triage' | 'statClean' | 'doubleCopay' | 'scribeOmar' | 'scribeAlan' | 'techDonald'
+export type PowerupId = 'priorAuth' | 'freeRefills' | 'erWait' | 'triage' | 'statClean' | 'doubleCopay' | 'scribeOmar' | 'scribeAlan' | 'techDonald' | 'psrSelina' | 'psrElaine'
   | 'fluShot' | 'prescription';
 
 export interface PowerupDef {
@@ -35,6 +35,9 @@ export const POWERUPS: Record<PowerupId, PowerupDef> = {
   scribeOmar: { id: 'scribeOmar', name: 'SCRIBE: OMAR', blurb: 'Charting that!', color: 0xffd54f, ms: BALANCE.scribes.ms, scribe: 'omar' },
   scribeAlan: { id: 'scribeAlan', name: 'SCRIBE: ALAN', blurb: 'Documented. Next.', color: 0xb39ddb, ms: BALANCE.scribes.ms, scribe: 'alan' },
   techDonald: { id: 'techDonald', name: 'X-RAY TECH: DONALD', blurb: 'Need a film, doc?', color: 0xa5d6a7, ms: BALANCE.scribes.ms, scribe: 'donald' },
+  // The front desk PSRs (systems/FrontDesk.ts): everyone lines up at the desk while they're there
+  psrSelina: { id: 'psrSelina', name: 'FRONT DESK: SELINA', blurb: 'Everyone, line up please!', color: 0xff8fab, ms: BALANCE.scribes.ms, scribe: 'selina' },
+  psrElaine: { id: 'psrElaine', name: 'FRONT DESK: ELAINE', blurb: 'Copays are due at check-in.', color: 0xf48fb1, ms: BALANCE.scribes.ms, scribe: 'elaine' },
   // Rare from any germ; the Influenza Twins always leave one
   fluShot: { id: 'fluShot', name: 'FLU SHOT', blurb: `+${BALANCE.powerups.fluShotHp} max health for this shift`, color: 0x80cbc4, ms: 0, weight: BALANCE.powerups.fluShotWeight },
   // Methicillin's reward: the tool in hand compounded all the way up, on the house

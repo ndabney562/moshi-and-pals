@@ -6,11 +6,14 @@
  * DONALD, the X-ray tech (Noah, Oct 2026), works the same way but isn't for sale: he unlocks the first time
  * the doctor walks into the X-ray room during a shift, and from then on comes out to help on the first visit
  * to X-ray every shift, and his pill drops too. His X-ray beam goes through walls and every germ in its line.
+ * SELINA and ELAINE, the front desk PSRs (Noah, Oct 2026), are bought like the scribes but don't follow you: their pill
+ * sends them to the RECEPTION desk, and while one is there every patient lines up at the desk and complains about the
+ * wait instead of committing violations, and gets checked in and sent home one at a time (systems/FrontDesk.ts).
  * Art is drawn in BootScene (texture = `scribe-<id>`). Numbers live in BALANCE.scribes.
  */
 import type { PowerupId } from './powerups';
 
-export type ScribeId = 'omar' | 'alan' | 'donald';
+export type ScribeId = 'omar' | 'alan' | 'donald' | 'selina' | 'elaine';
 
 export interface ScribeDef {
   id: ScribeId;
@@ -27,15 +30,17 @@ export interface ScribeDef {
   unlockRoom?: string;
   /** The banner when that happens for the first time. */
   unlockBanner?: { title: string; line: string };
+  /** A front desk PSR: works the RECEPTION desk instead of following the doctor (systems/FrontDesk.ts). */
+  desk?: boolean;
   /** How they fight, one line for the board. */
   blurb: string;
   /** Their attack's color (mist or zap). */
   color: number;
   lines: {
     arrive: string[];
-    /** Now and then while attacking. */
+    /** Now and then while attacking (a PSR: when checking a patient in). */
     attack: string[];
-    /** When a patient they've been after cleans up. */
+    /** When a patient they've been after cleans up (a PSR: once the line is empty). */
     clean: string[];
     leave: string[];
   };
@@ -72,6 +77,26 @@ export const SCRIBES: ScribeDef[] = [
       attack: ['Hold still... and done.', 'Two views, coming up.', "Don't breathe!", 'Clear shot.'],
       clean: ['Clean enough to image.', 'Read: no germs.'],
       leave: ['Back to X-ray. Films are piling up.'],
+    },
+  },
+  {
+    id: 'selina', name: 'Selina', role: 'FRONT DESK', powerup: 'psrSelina', cost: 15, color: 0xffb3c7, desk: true,
+    blurb: 'Lines every patient up at the front desk and checks them in fast.',
+    lines: {
+      arrive: ['Selina, front desk. Everyone, line up please!', 'Okay! Who was here first?'],
+      attack: ['Next!', 'Insurance card, please.', 'Have a seat, they’ll call you.', 'Sign here, here and here.'],
+      clean: ['Line’s clear. I’m a legend.'],
+      leave: ['On break. Don’t touch my desk.'],
+    },
+  },
+  {
+    id: 'elaine', name: 'Elaine', role: 'FRONT DESK', powerup: 'psrElaine', cost: 15, color: 0xf8c8dc, desk: true,
+    blurb: 'Lines every patient up at the front desk and collects their copay. Slower, pays more.',
+    lines: {
+      arrive: ['Elaine, front desk. Form a line!', 'Hi! Copays are due at check-in.'],
+      attack: ['That’ll be your copay.', 'Card or cash?', 'Is this address still current?', 'Next, please!'],
+      clean: ['Nobody waiting. Peace and quiet.'],
+      leave: ['Lunch. Put a sign up.'],
     },
   },
 ];
