@@ -20,7 +20,12 @@ export class FlowField {
   private readonly solidRows: number;
   private static readonly SOLID_CELL = 16;
   /** Staircases: a germ standing in cell `from` can step to cell `to` on the other floor. */
-  private portals: { from: number; to: number }[] = [];
+  private portals: { from: number; to: number; x: number; y: number }[] = [];
+  /** Cells whose way to Eugene is up (or down) their staircase this flood: 1, else 0. */
+  private readonly viaStairs: Uint8Array;
+  /** How many cells (up to WALL_FAR) each cell is from the nearest blocked one: paths keep to the middle of halls. */
+  private readonly wallDist: Uint8Array;
+  private static readonly WALL_FAR = 4;
   private static readonly NEIGHBORS = [
     [1, 0], [-1, 0], [0, 1], [0, -1], [1, 1], [1, -1], [-1, 1], [-1, -1],
   ] as const;
@@ -33,6 +38,8 @@ export class FlowField {
     this.blocked = new Uint8Array(n);
     this.dist = new Int32Array(n);
     this.queue = new Int32Array(n);
+    this.viaStairs = new Uint8Array(n);
+    this.wallDist = new Uint8Array(n);
     this.solidCols = Math.ceil(width / FlowField.SOLID_CELL);
     this.solidRows = Math.ceil(height / FlowField.SOLID_CELL);
     this.solid = new Uint8Array(this.solidCols * this.solidRows);
@@ -53,6 +60,7 @@ export class FlowField {
       const y1 = Math.min(rows - 1, Math.floor((o.y + o.h + clearance) / cell - 0.5));
       for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) this.blocked[y * cols + x] = 1;
     }
+    this.measureWalls();
     const sc = FlowField.SOLID_CELL;
     this.solid.fill(0);
     for (const o of obstacles) {
@@ -61,6 +69,36 @@ export class FlowField {
       const x1 = Math.min(this.solidCols - 1, Math.floor((o.x + o.w - 1) / sc));
       const y1 = Math.min(this.solidRows - 1, Math.floor((o.y + o.h - 1) / sc));
       for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) this.solid[y * this.solidCols + x] = 1;
+    }
+  }
+
+  /** Floods outward from every blocked cell, so each open cell knows how close the nearest wall is. */
+  private measureWalls(): void {
+    const { cols, rows, blocked, wallDist, queue } = this;
+    const far = FlowField.WALL_FAR;
+    wallDist.fill(far);
+    let head = 0;
+    let tail = 0;
+    for (let i = 0; i < blocked.length; i++) {
+      if (!blocked[i]) continue;
+      wallDist[i] = 0;
+      queue[tail++] = i;
+    }
+    while (head < tail) {
+      const i = queue[head++];
+      const next = wallDist[i] + 1;
+      if (next >= far) continue;
+      const cx = i % cols;
+      const cy = (i / cols) | 0;
+      for (const [dx, dy] of FlowField.NEIGHBORS) {
+        const nx = cx + dx;
+        const ny = cy + dy;
+        if (nx < 0 || ny < 0 || nx >= cols || ny >= rows) continue;
+        const ni = ny * cols + nx;
+        if (wallDist[ni] <= next) continue;
+        wallDist[ni] = next;
+        queue[tail++] = ni;
+      }
     }
   }
 
@@ -82,6 +120,7 @@ export class FlowField {
   update(tx: number, ty: number): void {
     const { cols, rows, dist, queue, blocked } = this;
     dist.fill(-1);
+    this.viaStairs.fill(0);
     const start = this.index(tx, ty);
     let head = 0;
     let tail = 0;
@@ -106,6 +145,7 @@ export class FlowField {
       for (const p of this.portals) {
         if (p.to !== i || dist[p.from] !== -1) continue;
         dist[p.from] = dist[i] + 1;
+        this.viaStairs[p.from] = 1;
         queue[tail++] = p.from;
       }
     }
@@ -131,9 +171,14 @@ export class FlowField {
     return true;
   }
 
+  /** After `update`: true if a germ at (x, y) gets to Eugene by taking the staircase it's standing at. */
+  takesStairs(x: number, y: number): boolean {
+    return this.viaStairs[this.index(x, y)] === 1;
+  }
+
   /** Sets the active staircases (germs path through them to reach Eugene on another floor). */
   setPortals(links: { from: { x: number; y: number }; to: { x: number; y: number } }[]): void {
-    this.portals = links.map((l) => ({ from: this.index(l.from.x, l.from.y), to: this.index(l.to.x, l.to.y) }));
+    this.portals = links.map((l) => ({ from: this.index(l.from.x, l.from.y), to: this.index(l.to.x, l.to.y), x: l.from.x, y: l.from.y }));
   }
 
   /**
@@ -141,20 +186,38 @@ export class FlowField {
    * Returns false if there's no path info (germ should chase directly).
    */
   nextStep(x: number, y: number, out: Phaser.Math.Vector2): boolean {
-    const { cols, rows, dist, cell } = this;
+    const { cols, rows, dist, cell, wallDist } = this;
     const i = this.index(x, y);
     const here = dist[i];
-    if (here <= 0) return false;
+    if (here === 0) return false;
+    if (this.viaStairs[i]) {
+      // Standing at the stairs that lead to Eugene: walk onto them (the cell centre can sit beside the steps)
+      const p = this.portals.find((q) => q.from === i);
+      if (p) {
+        out.set(p.x, p.y);
+        return true;
+      }
+    }
     const cx = i % cols;
     const cy = (i / cols) | 0;
     let best = -1;
-    let bestDist = here;
-    for (const [dx, dy] of FlowField.NEIGHBORS) {
-      const nx = cx + dx;
-      const ny = cy + dy;
-      if (nx < 0 || ny < 0 || nx >= cols || ny >= rows) continue;
-      const d = dist[ny * cols + nx];
-      if (d >= 0 && d < bestDist) { bestDist = d; best = ny * cols + nx; }
+    let bestDist = here < 0 ? Number.MAX_SAFE_INTEGER : here;
+    let bestRoom = -1;
+    // A germ shoved into a wall's margin (a cell with no path) heads for the nearest cell that has one, a ring
+    // further out if need be; otherwise the closer neighbor, and of equals the one further from walls
+    for (let r = 1; r <= (here < 0 ? 2 : 1) && best < 0; r++) {
+      for (let ny = cy - r; ny <= cy + r; ny++) {
+        for (let nx = cx - r; nx <= cx + r; nx++) {
+          if (nx < 0 || ny < 0 || nx >= cols || ny >= rows || (nx === cx && ny === cy)) continue;
+          if (Math.max(Math.abs(nx - cx), Math.abs(ny - cy)) !== r) continue;
+          const ni = ny * cols + nx;
+          const d = dist[ni];
+          if (d < 0 || d > bestDist || (d === bestDist && (best < 0 || wallDist[ni] <= bestRoom))) continue;
+          bestDist = d;
+          best = ni;
+          bestRoom = wallDist[ni];
+        }
+      }
     }
     if (best < 0) return false;
     out.set(((best % cols) + 0.5) * cell, (((best / cols) | 0) + 0.5) * cell);

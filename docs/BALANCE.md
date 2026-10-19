@@ -21,7 +21,7 @@ Values live in `src/config/balance.ts` and `src/config/controls.ts`.
 | Spray zone / drag-aim | right half below 22% of height / 28 px drag | `CONTROLS.sprayZoneTop`, `dragAimDistance` |
 | Auto-aim stickiness | keeps target unless another is 25% closer | Line of sight required |
 | Germ spawn distance | at least 380 px from Eugene, preferably within 1600 px | Only from rooms that are open |
-| Germ vents (v0.28.0) | one per planned spawn point of each open room, at random open spots; unblocked ones move every round | `BALANCE.vents`: 140 px apart, 160 px from anything with USE |
+| Germ vents (v0.29.0) | one per planned spawn point of each open room, at random open spots; unblocked ones move every round | `BALANCE.vents`: 140 px apart, 160 px from anything with USE |
 | BLOCK a vent | $50: barricade holds up to 30 s or 8 germ pushes (one per 0.7 s) | Bosses walk through; germs wait if every vent is blocked |
 | Scribes blocking | a vent within 340 px, every 15 s each, only while you'd keep $100 | Paid from your Copays |
 | Sinus Purge | 240 px, 35 damage, big knockback, 0.6 s stun | 18 s cooldown; ready at start |
@@ -31,6 +31,7 @@ Values live in `src/config/balance.ts` and `src/config/controls.ts`.
 | UV Wand | 1 × 6 dmg every 60 ms, 280 px, pierces 3 | 100% charge, 2/shot, recharges 22%/s after 0.4 s; spores ×1.5 |
 | Peroxide Foamer | 3 × 4 dmg every 110 ms, 24° cone, 220 px | Slows to 45% for 1.6 s (not bosses); 150 mL, jug 450 |
 | Basic Germ HP / speed | 40 / 95 px/s | Was 75; Noah: round 1 too easy |
+| Germ crowd shove | 50% of the overlap per frame, position only | `BALANCE.germs.crowdPush`; velocities untouched so packs keep moving |
 | Eugene HP / invulnerability | 100 / 0.7 s | |
 | Regen | 6 HP/s after 6 s unhurt | Was 12/s after 4.5 s; Noah never lost health |
 | Contact damage | Basic 15, Sprinter 8, Write-Up 6, Diamond 30 | |
@@ -84,6 +85,7 @@ Values live in `src/config/balance.ts` and `src/config/controls.ts`.
 | Starter Kit | 15 CME; start with any crate tool | `STARTER_KIT_COST` |
 | NPS Scores | 1 per round reached, 1 per patient cleaned, 3 per boss | `BALANCE.nps`; a round-8 shift with a few patients is ~12 |
 | Hiring the Pals | Kaya 30, Lucien 45, Ken 60 NPS (Eugene free) | `BALANCE.nps.prices` |
+| Equipment Locker (v0.28.0) | 25% of a shift's Copays banked; per tool: $400 +10% damage, $1,000 +25% tank/jug/charge rate, $2,000 +10% damage and 10% faster use | `src/config/locker.ts`; multiplies on top of Compounding tiers; ~$3,400 per tool, ~$27,200 for all 8 |
 | Hired Pals' edge | All ×1.1 tool damage; Kaya ×1.12 speed, Lucien +30 health, Ken +15 health | `BALANCE.doctors` |
 | Atlas notes | unlock at 25 lifetime kills (bosses 1) | `src/data/atlas.ts` |
 | Dr. Kaya: CODE BLUE | 320 px sprint in 0.23 s, untouchable +0.25 s; 90 px lane, 30 damage, 650 knockback, 0.7 s stun; 9 s recharge. Passive ×1.12 speed, ×1.1 damage | `BALANCE.codeBlue`, `src/data/characters.ts` |

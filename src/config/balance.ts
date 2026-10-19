@@ -48,6 +48,11 @@ export const BALANCE = {
     pathRefreshMs: 250,
     /** Within this distance germs stop pathing and lunge straight at Eugene. */
     directChaseDistance: 90,
+    /**
+     * Share of the overlap between two touching germs undone each frame (0-1). Germs shove each other apart by
+     * position only, so a crowd flows instead of braking every germ in it to a crawl.
+     */
+    crowdPush: 0.5,
   },
   feedback: {
     /** How long a germ flashes white when hit. */

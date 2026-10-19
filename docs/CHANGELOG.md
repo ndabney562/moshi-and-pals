@@ -1,10 +1,20 @@
 # Changelog
 
-## v0.28.0: Germ vents and Prior Auth barricades
+## v0.29.0: Germ vents and Prior Auth barricades
 - **Germs come in through vents** now: green, bubbling floor grates at random spots in every open room. At the start of every round the vents move somewhere new, so the same corner is never safe twice.
 - **BLOCK a vent for $50.** Stand by one and press USE: a PRIOR AUTH barricade goes up and germs have to wait for approval. They come in through another vent instead, but every germ that tries this one pushes on it (BANG!), and after 8 pushes or 30 seconds it gives way. A bar under it shows how much it has left. If every vent is blocked, germs pile up behind the barricades until one breaks.
 - Bosses don't wait for prior authorization.
 - **The scribes and Donald block vents too.** While they're helping, each one tapes off a vent near them every 15 s with your Copays, as long as you'd still have $100 left.
+
+## v0.28.0: The Equipment Locker
+- **Tool upgrades that stay.** A new **🧰 EQUIPMENT LOCKER** button on the title screen opens a page with every tool on it. Each one has three upgrades you keep for good: **Labeled & Dated** ($400, +10% damage), **Extra Refills** ($1,000, +25% tank, jug and charge rate) and **Name Engraved** ($2,000, +10% damage and 10% faster).
+- **A quarter of the Copays you earn on a shift come home** to pay for them. The Discharge Summary shows how much went to the Locker.
+- Locker upgrades stack with the Compounding Station's in-shift upgrades, and work on crate tools too, whenever you find them.
+
+## v0.27.1: Germs stop getting stuck
+- **Germs no longer jam together.** A crowd of germs used to brake each other to a crawl wherever they touched, so packs looked glued in place. They now shove each other aside and keep coming.
+- **Germs always find the stairs.** A germ squeezed against a wall or a stair rail lost its way and pushed into the wall forever; it now steps back onto the path. Germs at the foot of the stairs walk onto the steps instead of stopping beside them.
+- Germs keep to the middle of halls and doorways instead of scraping along walls, so big ones like the Chonk Coccus don't wedge on corners.
 
 ## v0.27.0: Donald, the X-ray tech
 - **Donald joins the helpers.** Walk into the X-ray room during a shift and he unlocks for good: he comes out right then and helps you for 20 s, like Omar and Alan.

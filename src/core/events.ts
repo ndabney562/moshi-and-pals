@@ -121,7 +121,10 @@ export interface RunResult {
   causeOfDeath: string;
   secondsSurvived: number;
   bestStreak: number; newBestStreak: boolean; recordStreak: number;
-  copaysEarned: number; roomsOpened: number; roomsTotal: number; upgrades: number; crits: number; perfectPours: number;
+  copaysEarned: number;
+  /** Copays sent home to the Equipment Locker. */
+  bank?: number;
+  roomsOpened: number; roomsTotal: number; upgrades: number; crits: number; perfectPours: number;
   /** The germ this run disinfected most, and how many. */
   favoriteVictim?: { name: string; count: number };
   totalKills: number; runs: number;
