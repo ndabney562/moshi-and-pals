@@ -234,7 +234,7 @@ On a phone screen the map stays readable thanks to **off-screen threat arrows** 
 | P3-1 | Art pass: thick-outline cartoon style, a fixed color palette per germ family, sprite atlas | One coherent look; atlases also render faster | 7 | Positive | After the roster settles |
 | P3-2 | HUD redesign (grouped info, bitmap fonts, "Now Serving" counter) | Readable while chaotic | 4 | Positive | Sprint 4 |
 | P3-3 | Game over as a "Discharge Summary" (cause of death, best streak, what killed you), settings screen | Fair deaths make players retry | 3 | None | Sprint 4 |
-| P3-4 | Adaptive music in layers (calm / pressure / boss) + Noah's voice lines | Tension curve | 5 | Low | Sprint 5 |
+| P3-4 | ~~Adaptive music in layers (calm / pressure / boss)~~ (v0.22.0) + Noah's voice lines | Tension curve | 5 | Low | Sprint 5 |
 | P3-5 | Standard attack warnings (red floor decals, wind-up sounds) | Every hit feels avoidable | 3 | Low | With P1-5 |
 | P3-6 | Transitions, loading tips, round banners | Feels finished | 2 | None | Sprint 4 |
 | P3-7 | Sharper text, PWA offline, haptics trick | Feels finished | 1–3 | None | Opportunistic |

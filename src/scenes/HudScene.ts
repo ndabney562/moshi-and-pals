@@ -9,6 +9,7 @@ import {
 import { DEBUG } from '../core/debug';
 import { inputState } from '../core/inputState';
 import { resumeAudio, setSfxMuted } from '../core/sfx';
+import { applyVolume, setMusicPaused } from '../core/music';
 import { TIPS } from '../data/tips';
 import { modifierById } from '../data/modifiers';
 import { difficultyById } from '../data/difficulties';
@@ -63,6 +64,7 @@ export class HudScene extends Phaser.Scene {
   private pauseVersion!: Phaser.GameObjects.Text;
   private resumeItem!: Phaser.GameObjects.Text;
   private soundToggle!: Phaser.GameObjects.Text;
+  private musicToggle!: Phaser.GameObjects.Text;
   private autoRefillToggle!: Phaser.GameObjects.Text;
   private motionToggle!: Phaser.GameObjects.Text;
   /** Teach-as-you-play hint currently shown (one at a time), with an arrow toward its control. */
@@ -675,6 +677,7 @@ export class HudScene extends Phaser.Scene {
 
   private refreshSoundToggle(): void {
     this.soundToggle.setText(`SOUND: ${settings.sound ? 'ON' : 'OFF'}`).setColor(settings.sound ? COLORS.uiAccent : '#ffb3b3');
+    this.musicToggle.setText(`MUSIC: ${settings.music ? 'ON' : 'OFF'}`).setColor(settings.music ? COLORS.uiAccent : '#ffb3b3');
   }
 
   /** The pause screen: dims the game and offers resume, sound, auto-aim and quit. Hidden until paused. */
@@ -694,6 +697,14 @@ export class HudScene extends Phaser.Scene {
       setSfxMuted(!settings.sound);
       this.refreshSoundToggle();
     });
+    this.musicToggle = item('', () => {
+      settings.music = !settings.music;
+      saveSettings();
+      applyVolume();
+      this.refreshSoundToggle();
+    });
+    // SOUND and MUSIC share a row, half width each
+    for (const t of [this.soundToggle, this.musicToggle]) t.setFixedSize(166, 0).setFontSize(22);
     this.autoRefillToggle = item('', () => {
       settings.autoRefill = !settings.autoRefill;
       saveSettings();
@@ -706,7 +717,7 @@ export class HudScene extends Phaser.Scene {
     });
     this.achievementList = new AchievementList(this);
     this.achievementsItem = item('', () => this.achievementList.open());
-    const items: Phaser.GameObjects.Text[] = [this.resumeItem, this.soundToggle, this.autoRefillToggle, this.motionToggle];
+    const items: Phaser.GameObjects.Text[] = [this.resumeItem, this.soundToggle, this.musicToggle, this.autoRefillToggle, this.motionToggle];
     if (this.sprayButton) {
       this.autoAimToggle = item('', () => {
         settings.autoAim = !settings.autoAim;
@@ -753,6 +764,8 @@ export class HudScene extends Phaser.Scene {
     const top = height * 0.3;
     const gap = Math.min(66, (height * 0.62) / items.length);
     items.forEach((t, i) => t.setPosition(width / 2, top + i * gap));
+    this.soundToggle.x = width / 2 - 87;
+    this.musicToggle.setPosition(width / 2 + 87, this.soundToggle.y);
   }
 
   /** Freezes the game and shows the pause menu. Safe to call any time (ignored if already paused or the run is over). */
@@ -770,6 +783,7 @@ export class HudScene extends Phaser.Scene {
     const list = achievementList();
     this.achievementsItem.setText(`ACHIEVEMENTS ${list.filter((a) => a.unlocked).length}/${list.length}`);
     this.pauseMenu.setVisible(true);
+    setMusicPaused(true);
   }
 
   /** Puts up a choice form: the game waits until it's closed. */
@@ -809,6 +823,7 @@ export class HudScene extends Phaser.Scene {
     this.pauseMenu.setVisible(false);
     this.achievementList.setVisible(false);
     resumeAudio();
+    setMusicPaused(false);
     this.scene.resume('Game');
   }
 
