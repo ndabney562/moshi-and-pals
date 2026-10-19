@@ -23,7 +23,9 @@ export type ObstacleKind =
   /** M14 room traps and the vending machine. */
   | 'handDryer' | 'autoclave' | 'xrayControls' | 'vending'
   /** M9: the Lab's Compounding Station (weapon upgrades). */
-  | 'compounder';
+  | 'compounder'
+  /** Exam-room privacy curtain across a doorway (layout `curtains`; solid only while pulled shut). */
+  | 'curtain';
 
 export interface Obstacle {
   kind: ObstacleKind;
@@ -71,6 +73,8 @@ export interface RoomLayout {
   stairs?: Stairway[];
   /** Plan pixel to world point, for layouts drawn from a floor plan (tests use it to stand somewhere specific). */
   fromPlan?: (floor: 'ground' | 'up', px: number, py: number) => { x: number; y: number };
+  /** Exam-room doorways with a privacy curtain: pulled shut, it's a wall for a few seconds. */
+  curtains?: Rect[];
 }
 
 export interface Rect { x: number; y: number; w: number; h: number; }

@@ -13,6 +13,8 @@ export interface InfluenzaHost extends BossHost {
   spit(x: number, y: number, angle: number): void;
   /** Whether nothing solid stands between two points. */
   lineClear(ax: number, ay: number, bx: number, by: number): boolean;
+  /** Whether a shut exam-room curtain stands between two points (the one thing that snaps the strand). */
+  curtainBetween(ax: number, ay: number, bx: number, by: number): boolean;
   /** Finishes off a germ the normal kill didn't reach (the twin already down): score, splat, gone. */
   finish(g: Germ): void;
   /** Updates the boss health bar (after a twin gets back up). */
@@ -32,7 +34,7 @@ const pick = (lines: string[]): string => Phaser.Utils.Array.GetRandom(lines);
 /**
  * BOSS #4: THE INFLUENZA TWINS, H & N (round 20, 40...). Two germs, one boss.
  * - They circle Eugene from opposite sides, joined by a strand that hurts if he touches it.
- * - Lure them around a wall: a wall between them snaps the strand and stuns both for a moment.
+ * - Pull an exam-room curtain shut between them: it snaps the strand and stuns both for a moment.
  * - Spiral Spit: one of them spins and spits a ring of globs.
  * - Knock one out and it goes down for 6 s: finish the other in time or the first gets back up.
  * - P2 ANTIGENIC SHIFT (half health): only one twin can really be hurt at a time, and they swap.
@@ -211,7 +213,7 @@ export class InfluenzaBrain implements BossBrain {
     // The strand between them
     if (this.snappedUntil && time >= this.snappedUntil) this.snappedUntil = 0;
     if (this.tethered) {
-      if (!this.host.lineClear(h.x, h.y, n.x, n.y)) {
+      if (this.host.curtainBetween(h.x, h.y, n.x, n.y)) {
         this.snap(time);
       } else {
         const d = Phaser.Math.Distance.Between(h.x, h.y, n.x, n.y);
@@ -245,7 +247,7 @@ export class InfluenzaBrain implements BossBrain {
     return Phaser.Math.Distance.Between(x, y, px, py) < this.cfg.tetherWidth + 20;
   }
 
-  /** A wall came between them: the strand snaps and both reel. */
+  /** A curtain came between them: the strand snaps and both reel. */
   snap(time: number): void {
     this.snappedUntil = time + this.cfg.regrowMs;
     for (const t of this.twins) t.germ.stun(time, this.cfg.snapStunMs);

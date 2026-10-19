@@ -1,5 +1,11 @@
 # Changelog
 
+## v0.24.0: Boss rewards and exam curtains
+- **Exam-room privacy curtains:** every exam room's doorway has one. Press USE by an open exam room's door to pull it shut: it's a wall for 8 s (germs have to go round), then it slides back open. Free, 20 s to recharge.
+- **The Influenza Twins' strand now only snaps on a curtain.** Plain walls don't cut it any more: lure one twin into an exam room, step out and pull the curtain between them to stun both.
+- **Methicillin leaves a Prescription:** grab it and the tool in your hands is compounded straight to **Prescription Strength**, free (the other tool if that one's maxed, or $700 if both are).
+- **Flu Shot**, a new rare pill: +15 max health for the rest of the shift. The Influenza Twins always leave one instead of a random pill.
+
 ## v0.23.0: Two new bosses
 - **Bosses now take turns in fours:** Diamond (round 5), Patient Zero (10), **Methicillin** (15), **the Influenza Twins** (20), then around again.
 - **Methicillin the Unkillable**, a bunch of armored grapes (that's what staph looks like). He **adapts**: once one tool has hurt him enough, he resists it (a gold ring and a RESISTANT label under him say which) and takes only 20% from it for 14 s. Switch tools, use your signature move, or lure him into the **Lab autoclave**, which he can never resist and which cooks him 50% harder.

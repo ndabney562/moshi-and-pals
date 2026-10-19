@@ -1115,6 +1115,14 @@ try {
     return { active: scene.boss.germ.active, ach: JSON.parse(localStorage.getItem('moshi.achievements.v1') ?? '[]').includes('sensitivityReport') };
   });
   check(!mrsaDown.active && mrsaDown.ach, `Methicillin can be defeated (${JSON.stringify(mrsaDown)})`);
+  // His reward: a Prescription that compounds the tool in hand all the way up
+  const rx = await page.waitForFunction(() => {
+    const scene = window.game.scene.getScene('Game');
+    const pill = scene.powerups.pills.find((p) => p.img.visible && p.id === 'prescription');
+    if (pill) scene.player.setPosition(pill.img.x, pill.img.y);
+    return !scene.sprayer.nextTier && scene.sprayer.tier >= 2;
+  }, null, { timeout: 20000, polling: 100 }).then(() => true, () => false);
+  check(rx, 'Methicillin leaves a Prescription that compounds your tool to Prescription Strength');
 
   // THE INFLUENZA TWINS (boss #4): two germs, one bar; the strand hurts; kill both close together or one revives the other
   await page.evaluate(() => {
@@ -1136,7 +1144,7 @@ try {
     return { h: b.germ.def.id, n: b.partner?.def.id, both: b.germ.active && b.partner?.active, bar: hud.bossBar.visible };
   });
   check(twinsUp.h === 'fluH' && twinsUp.n === 'fluN' && twinsUp.both, `H and N arrive together (${JSON.stringify(twinsUp)})`);
-  // Stand Eugene on the strand between them (in the open, so no wall snaps it)
+  // Stand Eugene on the strand between them
   const strand = await page.waitForFunction(() => {
     const scene = window.game.scene.getScene('Game');
     const b = scene.boss;
@@ -1149,6 +1157,53 @@ try {
   }, null, { timeout: 15000, polling: 100 }).then(() => true, () => false);
   await page.screenshot({ path: 'smoke-twins.png' });
   check(strand, 'touching the strand between the twins hurts');
+  // Only an exam-room curtain snaps the strand: a wall between them doesn't, a curtain pulled shut does
+  const curtain = await page.evaluate(() => {
+    const scene = window.game.scene.getScene('Game');
+    const b = scene.boss;
+    const c = scene.curtains.find((k) => k.o.w > k.o.h);
+    const room = scene.room.rooms.find((r) => r.id.startsWith('exam') && c.o.x >= r.x && c.o.x < r.x + r.w && c.o.y >= r.y && c.o.y < r.y + r.h);
+    scene.unlockRoom(room.id);
+    const { o } = c;
+    const cx = o.x + o.w / 2;
+    const place = (x) => {
+      b.germ.setPosition(x, o.y - 70);
+      b.partner.setPosition(x, o.y + o.h + 70);
+      b.germ.setVelocity(0, 0);
+      b.partner.setVelocity(0, 0);
+    };
+    scene.player.setPosition(cx + 400, o.y + o.h + 200);
+    // Through the wall beside the doorway
+    place(o.x + o.w + 60);
+    const wallBetween = !scene.flow.lineClear(b.germ.x, b.germ.y, b.partner.x, b.partner.y);
+    b.update(scene.time.now);
+    const wallSnapped = !b.tethered;
+    // Through the open doorway, then the curtain pulled shut
+    place(cx);
+    const station = scene.stations.find((st) => st.o === c.o)?.info().verb;
+    scene.closeCurtain(c, scene.time.now);
+    const blocks = !scene.flow.lineClear(cx, o.y - 40, cx, o.y + o.h + 40);
+    place(cx);
+    b.update(scene.time.now);
+    return { wallBetween, wallSnapped, station, blocks, snapped: !b.tethered, stunned: b.germ.stunnedUntil > scene.time.now };
+  });
+  check(curtain.wallBetween && !curtain.wallSnapped, `a plain wall no longer snaps the twins' strand (${JSON.stringify(curtain)})`);
+  check(curtain.station === 'CURTAIN' && curtain.blocks && curtain.snapped, `a shut exam curtain is a wall and snaps the strand (${JSON.stringify(curtain)})`);
+  await page.evaluate(() => {
+    const scene = window.game.scene.getScene('Game');
+    for (const c of scene.curtains) c.closedUntil = 0;
+  });
+  const reopened = await page.waitForFunction(() => window.game.scene.getScene('Game').curtains.every((c) => !c.zone), null, { timeout: 15000 }).then(() => true, () => false);
+  check(reopened, 'the curtain slides back open');
+  await page.evaluate(() => {
+    const scene = window.game.scene.getScene('Game');
+    const b = scene.boss;
+    const sp = scene.room.playerSpawn;
+    b.snappedUntil = 0;
+    b.germ.setPosition(sp.x - 150, sp.y);
+    b.partner.setPosition(sp.x + 150, sp.y);
+    scene.player.setPosition(sp.x, sp.y);
+  });
   const down = await page.evaluate(() => {
     const scene = window.game.scene.getScene('Game');
     const b = scene.boss;
@@ -1186,11 +1241,20 @@ try {
     return {
       firstDown, h: b.germ.active, n: b.partner.active,
       pills: scene.powerups.pills.filter((p) => p.img.visible).length - pillsBefore,
+      fluShot: scene.powerups.pills.some((p) => p.img.visible && p.id === 'fluShot'),
       ach: JSON.parse(localStorage.getItem('moshi.achievements.v1') ?? '[]').includes('herdImmunity'),
     };
   });
   check(twinsDown.firstDown && !twinsDown.h && !twinsDown.n && twinsDown.ach, `knock both out together and the twins are beaten (${JSON.stringify(twinsDown)})`);
-  check(twinsDown.pills >= 1, `the twins always leave a pill (${twinsDown.pills})`);
+  check(twinsDown.pills >= 1 && twinsDown.fluShot, `the twins always leave a Flu Shot (${JSON.stringify(twinsDown)})`);
+  const maxBefore = await page.evaluate(() => window.game.scene.getScene('Game').player.maxHp);
+  const flu = await page.waitForFunction((before) => {
+    const scene = window.game.scene.getScene('Game');
+    const pill = scene.powerups.pills.find((p) => p.img.visible && p.id === 'fluShot');
+    if (pill) scene.player.setPosition(pill.img.x, pill.img.y);
+    return scene.player.maxHp === before + 15;
+  }, maxBefore, { timeout: 20000, polling: 100 }).then(() => true, () => false);
+  check(flu, 'the Flu Shot adds 15 max health');
   await page.evaluate(() => {
     const scene = window.game.scene.getScene('Game');
     for (const g of scene.germs.getChildren()) if (g.active) g.kill();

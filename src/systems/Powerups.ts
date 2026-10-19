@@ -32,8 +32,7 @@ export class Powerups {
 
   /** Drops a pill (a random one unless `id` is given). */
   drop(x: number, y: number, time: number, id?: PowerupId): void {
-    const ids = (Object.keys(POWERUPS) as PowerupId[]).filter((k) => this.canDrop(POWERUPS[k]));
-    const pick = id ?? runRng.loot.pick(ids);
+    const pick = id ?? this.randomId();
     const p = this.pills[this.next];
     this.next = (this.next + 1) % MAX_PILLS;
     p.id = pick;
@@ -51,7 +50,19 @@ export class Powerups {
 
   /** The ids random drops can pick right now (tests). */
   get dropPool(): PowerupId[] {
-    return (Object.keys(POWERUPS) as PowerupId[]).filter((k) => this.canDrop(POWERUPS[k]));
+    return (Object.keys(POWERUPS) as PowerupId[]).filter((k) => !POWERUPS[k].bossOnly && this.canDrop(POWERUPS[k]));
+  }
+
+  /** A random pill from the pool, rare ones (a lower `weight`) less often. */
+  private randomId(): PowerupId {
+    const ids = this.dropPool;
+    const total = ids.reduce((sum, k) => sum + (POWERUPS[k].weight ?? 1), 0);
+    let roll = runRng.loot.next() * total;
+    for (const k of ids) {
+      roll -= POWERUPS[k].weight ?? 1;
+      if (roll < 0) return k;
+    }
+    return ids[ids.length - 1];
   }
 
   isActive(id: PowerupId, time: number): boolean {
