@@ -1658,8 +1658,8 @@ try {
     labelWaits(hp);
     const hireErrors = [];
     hp.on('pageerror', (e) => hireErrors.push(where(e)));
-    await hp.goto(url);
-    await hp.waitForFunction(() => window.game?.scene.isActive('Title'));
+    await hp.goto(url, { timeout: 90000 });
+    await hp.waitForFunction(() => window.game?.scene.isActive('Title'), null, { timeout: 90000 });
     const hire = await hp.evaluate(() => {
       const t = window.game.scene.getScene('Title');
       const label = (id) => t.picks.find((p) => p.id === id).name.text;
