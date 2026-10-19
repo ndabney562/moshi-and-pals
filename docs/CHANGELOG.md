@@ -1,6 +1,6 @@
 # Changelog
 
-## v0.21.0: Two new bosses
+## v0.23.0: Two new bosses
 - **Bosses now take turns in fours:** Diamond (round 5), Patient Zero (10), **Methicillin** (15), **the Influenza Twins** (20), then around again.
 - **Methicillin the Unkillable**, a bunch of armored grapes (that's what staph looks like). He **adapts**: once one tool has hurt him enough, he resists it (a gold ring and a RESISTANT label under him say which) and takes only 20% from it for 14 s. Switch tools, use your signature move, or lure him into the **Lab autoclave**, which he can never resist and which cooks him 50% harder.
   - **Cluster Shot:** flings three grapes that hatch into germs.
@@ -14,6 +14,14 @@
   - They always leave a pill behind.
 - 2 new achievements: *Sensitivity Report* (beat Methicillin) and *Herd Immunity* (beat the twins). Atlas notes for all three.
 - Fixed: the Discharge Summary blamed Diamond when Patient Zero's cough finished you.
+## v0.22.0: Music
+- **The clinic has a soundtrack**, and it follows the fight:
+  - Between rounds you get the waiting room's on-hold music, *Please Continue to Hold*: a lazy bossa nova with a vibraphone tune.
+  - When a round starts, drums and a buzzing arpeggio come in quietly, and they get louder as germs pile up. When your health runs low they go all out.
+  - Boss rounds switch to the boss theme, *Code Brown*: fast, in a minor key, with a siren-like lead. It changes on the beat and switches back once the boss round is over.
+  - The music turns down while paused and fades out when you go down.
+- **MUSIC: ON/OFF** in the pause menu, next to SOUND, so you can keep the sound effects and lose the music (or the other way round).
+
 ## v0.19.2: The Pals talk like themselves
 - Dr. Kaya, PA Lucien and Ken now react to patients in their own voices, from Noah's notes on the real people. Three lines each for every health code violation:
   - **Dr. Kaya** stays chill, talks like a gym bro, reminds you he's an ER doc, prescribes prednisone, Afrin, a Z-Pak and saline for everything, and brings up his old smoking days.

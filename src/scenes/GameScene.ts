@@ -19,6 +19,8 @@ import { activeSpecialty, creditsFor, progress, recordShift, scribeUnlocked } fr
 import type { SpecialtyMods } from '../data/residency';
 import { newRunStats, type RunStats } from '../core/runStats';
 import { initSfx, sfx } from '../core/sfx';
+import { initMusic, musicState, setMusicMix, startMusic, stopMusic } from '../core/music';
+import { MUSIC } from '../config/music';
 import { CRATE_POOL, EQUIPMENT, STARTING_EQUIPMENT, type EquipmentDef } from '../data/equipment';
 import { DENIED_ITEMS } from '../data/requisition';
 import { GERMS } from '../data/germs';
@@ -388,6 +390,7 @@ export class GameScene extends Phaser.Scene {
     cam.startFollow(this.player, true, BALANCE.camera.followLerp, BALANCE.camera.followLerp);
 
     initSfx(this);
+    initMusic();
     const sounds: [string, () => void][] = [
       [GameEvents.EquipmentEmpty, sfx.empty],
       [GameEvents.EquipmentRefilled, sfx.refill],
@@ -431,11 +434,13 @@ export class GameScene extends Phaser.Scene {
       for (const [name, fn] of sounds) events.off(name, fn);
       this.boss?.destroy();
       this.boss = undefined;
+      stopMusic(0.3);
     });
 
     this.scene.launch('Hud');
     this.cameras.main.fadeIn(DISPLAY.fadeInMs, 0, 0, 0);
     events.emit(GameEvents.RunStarted, { roomId: room.id });
+    startMusic();
   }
 
   /** Eugene is down and the game over screen is on its way. */
@@ -574,6 +579,7 @@ export class GameScene extends Phaser.Scene {
     const alive = this.germs.countActive(true);
     this.waves.pacing = this.player.hp / this.player.maxHp < b.lowHp && alive >= WAVES.maxAlive(Math.max(1, this.waves.round)) * b.crowd ? b.spawnSlow : 1;
     this.waves.update(time, alive, (id, scaling) => this.spawnGerm(id, scaling), (id) => this.aliveOf(id));
+    this.updateMusic(alive);
     // Globs that fly their full range splat where they stop; puddles slow Eugene
     for (const gl of this.globs.getChildren() as Glob[]) if (gl.active && time >= gl.expiresAt) this.globLands(gl);
     this.powerups.update(time, this.player.x, this.player.y);
@@ -712,6 +718,11 @@ export class GameScene extends Phaser.Scene {
       germsNear: near, crowd, purgeReady: this.purgeProgress(this.time.now) >= 1,
       refilling: this.sprayer.refilling, selfCharging: !!this.sprayer.def.rechargePerSecond,
     };
+  }
+
+  /** What the music is doing (smoke test). */
+  musicState(): ReturnType<typeof musicState> {
+    return musicState();
   }
 
   /** Live entity counts for the debug perf overlay. */
@@ -2048,6 +2059,20 @@ export class GameScene extends Phaser.Scene {
     if (!this.runOver) this.fx.number(this.player.x, this.player.y - 80, `${area?.name.toUpperCase() ?? ''} ${CONSTRUCTION_LINES.reopened}`, '#7fffd4', 20);
   }
 
+  /** Boss theme while a boss is about; otherwise the pressure layer follows the crowd and Eugene's health (config/music). */
+  private updateMusic(alive: number): void {
+    const w = this.waves;
+    const p = MUSIC.pressure;
+    const boss = (w.roundActive && w.isBossRound) || !!this.boss?.germ.active;
+    let level = 0;
+    if (w.roundActive || boss) {
+      const crowd = alive / WAVES.maxAlive(Math.max(1, w.round));
+      level = Math.max(p.roundFloor, Phaser.Math.Clamp((crowd - p.crowdFrom) / (p.crowdFull - p.crowdFrom), 0, 1));
+      if (this.player.hp / this.player.maxHp <= BALANCE.player.lowHealth) level = 1;
+    }
+    setMusicMix(boss ? 'boss' : 'clinic', level);
+  }
+
   /** Eugene is down: freeze the room, save the high score, show the game over screen. */
   private endRun(): void {
     this.runOver = true;
@@ -2057,6 +2082,7 @@ export class GameScene extends Phaser.Scene {
     for (const g of this.germs.getChildren() as Germ[]) if (g.active) g.freeze();
     for (const gl of this.globs.getChildren() as Glob[]) if (gl.active) gl.retire();
     sfx.gameOver();
+    stopMusic();
     events.emit(GameEvents.PlayerDied);
 
     const round = this.waves.round;

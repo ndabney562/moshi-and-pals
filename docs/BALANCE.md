@@ -102,3 +102,10 @@ Values live in `src/config/balance.ts` and `src/config/controls.ts`.
 | Construction | from round 2, one opened room per round closes to Eugene | Not his room, no door within 140 px, only if he can still walk to the waiting room; germs pass |
 | Full Moon | germ looks ×0.7-1.45 (hitboxes unchanged), moonlit floor, patients walk backwards | |
 
+## Music (`src/config/music.ts`, songs in `src/data/music.ts`)
+| Value | Current | Notes |
+|---|---|---|
+| Music volume | 0.32 | Sound effects are 0.5; paused ducks music to 30% |
+| Clinic theme / boss theme | 108 BPM, light swing / 140 BPM, straight | Song changes wait for the next bar |
+| Pressure layer in a round | at least 35%; climbs from 20% to 70% of the round's germ cap | Full at or below 30% health; off between rounds |
+| Layer fade | 0.8 s time constant | Fade-out on game over 1.2 s |

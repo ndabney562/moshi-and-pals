@@ -7,6 +7,8 @@ export interface Settings {
   autoAim: boolean;
   /** Sound effects on/off (pause menu). */
   sound: boolean;
+  /** Music on/off (pause menu), separate from sound effects. */
+  music: boolean;
   /** Start a refill automatically when you spray an empty bottle (pause menu). */
   autoRefill: boolean;
   /** No screen shake (pause menu). */
@@ -20,7 +22,7 @@ export interface Settings {
 }
 
 const KEY = 'moshi.settings.v1';
-const DEFAULTS: Settings = { autoAim: true, sound: true, autoRefill: true, reducedMotion: false, learned: {}, character: 'eugene', difficulty: 'urgent' };
+const DEFAULTS: Settings = { autoAim: true, sound: true, music: true, autoRefill: true, reducedMotion: false, learned: {}, character: 'eugene', difficulty: 'urgent' };
 
 function load(): Settings {
   try {
