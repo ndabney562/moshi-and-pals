@@ -69,6 +69,8 @@ export interface RoomLayout {
   floors?: FloorArea[];
   /** Staircases linking floors: walk into one end, come out at the other. Usable once all `requires` rooms are open. */
   stairs?: Stairway[];
+  /** Plan pixel to world point, for layouts drawn from a floor plan (tests use it to stand somewhere specific). */
+  fromPlan?: (floor: 'ground' | 'up', px: number, py: number) => { x: number; y: number };
 }
 
 export interface Rect { x: number; y: number; w: number; h: number; }

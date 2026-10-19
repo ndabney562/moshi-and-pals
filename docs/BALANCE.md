@@ -16,6 +16,7 @@ Values live in `src/config/balance.ts` and `src/config/controls.ts`.
 | Jug (reserve) | 480 mL (4 refills) | Restock at SUPPLIES cart for $40 Copays |
 | Copays per kill | Basic 5, Sprinter 8, Write-Up 2, Diamond 100 | Cleaning a patient: 10 |
 | Door prices (M8) | Hallways 250, Exam 1-4 150, Exam 5-7 200, Supply Closet 150, Bathrooms 100, Manager 150, Lab 500, X-Ray 600, Egress 200, Upstairs 1000; upstairs Exam 8-11 150, 12-15 200, Supply Closet 2 150 | In `src/data/clinic.ts`; round 1 earns ~$50 |
+| Map scale (v0.19.1) | 2.4 game px per floor-plan px (was 3) | `S` in `src/data/clinic.ts`; furniture, rooms and spawns scale with it, door widths (110-140) and wall thickness (30) don't |
 | USE range | 80 px from a cart or door's edge | Hold 350 ms to buy at $100+ or when replacing a tool |
 | Spray zone / drag-aim | right half below 22% of height / 28 px drag | `CONTROLS.sprayZoneTop`, `dragAimDistance` |
 | Auto-aim stickiness | keeps target unless another is 25% closer | Line of sight required |
