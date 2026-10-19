@@ -1,6 +1,6 @@
 # Changelog
 
-## v0.28.1: Cheaper supply crates
+## v0.28.2: Cheaper supply crates
 - **Supply crates now cost $200** (was $250).
 
 ## v0.28.0: The Equipment Locker
