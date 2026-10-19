@@ -311,8 +311,12 @@ export const BALANCE = {
     /** EXAM ROOM privacy curtain: free, pulled across the doorway as a wall for `closedMs`. It snaps the Influenza Twins' strand. */
     curtain: { cost: 0, cooldownMs: 20000, closedMs: 8000 },
   },
-  /** Break-time snacks from the waiting-room vending machine: three random choices, each once, a few per run. */
-  vending: { maxPerRun: 3, choices: 3 },
+  /**
+   * Break-time snacks from the waiting-room vending machine: three random choices, no limit per run.
+   * Snacks stack; each one you've already had costs `repeatMarkup` more per earlier buy, and the stacked
+   * perks stop at `caps` (walk ×, pour-time ×, signature-cooldown ×, STAT! chance ×).
+   */
+  vending: { choices: 3, repeatMarkup: 0.5, caps: { speed: 1.5, refill: 0.4, purge: 0.4, crit: 6 } },
   /** DR. KAYA's signature: a sprint that bowls over every germ in his lane (he can't be hurt mid-sprint). */
   codeBlue: { cooldownMs: 9000, distance: 320, ms: 230, guardMs: 250, width: 90, damage: 30, knockback: 650, stunMs: 700 },
   /** PA LUCIEN's signature: a sterile zone where he stands; germs inside are slowed and take damage. */

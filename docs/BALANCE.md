@@ -79,7 +79,7 @@ Values live in `src/config/balance.ts` and `src/config/controls.ts`.
 | Autoclave (Lab) | $25; 1.2 s hiss, then 140 in 175 px (ignores armor); 30 s recharge | `BALANCE.traps.autoclave` |
 | Exam curtains (each exam doorway) | free; a wall for 8 s; 20 s recharge | `BALANCE.traps.curtain` |
 | X-ray (controls) | $40; 60 to everything within 520 px of the machine, through walls; 25 s recharge | `BALANCE.traps.xray` |
-| Vending machine | 3 random of 5 snacks, each once, 3 per run; $100-150 | `src/data/vending.ts`, `BALANCE.vending` |
+| Vending machine | 3 random of 5 snacks, no limit; $100-150, +50% of the base price per earlier buy of that snack; stacked perks cap at walk ×1.5, pour time ×0.4, signature recharge ×0.4, STAT! ×6 | `src/data/vending.ts`, `BALANCE.vending` |
 | CME Credits | 1 per 2 rounds, 3 per new achievement, 2 per boss | `CME` in `src/data/residency.ts` |
 | Specialties | 8-12 CME each; one active | `SPECIALTIES` in `src/data/residency.ts` |
 | Starter Kit | 15 CME; start with any crate tool | `STARTER_KIT_COST` |
@@ -125,7 +125,7 @@ Values live in `src/config/balance.ts` and `src/config/controls.ts`.
 |---|---|---|
 | Phone hold | 20 s within 260 px of the front desk, during a live round | Walking away or the round ending drops the call |
 | Fish | $5, 25 s of stench | The fridge's sticky note is readable only during the stench |
-| Mystery Key (vending B4) | $1 | Doesn't count toward the 3-snack limit |
+| Mystery Key (vending B4) | $1 | Not a snack |
 | Stall 3 | 3 flushes in one boss round | Needs the key and both code halves |
 | Last Fax Machine | 1400 HP (× the round's HP scaling, boss cap), 18 contact | Fought between rounds; the break waits |
 | Fax volley | 4 pages every 3.2 s (2.4 s below half health) | Fax Page: 9 HP, 190 speed, 5 contact |
