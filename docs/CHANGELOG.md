@@ -1,5 +1,9 @@
 # Changelog
 
+## v0.27.0: The gel burns
+- **Gel Launcher gel now burns.** Germs standing in it take 12 damage a second (18 with Family Size), and keep burning for 1.5 s after they crawl out. Bosses aren't slowed by gel, but they do burn. Burning germs flicker orange.
+- Overlapping gel doesn't stack the burn; the hottest puddle counts. Tool effectiveness and damage bonuses (Pals, perks) apply; STAT! crits don't.
+
 ## v0.26.0: NPS Scores hire the Pals
 - **NPS Scores**, a new currency that stays between shifts. Every shift earns 1 per round reached, 1 per patient you clean up and 3 per boss beaten. The Discharge Summary shows what you earned; the title screen shows what you have.
 - **Dr. Moshkovich is the only doctor on shift at first.** Dr. Kaya (30 NPS), PA Lucien (45) and Ken (60) are locked: tap a locked portrait to see the price, tap again to hire them for good.

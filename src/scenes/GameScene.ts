@@ -563,10 +563,22 @@ export class GameScene extends Phaser.Scene {
     const gelOn = this.gel.count > 0;
     for (const g of this.germs.getChildren() as Germ[]) {
       if (!g.active) continue;
-      // Sticky hand-sanitizer gel slows anything (but a boss) that walks through it
-      if (gelOn && !g.def.boss) {
-        const f = this.gel.slowAt(g.x, g.y);
-        if (f < 1) g.slow(time, f, 250);
+      // Sticky hand-sanitizer gel slows anything (but a boss) that walks through it, and burns everything
+      if (gelOn) {
+        if (!g.def.boss) {
+          const f = this.gel.slowAt(g.x, g.y);
+          if (f < 1) g.slow(time, f, 250);
+        }
+        const dps = this.gel.burnAt(g.x, g.y);
+        if (dps > 0) {
+          if (g.burnUntil <= time) g.nextBurnAt = time + BALANCE.gelBurn.tickMs;
+          g.burnDps = Math.max(g.burnUntil > time ? g.burnDps : 0, dps);
+          g.burnUntil = time + BALANCE.gelBurn.lingerMs;
+        }
+      }
+      if (g.burnUntil > time && time >= g.nextBurnAt) {
+        this.burnGerm(g, time);
+        if (!g.active) continue;
       }
       const override = bossOwns(this.boss, g) ? this.boss.movement(g) : undefined;
       if (override) {
@@ -855,6 +867,16 @@ export class GameScene extends Phaser.Scene {
       this.fx.number(germ.x, germ.y - germ.def.radius - 10, 'TINK! GET BEHIND IT', '#c8d6e5', 15);
     }
     this.damageGerm(germ, damage * mult * armor * (crit ? fb.critMult : 1), angle, knockback * (armor < 1 ? 0.3 : 1), def.id);
+  }
+
+  /** One Gel Launcher burn tick: tool effectiveness and damage bonuses apply, but no crits or knockback. */
+  private burnGerm(germ: Germ, time: number): void {
+    const tick = BALANCE.gelBurn.tickMs;
+    germ.nextBurnAt = time + tick;
+    const def = EQUIPMENT.gelLauncher;
+    const vs = this.mods.vs;
+    const mult = (def.effectiveness[germ.def.tag] ?? 1) * (this.mods.toolDamage ?? 1) * (this.character.passive.toolDamage ?? 1) * (vs && vs.tag === germ.def.tag ? vs.mult : 1);
+    this.damageGerm(germ, germ.burnDps * (tick / 1000) * mult, 0, 0, def.id);
   }
 
   /** Every way a germ gets hurt goes through here: numbers, boss bar, kills, score and Copays. */
