@@ -14,11 +14,18 @@
   - They always leave a pill behind.
 - 2 new achievements: *Sensitivity Report* (beat Methicillin) and *Herd Immunity* (beat the twins). Atlas notes for all three.
 - Fixed: the Discharge Summary blamed Diamond when Patient Zero's cough finished you.
+## v0.19.2: The Pals talk like themselves
+- Dr. Kaya, PA Lucien and Ken now react to patients in their own voices, from Noah's notes on the real people. Three lines each for every health code violation:
+  - **Dr. Kaya** stays chill, talks like a gym bro, reminds you he's an ER doc, prescribes prednisone, Afrin, a Z-Pak and saline for everything, and brings up his old smoking days.
+  - **PA Lucien** laughs at everything and turns every violation into a lesson for the patient and the scribes.
+  - **Ken** finds every patient fucking ridiculous, wants a smoke break, pushes guaifenesin, leans on Omar and Alan, and takes shots at Diamond.
+- New patient: the **MTA worker** in an orange safety vest, sprinting for the bathroom and letting in 2 germs. Lucien has a diagnosis: MTAitis.
 
 ## v0.19.1: A smaller clinic
 - **The clinic is 20% smaller** (Noah: "the map seems too large"). Same rooms in the same order at the same prices, just shorter corridors and smaller rooms, so there's less walking between fights.
 - Exam Room 1 can actually be reached now: a cabinet in the Supply Closet was blocking its door.
 - The Lab's entrance and the Manager's Office are roomier, so a Chonk Coccus no longer gets wedged in them, and germs find their way out of the small bathrooms and closets instead of pressing against the wall.
+
 
 ## v0.19.0: Milestone 17, Today's Shift
 - **Today's Shift** (📋 on the title screen): a daily challenge. Everyone gets the same shift on the same day: the date picks the random rolls and two modifiers, shown before you CLOCK IN. Always on Urgent. The title screen and the Discharge Summary show today's best, and your first finished Today's Shift each day earns +2 CME.
