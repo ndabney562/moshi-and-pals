@@ -1910,14 +1910,26 @@ try {
     await pg.evaluate((who) => {
       const sc = window.game.scene.getScene('Game');
       sc.addCopays(1000 - sc.copays);
+      // (Donald's shift is short and a slow browser may have run it out: bring them back for a minute)
+      sc.scribes.summon(who, sc.time.now, 60000);
       const s = sc.scribes.get(who);
-      s.until = Math.max(s.until, sc.time.now + 60000); // still on shift while a slow browser catches up
+      // They may already have taped one off on their own (they do whenever you can spare the Copays): ready again,
+      // and every other vent already blocked, so this one is the only choice
+      sc.vents.scribeReadyAt.delete(who);
       const v = sc.vents.list.find((x) => !x.block);
-      sc.vents.moveTo(v, s.img.x + 40, s.img.y);
+      for (const x of sc.vents.list) if (x !== v && !x.block) sc.vents.barricade(x, sc.time.now);
       window.__scribeVent = v;
     }, id);
-    const scribeBlock = await pg.waitForFunction(() => (window.__scribeVent.block ? window.game.scene.getScene('Game').copays : null), null, { timeout: 30000 })
-      .then((h) => h.jsonValue(), () => null);
+    const scribeBlock = await pg.waitForFunction((who) => {
+      const sc = window.game.scene.getScene('Game');
+      const v = window.__scribeVent;
+      if (!v) return null;
+      if (v.block) return sc.copays;
+      // Keep it by the scribe as they follow Eugene around
+      const s = sc.scribes.get(who);
+      if (s) sc.vents.moveTo(v, s.img.x + 40, s.img.y);
+      return null;
+    }, id, { timeout: 30000 }).then((h) => h.jsonValue(), () => null);
     check(scribeBlock !== null && scribeBlock <= 950, `${id} barricades a germ vent with your Copays (${scribeBlock})`);
   };
   {
