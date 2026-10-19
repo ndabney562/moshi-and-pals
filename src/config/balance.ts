@@ -34,7 +34,7 @@ export const BALANCE = {
     spacing: 140,
     /** ...and this far from anything with a USE button (from its edge), so BLOCK never gets in the way. */
     stationClearance: 160,
-    /** Random spots tried per vent before it settles for its room's planned spawn point. */
+    /** Random spots tried per vent (then as many again, closer to USE buttons and other vents) before it settles for its room's planned spawn point. */
     tries: 40,
     /** Footprint for USE (a square this wide around the vent). */
     size: 44,

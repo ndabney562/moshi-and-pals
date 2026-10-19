@@ -179,15 +179,17 @@ export class Vents {
     const area = boxes.reduce((s, r) => s + r.w * r.h, 0);
     const stations = this.host.stationFootprints();
     const rng = runRng.vents;
-    for (let i = 0; i < this.cfg.tries; i++) {
+    // Small rooms (a bathroom with its door and hand dryer) can't keep clear of every USE button: then just find room
+    for (let i = 0; i < this.cfg.tries * 2; i++) {
+      const strict = i < this.cfg.tries;
       // A box picked by its size, then a point inside it
       let roll = rng.float(0, area);
       const box = boxes.find((r) => (roll -= r.w * r.h) < 0) ?? boxes[0];
       const x = rng.float(box.x + 30, box.x + box.w - 30);
       const y = rng.float(box.y + 30, box.y + box.h - 30);
       if (!flow.roomy(x, y)) continue;
-      if (this.list.some((o) => o !== v && Math.hypot(o.x - x, o.y - y) < this.cfg.spacing)) continue;
-      if (stations.some((o) => o !== v.o && rectDistance(o, x, y) < this.cfg.stationClearance)) continue;
+      if (this.list.some((o) => o !== v && Math.hypot(o.x - x, o.y - y) < this.cfg.spacing * (strict ? 1 : 0.5))) continue;
+      if (strict && stations.some((o) => rectDistance(o, x, y) < this.cfg.stationClearance)) continue;
       return { x, y };
     }
     return undefined;

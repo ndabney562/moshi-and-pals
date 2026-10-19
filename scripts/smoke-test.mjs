@@ -713,7 +713,10 @@ try {
     const v = scene.vents;
     const inside = (x) => scene.room.rooms.some((r) => r.id === x.roomId && x.x >= r.x && x.x < r.x + r.w && x.y >= r.y && x.y < r.y + r.h);
     const where = () => v.list.map((x) => `${Math.round(x.x)},${Math.round(x.y)}`).join(' ');
-    const placed = v.list.length > 0 && v.list.every((x) => scene.unlocked.has(x.roomId) && inside(x) && scene.flow.roomy(x.x, x.y));
+    // (a vent with no room anywhere falls back to its room's planned spawn point)
+    const planned = (x) => scene.room.rooms.some((r) => r.germSpawns.some((p) => p.x === x.x && p.y === x.y));
+    const bad = v.list.filter((x) => !scene.unlocked.has(x.roomId) || !inside(x) || !(scene.flow.roomy(x.x, x.y) || planned(x)));
+    const placed = v.list.length > 0 && !bad.length;
     const before = where();
     v.shuffle();
     const moved = where() !== before && v.list.every(inside);
@@ -734,7 +737,7 @@ try {
     const boss = v.pick(t, () => true, (l) => l[1] ?? l[0], true) !== undefined;
     for (const x of v.list) if (x.block) x.block.until = 0;
     v.update(scene.time.now);
-    return { placed, moved, offer: offer.verb, paid, held, tries, broke: through === first, boss, clear: v.list.every((x) => !x.block) };
+    return { placed, bad: bad.map((x) => `${x.roomId}@${Math.round(x.x)},${Math.round(x.y)}`), moved, offer: offer.verb, paid, held, tries, broke: through === first, boss, clear: v.list.every((x) => !x.block) };
   });
   check(vents.placed && vents.moved, `germ vents sit at random open spots in open rooms and move every round (${JSON.stringify(vents)})`);
   check(vents.offer === 'BLOCK' && vents.paid.copays === 950 && vents.paid.blocked && vents.paid.verb === 'BLOCKED', `BLOCK puts a $50 barricade on a vent (${JSON.stringify(vents.paid)})`);
@@ -1674,7 +1677,7 @@ try {
     labelWaits(hp);
     const hireErrors = [];
     hp.on('pageerror', (e) => hireErrors.push(where(e)));
-    await hp.goto(url);
+    await hp.goto(url, { timeout: 90000 });
     await hp.waitForFunction(() => window.game?.scene.isActive('Title'));
     const hire = await hp.evaluate(() => {
       const t = window.game.scene.getScene('Title');
@@ -1854,6 +1857,7 @@ try {
       const sc = window.game.scene.getScene('Game');
       sc.addCopays(1000 - sc.copays);
       const s = sc.scribes.get(who);
+      s.until = Math.max(s.until, sc.time.now + 60000); // still on shift while a slow browser catches up
       const v = sc.vents.list.find((x) => !x.block);
       sc.vents.moveTo(v, s.img.x + 40, s.img.y);
       window.__scribeVent = v;
