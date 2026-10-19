@@ -302,6 +302,8 @@ export const BALANCE = {
   /** DR. KAYA's signature: a sprint that bowls over every germ in his lane (he can't be hurt mid-sprint). */
   codeBlue: { cooldownMs: 9000, distance: 320, ms: 230, guardMs: 250, width: 90, damage: 30, knockback: 650, stunMs: 700 },
   /** PA LUCIEN's signature: a sterile zone where he stands; germs inside are slowed and take damage. */
+  /** Gel Launcher burn (damage per second is per tier, in data/equipment.ts): it ticks every `tickMs` and keeps burning `lingerMs` after a germ leaves the gel. */
+  gelBurn: { tickMs: 250, lingerMs: 1500 },
   cleanField: { cooldownMs: 20000, ms: 6000, radius: 180, slow: 0.4, dps: 22 },
   /**
    * DIFFICULTY (title screen; data/difficulties.ts). Multipliers on germ health, every hit Eugene takes,

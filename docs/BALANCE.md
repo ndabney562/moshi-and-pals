@@ -70,7 +70,7 @@ Values live in `src/config/balance.ts` and `src/config/controls.ts`.
 | Mold Spot | 120 HP, rooted, 10 contact, $20; from r11, 3.5%, 2 alive | Spawns at the farthest open door; a spore every 6 s (12 HP, 120 px/s), up to 5 per Mold Spot. Fungus: bottle ×0.6, fogger ×0.8, bleach ×2, UV ×1, foamer ×0.8 |
 | Supply Requisition | $200; pick 1 of 2; appeal $100 +$50 per appeal; 5% denied (50% back) | `BALANCE.economy.crateCost/appealCost/appealStep/claimDeniedChance/deniedRefund`; pool `CRATE_POOL` |
 | Disinfectant Wipes | 16 per swipe in a 150° × 100 px arc, every 3rd ×2.5 at 135 px; 0.28 s; 40 wipes, box of 160 | Biofilm ×1.6, fungus ×1.3, spore ×0.6; tiers 200° / 120 px, then DEEP CLEAN every 2nd |
-| Gel Launcher | 30 in a 95 px burst, up to 380 px; 0.62 s; 10 gels, case of 40 | Gel 85 px, 3.5 s, germs ×0.45 (not bosses); tiers 5.5 s at ×0.3, then 42 damage, 125 px burst |
+| Gel Launcher | 30 in a 95 px burst, up to 380 px; 0.62 s; 10 gels, case of 40 | Gel 85 px, 3.5 s, germs ×0.45 (not bosses); gel burns 12/s (bosses too, ticks every 0.25 s, keeps burning 1.5 s after leaving, puddles don't stack); tiers 5.5 s at ×0.3, then 42 damage, 125 px burst, burn 18/s |
 | Defib Paddles | 26 to the first germ within 170 px in front, then 4 jumps of 170 px at ×0.85 each; 0.35 s stun | 25% charge per zap, 30%/s recharge; tiers 6 jumps and 32 damage, then 60%/s and 0.9 s stun |
 | Hand dryer (bathrooms) | free; 240 px; 20 damage, 950 knockback, 0.9 s stun; 20 s recharge | `BALANCE.traps.dryer` |
 | Autoclave (Lab) | $25; 1.2 s hiss, then 140 in 175 px (ignores armor); 30 s recharge | `BALANCE.traps.autoclave` |

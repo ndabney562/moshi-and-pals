@@ -2,7 +2,7 @@ import Phaser from 'phaser';
 
 const MAX_PUDDLES = 8;
 
-interface Puddle { img: Phaser.GameObjects.Image; x: number; y: number; r: number; slow: number; until: number; born: number; }
+interface Puddle { img: Phaser.GameObjects.Image; x: number; y: number; r: number; slow: number; dps: number; until: number; born: number; }
 
 /**
  * Slippery mucus puddles left by Sneezer globs. Eugene walks slower while standing in one.
@@ -15,14 +15,15 @@ export class Puddles {
   constructor(scene: Phaser.Scene, tint = 0xa8c94a) {
     for (let i = 0; i < MAX_PUDDLES; i++) {
       const img = scene.add.image(0, 0, 'blob').setDepth(1.5).setVisible(false).setTint(tint);
-      this.items.push({ img, x: 0, y: 0, r: 0, slow: 1, until: 0, born: 0 });
+      this.items.push({ img, x: 0, y: 0, r: 0, slow: 1, dps: 0, until: 0, born: 0 });
     }
   }
 
-  add(x: number, y: number, radius: number, ms: number, slow: number, time: number): void {
+  /** `dps`: burn damage per second to germs standing in it (Gel Launcher; 0 = none). */
+  add(x: number, y: number, radius: number, ms: number, slow: number, time: number, dps = 0): void {
     const p = this.items[this.next];
     this.next = (this.next + 1) % MAX_PUDDLES;
-    Object.assign(p, { x, y, r: radius, slow, until: time + ms, born: time });
+    Object.assign(p, { x, y, r: radius, slow, dps, until: time + ms, born: time });
     p.img.setPosition(x, y).setScale((radius * 2) / 16, (radius * 1.7) / 16).setRotation(Math.random() * Math.PI).setAlpha(0.6).setVisible(true);
   }
 
@@ -51,6 +52,15 @@ export class Puddles {
       if (p.img.visible && (x - p.x) ** 2 + (y - p.y) ** 2 < p.r * p.r) slow = Math.min(slow, p.slow);
     }
     return slow;
+  }
+
+  /** The strongest burn (damage per second) at (x, y); puddles don't stack. 0 = none. */
+  burnAt(x: number, y: number): number {
+    let dps = 0;
+    for (const p of this.items) {
+      if (p.img.visible && p.dps > dps && (x - p.x) ** 2 + (y - p.y) ** 2 < p.r * p.r) dps = p.dps;
+    }
+    return dps;
   }
 
   /** How many puddles are on the floor (tests). */

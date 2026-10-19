@@ -654,6 +654,24 @@ try {
     return scene.gel.count > 0 && (!g.active || g.hp < g.maxHp) ? { gel: scene.gel.count, slowed: g.active && g.slowUntil > scene.time.now } : null;
   }, null, { timeout: 15000 }).then((h) => h.jsonValue(), () => null);
   check(gelled && gelled.gel > 0, `the Gel Launcher's glob bursts on its target and leaves sticky gel (${JSON.stringify(gelled)})`);
+  // The gel burns: a germ dropped into it takes damage over time with no more shots
+  const burned = await page.waitForFunction(() => {
+    const scene = window.game.scene.getScene('Game');
+    if (!window.__burnGerm) {
+      const p = scene.gel.items.find((q) => q.img.visible);
+      if (!p) return null;
+      const before = new Set(scene.germs.getChildren().filter((c) => c.active));
+      scene.spawnGermAt('basic', p.x, p.y, true);
+      const g = scene.germs.getChildren().find((c) => c.active && !before.has(c));
+      g.freezeFor(scene.time.now, 8000);
+      g.hp = g.maxHp = 9999;
+      window.__burnGerm = g;
+      return null;
+    }
+    const g = window.__burnGerm;
+    return g.hp < g.maxHp ? { lost: Math.round(g.maxHp - g.hp), burning: g.burnUntil > scene.time.now } : null;
+  }, null, { timeout: 15000, polling: 100 }).then((h) => h.jsonValue(), () => null);
+  check(burned && burned.lost > 0 && burned.burning, `Gel Launcher gel burns germs standing in it (${JSON.stringify(burned)})`);
 
   // CLAIM DENIED: no form, a joke item, half the money back
   const denied = await page.evaluate(() => {
@@ -1659,7 +1677,7 @@ try {
     const hireErrors = [];
     hp.on('pageerror', (e) => hireErrors.push(where(e)));
     await hp.goto(url, { timeout: 90000 });
-    await hp.waitForFunction(() => window.game?.scene.isActive('Title'));
+    await hp.waitForFunction(() => window.game?.scene.isActive('Title'), null, { timeout: 90000 });
     const hire = await hp.evaluate(() => {
       const t = window.game.scene.getScene('Title');
       const label = (id) => t.picks.find((p) => p.id === id).name.text;

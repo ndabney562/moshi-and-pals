@@ -53,14 +53,14 @@ export interface EquipmentDef {
 
 /** WIPES: a melee sweep. Every `bigEvery`th swipe is a DEEP CLEAN (×`bigMult` damage, `bigReach`). */
 export interface SwipeAttack { kind: 'swipe'; reach: number; arcDeg: number; bigEvery: number; bigMult: number; bigReach: number; }
-/** GEL LAUNCHER: lobbed to the aimed germ (or `range`); bursts, then leaves gel that slows germs. */
-export interface LobAttack { kind: 'lob'; flightMs: number; blastRadius: number; puddleRadius: number; puddleMs: number; puddleSlow: number; }
+/** GEL LAUNCHER: lobbed to the aimed germ (or `range`); bursts, then leaves gel that slows and burns germs (`puddleDps`). */
+export interface LobAttack { kind: 'lob'; flightMs: number; blastRadius: number; puddleRadius: number; puddleMs: number; puddleSlow: number; puddleDps: number; }
 /** DEFIB PADDLES: zaps the germ in front within `reach`, then jumps `jumps` more times; each jump hits ×`falloff`. */
 export interface ChainAttack { kind: 'chain'; reach: number; jumps: number; jumpRange: number; falloff: number; stunMs: number; }
 export type ToolAttack = SwipeAttack | LobAttack | ChainAttack;
 
 const WIPES: SwipeAttack = { kind: 'swipe', reach: 100, arcDeg: 150, bigEvery: 3, bigMult: 2.5, bigReach: 135 };
-const GEL: LobAttack = { kind: 'lob', flightMs: 420, blastRadius: 95, puddleRadius: 85, puddleMs: 3500, puddleSlow: 0.45 };
+const GEL: LobAttack = { kind: 'lob', flightMs: 420, blastRadius: 95, puddleRadius: 85, puddleMs: 3500, puddleSlow: 0.45, puddleDps: 12 };
 const DEFIB: ChainAttack = { kind: 'chain', reach: 170, jumps: 4, jumpRange: 170, falloff: 0.85, stunMs: 350 };
 
 export interface ToolTier {
@@ -234,7 +234,7 @@ export const EQUIPMENT: Record<string, EquipmentDef> = {
   gelLauncher: {
     id: 'gelLauncher',
     name: 'Gel Launcher',
-    blurb: 'Lobs hand sanitizer over germs. It bursts and leaves sticky gel that slows them.',
+    blurb: 'Lobs hand sanitizer over germs. It bursts and leaves sticky gel that slows them, and the alcohol burns.',
     capacity: 10,
     costPerShot: 1,
     fireIntervalMs: 620,
@@ -254,7 +254,7 @@ export const EQUIPMENT: Record<string, EquipmentDef> = {
     attack: GEL,
     tiers: [
       { name: 'Extra Hold', blurb: 'Gel lasts longer and sticks harder', cost: 300, mods: { attack: { ...GEL, puddleMs: 5500, puddleSlow: 0.3 } } },
-      { name: 'Family Size', blurb: 'Bigger, harder bursts', cost: 700, mods: { damage: 42, attack: { ...GEL, puddleMs: 5500, puddleSlow: 0.3, blastRadius: 125, puddleRadius: 105 } } },
+      { name: 'Family Size', blurb: 'Bigger, harder bursts, hotter gel', cost: 700, mods: { damage: 42, attack: { ...GEL, puddleMs: 5500, puddleSlow: 0.3, blastRadius: 125, puddleRadius: 105, puddleDps: 18 } } },
     ],
   },
   defib: {
