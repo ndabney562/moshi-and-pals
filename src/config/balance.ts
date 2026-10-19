@@ -343,14 +343,12 @@ export const BALANCE = {
     hrRange: 900, hrMs: 3500,
   },
   /**
-   * SCRIBES (Omar and Alan), unlocked on the Residency Board, then dropped as power-ups. They follow Eugene for
-   * `ms`, attack germs in `range` and shame violating patients (one "spray" every `cleanEveryMs`, the same
+   * SCRIBES (Omar and Alan), unlocked on the Residency Board; each shift they wait in a random first-floor exam
+   * room and help for the rest of the shift once it's opened (Donald comes for `ms`). They follow Eugene, attack germs in `range` and shame violating patients (one "spray" every `cleanEveryMs`, the same
    * hitsToClean as Eugene's droplets). They can't be hurt and teleport back if left behind or stuck.
    */
   scribes: {
     ms: 20000,
-    /** Each hired scribe also clocks in on its own when this round starts, once every shift (the pill still drops too). */
-    clockIn: { omar: 2, alan: 3 } as Partial<Record<'omar' | 'alan' | 'donald', number>>,
     speed: 300,
     /** Where they stand: this far behind Eugene, off to one side. */
     followDistance: 85,

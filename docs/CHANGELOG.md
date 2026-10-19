@@ -1,8 +1,9 @@
 # Changelog
 
-## v0.27.1: The scribes clock in
-- **Hired scribes now show up every shift.** Omar clocks in at the start of round 2 and Alan at the start of round 3, for 20 s each. Before, they only came if their pill happened to drop (about 1 germ in 80 drops a pill, and the scribe's is one of several), so you could go many shifts without seeing them.
-- Their pills still drop from germs, so you can get extra visits. The Residency Board's Scribes tab says when they clock in.
+## v0.27.1: The scribes wait in the exam rooms
+- **No more scribe pills.** Once you hire Omar or Alan, each one waits every shift in a random locked exam room on the first floor (Exam Rooms 1 to 7).
+- **Open that room and they come out** and help you for the rest of the shift: they follow you, fight germs and shame patients with health code violations into cleaning up.
+- If every first-floor exam room is already open, they just start the shift with you. Donald still works as before.
 
 ## v0.27.0: Donald, the X-ray tech
 - **Donald joins the helpers.** Walk into the X-ray room during a shift and he unlocks for good: he comes out right then and helps you for 20 s, like Omar and Alan.

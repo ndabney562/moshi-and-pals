@@ -51,7 +51,7 @@ import { FaxMachineBrain } from '../systems/FaxMachineBrain';
 import { MiracleCure } from '../systems/MiracleCure';
 import { PatientDirector } from '../systems/PatientDirector';
 import { Scribes } from '../systems/Scribes';
-import { SCRIBES, scribeById } from '../data/scribes';
+import { SCRIBES, scribeById, type ScribeId } from '../data/scribes';
 import { Sprayer } from '../systems/Sprayer';
 import { WaveDirector } from '../systems/WaveDirector';
 
@@ -157,6 +157,8 @@ export class GameScene extends Phaser.Scene {
   private patients!: PatientDirector;
   /** Omar and Alan, the scribes (a power-up, once unlocked on the Residency Board). */
   private scribes!: Scribes;
+  /** Which hired scribe waits in which locked exam room this shift (room id -> scribe). */
+  private scribeRooms = new Map<string, ScribeId>();
   /** Patients the scribes cleaned up this shift (the Delegation achievement). */
   private scribeCleans = 0;
   /** Rooms where a helper already came out to help this shift (Donald in X-ray). */
@@ -375,9 +377,10 @@ export class GameScene extends Phaser.Scene {
     if (forced) {
       // ?scribe=omar: they work the whole shift
       const whole = 1e9;
-      this.powerups.start(forced.powerup, this.time.now, whole);
+      if (forced.powerup) this.powerups.start(forced.powerup, this.time.now, whole);
       this.scribes.summon(forced.id, this.time.now, whole);
     }
+    this.hideScribes(forced?.id);
 
     this.physics.add.collider(this.player, solids);
     this.physics.add.collider(this.germs, solids);
@@ -434,7 +437,6 @@ export class GameScene extends Phaser.Scene {
       if (p.round >= 8 && this.hasMod('powerOutage')) this.achieve('darkShift');
       if (this.hasMod('construction')) this.closeForConstruction(p.round);
       this.cure.onRoundStarted();
-      this.clockInScribes(p.round);
     };
     const onEscaped = () => this.achieve('ama');
     const onSnack = (p: { id: string }) => this.buySnack(p.id);
@@ -1230,14 +1232,24 @@ export class GameScene extends Phaser.Scene {
     }
   }
 
-  /** Hired scribes clock in on their round (BALANCE.scribes.clockIn), once a shift, so you actually get to see them. */
-  private clockInScribes(round: number): void {
-    if (this.player.dead) return;
+  /** Each hired scribe waits in a random locked first-floor exam room this shift (not one forced in by ?scribe=). */
+  private hideScribes(forced?: ScribeId): void {
+    this.scribeRooms = new Map();
     for (const def of SCRIBES) {
-      if (BALANCE.scribes.clockIn[def.id] !== round || !scribeUnlocked(def.id)) continue;
-      this.powerups.start(def.powerup, this.time.now);
-      this.scribes.summon(def.id, this.time.now, BALANCE.scribes.ms);
+      if (!def.waitsIn || def.id === forced || !scribeUnlocked(def.id)) continue;
+      const free = def.waitsIn.filter((id) => !this.unlocked.has(id) && !this.scribeRooms.has(id));
+      if (free.length === 0) this.scribes.summon(def.id, this.time.now, Number.MAX_SAFE_INTEGER);
+      else this.scribeRooms.set(runRng.world.pick(free), def.id);
     }
+  }
+
+  /** Opening the exam room a scribe waits in lets them out to help for the rest of the shift. */
+  private releaseScribe(roomId: string): void {
+    const id = this.scribeRooms.get(roomId);
+    const area = this.room.rooms.find((r) => r.id === roomId);
+    if (!id || !area) return;
+    this.scribeRooms.delete(roomId);
+    this.scribes.summon(id, this.time.now, Number.MAX_SAFE_INTEGER, { x: area.x + area.w / 2, y: area.y + area.h / 2 });
   }
 
   /** DONALD: the first visit to X-ray each shift brings him out to help (and unlocks him the first time ever). */
@@ -1815,6 +1827,7 @@ export class GameScene extends Phaser.Scene {
     sfx.cash();
     const area = this.room.rooms.find((r) => r.id === id);
     events.emit(GameEvents.RoomUnlocked, { id, name: area?.name ?? id, cost } satisfies RoomPayload);
+    this.releaseScribe(id);
   }
 
   /** Everything solid right now: furniture, walls, doors not yet bought, and curtains pulled shut. */
@@ -2093,8 +2106,6 @@ export class GameScene extends Phaser.Scene {
       case 'prescription':
         this.prescribe(time);
         break;
-      case 'scribeOmar':
-      case 'scribeAlan':
       case 'techDonald':
         if (def.scribe) this.scribes.summon(def.scribe, time, def.ms);
         break;
