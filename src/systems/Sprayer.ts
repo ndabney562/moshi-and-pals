@@ -1,11 +1,33 @@
 import Phaser from 'phaser';
 import { BALANCE } from '../config/balance';
+import { LOCKER } from '../config/locker';
 import type { EquipmentDef, ToolTier } from '../data/equipment';
 import { events, GameEvents } from '../core/events';
 import type { Droplet } from '../entities/Droplet';
 
 /** A non-spray tool's use (see systems/Arsenal.ts): `shot` counts uses, `damageMult` carries FRESH BOTTLE. */
 export type AttackHandler = (def: EquipmentDef, x: number, y: number, angle: number, time: number, shot: number, damageMult: number) => void;
+
+/** A tool's numbers after `level` Equipment Locker upgrades (they multiply whatever the tier sets). */
+export function withLocker(def: EquipmentDef, level: number): EquipmentDef {
+  let damage = 1;
+  let supply = 1;
+  let interval = 1;
+  for (const l of LOCKER.levels.slice(0, level)) {
+    damage *= l.damage ?? 1;
+    supply *= l.supply ?? 1;
+    interval *= l.interval ?? 1;
+  }
+  if (level <= 0) return def;
+  return {
+    ...def,
+    damage: def.damage * damage,
+    capacity: Math.round(def.capacity * supply),
+    reserve: Math.round(def.reserve * supply),
+    rechargePerSecond: def.rechargePerSecond ? def.rechargePerSecond * supply : def.rechargePerSecond,
+    fireIntervalMs: Math.round(def.fireIntervalMs * interval),
+  };
+}
 
 /**
  * Runs a spray-type piece of equipment: supply, fire rate, spread, refills.
@@ -37,13 +59,17 @@ export class Sprayer {
 
   /** Compounding Station upgrades bought for this tool (0 = generic). */
   tier = 0;
-  /** The tool's current numbers (its base definition plus any upgrades). */
+  /** The tool's current numbers (its base definition plus any upgrades, Locker levels included). */
   def: EquipmentDef;
+  /** Base plus Compounding Station tiers, before the Locker. */
+  private tiered: EquipmentDef;
 
-  constructor(private readonly base: EquipmentDef, private readonly droplets: Phaser.Physics.Arcade.Group, private readonly onAttack?: AttackHandler) {
-    this.def = base;
-    this.ammo = base.capacity;
-    this.reserve = base.reserve;
+  /** `locker`: Equipment Locker levels bought for this tool between shifts. */
+  constructor(private readonly base: EquipmentDef, private readonly droplets: Phaser.Physics.Arcade.Group, private readonly onAttack?: AttackHandler, readonly locker = 0) {
+    this.tiered = base;
+    this.def = withLocker(base, locker);
+    this.ammo = this.def.capacity;
+    this.reserve = this.def.reserve;
   }
 
   get refilling(): boolean {
@@ -106,7 +132,8 @@ export class Sprayer {
     if (!next) return undefined;
     const old = this.def;
     this.tier++;
-    this.def = { ...old, ...next.mods };
+    this.tiered = { ...this.tiered, ...next.mods };
+    this.def = withLocker(this.tiered, this.locker);
     this.ammo = Math.min(this.def.capacity, (this.ammo / old.capacity) * this.def.capacity);
     if (old.reserve > 0) this.reserve = Math.min(this.maxReserve, (this.reserve / (old.reserve * this.jugScale)) * this.maxReserve);
     this.emitChanged(time);
