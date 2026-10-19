@@ -2,6 +2,8 @@ import Phaser from 'phaser';
 import { COLORS } from '../config/theme';
 import { GERMS, type GermDef } from '../data/germs';
 import { VIOLATIONS, type ViolationDef } from '../data/patients';
+import { EQUIPMENT, STARTING_EQUIPMENT } from '../data/equipment';
+import { drawTool, toolTexture } from './toolArt';
 
 /**
  * Creates placeholder textures in code so the prototype needs no image files.
@@ -23,6 +25,7 @@ export class BootScene extends Phaser.Scene {
     this.makeKaya();
     this.makeLucien();
     this.makeKen();
+    this.makeTools();
     this.makeOmar();
     this.makeAlan();
     this.makeDonald();
@@ -44,19 +47,15 @@ export class BootScene extends Phaser.Scene {
   /**
    * Top-down Eugene facing right (+x). 96x96, centered.
    * Matches Noah's title poster: messy brown-grey hair, blue surgical mask,
-   * stethoscope, white lab coat over navy scrubs, white spray bottle.
+   * stethoscope, white lab coat over navy scrubs. His tool is a separate sprite (toolArt.ts).
    */
   private makeEugene(cap = false): void {
     const g = this.add.graphics();
     const outline = 0x1b2b30;
 
-    // Right arm reaching forward holding the squirt bottle (his right side is +y when facing +x)
+    // Right arm reaching forward to hold his tool (his right side is +y when facing +x)
     g.fillStyle(COLORS.coat).lineStyle(3, outline).fillRoundedRect(46, 60, 30, 13, 6).strokeRoundedRect(46, 60, 30, 13, 6);
     g.fillStyle(COLORS.skin).fillCircle(78, 66, 6).strokeCircle(78, 66, 6);
-    // Squirt bottle: body, cap, nozzle
-    g.fillStyle(COLORS.bottle).fillRoundedRect(76, 70, 14, 20, 4).strokeRoundedRect(76, 70, 14, 20, 4);
-    g.fillStyle(COLORS.bottleCap).fillRect(79, 64, 8, 7).strokeRect(79, 64, 8, 7);
-    g.fillStyle(COLORS.bottleCap).fillTriangle(87, 65, 94, 67, 87, 69);
 
     // Left arm, slightly forward
     g.fillStyle(COLORS.coat).fillRoundedRect(44, 18, 22, 13, 6).strokeRoundedRect(44, 18, 22, 13, 6);
@@ -106,20 +105,36 @@ export class BootScene extends Phaser.Scene {
       for (const [dx, dy] of [[-7, -6], [0, -9], [6, -3], [-4, 2], [3, 6], [-8, 8], [8, 5], [0, 0]]) g.fillCircle(45 + dx, 46 + dy, 1.6);
       g.lineStyle(3, 0x1f2a44).lineBetween(31, 46, 24, 42).lineBetween(31, 46, 24, 51);
     }
-    g.generateTexture(cap ? 'eugene-cap' : 'eugene', 96, 96);
+    this.finishDoctor(g, cap ? 'eugene-cap' : 'eugene');
+  }
+
+  /**
+   * Saves a doctor's texture empty-handed (in a shift the held tool is its own sprite, see Player), then
+   * again as `<key>-held` holding the squirt bottle, for portraits.
+   */
+  private finishDoctor(g: Phaser.GameObjects.Graphics, key: string): void {
+    g.generateTexture(key, 96, 96);
+    drawTool(g, STARTING_EQUIPMENT);
+    g.generateTexture(`${key}-held`, 96, 96);
     g.destroy();
   }
 
-  /** Two-tone clinic linoleum, tiled across the floor. */
-  /** The parts every doctor shares, seen from above facing +x: arms (one holding the bottle) and the lab coat. */
+  /** One held-tool sprite per piece of equipment, `tool-<id>`, laid over the doctor in the same 96x96 frame. */
+  private makeTools(): void {
+    for (const id of Object.keys(EQUIPMENT)) {
+      const g = this.add.graphics();
+      drawTool(g, id);
+      g.generateTexture(toolTexture(id), 96, 96);
+      g.destroy();
+    }
+  }
+
+  /** The parts every doctor shares, seen from above facing +x: arms (the right hand holds the tool, drawn separately) and the lab coat. */
   private drawDoctorBody(g: Phaser.GameObjects.Graphics, skin: number, under: number, coatW: number,
     coat: number = COLORS.coat, coatShadow: number = COLORS.coatShadow): void {
     const outline = 0x1b2b30;
     g.fillStyle(coat).lineStyle(3, outline).fillRoundedRect(46, 60, 30, 13, 6).strokeRoundedRect(46, 60, 30, 13, 6);
     g.fillStyle(skin).fillCircle(78, 66, 6).strokeCircle(78, 66, 6);
-    g.fillStyle(COLORS.bottle).fillRoundedRect(76, 70, 14, 20, 4).strokeRoundedRect(76, 70, 14, 20, 4);
-    g.fillStyle(COLORS.bottleCap).fillRect(79, 64, 8, 7).strokeRect(79, 64, 8, 7);
-    g.fillStyle(COLORS.bottleCap).fillTriangle(87, 65, 94, 67, 87, 69);
     g.fillStyle(coat).fillRoundedRect(44, 18, 22, 13, 6).strokeRoundedRect(44, 18, 22, 13, 6);
     g.fillStyle(skin).fillCircle(68, 24, 6).strokeCircle(68, 24, 6);
     g.fillStyle(coat).fillEllipse(41, 46, coatW, 78).strokeEllipse(41, 46, coatW, 78);
@@ -149,8 +164,7 @@ export class BootScene extends Phaser.Scene {
     g.fillStyle(0xf26b21).fillCircle(46, 46, 3);
     // Dark sunglasses peeking out under the brim
     g.fillStyle(0x0b0b0b).fillRoundedRect(62, 37, 5, 8, 2).fillRoundedRect(62, 47, 5, 8, 2).fillRect(63, 44, 2, 4);
-    g.generateTexture('kaya', 96, 96);
-    g.destroy();
+    this.finishDoctor(g, 'kaya');
   }
 
   /**
@@ -176,8 +190,7 @@ export class BootScene extends Phaser.Scene {
     g.lineStyle(2, 0x111111).lineBetween(60, 45, 60, 47).lineBetween(57, 39, 44, 34).lineBetween(57, 53, 44, 58);
     // Mustache and goatee at the front
     g.fillStyle(0x1a1410).fillEllipse(63.5, 46, 3, 12);
-    g.generateTexture('lucien', 96, 96);
-    g.destroy();
+    this.finishDoctor(g, 'lucien');
   }
 
   /**
@@ -209,8 +222,7 @@ export class BootScene extends Phaser.Scene {
     g.lineStyle(3, outline).strokeCircle(48, 46, 16);
     // Nose
     g.fillStyle(0xd59c78).fillCircle(64, 46, 3);
-    g.generateTexture('ken', 96, 96);
-    g.destroy();
+    this.finishDoctor(g, 'ken');
   }
 
   /**
@@ -330,6 +342,7 @@ export class BootScene extends Phaser.Scene {
     g.destroy();
   }
 
+  /** Two-tone clinic linoleum, tiled across the floor. */
   private makeFloorTile(): void {
     const g = this.add.graphics();
     g.fillStyle(COLORS.floorA).fillRect(0, 0, 64, 64);
