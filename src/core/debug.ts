@@ -9,7 +9,7 @@
  *   ?fps=30           cap the frame rate (simulates iPhone Low Power Mode)
  *   ?mods=powerOutage,fullMoon   play a normal shift with these modifiers (ids in data/modifiers.ts)
  *   ?seed=123         seed the run's random rolls (same seed, same rolls)
- *   ?doctor=ken       play this shift as eugene, kaya, lucien or ken (not saved)
+ *   ?doctor=ken       play this shift as eugene, kaya, lucien or ken (not saved, hired or not)
  *   ?scribe=omar      a scribe (omar or alan) works the whole shift, and their pill drops even if locked
  *   ?secret=records   the Miracle Cure, every clue found and Stall 3's panel open (`clockout`: ready to clock out)
  *

@@ -18,6 +18,7 @@
 - Decided Ken shows as just "Ken" and Diamond loses her flag pin.
 
 ## Requested now
+- Playtest v0.26.0: how many shifts did it take to hire Dr. Kaya (30 NPS)? Are Lucien (45) and Ken (60) worth the wait, and do they feel stronger than Eugene?
 - Playtest v0.19.0 **Today's Shift** (📋 on the title screen) for a few days, and try Walk-In and Trauma Center. Rename any modifier, rewrite their jokes (`src/data/modifiers.ts`), or pitch new ones. Testers can force any: `?mods=powerOutage,fullMoon`.
 - Playtest v0.18.0: play as Ken against Diamond (`?round=5&doctor=ken`), and hire the scribes on the Residency Board (or try `?scribe=omar` / `?scribe=alan`). Too strong, too weak, funny enough?
 - Is FILE A GRIEVANCE the right name for Ken's move?

@@ -74,7 +74,7 @@ export class GameOverScene extends Phaser.Scene {
     card.add([
       t(cx + 28, cy + 16, 'DISCHARGE SUMMARY', 28, INK, '900'),
       t(cx + cw - 28, cy + 22, `PATIENT: ${result.chart ?? 'MOSHKOVICH, E.'}  ·  SHIFT ${result.runs}  ·  ${(result.difficulty ?? 'Urgent').toUpperCase()}${result.specialty ? `  ·  ${result.specialty.toUpperCase()}` : ''}`, 16, INK_SOFT, 'bold').setOrigin(1, 0),
-      t(cx + cw - 28, cy + 80, `🎓 +${result.cme ?? 0} CME CREDITS${result.dailyBonus ? `  (+${result.dailyBonus} FIRST SHIFT TODAY)` : ''}`, 20, RECORD, '900').setOrigin(1, 0),
+      t(cx + cw - 28, cy + 80, `🎓 +${result.cme ?? 0} CME CREDITS${result.dailyBonus ? `  (+${result.dailyBonus} FIRST SHIFT TODAY)` : ''}  ·  ⭐ +${result.nps ?? 0} NPS`, 20, RECORD, '900').setOrigin(1, 0),
       t(cx + 28, cy + 76, result.clockedOut ? 'CAUSE OF DEATH (NONE)' : 'CAUSE OF DEATH', 14, INK_SOFT),
       t(cx + 28, cy + 96, result.causeOfDeath, 22, INK, 'italic'),
     ]);

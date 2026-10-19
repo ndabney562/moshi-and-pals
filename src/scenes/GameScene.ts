@@ -15,7 +15,7 @@ import { nextShift, type ShiftSetup } from '../core/shift';
 import { CONSTRUCTION_LINES, CONSTRUCTION_SIGN, modifierById, type ModifierId } from '../data/modifiers';
 import { difficultyById } from '../data/difficulties';
 import { unlockAchievement } from '../core/achievements';
-import { activeSpecialty, creditsFor, grant, progress, recordShift, scribeUnlocked } from '../core/progress';
+import { activeSpecialty, creditsFor, doctorUnlocked, grant, npsFor, progress, recordShift, scribeUnlocked } from '../core/progress';
 import type { SpecialtyMods } from '../data/residency';
 import { newRunStats, type RunStats } from '../core/runStats';
 import { initSfx, sfx } from '../core/sfx';
@@ -260,7 +260,8 @@ export class GameScene extends Phaser.Scene {
 
     this.fx = new Fx(this);
     this.flow = new FlowField(room.width, room.height, this.blockingObstacles());
-    this.character = characterById(DEBUG.doctor ?? settings.character);
+    // A Pal who hasn't been hired with NPS Scores can't go on shift (?doctor= skips that, for testing)
+    this.character = characterById(DEBUG.doctor ?? (doctorUnlocked(settings.character) ? settings.character : 'eugene'));
     // The Miracle Cure's reward: Eugene wears his scrub cap from then on
     const capped = this.character.id === 'eugene' && progress().owned.includes('scrubCap');
     this.player = new Player(this, room.playerSpawn.x, room.playerSpawn.y, capped ? 'eugene-cap' : this.character.id);
@@ -834,7 +835,7 @@ export class GameScene extends Phaser.Scene {
   private hitGerm(germ: Germ, def: EquipmentDef, damage: number, angle: number, knockback: number, pierces: boolean): void {
     if (!germ.active) return;
     const vs = this.mods.vs;
-    const mult = (def.effectiveness[germ.def.tag] ?? 1) * (this.mods.toolDamage ?? 1) * (vs && vs.tag === germ.def.tag ? vs.mult : 1);
+    const mult = (def.effectiveness[germ.def.tag] ?? 1) * (this.mods.toolDamage ?? 1) * (this.character.passive.toolDamage ?? 1) * (vs && vs.tag === germ.def.tag ? vs.mult : 1);
     // STAT! critical hit
     const fb = BALANCE.feedback;
     const crit = this.powerups.isActive('triage', this.time.now) || runRng.loot.chance(fb.critChance * this.perks.crit);
@@ -2075,6 +2076,7 @@ export class GameScene extends Phaser.Scene {
   }
 
   private onPatientCleaned(p: Patient): void {
+    this.runStats.patientsCleaned++;
     const points = BALANCE.patients.cleanPoints;
     this.score += points;
     this.addCopays(BALANCE.economy.cleanPatientCopays);
@@ -2321,7 +2323,9 @@ export class GameScene extends Phaser.Scene {
     // CME Credits for the Residency Board (and lifetime kills for the Atlas); the day's first Today's Shift earns a bonus
     const dailyBonus = sh.daily && record.firstDailyToday ? BALANCE.daily.firstFinishCme : 0;
     const cme = creditsFor(round, st.achievements.length, this.bossesDefeated) + dailyBonus;
-    recordShift(cme, st.kills);
+    // NPS Scores hire the Pals
+    const nps = npsFor(round, st.patientsCleaned, this.bossesDefeated);
+    recordShift(cme, st.kills, nps);
     const [favId, favCount] = Object.entries(st.kills).sort((a, b) => b[1] - a[1])[0] ?? [];
     const killer = st.killer ? GERMS[st.killer] : undefined;
     const result: RunResult = {
@@ -2339,6 +2343,7 @@ export class GameScene extends Phaser.Scene {
       newAchievements: [...st.achievements],
       chart: this.character.chart,
       cme,
+      nps,
       specialty: this.specialtyName,
       difficulty: difficultyById(sh.difficulty).name,
       modifiers: sh.mods.map((id) => modifierById(id)?.name ?? id),

@@ -129,6 +129,8 @@ export interface RunResult {
   newAchievements: string[];
   /** CME Credits this shift earned for the Residency Board, and the Specialty worked under ('' = none). */
   cme: number;
+  /** NPS Scores this shift earned (they hire the Pals). */
+  nps: number;
   specialty: string;
   /** Who was on shift, as the chart names them. */
   chart: string;

@@ -269,7 +269,8 @@ try {
   const purgeBefore = await page.evaluate(() => {
     const scene = window.game.scene.getScene('Game');
     scene.player.hp = 100;
-    scene.spawnGermAt('basic', scene.player.x + 80, scene.player.y);
+    // Past the round's on-screen cap (a fast runner can be there by now) so the nearest germ is this one, in reach
+    scene.spawnGermAt('basic', scene.player.x + 80, scene.player.y, true);
     const g = scene.germs.getChildren().filter((c) => c.active).sort((a, b) =>
       Math.hypot(a.x - scene.player.x, a.y - scene.player.y) - Math.hypot(b.x - scene.player.x, b.y - scene.player.y))[0];
     window.__purgeTarget = g;
@@ -1012,12 +1013,17 @@ try {
     for (const g of scene.germs.getChildren()) if (g.active && g.def.id === 'writeUp') g.kill();
     scene.player.hp = 100;
   });
-  // Down to 30% health, below the tantrum threshold
-  await hitBoss(await page.evaluate(() => { const b = window.game.scene.getScene('Game').boss.germ; return b.hp - b.maxHp * 0.3; }));
+  // Down to 30% health, below the tantrum threshold. Set directly: a hit can crit (random) and finish her off.
+  await page.evaluate(() => { const b = window.game.scene.getScene('Game').boss.germ; b.hp = b.maxHp * 0.3; });
   // (slow test browsers: allow plenty of game time for the wind-up and the stomp)
-  await page.waitForFunction(() => window.game.scene.getScene('Game').boss.mode === 'tantrumWindup', null, { timeout: 30000 });
-  await page.waitForFunction(() => window.game.scene.getScene('Game').boss.nextTantrumAt > 0, null, { timeout: 30000 });
-  check(true, 'Policy Tantrum winds up and stomps at low health');
+  const tantrum = await page.waitForFunction(() => window.game.scene.getScene('Game').boss.mode === 'tantrumWindup', null, { timeout: 30000 })
+    .then(() => page.waitForFunction(() => window.game.scene.getScene('Game').boss.nextTantrumAt > 0, null, { timeout: 30000 }))
+    .then(() => 'stomped', () => page.evaluate(() => {
+      const sc = window.game.scene.getScene('Game');
+      const b = sc.boss;
+      return JSON.stringify({ active: b.active, mode: b.mode, hp: Math.round(b.germ.hp), maxHp: b.germ.maxHp, nextTantrumAt: b.nextTantrumAt, now: Math.round(sc.time.now), dead: sc.player.dead });
+    }));
+  check(tantrum === 'stomped', `Policy Tantrum winds up and stomps at low health (${tantrum})`);
 
   // Finish her off
   await page.evaluate(() => { window.game.scene.getScene('Game').player.hp = 100; });
@@ -1302,6 +1308,7 @@ try {
   }));
   check(cme.saved.credits > 0 && cme.line.includes(`+${cme.saved.credits} CME`) && (cme.saved.kills?.basic ?? 0) > 0,
     `the shift earns CME Credits and banks lifetime kills for the Atlas (${cme.line}, ${cme.saved.credits} CME, ${cme.saved.kills?.basic} basics)`);
+  check(cme.saved.nps > 0 && cme.line.includes(`+${cme.saved.nps} NPS`), `the shift earns NPS Scores (${cme.line}, ${cme.saved.nps} NPS)`);
 
   // Restart from the game over screen
   const again = await page.evaluate(() => {
@@ -1344,6 +1351,20 @@ try {
   check(end.x > start.x + 20 && end.y < start.y - 20, `Eugene moved up-right (${start.x | 0},${start.y | 0}) -> (${end.x | 0},${end.y | 0})`);
   check(Math.abs(end.rotation - -Math.PI / 4) < 0.3, `Eugene faces where he walks (up-right), rotation ${end.rotation.toFixed(2)}`);
   check(firstHint.includes('MOVE'), `a new player is shown how to move ("${firstHint}")`);
+  // On a slow runner another hint (Sinus Purge, the pour) can take the screen before SPRAY is learned. If so, give
+  // SPRAY its moment now: one held germ in range, and hold the button until the hint is learned.
+  const sprayLearned = () => page.evaluate(() => !!JSON.parse(localStorage.getItem('moshi.settings.v1') ?? '{}').learned?.spray);
+  if (!(await sprayLearned())) {
+    await page.evaluate(() => {
+      const sc = window.game.scene.getScene('Game');
+      sc.spawnGermAt('basic', sc.player.x + 120, sc.player.y, true);
+      for (const g of sc.germs.getChildren()) if (g.active) { g.maxHp = g.hp = 5000; g.freezeFor(sc.time.now, 60000); }
+    });
+    const held = await buttonAt('sprayButton');
+    await touch('touchStart', [{ ...held, id: 4 }]);
+    await page.waitForFunction(() => !!JSON.parse(localStorage.getItem('moshi.settings.v1') ?? '{}').learned?.spray, null, { timeout: 60000 }).catch(() => {});
+    await touch('touchEnd', []);
+  }
   const learned = await page.evaluate(() => JSON.parse(localStorage.getItem('moshi.settings.v1') ?? '{}').learned ?? {});
   check(learned.move && learned.spray, `moving and spraying are learned, so those hints are gone (${JSON.stringify(learned)})`);
 
@@ -1608,10 +1629,51 @@ try {
   check(swErrors.length === 0, `no errors offline${swErrors.length ? ': ' + swErrors.join(' | ') : ''}`);
   await swc.close();
 
-  // THE PALS (M16): Dr. Kaya and PA Lucien are playable, each with their own signature move
+  // NPS SCORES: a Pal who hasn't been hired can't go on shift; on the title, tap a locked Pal twice to hire them
+  {
+    const hc = await browser.newContext({ viewport: { width: 852, height: 393 }, deviceScaleFactor: 1, isMobile: true, hasTouch: true });
+    await hc.addInitScript(() => {
+      if (localStorage.getItem('moshi.progress.v1')) return;
+      localStorage.setItem('moshi.settings.v1', JSON.stringify({ character: 'kaya', learned: { move: true, spray: true, pour: true, purge: true, buy: true } }));
+      localStorage.setItem('moshi.progress.v1', JSON.stringify({ credits: 0, earned: 0, nps: 35, npsEarned: 35, owned: [], specialty: '', startTool: '', kills: {} }));
+    });
+    const hp = await hc.newPage();
+    labelWaits(hp);
+    const hireErrors = [];
+    hp.on('pageerror', (e) => hireErrors.push(where(e)));
+    await hp.goto(url);
+    await hp.waitForFunction(() => window.game?.scene.isActive('Title'));
+    const hire = await hp.evaluate(() => {
+      const t = window.game.scene.getScene('Title');
+      const label = (id) => t.picks.find((p) => p.id === id).name.text;
+      const before = { info: t.pickInfo.text, kaya: label('kaya') };
+      t.pick('lucien');
+      const tooPoor = { info: t.pickInfo.text, nps: JSON.parse(localStorage.getItem('moshi.progress.v1')).nps };
+      t.pick('lucien');
+      const stillLocked = JSON.parse(localStorage.getItem('moshi.progress.v1')).owned.includes('doctor:lucien');
+      t.pick('kaya');
+      const asked = t.pickInfo.text;
+      t.pick('kaya');
+      const saved = JSON.parse(localStorage.getItem('moshi.progress.v1'));
+      return { before, tooPoor, stillLocked, asked, owned: saved.owned, nps: saved.nps, kaya: label('kaya'), on: JSON.parse(localStorage.getItem('moshi.settings.v1')).character };
+    });
+    check(hire.before.info.startsWith('DR. MOSHKOVICH') && hire.before.kaya.includes('30 NPS'),
+      `a saved pick of an unhired Pal falls back to Dr. Moshkovich, and locked Pals show their NPS price (${JSON.stringify(hire.before)})`);
+    check(/NEED 10 MORE/.test(hire.tooPoor.info) && !hire.stillLocked && /TAP AGAIN/.test(hire.asked),
+      `a Pal you can't afford stays locked, one you can asks for a second tap (${JSON.stringify({ tooPoor: hire.tooPoor, asked: hire.asked })})`);
+    check(hire.owned.includes('doctor:kaya') && hire.nps === 5 && hire.kaya === 'KAYA' && hire.on === 'kaya',
+      `the second tap hires Dr. Kaya for 30 NPS and puts him on shift (${JSON.stringify({ owned: hire.owned, nps: hire.nps, on: hire.on })})`);
+    check(hireErrors.length === 0, `no errors hiring a Pal${hireErrors.length ? ': ' + hireErrors.join(' | ') : ''}`);
+    await hc.close();
+  }
+
+  // THE PALS (M16): Dr. Kaya and PA Lucien are playable (once hired with NPS), each with their own signature move
   for (const who of ['kaya', 'lucien']) {
     const pc = await browser.newContext({ viewport: { width: 852, height: 393 }, deviceScaleFactor: 1, isMobile: true, hasTouch: true });
-    await pc.addInitScript((w) => localStorage.setItem('moshi.settings.v1', JSON.stringify({ character: w, learned: { move: true, spray: true, pour: true, purge: true, buy: true } })), who);
+    await pc.addInitScript((w) => {
+      localStorage.setItem('moshi.settings.v1', JSON.stringify({ character: w, learned: { move: true, spray: true, pour: true, purge: true, buy: true } }));
+      localStorage.setItem('moshi.progress.v1', JSON.stringify({ credits: 0, earned: 0, nps: 0, npsEarned: 0, owned: [`doctor:${w}`], specialty: '', startTool: '', kills: {} }));
+    }, who);
     const pp2 = await pc.newPage();
     labelWaits(pp2);
     const palErrors = [];
@@ -1640,8 +1702,8 @@ try {
       check(start.texture === 'kaya' && /CODE/.test(start.label) && start.cooling && moved.hurt >= 2,
         `Dr. Kaya's CODE BLUE sprints through germs (${JSON.stringify({ ...start, ...moved })})`);
     } else {
-      check(start.texture === 'lucien' && start.maxHp === 120 && /CLEAN/.test(start.label) && start.cooling && moved.hurt >= 2,
-        `PA Lucien (+20 health) puts down a CLEAN FIELD that burns germs (${JSON.stringify({ ...start, ...moved })})`);
+      check(start.texture === 'lucien' && start.maxHp === 130 && /CLEAN/.test(start.label) && start.cooling && moved.hurt >= 2,
+        `PA Lucien (+30 health) puts down a CLEAN FIELD that burns germs (${JSON.stringify({ ...start, ...moved })})`);
     }
     check(palErrors.length === 0, `no errors playing ${who}${palErrors.length ? ': ' + palErrors.join(' | ') : ''}`);
     await pc.close();
