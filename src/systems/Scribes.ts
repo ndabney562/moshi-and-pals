@@ -58,7 +58,7 @@ class Scribe {
 }
 
 /**
- * THE SCRIBES: Omar and Alan follow Eugene around for a while (a power-up), attack germs near him and
+ * THE SCRIBES (and Donald, the X-ray tech): Omar and Alan follow Eugene around for a while (a power-up), attack germs near him and
  * shame violating patients into cleaning up. Cheap on purpose: simple steering toward a spot behind Eugene,
  * the germs' flow field when a wall is in the way, and a teleport when they're left behind or stuck.
  */
@@ -68,7 +68,8 @@ export class Scribes {
   private readonly v = new Phaser.Math.Vector2();
 
   constructor(private readonly host: ScribeHost) {
-    this.list = SCRIBES.map((def, i) => new Scribe(host.scene, def, i % 2 ? 1 : -1));
+    // Omar off one shoulder, Alan off the other, Donald right behind
+    this.list = SCRIBES.map((def, i) => new Scribe(host.scene, def, [-1, 1, 0][i % 3]));
   }
 
   /** Brings a scribe in for `ms` (or keeps one already here for longer). */
@@ -119,7 +120,8 @@ export class Scribes {
 
     // Germs first; with none in reach, the nearest patient with a violation on record. In the same room
     // they step over the seats to get to one (furniture, no walls); otherwise they need a clear line.
-    const germ = this.nearestGerm(img.x, img.y, cfg.range);
+    const xray = s.def.id === 'donald';
+    const germ = this.nearestGerm(img.x, img.y, xray ? cfg.donald.range : cfg.range, xray);
     const patient = germ ? undefined : this.host.patients.nearestViolator(img.x, img.y, cfg.cleanRange * 1.8,
       (p) => p.violations > 0 && (this.host.sameRoom(img.x, img.y, p.x, p.y) || flow.lineClear(img.x, img.y, p.x, p.y)));
 
@@ -181,18 +183,21 @@ export class Scribes {
     img.setScale(1 + bob, 1 - bob);
   }
 
-  private nearestGerm(x: number, y: number, range: number): Germ | undefined {
+  /** The nearest germ in reach: in sight, or with `throughWalls` (X-rays) anywhere on the same floor. */
+  private nearestGerm(x: number, y: number, range: number, throughWalls = false): Germ | undefined {
     let best: Germ | undefined;
     let bestD = range * range;
     for (const g of this.host.germs()) {
       if (!g.active) continue;
       const d = (g.x - x) ** 2 + (g.y - y) ** 2;
-      if (d < bestD && this.host.flow.lineClear(x, y, g.x, g.y)) { bestD = d; best = g; }
+      if (d >= bestD) continue;
+      const seen = throughWalls ? this.host.sameFloor(x, y, g.x, g.y) : this.host.flow.lineClear(x, y, g.x, g.y);
+      if (seen) { bestD = d; best = g; }
     }
     return best;
   }
 
-  /** Omar sprays the nearest germ; Alan zaps it and jumps to the next ones. */
+  /** Omar sprays the nearest germ; Alan zaps it and jumps to the next ones; Donald X-rays everything in a line. */
   private attack(s: Scribe, germ: Germ, time: number): void {
     const { fx } = this.host;
     const img = s.img;
@@ -203,6 +208,21 @@ export class Scribes {
       fx.nozzleMist(img.x + Math.cos(a) * 26, img.y + Math.sin(a) * 26, a, 18, s.def.color, 4);
       sfx.spray();
       this.strike(s, germ, c.damage, a, c.knockback);
+    } else if (s.def.id === 'donald') {
+      const c = this.cfg.donald;
+      s.nextAttackAt = time + c.everyMs;
+      const ux = Math.cos(a), uy = Math.sin(a);
+      this.beam(img.x + ux * 24, img.y + uy * 24, a, c.range, c.width, s.def.color);
+      sfx.zap();
+      for (const g of this.host.germs()) {
+        if (!g.active || !this.host.sameFloor(img.x, img.y, g.x, g.y)) continue;
+        // Along the beam and close enough to its line
+        const along = (g.x - img.x) * ux + (g.y - img.y) * uy;
+        const off = Math.abs((g.x - img.x) * uy - (g.y - img.y) * ux);
+        if (along < 0 || along > c.range || off > c.width + g.displayWidth / 2) continue;
+        this.strike(s, g, c.damage, a, c.knockback);
+        if (g.active) g.stun(time, c.stunMs);
+      }
     } else {
       const c = this.cfg.alan;
       s.nextAttackAt = time + c.everyMs;
@@ -241,6 +261,17 @@ export class Scribes {
     if (!g.active) return;
     this.host.hit(g, damage, angle, knockback);
     if (!g.active) s.kills++;
+  }
+
+  /** Donald's X-ray: a pale glowing band that flashes and fades. */
+  private beam(x: number, y: number, angle: number, range: number, width: number, color: number): void {
+    const ex = x + Math.cos(angle) * range;
+    const ey = y + Math.sin(angle) * range;
+    const gfx = this.host.scene.add.graphics().setDepth(12);
+    gfx.lineStyle(width * 2, color, 0.25).lineBetween(x, y, ex, ey);
+    gfx.lineStyle(width * 0.7, color, 0.55).lineBetween(x, y, ex, ey);
+    gfx.lineStyle(3, 0xffffff, 0.9).lineBetween(x, y, ex, ey);
+    this.host.scene.tweens.add({ targets: gfx, alpha: 0, duration: 260, onComplete: () => gfx.destroy() });
   }
 
   /** A jagged blue zap through every germ in the chain. */

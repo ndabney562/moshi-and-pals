@@ -1,5 +1,11 @@
 # Changelog
 
+## v0.27.0: Donald, the X-ray tech
+- **Donald joins the helpers.** Walk into the X-ray room during a shift and he unlocks for good: he comes out right then and helps you for 20 s, like Omar and Alan.
+- After that, he comes out to help the first time you visit X-ray on every shift, and his pill (**X-RAY TECH: DONALD**) can drop from germs too.
+- **His X-ray beam goes through walls** and hits every germ in a line (30 damage, a short stun). Like the scribes, he also shames patients with health code violations into cleaning up.
+- The Residency Board's Scribes tab shows him, with how to unlock him.
+
 ## v0.26.0: NPS Scores hire the Pals
 - **NPS Scores**, a new currency that stays between shifts. Every shift earns 1 per round reached, 1 per patient you clean up and 3 per boss beaten. The Discharge Summary shows what you earned; the title screen shows what you have.
 - **Dr. Moshkovich is the only doctor on shift at first.** Dr. Kaya (30 NPS), PA Lucien (45) and Ken (60) are locked: tap a locked portrait to see the price, tap again to hire them for good.
