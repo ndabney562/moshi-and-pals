@@ -24,6 +24,10 @@ export class Germ extends Phaser.Physics.Arcade.Sprite {
   private slowFactor = 1;
   private flashUntil = 0;
   private wobble = Math.random() * 10;
+  /** Gel Launcher burn: damage per second until `burnUntil`, ticking at `nextBurnAt` (GameScene deals it). */
+  burnDps = 0;
+  burnUntil = 0;
+  nextBurnAt = 0;
   /** Damage gathered since the last floating number was shown. */
   pendingDamage = 0;
   lastNumberAt = 0;
@@ -86,6 +90,9 @@ export class Germ extends Phaser.Physics.Arcade.Sprite {
     this.ring?.setVisible(false);
     this.tag?.setVisible(false);
     this.slowUntil = 0;
+    this.burnDps = 0;
+    this.burnUntil = 0;
+    this.nextBurnAt = 0;
     this.setTexture(`germ-${def.id}`);
     this.enableBody(true, x, y, true, true);
     const r = def.radius;
@@ -160,6 +167,14 @@ export class Germ extends Phaser.Physics.Arcade.Sprite {
         ? Phaser.Math.DegToRad(this.def.armor.turnDegPerSec) * (dtMs / 1000)
         : 0.08 * (dtMs / (1000 / 60));
       this.rotation = Phaser.Math.Angle.RotateTo(this.rotation, angle, turn);
+    }
+    // Burning in Gel Launcher gel: an orange flicker between hit flashes
+    if (this.burnUntil > time) {
+      if (!this.flashUntil) this.setTint(Math.sin(time / 60) > 0 ? 0xffa040 : 0xffd27a);
+    } else if (this.burnUntil > 0) {
+      this.burnUntil = 0;
+      this.burnDps = 0;
+      this.clearTint();
     }
     // Wind-up telegraph: flashes red before a sneeze; a flipped Spore Pod blushes
     if (this.windupUntil > time) this.setTint(Math.sin(time / 45) > 0 ? 0xff6b6b : 0xffd0d0);

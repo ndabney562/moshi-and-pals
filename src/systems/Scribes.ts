@@ -76,8 +76,8 @@ export class Scribes {
     this.list = SCRIBES.filter((d) => !d.desk).map((def, i) => new Scribe(host.scene, def, [-1, 1, 0][i % 3]));
   }
 
-  /** Brings a scribe in for `ms` (or keeps one already here for longer). */
-  summon(id: ScribeId, time: number, ms: number): void {
+  /** Brings a scribe in for `ms` (or keeps one already here for longer), from `from` or just behind Eugene. */
+  summon(id: ScribeId, time: number, ms: number, from?: { x: number; y: number }): void {
     const s = this.list.find((x) => x.def.id === id);
     if (!s) return;
     s.boost = staffBoost(id);
@@ -88,7 +88,8 @@ export class Scribes {
     const ba = player.rotation + Math.PI + s.side * 0.9;
     const bx = player.x + Math.cos(ba) * 100;
     const by = player.y + Math.sin(ba) * 100;
-    if (flow.lineClear(player.x, player.y, bx, by)) this.place(s, bx, by);
+    if (from) this.place(s, from.x, from.y);
+    else if (flow.lineClear(player.x, player.y, bx, by)) this.place(s, bx, by);
     else this.place(s, player.x, player.y);
     s.img.setAlpha(0).setVisible(true);
     s.shadow.setVisible(true);

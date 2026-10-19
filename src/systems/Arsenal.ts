@@ -118,7 +118,7 @@ export class Arsenal {
       this.host.hit(g, def, def.damage * mult, Phaser.Math.Angle.Between(x, y, g.x, g.y), def.knockback, true);
     }
     sfx.splat();
-    this.host.gel.add(x, y, a.puddleRadius, a.puddleMs, a.puddleSlow, s.time.now);
+    this.host.gel.add(x, y, a.puddleRadius, a.puddleMs, a.puddleSlow, s.time.now, a.puddleDps);
     const ring = s.add.circle(x, y, a.blastRadius).setStrokeStyle(8, def.color, 0.9).setFillStyle(def.color, 0.25).setDepth(13).setScale(0.2);
     s.tweens.add({ targets: ring, scale: 1, alpha: 0, duration: 260, ease: 'Cubic.out', onComplete: () => ring.destroy() });
   }

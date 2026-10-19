@@ -6,6 +6,22 @@
 - **Selina** checks people in fast (every 2.5 s, +$5). **Elaine** is slower (every 4 s) but collects the copay at check-in (+$25).
 - **Staff upgrades.** The Equipment Locker has a new **STAFF** shelf: Omar, Alan, Donald, Selina and Elaine each get three upgrades you keep for good, paid with banked Copays once they're on staff: **Coffee Run** ($500, +20% damage; the PSRs bring in 20% more Copays per check-in), **Overtime** ($1,200, they stay 50% longer) and **Employee of the Month** ($2,500, +15% damage and they work 20% faster).
 
+## v0.28.5: The gel burns
+- **Gel Launcher gel now burns.** Germs standing in it take 12 damage a second (18 with Family Size), and keep burning for 1.5 s after they crawl out. Bosses aren't slowed by gel, but they do burn. Burning germs flicker orange.
+- Overlapping gel doesn't stack the burn; the hottest puddle counts. Tool effectiveness and damage bonuses (Pals, perks) apply; STAT! crits don't.
+
+## v0.28.4: Every tool looks different
+- **You can see what you're holding.** Each tool now has its own look in your hand: the white squirt bottle, a blue Lysol can, an orange Super Soaker with a tank, a glowing purple UV Wand, a brown peroxide bottle with a foam pump, a canister of wipes with one pulled out, a teal Gel Launcher, a paddle in each hand for the Defib, and a chrome ray gun for the Ionizer 9000.
+- SWAP changes the tool in your hand too, and the spray comes out of the new tool's nozzle.
+
+## v0.28.3: Cheaper supply crates
+- **Supply crates now cost $200** (was $250).
+
+## v0.28.2: The scribes wait in the exam rooms
+- **No more scribe pills.** Once you hire Omar or Alan, each one waits every shift in a random locked exam room on the first floor (Exam Rooms 1 to 7).
+- **Open that room and they come out** and help you for the rest of the shift: they follow you, fight germs and shame patients with health code violations into cleaning up.
+- If every first-floor exam room is already open, they just start the shift with you. Donald still works as before.
+
 ## v0.28.1: Unlimited snacks
 - **No more snack limit.** The vending machine never sells out: buy as many snacks as you can pay for, and the same snack again as often as you like.
 - **Snacks stack.** A second Energy Drink makes you faster again, a second Fortune Cookie doubles your STAT! chance again, and so on, up to a cap (walk ×1.5, pours and signature recharge down to 40% of normal, STAT! chance ×6).

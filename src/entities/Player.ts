@@ -2,6 +2,8 @@ import Phaser from 'phaser';
 import { BALANCE } from '../config/balance';
 import type { InputState } from '../core/inputState';
 import { damp } from '../core/math';
+import { STARTING_EQUIPMENT } from '../data/equipment';
+import { TOOL_MUZZLE, toolTexture } from '../scenes/toolArt';
 
 /**
  * Dr. Eugene "Moshi" Moshkovich. Moves with the left stick, faces the right
@@ -9,6 +11,9 @@ import { damp } from '../core/math';
  */
 export class Player extends Phaser.Physics.Arcade.Sprite {
   private readonly shadow: Phaser.GameObjects.Image;
+  /** The tool in his hand, its own sprite laid over him (each tool looks different). */
+  private readonly held: Phaser.GameObjects.Image;
+  private heldId = STARTING_EQUIPMENT;
   /** Distance walked, used to drive the waddle animation. */
   private stride = 0;
   /** Max health (a Protein Bar raises it for the run). */
@@ -36,13 +41,38 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     this.setDepth(10);
 
     this.shadow = scene.add.image(x, y + 18, 'shadow').setDepth(9);
+    this.held = scene.add.image(x, y, toolTexture(this.heldId)).setDepth(10.01);
+    // After physics has moved him this frame, so the tool never trails a frame behind
+    scene.events.on(Phaser.Scenes.Events.POST_UPDATE, this.syncHeld, this);
+    this.once(Phaser.GameObjects.Events.DESTROY, () => {
+      scene.events.off(Phaser.Scenes.Events.POST_UPDATE, this.syncHeld, this);
+      this.held.destroy();
+    });
   }
 
-  /** World position of the squirt bottle's nozzle, for spawning spray. */
+  /** Puts tool `id` in his hand. */
+  hold(id: string): void {
+    if (id === this.heldId) return;
+    this.heldId = id;
+    const key = toolTexture(id);
+    this.held.setTexture(this.scene.textures.exists(key) ? key : toolTexture(STARTING_EQUIPMENT));
+  }
+
+  /** Keeps the held tool on him: same spot, turn, waddle, fade and hurt flash. */
+  private syncHeld(): void {
+    const h = this.held;
+    h.setPosition(this.x, this.y).setRotation(this.rotation).setScale(this.scaleX, this.scaleY)
+      .setAlpha(this.alpha).setVisible(this.visible);
+    if (this.isTinted) h.setTint(this.tintTopLeft);
+    else h.clearTint();
+  }
+
+  /** World position of the held tool's nozzle, for spawning spray. */
   nozzle(out: Phaser.Math.Vector2): Phaser.Math.Vector2 {
-    // Nozzle sits ahead and to Eugene's right in the 96x96 texture
-    const fx = 46 * this.scaleX;
-    const fy = 15 * this.scaleY;
+    // Nozzle sits ahead and to Eugene's right in the 96x96 texture (centre 48, 48)
+    const m = TOOL_MUZZLE[this.heldId] ?? TOOL_MUZZLE[STARTING_EQUIPMENT];
+    const fx = (m.x - 48) * this.scaleX;
+    const fy = (m.y - 48) * this.scaleY;
     const c = Math.cos(this.rotation);
     const s = Math.sin(this.rotation);
     return out.set(this.x + fx * c - fy * s, this.y + fx * s + fy * c);

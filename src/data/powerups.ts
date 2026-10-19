@@ -5,7 +5,7 @@
 import { BALANCE } from '../config/balance';
 import type { ScribeId } from './scribes';
 
-export type PowerupId = 'priorAuth' | 'freeRefills' | 'erWait' | 'triage' | 'statClean' | 'doubleCopay' | 'scribeOmar' | 'scribeAlan' | 'techDonald' | 'psrSelina' | 'psrElaine'
+export type PowerupId = 'priorAuth' | 'freeRefills' | 'erWait' | 'triage' | 'statClean' | 'doubleCopay' | 'techDonald' | 'psrSelina' | 'psrElaine'
   | 'fluShot' | 'prescription';
 
 export interface PowerupDef {
@@ -31,9 +31,7 @@ export const POWERUPS: Record<PowerupId, PowerupDef> = {
   triage: { id: 'triage', name: 'TRIAGE', blurb: 'Every hit is a STAT! crit', color: 0xff8a80, ms: 10000 },
   statClean: { id: 'statClean', name: 'STAT CLEAN', blurb: 'Everything nearby: disinfected', color: 0xffffff, ms: 0 },
   doubleCopay: { id: 'doubleCopay', name: 'DOUBLE COPAY', blurb: 'Germs pay double', color: 0x7fffd4, ms: 15000 },
-  // Scribes (data/scribes.ts): they stay for BALANCE.scribes.ms
-  scribeOmar: { id: 'scribeOmar', name: 'SCRIBE: OMAR', blurb: 'Charting that!', color: 0xffd54f, ms: BALANCE.scribes.ms, scribe: 'omar' },
-  scribeAlan: { id: 'scribeAlan', name: 'SCRIBE: ALAN', blurb: 'Documented. Next.', color: 0xb39ddb, ms: BALANCE.scribes.ms, scribe: 'alan' },
+  // Donald (data/scribes.ts) stays for BALANCE.scribes.ms. Omar and Alan have no pill: they wait in an exam room
   techDonald: { id: 'techDonald', name: 'X-RAY TECH: DONALD', blurb: 'Need a film, doc?', color: 0xa5d6a7, ms: BALANCE.scribes.ms, scribe: 'donald' },
   // The front desk PSRs (systems/FrontDesk.ts): everyone lines up at the desk while they're there
   psrSelina: { id: 'psrSelina', name: 'FRONT DESK: SELINA', blurb: 'Everyone, line up please!', color: 0xff8fab, ms: BALANCE.scribes.ms, scribe: 'selina' },

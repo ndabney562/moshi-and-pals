@@ -121,15 +121,15 @@ export class BoardScene extends Phaser.Scene {
   }
 
   /**
-   * Omar and Alan (and Selina and Elaine at the front desk): hire one and their pill can drop from germs on every
-   * shift after. Donald unlocks in X-ray. Their upgrades are in the Equipment Locker's STAFF shelf.
+   * Omar and Alan: hire one and every shift they wait in a random first-floor exam room. Donald unlocks in X-ray.
+   * Selina and Elaine (the front desk) drop as pills once hired. Their upgrades are in the Equipment Locker's STAFF shelf.
    */
   private drawScribes(): void {
     const { width, height } = this.scale;
     const p = progress();
     const left = width / 2 - 520;
     const right = width / 2 + 520;
-    this.txt(left, 140, `Hire staff and their pill joins the power-up drops, ${BALANCE.scribes.ms / 1000} s a visit. Upgrade them in the Equipment Locker.`, 17, COLORS.uiAccent, 'italic');
+    this.txt(left, 140, `Omar and Alan wait in a first-floor exam room: open it and they help all shift. Front desk pills drop, ${BALANCE.scribes.ms / 1000} s a visit.`, 17, COLORS.uiAccent, 'italic');
     const top = 176;
     const rowH = Math.min(120, (height - top - 84) / SCRIBES.length);
     const small = rowH < 110;
