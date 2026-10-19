@@ -4,6 +4,11 @@
 - **You can see what you're holding.** Each tool now has its own look in your hand: the white squirt bottle, a blue Lysol can, an orange Super Soaker with a tank, a glowing purple UV Wand, a brown peroxide bottle with a foam pump, a canister of wipes with one pulled out, a teal Gel Launcher, a paddle in each hand for the Defib, and a chrome ray gun for the Ionizer 9000.
 - SWAP changes the tool in your hand too, and the spray comes out of the new tool's nozzle.
 
+## v0.28.1: Unlimited snacks
+- **No more snack limit.** The vending machine never sells out: buy as many snacks as you can pay for, and the same snack again as often as you like.
+- **Snacks stack.** A second Energy Drink makes you faster again, a second Fortune Cookie doubles your STAT! chance again, and so on, up to a cap (walk ×1.5, pours and signature recharge down to 40% of normal, STAT! chance ×6).
+- **Seconds cost more:** each one you've already had adds half the snack's price (a $100 Fortune Cookie is $150, then $200...).
+
 ## v0.28.0: The Equipment Locker
 - **Tool upgrades that stay.** A new **🧰 EQUIPMENT LOCKER** button on the title screen opens a page with every tool on it. Each one has three upgrades you keep for good: **Labeled & Dated** ($400, +10% damage), **Extra Refills** ($1,000, +25% tank, jug and charge rate) and **Name Engraved** ($2,000, +10% damage and 10% faster).
 - **A quarter of the Copays you earn on a shift come home** to pay for them. The Discharge Summary shows how much went to the Locker.

@@ -1,6 +1,6 @@
 /**
- * VENDING MACHINE snacks: small run-long perks bought in the waiting room. Each can be bought once per run,
- * and only `BALANCE.vending.maxPerRun` in all (it's a vending machine, not a pharmacy).
+ * VENDING MACHINE snacks: small run-long perks bought in the waiting room. No limit: they stack, a repeat
+ * costs more each time, and the stacked perks stop at `BALANCE.vending.caps`.
  */
 export type SnackEffect = 'maxHp' | 'speed' | 'refill' | 'purge' | 'crit';
 
