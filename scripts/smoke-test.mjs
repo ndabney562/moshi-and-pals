@@ -93,6 +93,8 @@ try {
     await page.waitForTimeout(16);
   }
   await page.waitForTimeout(800);
+  // The MOVE hint counts game time, which crawls below 5 fps; keep walking until it's learned so SPRAY comes up next
+  await page.waitForFunction(() => JSON.parse(localStorage.getItem('moshi.settings.v1') ?? '{}').learned?.move, null, { timeout: 15000 }).catch(() => {});
   await page.screenshot({ path: 'smoke-game.png' });
   const end = await pos();
   await touch('touchEnd', []);
@@ -147,6 +149,8 @@ try {
     }
   }
   check(aimSamples > 0 && aimHits / aimSamples >= 0.6, `auto-aim faces its target germ (${aimHits}/${aimSamples} samples)`);
+  // On a slow runner the SPRAY hint can come up late (germs die and respawn); keep holding until it's learned
+  await page.waitForFunction(() => JSON.parse(localStorage.getItem('moshi.settings.v1') ?? '{}').learned?.spray, null, { timeout: 20000 }).catch(() => {});
   await touch('touchEnd', []);
   const after = await game();
   check(after.ammo < before.ammo, `spraying used alcohol (${before.ammo} -> ${after.ammo} mL)`);
@@ -188,6 +192,10 @@ try {
   });
   check(spill.spilled && spill.refilling, 'tapping REFILL too early spills (the pour takes longer)');
   await page.waitForFunction(() => !window.game.scene.getScene('Game').sprayer.refilling, null, { timeout: 15000 }).catch(() => {});
+  // Music: the sequencer runs during the shift and (when the browser lets audio run) steps through the song.
+  // Test browsers make no sound (core/music SILENT), so this checks the sequencer, not the synthesis.
+  const music = await page.evaluate(() => window.game.scene.getScene('Game').musicState());
+  check(music.playing && music.song === 'clinic' && (music.context !== 'running' || music.steps > 0), `the clinic theme plays during the shift (${JSON.stringify(music)})`);
   // Pause: the button freezes the game and opens the menu; AUTO-AIM lives there now
   const pauseAt = await buttonAt('pauseButton');
   await page.touchscreen.tap(pauseAt.x, pauseAt.y);
@@ -226,6 +234,14 @@ try {
   await page.touchscreen.tap(soundAt.x, soundAt.y);
   await page.waitForTimeout(200);
   check(muted === false, 'SOUND toggle mutes and saves');
+  // MUSIC toggles and saves separately from SOUND (turn it back on afterwards)
+  const musicAt = await buttonAt('musicToggle');
+  await page.touchscreen.tap(musicAt.x, musicAt.y);
+  await page.waitForTimeout(200);
+  const musicOff = await page.evaluate(() => JSON.parse(localStorage.getItem('moshi.settings.v1') ?? '{}'));
+  await page.touchscreen.tap(musicAt.x, musicAt.y);
+  await page.waitForTimeout(200);
+  check(musicOff.music === false && musicOff.sound === true, `MUSIC toggle turns the music off and saves, leaving SOUND alone (${JSON.stringify({ music: musicOff.music, sound: musicOff.sound })})`);
   // RESUME
   const resumeAt = await buttonAt('resumeItem');
   await page.touchscreen.tap(resumeAt.x, resumeAt.y);
@@ -321,7 +337,7 @@ try {
   check(opened.unlocked && opened.doorGone && opened.copays === 50, `USE (${JSON.stringify(doorLabel)}) buys the HALLWAYS gate open (${JSON.stringify(opened)})`);
   check(opened.room.includes('WAITING ROOM'), `HUD shows which room Eugene is in (${opened.room})`);
   // Walk into the west hallway (plan 460, 900)
-  await page.evaluate(() => window.game.scene.getScene('Game').player.setPosition(930, 1590));
+  await page.evaluate(() => { const sc = window.game.scene.getScene('Game'); const p = sc.room.fromPlan('ground', 460, 900); sc.player.setPosition(p.x, p.y); });
   await page.waitForFunction(() => window.game.scene.getScene('Hud').roomText.text.includes('HALLWAYS'), null, { timeout: 15000 }).catch(() => {});
   check((await page.evaluate(() => window.game.scene.getScene('Hud').roomText.text)).includes('HALLWAYS'), 'walking into the hallways updates the room label');
   await page.screenshot({ path: 'smoke-rooms.png' });
@@ -433,8 +449,9 @@ try {
   await page.evaluate(() => {
     const scene = window.game.scene.getScene('Game');
     for (const g of scene.germs.getChildren()) if (g.active) g.kill();
-    scene.player.setPosition(1350, 3330); // in front of reception, so the camera isn't against a wall
-    scene.cameras.main.centerOn(1350, 3330);
+    const front = scene.room.fromPlan('ground', 600, 1480); // in front of reception, so the camera isn't against a wall
+    scene.player.setPosition(front.x, front.y);
+    scene.cameras.main.centerOn(front.x, front.y);
     scene.spawnGerm('basic', { hpMult: 1, speedMult: 1 });
     const g = scene.germs.getChildren().find((c) => c.active);
     const v = scene.cameras.main.worldView;
@@ -554,10 +571,13 @@ try {
   });
   const charged = await page.waitForFunction(() => window.__chargeSeen.has('windup') && window.__chargeSeen.has('charging'), null, { timeout: 20000 }).then(() => true, () => false);
   check(charged, `a Bacillus Bulldozer winds up, then charges (${[...(await page.evaluate(() => [...window.__chargeSeen]))].join(' -> ')})`);
-  await page.evaluate(() => {
+  // Aim it at the nearest wall and let it go (again, if a slow runner's charge runs out short of the wall)
+  const dazed = await page.waitForFunction(() => {
     const scene = window.game.scene.getScene('Game');
     const g = scene.germs.getChildren().find((c) => c.active && c.def.id === 'charger');
-    // Aim it at the nearest wall and let it go
+    if (!g) return false;
+    if (g.chargeState === 'dazed') return true;
+    if (g.chargeState === 'charging' && scene.time.now < g.chargeUntil) return false;
     let best = null;
     for (let i = 0; i < 32; i++) {
       const a = (i / 32) * Math.PI * 2;
@@ -571,11 +591,8 @@ try {
     g.chargeState = 'charging';
     g.chargeAngle = best ? best.a : 0;
     g.chargeUntil = scene.time.now + g.def.charge.ms * 1.5;
-  });
-  const dazed = await page.waitForFunction(() => {
-    const g = window.game.scene.getScene('Game').germs.getChildren().find((c) => c.active && c.def.id === 'charger');
-    return g && g.chargeState === 'dazed';
-  }, null, { timeout: 20000 }).then(() => true, () => false);
+    return false;
+  }, null, { timeout: 30000, polling: 200 }).then(() => true, () => false);
   const dazedHit = await page.evaluate(() => {
     const scene = window.game.scene.getScene('Game');
     const g = scene.germs.getChildren().find((c) => c.active && c.def.id === 'charger');
@@ -802,13 +819,13 @@ try {
     scene.stairsReadyAt = 0;
     scene.player.setPosition(z.x + z.w / 2, z.y + z.h / 2);
   });
-  const wentUp = await page.waitForFunction(() => window.game.scene.getScene('Game').player.x >= 3800, null, { timeout: 15000 }).then(() => true, () => false);
+  const wentUp = await page.waitForFunction(() => { const sc = window.game.scene.getScene('Game'); return sc.player.x >= sc.room.floors[1].x; }, null, { timeout: 15000 }).then(() => true, () => false);
   const upState = await page.evaluate(() => {
     const scene = window.game.scene.getScene('Game');
     const cam = scene.cameras.main;
-    return { x: Math.round(scene.player.x), room: window.game.scene.getScene('Hud').roomText.text, camX: Math.round(cam.worldView.x) };
+    return { x: Math.round(scene.player.x), room: window.game.scene.getScene('Hud').roomText.text, camX: Math.round(cam.worldView.x), upX: scene.room.floors[1].x };
   });
-  check(wentUp && upState.camX >= 3800, `the stairs take Eugene upstairs, camera follows (${JSON.stringify(upState)})`);
+  check(wentUp && upState.camX >= upState.upX, `the stairs take Eugene upstairs, camera follows (${JSON.stringify(upState)})`);
   const followed = await page.evaluate(() => {
     const scene = window.game.scene.getScene('Game');
     scene.spawnGerm('basic', { hpMult: 1, speedMult: 1 });
@@ -817,7 +834,7 @@ try {
     g.setPosition(z.x + z.w / 2, z.y + z.h / 2); // a germ on the ground-floor stairs...
     return true;
   });
-  const germUp = await page.waitForFunction(() => window.game.scene.getScene('Game').germs.getChildren().some((g) => g.active && g.x >= 3800), null, { timeout: 15000 }).then(() => true, () => false);
+  const germUp = await page.waitForFunction(() => { const sc = window.game.scene.getScene('Game'); return sc.germs.getChildren().some((g) => g.active && g.x >= sc.room.floors[1].x); }, null, { timeout: 15000 }).then(() => true, () => false);
   check(followed && germUp, 'germs follow Eugene up the stairs');
   await page.evaluate(() => {
     const scene = window.game.scene.getScene('Game');
@@ -826,7 +843,7 @@ try {
     const z = scene.room.stairs[0].b.zone;
     scene.player.setPosition(z.x + z.w / 2, z.y + z.h / 2);
   });
-  const wentDown = await page.waitForFunction(() => window.game.scene.getScene('Game').player.x < 3400, null, { timeout: 15000 }).then(() => true, () => false);
+  const wentDown = await page.waitForFunction(() => { const sc = window.game.scene.getScene('Game'); return sc.player.x < sc.room.floors[0].w; }, null, { timeout: 15000 }).then(() => true, () => false);
   check(wentDown, 'and back down again');
 
   // COMPOUNDING STATION (Lab): hold USE to upgrade the tool in hand (the bottle gets a Pressure Nozzle)
@@ -957,6 +974,12 @@ try {
     return { said: scene.boss.bubble.text, bar: window.game.scene.getScene('Hud').bossBar?.visible };
   });
   check(intro.said.length > 0, `Diamond talks ("${intro.said}")`);
+  // The music switches to the boss theme on the next bar (only when the browser lets audio run)
+  const bossMusic = await page.waitForFunction(() => {
+    const m = window.game.scene.getScene('Game').musicState();
+    return m.context !== 'running' || m.song === 'boss';
+  }, null, { timeout: 20000 }).then(() => page.evaluate(() => window.game.scene.getScene('Game').musicState()), () => null);
+  check(!!bossMusic, `the boss theme plays while Diamond is about (${JSON.stringify(bossMusic)})`);
   await page.waitForFunction(() => window.game.scene.getScene('Game').boss.mode === 'meeting', null, { timeout: 15000 });
   const meetingStart = await page.evaluate(() => window.game.scene.getScene('Game').player.y);
   // Headless frame rates are low, so wait for progress instead of a fixed time
@@ -1044,6 +1067,205 @@ try {
   const escaped = await page.waitForFunction(() => !window.game.scene.getScene('Game').boss.germ.active, null, { timeout: 15000 }).then(() => true, () => false);
   const escBanner = await page.evaluate(() => window.game.scene.getScene('Hud').banner.text);
   check(leaving && escaped && escBanner.includes('AGAINST MEDICAL ADVICE'), `at low health he leaves against medical advice and can escape ("${escBanner}")`);
+
+  // METHICILLIN THE UNKILLABLE (boss #3): adapts to the tool that hurts him most, the autoclave cooks him, layers peel, Cluster Shot, Roll
+  await page.evaluate(() => {
+    const scene = window.game.scene.getScene('Game');
+    for (const g of scene.germs.getChildren()) if (g.active) g.kill();
+    scene.boss?.destroy();
+    scene.boss = undefined;
+    scene.player.hp = 100;
+    const sp = scene.room.playerSpawn;
+    scene.player.setPosition(sp.x, sp.y);
+    scene.spawnGerm('methicillin', { hpMult: 1, speedMult: 1 });
+    scene.boss.germ.setPosition(sp.x + 260, sp.y);
+    scene.boss.nextShotAt = 0;
+    scene.boss.nextRollAt = Number.MAX_SAFE_INTEGER;
+  });
+  const shot = await page.waitForFunction(() => window.game.scene.getScene('Game').germs.getChildren().some((g) => g.active && g.def.id === 'basic'), null, { timeout: 20000 }).then(() => true, () => false);
+  check(shot, 'Methicillin\'s Cluster Shot hatches Basic Germs');
+  await page.screenshot({ path: 'smoke-methicillin.png' });
+  const mrsa = await page.evaluate(() => {
+    const scene = window.game.scene.getScene('Game');
+    const b = scene.boss;
+    const g = b.germ;
+    b.nextShotAt = Number.MAX_SAFE_INTEGER;
+    for (const x of scene.germs.getChildren()) if (x.active && x.def.id === 'basic') x.kill();
+    const hit = (n, source) => { const before = g.hp; scene.damageGerm(g, n, 0, 0, source); return Math.round(before - g.hp); };
+    const fresh = hit(100, 'squirtBottle');
+    hit(200, 'squirtBottle');
+    const resisting = b.resisting;
+    const resisted = hit(100, 'squirtBottle');
+    const otherTool = hit(100, 'bleachSoaker');
+    const steam = hit(100, 'autoclave');
+    // That took him past 2/3: the outer layer peeled off and grapes burst out
+    const burst = scene.germs.getChildren().filter((x) => x.active && x.def.id === 'basic').length;
+    return { fresh, resisting, resisted, otherTool, steam, peeled: b.peeled, texture: g.texture.key, burst };
+  });
+  check(mrsa.fresh === 100 && mrsa.resisting === 'squirtBottle' && mrsa.resisted === 20 && mrsa.otherTool === 100,
+    `he adapts to the tool that hurt him most and resists it; switching tools works (${JSON.stringify(mrsa)})`);
+  check(mrsa.steam === 150, `the Lab autoclave is never resisted and cooks him extra (${mrsa.steam})`);
+  check(mrsa.peeled === 1 && mrsa.texture === 'germ-methicillin-2' && mrsa.burst >= 3, `his outer layer peels off and sheds grapes (${JSON.stringify(mrsa)})`);
+  await page.evaluate(() => {
+    const scene = window.game.scene.getScene('Game');
+    for (const g of scene.germs.getChildren()) if (g.active && g.def.id === 'basic') g.kill();
+    scene.player.hp = 100;
+    scene.boss.nextRollAt = 0;
+  });
+  const rolled = await page.waitForFunction(() => window.game.scene.getScene('Game').boss.currentMode === 'rolling', null, { timeout: 30000 }).then(() => true, () => false);
+  check(rolled, 'he curls up and Rolls at Eugene');
+  const mrsaDown = await page.evaluate(() => {
+    const scene = window.game.scene.getScene('Game');
+    scene.player.hp = 100;
+    scene.damageGerm(scene.boss.germ, 99999, 0, 0, 'autoclave');
+    return { active: scene.boss.germ.active, ach: JSON.parse(localStorage.getItem('moshi.achievements.v1') ?? '[]').includes('sensitivityReport') };
+  });
+  check(!mrsaDown.active && mrsaDown.ach, `Methicillin can be defeated (${JSON.stringify(mrsaDown)})`);
+  // His reward: a Prescription that compounds the tool in hand all the way up
+  const rx = await page.waitForFunction(() => {
+    const scene = window.game.scene.getScene('Game');
+    const pill = scene.powerups.pills.find((p) => p.img.visible && p.id === 'prescription');
+    if (pill) scene.player.setPosition(pill.img.x, pill.img.y);
+    return !scene.sprayer.nextTier && scene.sprayer.tier >= 2;
+  }, null, { timeout: 20000, polling: 100 }).then(() => true, () => false);
+  check(rx, 'Methicillin leaves a Prescription that compounds your tool to Prescription Strength');
+
+  // THE INFLUENZA TWINS (boss #4): two germs, one bar; the strand hurts; kill both close together or one revives the other
+  await page.evaluate(() => {
+    const scene = window.game.scene.getScene('Game');
+    for (const g of scene.germs.getChildren()) if (g.active) g.kill();
+    scene.boss?.destroy();
+    scene.boss = undefined;
+    scene.player.hp = 100;
+    const sp = scene.room.playerSpawn;
+    scene.player.setPosition(sp.x, sp.y);
+    scene.spawnGerm('fluH', { hpMult: 1, speedMult: 1 });
+    const b = scene.boss;
+    b.nextSpitAt = Number.MAX_SAFE_INTEGER;
+  });
+  const twinsUp = await page.evaluate(() => {
+    const scene = window.game.scene.getScene('Game');
+    const b = scene.boss;
+    const hud = window.game.scene.getScene('Hud');
+    return { h: b.germ.def.id, n: b.partner?.def.id, both: b.germ.active && b.partner?.active, bar: hud.bossBar.visible };
+  });
+  check(twinsUp.h === 'fluH' && twinsUp.n === 'fluN' && twinsUp.both, `H and N arrive together (${JSON.stringify(twinsUp)})`);
+  // Stand Eugene on the strand between them
+  const strand = await page.waitForFunction(() => {
+    const scene = window.game.scene.getScene('Game');
+    const b = scene.boss;
+    const sp = scene.room.playerSpawn;
+    b.germ.setPosition(sp.x - 150, sp.y);
+    b.partner.setPosition(sp.x + 150, sp.y);
+    scene.player.setPosition(sp.x, sp.y);
+    scene.player.invulnerableUntil = 0;
+    return scene.player.hp < 100;
+  }, null, { timeout: 15000, polling: 100 }).then(() => true, () => false);
+  await page.screenshot({ path: 'smoke-twins.png' });
+  check(strand, 'touching the strand between the twins hurts');
+  // Only an exam-room curtain snaps the strand: a wall between them doesn't, a curtain pulled shut does
+  const curtain = await page.evaluate(() => {
+    const scene = window.game.scene.getScene('Game');
+    const b = scene.boss;
+    const c = scene.curtains.find((k) => k.o.w > k.o.h);
+    const room = scene.room.rooms.find((r) => r.id.startsWith('exam') && c.o.x >= r.x && c.o.x < r.x + r.w && c.o.y >= r.y && c.o.y < r.y + r.h);
+    scene.unlockRoom(room.id);
+    const { o } = c;
+    const cx = o.x + o.w / 2;
+    const place = (x) => {
+      b.germ.setPosition(x, o.y - 70);
+      b.partner.setPosition(x, o.y + o.h + 70);
+      b.germ.setVelocity(0, 0);
+      b.partner.setVelocity(0, 0);
+    };
+    scene.player.setPosition(cx + 400, o.y + o.h + 200);
+    // Through the wall beside the doorway
+    place(o.x + o.w + 60);
+    const wallBetween = !scene.flow.lineClear(b.germ.x, b.germ.y, b.partner.x, b.partner.y);
+    b.update(scene.time.now);
+    const wallSnapped = !b.tethered;
+    // Through the open doorway, then the curtain pulled shut
+    place(cx);
+    const station = scene.stations.find((st) => st.o === c.o)?.info().verb;
+    scene.closeCurtain(c, scene.time.now);
+    const blocks = !scene.flow.lineClear(cx, o.y - 40, cx, o.y + o.h + 40);
+    place(cx);
+    b.update(scene.time.now);
+    return { wallBetween, wallSnapped, station, blocks, snapped: !b.tethered, stunned: b.germ.stunnedUntil > scene.time.now };
+  });
+  check(curtain.wallBetween && !curtain.wallSnapped, `a plain wall no longer snaps the twins' strand (${JSON.stringify(curtain)})`);
+  check(curtain.station === 'CURTAIN' && curtain.blocks && curtain.snapped, `a shut exam curtain is a wall and snaps the strand (${JSON.stringify(curtain)})`);
+  await page.evaluate(() => {
+    const scene = window.game.scene.getScene('Game');
+    for (const c of scene.curtains) c.closedUntil = 0;
+  });
+  const reopened = await page.waitForFunction(() => window.game.scene.getScene('Game').curtains.every((c) => !c.zone), null, { timeout: 15000 }).then(() => true, () => false);
+  check(reopened, 'the curtain slides back open');
+  await page.evaluate(() => {
+    const scene = window.game.scene.getScene('Game');
+    const b = scene.boss;
+    const sp = scene.room.playerSpawn;
+    b.snappedUntil = 0;
+    b.germ.setPosition(sp.x - 150, sp.y);
+    b.partner.setPosition(sp.x + 150, sp.y);
+    scene.player.setPosition(sp.x, sp.y);
+  });
+  const down = await page.evaluate(() => {
+    const scene = window.game.scene.getScene('Game');
+    const b = scene.boss;
+    scene.player.hp = 100;
+    scene.damageGerm(b.germ, 99999, 0, 0, 'squirtBottle');
+    // Pretend six seconds went by
+    b.twins[0].downAt = scene.time.now - 5990;
+    return { active: b.germ.active, down: b.isDown(b.germ), aim: b.priorityTarget === b.partner };
+  });
+  check(down.active && down.down && down.aim, `a twin knocked out goes down, not out (${JSON.stringify(down)})`);
+  const revived = await page.waitForFunction(() => {
+    const b = window.game.scene.getScene('Game').boss;
+    return !b.isDown(b.germ) && b.germ.hp > 0;
+  }, null, { timeout: 15000 }).then(() => true, () => false);
+  check(revived, 'the survivor revives its twin if you are too slow');
+  await page.evaluate(() => {
+    const b = window.game.scene.getScene('Game').boss;
+    b.germ.hp = b.germ.maxHp * 0.3;
+    b.partner.hp = b.partner.maxHp * 0.3;
+  });
+  const shifted = await page.waitForFunction(() => window.game.scene.getScene('Game').boss.shifted, null, { timeout: 15000 }).then(() => true, () => false);
+  const shiftFactors = await page.evaluate(() => {
+    const scene = window.game.scene.getScene('Game');
+    const b = scene.boss;
+    return [b.damageFactor(b.germ), b.damageFactor(b.partner)].sort();
+  });
+  check(shifted && shiftFactors[0] < 0.5 && shiftFactors[1] === 1, `antigenic shift: only one twin is vulnerable (${JSON.stringify(shiftFactors)})`);
+  const twinsDown = await page.evaluate(() => {
+    const scene = window.game.scene.getScene('Game');
+    const b = scene.boss;
+    const pillsBefore = scene.powerups.pills.filter((p) => p.img.visible).length;
+    scene.damageGerm(b.germ, 99999, 0, 0, 'squirtBottle');
+    const firstDown = b.isDown(b.germ);
+    scene.damageGerm(b.partner, 99999, 0, 0, 'squirtBottle');
+    return {
+      firstDown, h: b.germ.active, n: b.partner.active,
+      pills: scene.powerups.pills.filter((p) => p.img.visible).length - pillsBefore,
+      fluShot: scene.powerups.pills.some((p) => p.img.visible && p.id === 'fluShot'),
+      ach: JSON.parse(localStorage.getItem('moshi.achievements.v1') ?? '[]').includes('herdImmunity'),
+    };
+  });
+  check(twinsDown.firstDown && !twinsDown.h && !twinsDown.n && twinsDown.ach, `knock both out together and the twins are beaten (${JSON.stringify(twinsDown)})`);
+  check(twinsDown.pills >= 1 && twinsDown.fluShot, `the twins always leave a Flu Shot (${JSON.stringify(twinsDown)})`);
+  const maxBefore = await page.evaluate(() => window.game.scene.getScene('Game').player.maxHp);
+  const flu = await page.waitForFunction((before) => {
+    const scene = window.game.scene.getScene('Game');
+    const pill = scene.powerups.pills.find((p) => p.img.visible && p.id === 'fluShot');
+    if (pill) scene.player.setPosition(pill.img.x, pill.img.y);
+    return scene.player.maxHp === before + 15;
+  }, maxBefore, { timeout: 20000, polling: 100 }).then(() => true, () => false);
+  check(flu, 'the Flu Shot adds 15 max health');
+  await page.evaluate(() => {
+    const scene = window.game.scene.getScene('Game');
+    for (const g of scene.germs.getChildren()) if (g.active) g.kill();
+    scene.player.hp = 100;
+  });
 
   // SPECIAL ROUNDS: round 7 is a Waiting Room Rush, announced with its own banner
   await page.evaluate(() => {
@@ -1388,7 +1610,7 @@ try {
   const swErrors = [];
   sw.on('pageerror', (e) => swErrors.push(where(e)));
   await sw.route('**/version.json*', (r) => r.fulfill({ contentType: 'application/json', body: JSON.stringify({ version: 'v99.0.0 (newer)' }) }));
-  await sw.goto(url + '?sw');
+  await sw.goto(url + '?sw', { timeout: 90000 });
   await sw.waitForFunction(() => window.game?.scene.isActive('Title'));
   const pill = await sw.waitForFunction(() => window.game.scene.getScene('Title').updatePill?.visible, null, { timeout: 10000 }).then(() => true, () => false);
   check(pill, 'a newer build on the server shows UPDATE READY on the title screen');
@@ -1456,7 +1678,7 @@ try {
     labelWaits(pp2);
     const palErrors = [];
     pp2.on('pageerror', (e) => palErrors.push(where(e)));
-    await pp2.goto(url + '?god');
+    await pp2.goto(url + '?god', { timeout: 90000 });
     await pp2.waitForFunction(() => window.game?.scene.isActive('Title'));
     await pp2.touchscreen.tap(426, 120);
     await pp2.waitForFunction(() => window.game.scene.isActive('Hud'), null, { timeout: 15000 });
@@ -1671,6 +1893,127 @@ try {
       `a locked scribe never drops (${drops.seen.join(', ')})`);
     check(scribeErrors2.length === 0, `no errors with Omar${scribeErrors2.length ? ': ' + scribeErrors2.join(' | ') : ''}`);
     await sc2.close();
+  }
+
+  // THE MIRACLE CURE: every step of the secret quest, driven through its stations, then the Records Room,
+  // the Last Fax Machine, the Ionizer 9000 and the alternate ending
+  {
+    const mc = await browser.newContext({ viewport: { width: 852, height: 393 }, deviceScaleFactor: 1, isMobile: true, hasTouch: true });
+    await mc.addInitScript(() => localStorage.setItem('moshi.settings.v1', JSON.stringify({ learned: { move: true, spray: true, pour: true, purge: true, buy: true } })));
+    const mp = await mc.newPage();
+    labelWaits(mp);
+    const cureErrors = [];
+    mp.on('pageerror', (e) => cureErrors.push(where(e)));
+    await mp.goto(url + '?god&copays=500', { timeout: 90000 });
+    await mp.waitForFunction(() => window.game?.scene.isActive('Title'));
+    await mp.touchscreen.tap(426, 120);
+    await mp.waitForFunction(() => window.game.scene.isActive('Hud'), null, { timeout: 15000 });
+    const clues = await mp.evaluate(() => {
+      const sc = window.game.scene.getScene('Game');
+      const cure = sc.cure;
+      const st = (fn) => sc.stations.find((s) => fn(s.o));
+      const w = sc.waves;
+      // A break: the magazine's ad
+      w.queue.length = 0;
+      w.phase = 'intermission';
+      w.nextRoundAt = Number.MAX_SAFE_INTEGER;
+      const phoneHiddenBefore = !!st((o) => o.label === 'RECEPTION').gone?.();
+      st((o) => o.kind === 'magTable').use(sc.time.now);
+      const read = cure.magazineRead;
+      // A live round (one frozen germ keeps it going): call from the front desk
+      w.phase = 'active';
+      sc.spawnGermAt('basic', sc.room.playerSpawn.x - 200, sc.room.playerSpawn.y + 400, true);
+      for (const g of sc.germs.getChildren()) if (g.active) { g.maxHp = g.hp = 1e6; g.freezeFor(sc.time.now, 1e9); }
+      const desk = st((o) => o.label === 'RECEPTION' && o.kind === 'desk');
+      sc.player.body.reset(desk.o.x + desk.o.w + 40, desk.o.y + desk.o.h / 2);
+      desk.use(sc.time.now);
+      return { phoneHiddenBefore, read, onHold: cure.onHold, holdLabel: desk.info().verb };
+    });
+    check(clues.phoneHiddenBefore && clues.read && clues.onHold && clues.holdLabel === 'ON HOLD',
+      `Miracle Cure: the magazine's ad, then the front-desk phone puts the doctor on hold (${JSON.stringify(clues)})`);
+    // Skip most of the hold music; the operator answers if the doctor stays by the desk
+    await mp.evaluate(() => {
+      const sc = window.game.scene.getScene('Game');
+      sc.cure.holdSince = sc.time.now - 19950;
+    });
+    const operator = await mp.waitForFunction(() => window.game.scene.getScene('Game').cure.codeA, null, { timeout: 20000 }).then(() => true, () => false);
+    const banner = await mp.evaluate(() => window.game.scene.getScene('Hud').banner.text);
+    check(operator && banner === 'CUSTOMER CARE', `staying on hold by the desk gets code half A (${banner})`);
+    const rest = await mp.evaluate(() => {
+      const sc = window.game.scene.getScene('Game');
+      const cure = sc.cure;
+      const st = (fn) => sc.stations.find((s) => fn(s.o));
+      const copays = sc.copays;
+      st((o) => o.kind === 'microwave').use(sc.time.now);
+      const fishPaid = copays - sc.copays;
+      st((o) => o.kind === 'fridge').use(sc.time.now);
+      const codeB = cure.codeB;
+      sc.xrayPulse();
+      const keySeen = cure.keySeen;
+      sc.openVending();
+      const hasKeyOffer = sc.vendingOffer !== undefined && cure.keyForSale;
+      sc.buySnack('mysteryKey');
+      // A boss round: three flushes of Stall 3
+      const w = sc.waves;
+      w.round = 5;
+      w.phase = 'active';
+      const stall = st((o) => o.kind === 'stall' && o.label === 'STALL 3');
+      for (let i = 0; i < 3; i++) stall.use(sc.time.now);
+      return { fishPaid, stench: cure.stench, codeB, keySeen, hasKeyOffer, hasKey: cure.hasKey, panel: cure.panelOpen, verb: stall.info().verb, code: cure.code };
+    });
+    check(rest.fishPaid === 5 && rest.stench && rest.codeB && rest.keySeen && rest.hasKeyOffer && rest.hasKey && rest.panel && rest.verb === 'RECORDS',
+      `fish + fridge note, X-ray, key from B4, then three flushes in a boss round open the RECORDS panel (${JSON.stringify(rest)})`);
+    // Between rounds: into the Records Room, and the Last Fax Machine wakes up
+    const inside = await mp.evaluate(() => {
+      const sc = window.game.scene.getScene('Game');
+      const w = sc.waves;
+      for (const g of sc.germs.getChildren()) if (g.active) g.kill();
+      w.phase = 'intermission';
+      w.nextRoundAt = sc.time.now + 3000;
+      sc.stations.find((s) => s.o.kind === 'stall' && s.o.label === 'STALL 3').use(sc.time.now);
+      return { inRecords: sc.cure.inRecords, floor: sc.floorOf(sc.player.x, sc.player.y)?.id, breakAt: w.nextRoundAt - sc.time.now };
+    });
+    const faxUp = await mp.waitForFunction(() => window.game.scene.getScene('Game').boss?.germ.def.id === 'faxMachine' && window.game.scene.getScene('Game').boss.germ.active, null, { timeout: 60000 }).then(() => true, () => false);
+    const pages = await mp.waitForFunction(() => window.game.scene.getScene('Game').germs.getChildren().some((g) => g.active && g.def.id === 'faxPage'), null, { timeout: 90000 }).then(() => true, () => false);
+    await mp.screenshot({ path: 'smoke-records.png' });
+    const held = await mp.evaluate(() => {
+      const sc = window.game.scene.getScene('Game');
+      return { phase: sc.waves.phase, round: sc.waves.round, left: sc.waves.nextRoundAt - sc.time.now };
+    });
+    check(inside.inRecords && inside.floor === 'records' && faxUp && pages && held.phase === 'intermission' && held.left > 1000,
+      `the Records Room: the Last Fax Machine faxes pages, and the break waits (${JSON.stringify({ inside, faxUp, pages, held })})`);
+    const won = await mp.evaluate(() => {
+      const sc = window.game.scene.getScene('Game');
+      const st = (fn) => sc.stations.find((s) => fn(s.o));
+      const door = st((o) => o.kind === 'recordsDoor');
+      const lockedWhileFax = door.info().blocked;
+      sc.damageGerm(sc.boss.germ, 1e7, 0, 0);
+      const tool = sc.sprayer.def.id;
+      door.use(sc.time.now);
+      const back = sc.floorOf(sc.player.x, sc.player.y)?.id;
+      const leftovers = sc.germs.getChildren().filter((g) => g.active && sc.floorOf(g.x, g.y)?.id === 'records').length;
+      sc.cure.onRoundCompleted(true);
+      const exit = st((o) => o.label?.startsWith('EXIT'));
+      const canClock = !exit.gone();
+      exit.use(sc.time.now);
+      return { lockedWhileFax, tool, back, leftovers, canClock, cureAch: sc.runStats.achievements };
+    });
+    // Skip the credits (keep tapping: on a slow machine the skip listener takes a moment to arm)
+    // (the Discharge Summary waits 1.6 s of game time, which crawls on CI)
+    const shiftComplete = () => mp.evaluate(() => window.game.scene.isActive('GameOver')
+      && window.game.scene.getScene('GameOver').children.list.some((c) => c.text === 'SHIFT COMPLETE'));
+    let title = false;
+    for (let i = 0; i < 60 && !title; i++) {
+      await mp.touchscreen.tap(426, 200);
+      await mp.waitForTimeout(1500);
+      title = await shiftComplete();
+    }
+    const capped = await mp.evaluate(() => JSON.parse(localStorage.getItem('moshi.progress.v1') ?? '{}').owned ?? []);
+    check(won.lockedWhileFax && won.tool === 'ionizer9000' && won.back === 'up' && won.leftovers === 0 && won.canClock && title,
+      `the Ionizer 9000, back to Stall 3, then CLOCK OUT: SHIFT COMPLETE (${JSON.stringify({ won, title, capped })})`);
+    check(capped.includes('scrubCap'), `clocking out unlocks Eugene's scrub cap (${capped.join(', ')})`);
+    check(cureErrors.length === 0, `no errors in the Miracle Cure${cureErrors.length ? ': ' + cureErrors.join(' | ') : ''}`);
+    await mc.close();
   }
 } catch (e) {
   check(false, String(e) + (errors.length ? " | errors: " + errors.join(" | ") : ""));

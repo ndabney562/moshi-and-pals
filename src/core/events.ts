@@ -69,6 +69,8 @@ export const GameEvents = {
   VendingCancelled: 'vending.cancelled',
   /** AchievementDef: unlocked for the first time on this device */
   AchievementUnlocked: 'achievement.unlocked',
+  /** { title, line } the Miracle Cure: a clue found or a step done (a banner) */
+  SecretFound: 'secret.found',
 } as const;
 
 export interface RequisitionOption { id: string; name: string; blurb: string; color: number; }
@@ -138,6 +140,8 @@ export interface RunResult {
   daily?: string;
   /** CME Credits (included in `cme`) for the day's first finished Today's Shift. */
   dailyBonus?: number;
+  /** The Miracle Cure's alternate ending: the doctor clocked out instead of going down. */
+  clockedOut?: boolean;
 }
 
 export const events = new Phaser.Events.EventEmitter();

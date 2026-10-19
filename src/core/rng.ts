@@ -84,8 +84,9 @@ export const randomSeed = (): number => Math.floor(Math.random() * 4294967296) >
  *   patients: who walks in, when, and what they do
  *   ai:       germ wind-ups and cooldowns
  *   world:    Construction's door
+ *   secret:   the Miracle Cure's code
  */
-const STREAMS = ['wave', 'spawn', 'loot', 'patients', 'ai', 'world'] as const;
+const STREAMS = ['wave', 'spawn', 'loot', 'patients', 'ai', 'world', 'secret'] as const;
 export type RngStream = (typeof STREAMS)[number];
 
 export const runRng = Object.fromEntries(STREAMS.map((s) => [s, new Rng(hashSeed(s))])) as Record<RngStream, Rng>;

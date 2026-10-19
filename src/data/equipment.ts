@@ -286,6 +286,33 @@ export const EQUIPMENT: Record<string, EquipmentDef> = {
 };
 
 /** What a Supply Requisition can offer (two at a time, never the crate tool you already hold). */
+/**
+ * THE IONIZER 9000: the Miracle Cure, from the Records Room (never in a crate). "Ionizes 99.9% of everything."
+ * A wide, piercing purple charge that works on everything and charges itself.
+ */
+EQUIPMENT.ionizer9000 = {
+  id: 'ionizer9000',
+  name: 'Ionizer 9000',
+  blurb: 'Ionizes 99.9% of everything. As seen in a 2009 magazine.',
+  capacity: 100,
+  costPerShot: 2,
+  fireIntervalMs: 70,
+  dropletsPerShot: 3,
+  spreadDeg: 22,
+  dropletSpeed: 900,
+  range: 300,
+  damage: 9,
+  effectiveness: { bacteria: 1.3, virus: 1.3, spore: 1.3, biofilm: 1.3, fungus: 1.3 },
+  knockback: 14,
+  refillMs: 0,
+  reserve: 0,
+  color: 0xe040fb,
+  unit: '%',
+  mistPuffs: 3,
+  pierce: 2,
+  rechargePerSecond: 30,
+};
+
 export const CRATE_POOL = ['lysolFogger', 'bleachSoaker', 'uvWand', 'peroxideFoamer', 'wipes', 'gelLauncher', 'defib'];
 
 export const STARTING_EQUIPMENT = 'squirtBottle';

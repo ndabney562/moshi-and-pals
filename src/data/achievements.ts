@@ -33,6 +33,8 @@ export const ACHIEVEMENTS: AchievementDef[] = [
   { id: 'meetingAdjourned', name: 'Meeting Adjourned', how: 'Defeat Diamond the Practice Manager' },
   { id: 'discharged', name: 'Discharged', how: 'Defeat Patient Zero before he leaves' },
   { id: 'ama', name: 'Against Medical Advice', how: 'Let Patient Zero walk out' },
+  { id: 'sensitivityReport', name: 'Sensitivity Report', how: 'Defeat Methicillin the Unkillable' },
+  { id: 'herdImmunity', name: 'Herd Immunity', how: 'Defeat the Influenza Twins' },
   { id: 'exitInterview', name: 'Exit Interview', how: 'Defeat Diamond as Ken' },
   { id: 'delegation', name: 'Delegation', how: 'Scribes clean up 5 patients in one shift' },
   { id: 'doubleShift', name: 'Double Shift', how: 'Reach round 10' },
@@ -40,4 +42,7 @@ export const ACHIEVEMENTS: AchievementDef[] = [
   { id: 'clockedIn', name: 'Clocked In', how: "Finish a Today's Shift" },
   { id: 'traumaTen', name: 'Level One Trauma', how: 'Reach round 10 on Trauma Center' },
   { id: 'darkShift', name: 'Working in the Dark', how: 'Reach round 8 during a Power Outage' },
+  // The Miracle Cure: the hints are deliberately vague
+  { id: 'miracleCure', name: 'The Miracle Cure', how: 'Read the old magazines. All of them. Then call.' },
+  { id: 'shiftComplete', name: 'Shift Complete', how: 'Clock out. Actually clock out.' },
 ];

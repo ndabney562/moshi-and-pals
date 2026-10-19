@@ -20,23 +20,27 @@
  */
 import type { FloorArea, Obstacle, ObstacleKind, Rect, RoomArea, RoomLayout, Stairway } from './rooms';
 
-/** Game pixels per plan pixel. */
-const S = 3;
+/** Game pixels per plan pixel. Was 3 until v0.19.1, when Noah found the map too big; 2.4 is 20% smaller. */
+const S = 2.4;
 const T = 30; // wall thickness
-/** Plan origin of each floor, and where that floor sits in the game world. */
+/** Floor outlines in plan coordinates. */
+const OUTLINE: Record<'g' | 'u', number[]> = { g: [158, 378, 1282, 1612], u: [236, 382, 1256, 1496] };
+const up10 = (n: number) => Math.ceil(n / 10) * 10;
+/** Plan origin of each floor, and where that floor sits in the game world (a solid gap between them). */
 const G0 = { px: 150, py: 370, x: 0 };
-const U0 = { px: 230, py: 370, x: 3800 };
-const GROUND_W = 3400;
-const UP_W = 3080;
-const H = 3740;
+const GROUND_W = up10((OUTLINE.g[2] - G0.px) * S);
+const U0 = { px: 230, py: 370, x: GROUND_W + up10((400 / 3) * S) };
+const UP_W = up10((OUTLINE.u[2] - U0.px) * S);
+const H = up10((OUTLINE.g[3] - G0.py) * S) + 10;
 
-const gx = (px: number) => G0.x + (px - G0.px) * S;
-const ux = (px: number) => U0.x + (px - U0.px) * S;
-const fy = (py: number) => (py - G0.py) * S;
+// Rounded to whole pixels so walls and furniture stay crisp
+const gx = (px: number) => Math.round(G0.x + (px - G0.px) * S);
+const ux = (px: number) => Math.round(U0.x + (px - U0.px) * S);
+const fy = (py: number) => Math.round((py - G0.py) * S);
 type Floor = 'g' | 'u';
 const X = (f: Floor, px: number) => (f === 'g' ? gx(px) : ux(px));
 /** A plan box [x1, y1, x2, y2] on a floor, as a game rect. */
-const box = (f: Floor, b: number[]): Rect => ({ x: X(f, b[0]), y: fy(b[1]), w: (b[2] - b[0]) * S, h: (b[3] - b[1]) * S });
+const box = (f: Floor, b: number[]): Rect => ({ x: X(f, b[0]), y: fy(b[1]), w: X(f, b[2]) - X(f, b[0]), h: fy(b[3]) - fy(b[1]) });
 const pt = (f: Floor, px: number, py: number) => ({ x: X(f, px), y: fy(py) });
 
 type Side = 'n' | 's' | 'e' | 'w';
@@ -81,7 +85,7 @@ const ROOMS: RoomSpec[] = [
   { id: 'exam7', name: 'Exam Room 7', floor: 'g', boxes: [[1046, 882, 1258, 1132]], doors: [{ side: 'w', at: 930 }], cost: 200, tint: 0xa8e6cf, spawns: [[1200, 1080]] },
   { id: 'sc1', name: 'Supply Closet', floor: 'g', boxes: [[172, 652, 405, 768]], doors: [{ side: 'e', at: 715, w: 120 }], cost: 150, tint: 0xd7ccc8, spawns: [[210, 700]] },
   { id: 'bath2', name: 'Bathroom 2', floor: 'g', boxes: [[248, 768, 405, 885]], doors: [{ side: 'e', at: 830, w: 110 }], cost: 100, tint: 0x7fd3ff, spawns: [[285, 800]] },
-  { id: 'lab', name: 'Lab', floor: 'g', boxes: [[515, 772, 948, 1112]], doors: [{ side: 'w', at: 1060 }], cost: 500, tint: 0xb39ddb, spawns: [[900, 820]] },
+  { id: 'lab', name: 'Lab', floor: 'g', boxes: [[515, 772, 948, 1112]], doors: [{ side: 'w', at: 1060 }], cost: 500, tint: 0xb39ddb, spawns: [[855, 900]] },
   { id: 'manager', name: "Manager's Office", floor: 'g', boxes: [[690, 1118, 818, 1292]], doors: [{ side: 'w', at: 1160, w: 120 }], cost: 150, tint: 0xf4a261, spawns: [[780, 1160]] },
   { id: 'bath1', name: 'Bathroom 1', floor: 'g', boxes: [[818, 1112, 922, 1262]], doors: [{ side: 'e', at: 1170, w: 110 }], cost: 100, tint: 0x7fd3ff, spawns: [[850, 1150]] },
   { id: 'xray', name: 'X-Ray', floor: 'g', boxes: [[815, 1262, 1082, 1605]], doors: [{ side: 'n', at: 985 }], cost: 600, tint: 0x546e7a, spawns: [[860, 1560], [1040, 1400]] },
@@ -110,7 +114,7 @@ const ROOMS: RoomSpec[] = [
   { id: 'exam13', name: 'Exam Room 13', floor: 'u', boxes: [[1030, 752, 1240, 998]], doors: [{ side: 'w', at: 795 }], cost: 200, tint: 0xa8e6cf, spawns: [[1190, 950]] },
   { id: 'exam14', name: 'Exam Room 14', floor: 'u', boxes: [[990, 1232, 1192, 1492]], doors: [{ side: 'n', at: 1025 }], cost: 200, tint: 0xa8e6cf, spawns: [[1140, 1440]] },
   { id: 'exam15', name: 'Exam Room 15', floor: 'u', boxes: [[822, 1232, 990, 1492]], doors: [{ side: 'n', at: 958 }], cost: 200, tint: 0xa8e6cf, spawns: [[860, 1440]] },
-  { id: 'bath3', name: 'Bathroom 3', floor: 'u', boxes: [[240, 640, 362, 778]], doors: [{ side: 'e', at: 700, w: 110 }], cost: 100, tint: 0x7fd3ff, spawns: [[280, 680]] },
+  { id: 'bath3', name: 'Bathroom 3', floor: 'u', boxes: [[240, 640, 362, 778]], doors: [{ side: 'e', at: 700, w: 110 }], cost: 100, tint: 0x7fd3ff, spawns: [[330, 705]] },
   { id: 'bath4', name: 'Bathroom 4', floor: 'u', boxes: [[825, 1062, 912, 1222]], doors: [{ side: 'e', at: 1150, w: 110 }], cost: 100, tint: 0x7fd3ff, spawns: [[860, 1100]] },
   { id: 'sc2', name: 'Supply Closet 2', floor: 'u', boxes: [[825, 955, 912, 1062]], doors: [{ side: 'e', at: 1010, w: 110 }], cost: 150, tint: 0xd7ccc8, spawns: [[850, 990]] },
 ];
@@ -130,8 +134,6 @@ const OUTER_DOORS: { floor: Floor; side: Side; at: number; w: number; label: str
   { floor: 'u', side: 'n', at: 1180, w: 300, label: 'FIRE ESCAPE' },
 ];
 
-/** Floor outlines in plan coordinates. */
-const OUTLINE: Record<Floor, number[]> = { g: [158, 378, 1282, 1612], u: [236, 382, 1256, 1496] };
 
 const ob = (kind: ObstacleKind, f: Floor, b: number[], extra: Partial<Obstacle> = {}): Obstacle => ({ kind, ...box(f, b), ...extra });
 
@@ -143,14 +145,16 @@ const FURNITURE: Obstacle[] = [
   ob('chairRow', 'g', [228, 1330, 352, 1346]), ob('chairRow', 'g', [228, 1380, 352, 1396]),
   ob('bench', 'g', [228, 1552, 330, 1588]), ob('bench', 'g', [338, 1552, 440, 1588]),
   ob('vending', 'g', [178, 1250, 212, 1300], { label: 'SNACKS' }),
+  ob('magTable', 'g', [240, 1450, 320, 1480]), // very old magazines
   ob('plant', 'g', [180, 1555, 205, 1580]), ob('plant', 'g', [400, 995, 425, 1020]), ob('plant', 'g', [760, 1560, 785, 1585]),
   // Reception: the curved front desk and the long back counter, and the manager's desk
   ob('desk', 'g', [488, 1122, 535, 1250], { label: 'RECEPTION' }),
   ob('counter', 'g', [452, 1318, 685, 1362]),
   ob('desk', 'g', [715, 1200, 780, 1240]),
+  ob('microwave', 'g', [738, 1132, 770, 1150]), ob('fridge', 'g', [776, 1132, 804, 1175]), // Diamond's
   ob('supplyCart', 'g', [590, 1395, 625, 1415], { label: 'SUPPLIES' }),
   ob('crate', 'g', [640, 1540, 664, 1560]),
-  ob('crate', 'g', [700, 1130, 724, 1150]),
+  ob('crate', 'g', [775, 1250, 799, 1270]),
   // Elevator (germs ride it up and down)
   ob('elevator', 'g', [688, 1300, 810, 1458], { label: 'ELEVATOR' }),
   // Exam rooms: a table and a cabinet each
@@ -161,15 +165,15 @@ const FURNITURE: Obstacle[] = [
   ob('crate', 'g', [1180, 780, 1204, 800]),
   // Supply closet, bathrooms
   ob('supplyCart', 'g', [180, 700, 215, 720], { label: 'SUPPLIES' }),
-  ob('cabinet', 'g', [300, 660, 395, 680]),
-  ob('stall', 'g', [255, 800, 300, 878]), ob('sink', 'g', [340, 850, 395, 878]),
-  ob('stall', 'g', [830, 1190, 880, 1255]), ob('sink', 'g', [850, 1118, 905, 1140]),
+  ob('cabinet', 'g', [230, 725, 300, 742]), // clear of Exam Room 1's door
+  ob('stall', 'g', [255, 800, 300, 878], { label: 'STALL 1' }), ob('sink', 'g', [340, 850, 395, 878]),
+  ob('stall', 'g', [830, 1190, 880, 1255], { label: 'STALL 2' }), ob('sink', 'g', [850, 1118, 905, 1140]),
   ob('handDryer', 'g', [340, 772, 378, 784]), ob('handDryer', 'g', [821, 1150, 833, 1188]),
   // Lab: benches round the walls and down the middle
   ob('counter', 'g', [520, 780, 560, 1000]), ob('counter', 'g', [628, 782, 825, 832]), ob('counter', 'g', [880, 785, 940, 990]),
-  ob('counter', 'g', [638, 940, 810, 985]), ob('counter', 'g', [530, 1062, 780, 1106]), ob('counter', 'g', [880, 1000, 920, 1075]),
+  ob('counter', 'g', [638, 940, 810, 985]), ob('counter', 'g', [575, 1062, 780, 1106]), ob('counter', 'g', [880, 1000, 920, 1075]),
   ob('supplyCart', 'g', [735, 1010, 770, 1030], { label: 'SUPPLIES' }),
-  ob('compounder', 'g', [585, 1005, 640, 1040], { label: 'COMPOUNDING' }),
+  ob('compounder', 'g', [610, 1005, 665, 1040], { label: 'COMPOUNDING' }),
   ob('autoclave', 'g', [830, 785, 876, 830], { label: 'AUTOCLAVE' }),
   ob('crate', 'g', [600, 880, 624, 900]),
   // X-ray: the machine, a lead partition and the controls
@@ -192,9 +196,9 @@ const FURNITURE: Obstacle[] = [
   ob('examTable', 'u', [1130, 600, 1210, 630]), ob('examTable', 'u', [1120, 870, 1200, 900]),
   ob('examTable', 'u', [1060, 1380, 1140, 1410]), ob('examTable', 'u', [880, 1380, 960, 1410]),
   ob('crate', 'u', [560, 560, 584, 580]), ob('crate', 'u', [1200, 680, 1224, 700]), ob('crate', 'u', [930, 1300, 954, 1320]),
-  ob('supplyCart', 'u', [835, 1020, 870, 1040], { label: 'SUPPLIES' }),
-  ob('stall', 'u', [250, 650, 300, 720]), ob('sink', 'u', [250, 740, 320, 770]),
-  ob('stall', 'u', [835, 1150, 880, 1215]), ob('sink', 'u', [835, 1070, 900, 1092]),
+  ob('supplyCart', 'u', [832, 1028, 860, 1046], { label: 'SUPPLIES' }),
+  ob('stall', 'u', [250, 650, 300, 720], { label: 'STALL 3' }), ob('sink', 'u', [250, 740, 320, 770]),
+  ob('stall', 'u', [835, 1150, 880, 1215], { label: 'STALL 4' }), ob('sink', 'u', [835, 1070, 900, 1092]),
   ob('handDryer', 'u', [310, 644, 348, 656]), ob('handDryer', 'u', [828, 1100, 840, 1138]),
 ];
 
@@ -213,6 +217,20 @@ const STAIRS: Stairway[] = [
     requires: ['egress', 'upstairs'],
   },
 ];
+
+/**
+ * THE RECORDS ROOM (the Miracle Cure's secret room): its own little floor east of upstairs, reached only through
+ * the panel behind Stall 3 (systems/MiracleCure.ts teleports Eugene in and out). Game coordinates.
+ */
+// Its floor area is wide enough that the camera never shows past it on the widest phone
+const REC = { x: U0.x + UP_W + 700, y: 360, w: 1000, h: 600 };
+const REC_MARGIN = { x: 400, y: 300 };
+export const RECORDS_ROOM = {
+  /** Where Eugene comes in, where the Fax Machine sits, and where he comes back out (by Stall 3). */
+  arrive: { x: REC.x + REC.w / 2, y: REC.y + REC.h - 200 },
+  faxHome: { x: REC.x + REC.w / 2, y: REC.y + 150 },
+  back: pt('u', 330, 700),
+};
 
 // ───────── Build walls, doors and rooms ─────────
 
@@ -263,6 +281,7 @@ function build(): RoomLayout {
   const holes: Rect[] = [];
   const obstacles: Obstacle[] = [];
   const rooms: RoomArea[] = [];
+  const curtains: Rect[] = [];
 
   // Outer walls of each floor, plus the solid gap between the floors
   for (const f of ['g', 'u'] as Floor[]) {
@@ -285,6 +304,7 @@ function build(): RoomLayout {
         ? { x: hole.x, y: wallPart.y, w, h: T }
         : { x: wallPart.x, y: hole.y, w: T, h: w };
       obstacles.push({ kind: 'door', ...door, label: spec.name.toUpperCase(), opens: spec.id, cost: spec.cost ?? 0 });
+      if (spec.id.startsWith('exam')) curtains.push(door);
     }
     parts.forEach((p, i) => rooms.push({
       id: spec.id, name: spec.name, ...p, start: spec.start, tint: spec.tint,
@@ -298,7 +318,7 @@ function build(): RoomLayout {
     obstacles.push({ kind: 'door', ...g, label: gate.label, opens: gate.opens, cost: COSTS[gate.opens] });
   }
   // The waiting room's stair alcove is walled off from the west hallway passage
-  walls.push(box('g', [405, 885, 415, 1100]));
+  walls.push(box('g', [405, 885, 415, 1099]));
   // Upstairs is bought at the bottom of the west stairs
   const up = STAIRS[0].a.zone;
   obstacles.push({ kind: 'door', x: up.x, y: up.y, w: up.w, h: up.h, label: 'UPSTAIRS', opens: 'upstairs', cost: COSTS.upstairs });
@@ -312,12 +332,24 @@ function build(): RoomLayout {
     obstacles.push({ kind: 'door', ...door, label: d.label });
   }
 
+  // The Records Room: four walls, rows of file cabinets, and the way back out
+  for (const s of ['n', 's', 'e', 'w'] as Side[]) walls.push(sideRect(REC, s));
+  // ...and solid all round it, out to the edge of its floor
+  const M = REC_MARGIN;
+  walls.push({ x: REC.x - M.x, y: REC.y - M.y, w: REC.w + M.x * 2, h: M.y }, { x: REC.x - M.x, y: REC.y + REC.h, w: REC.w + M.x * 2, h: M.y },
+    { x: REC.x - M.x, y: REC.y, w: M.x, h: REC.h }, { x: REC.x + REC.w, y: REC.y, w: M.x, h: REC.h });
+  rooms.push({ id: 'records', name: 'Records Room', ...REC, tint: 0x8d6e63, germSpawns: [], secret: true });
+  for (const cx of [REC.x + 90, REC.x + REC.w - 150]) {
+    for (const cy of [REC.y + 90, REC.y + 330]) obstacles.push({ kind: 'cabinet', x: cx, y: cy, w: 60, h: 150 });
+  }
+  obstacles.push({ kind: 'recordsDoor', x: REC.x + REC.w / 2 - 70, y: REC.y + REC.h - T, w: 140, h: T, label: 'BACK TO WORK' });
+
   for (const hole of holes) walls = walls.flatMap((w) => cut(w, hole));
   // Smaller rooms first, so "which room is Eugene in" finds the office before the big waiting room around it
   rooms.sort((a, b) => a.w * a.h - b.w * b.h);
   return {
     id: 'moshiland', name: 'MoshiLand Urgent Care',
-    width: U0.x + UP_W, height: H,
+    width: REC.x + REC.w + REC_MARGIN.x, height: H,
     playerSpawn: pt('g', 300, 1290),
     exit: pt('g', 545, 1585),
     signs: [
@@ -330,8 +362,11 @@ function build(): RoomLayout {
     floors: [
       { id: 'ground', name: 'Ground Floor', x: 0, y: 0, w: GROUND_W, h: H },
       { id: 'up', name: 'Upstairs', x: U0.x, y: 0, w: UP_W, h: fy(OUTLINE.u[3]) + 40 },
+      { id: 'records', name: 'Records Room', x: REC.x - REC_MARGIN.x, y: REC.y - REC_MARGIN.y, w: REC.w + REC_MARGIN.x * 2, h: REC.h + REC_MARGIN.y * 2 },
     ] satisfies FloorArea[],
     stairs: STAIRS,
+    curtains,
+    fromPlan: (floor, px, py) => pt(floor === 'up' ? 'u' : 'g', px, py),
   };
 }
 

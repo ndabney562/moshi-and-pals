@@ -23,7 +23,11 @@ export type ObstacleKind =
   /** M14 room traps and the vending machine. */
   | 'handDryer' | 'autoclave' | 'xrayControls' | 'vending'
   /** M9: the Lab's Compounding Station (weapon upgrades). */
-  | 'compounder';
+  | 'compounder'
+  /** The Miracle Cure (secret): the waiting-room magazine table, the office microwave, the Records Room's way out. */
+  | 'magTable' | 'microwave' | 'recordsDoor'
+  /** Exam-room privacy curtain across a doorway (layout `curtains`; solid only while pulled shut). */
+  | 'curtain';
 
 export interface Obstacle {
   kind: ObstacleKind;
@@ -51,6 +55,8 @@ export interface RoomArea {
   /** Floor tint, so each room reads differently at a glance. */
   tint?: number;
   germSpawns: { x: number; y: number }[];
+  /** Hidden (the Records Room): never fogged, never counted, never bought. */
+  secret?: boolean;
 }
 
 export interface RoomLayout {
@@ -69,6 +75,10 @@ export interface RoomLayout {
   floors?: FloorArea[];
   /** Staircases linking floors: walk into one end, come out at the other. Usable once all `requires` rooms are open. */
   stairs?: Stairway[];
+  /** Plan pixel to world point, for layouts drawn from a floor plan (tests use it to stand somewhere specific). */
+  fromPlan?: (floor: 'ground' | 'up', px: number, py: number) => { x: number; y: number };
+  /** Exam-room doorways with a privacy curtain: pulled shut, it's a wall for a few seconds. */
+  curtains?: Rect[];
 }
 
 export interface Rect { x: number; y: number; w: number; h: number; }

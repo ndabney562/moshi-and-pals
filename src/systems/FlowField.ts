@@ -43,11 +43,14 @@ export class FlowField {
   rebuild(obstacles: Obstacle[]): void {
     const { cell, clearance, cols, rows } = this;
     this.blocked.fill(0);
+    // A cell is blocked when its centre is within `clearance` of an obstacle. (Blocking every cell the inflated
+    // obstacle touched closed off narrow doors depending on how they lined up with the grid.) Every obstacle is
+    // at least a few px thick, so with clearance 18 it still covers a centre: walls never leak.
     for (const o of obstacles) {
-      const x0 = Math.max(0, Math.floor((o.x - clearance) / cell));
-      const y0 = Math.max(0, Math.floor((o.y - clearance) / cell));
-      const x1 = Math.min(cols - 1, Math.floor((o.x + o.w + clearance - 1) / cell));
-      const y1 = Math.min(rows - 1, Math.floor((o.y + o.h + clearance - 1) / cell));
+      const x0 = Math.max(0, Math.ceil((o.x - clearance) / cell - 0.5));
+      const y0 = Math.max(0, Math.ceil((o.y - clearance) / cell - 0.5));
+      const x1 = Math.min(cols - 1, Math.floor((o.x + o.w + clearance) / cell - 0.5));
+      const y1 = Math.min(rows - 1, Math.floor((o.y + o.h + clearance) / cell - 0.5));
       for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) this.blocked[y * cols + x] = 1;
     }
     const sc = FlowField.SOLID_CELL;

@@ -129,3 +129,10 @@ export function hireDoctor(id: string): boolean {
   save();
   return true;
 }
+
+/** Unlocks something earned rather than bought (the Miracle Cure's 'scrubCap'). */
+export function grant(id: string): void {
+  if (state.owned.includes(id)) return;
+  state = { ...state, owned: [...state.owned, id] };
+  save();
+}

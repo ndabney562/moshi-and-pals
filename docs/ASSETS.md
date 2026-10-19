@@ -12,4 +12,5 @@
 | Basic Germ | Placeholder, drawn in code |
 | Spray, splat, stain FX | Placeholder particles |
 | Sounds: spray, hit, pop, bump, empty, refill | Synthesized placeholders (`src/core/sfx.ts`) |
+| Music: clinic theme and boss theme | Synthesized live from step patterns (`src/data/music.ts`, played by `src/core/music.ts`) |
 | Voice lines, Sinus Purge, music | Needed from M4 (placeholder) and M8 (Noah's recordings) |

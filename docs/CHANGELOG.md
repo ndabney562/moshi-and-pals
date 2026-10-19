@@ -1,10 +1,57 @@
 # Changelog
 
-## v0.20.0: NPS Scores hire the Pals
+## v0.26.0: NPS Scores hire the Pals
 - **NPS Scores**, a new currency that stays between shifts. Every shift earns 1 per round reached, 1 per patient you clean up and 3 per boss beaten. The Discharge Summary shows what you earned; the title screen shows what you have.
 - **Dr. Moshkovich is the only doctor on shift at first.** Dr. Kaya (30 NPS), PA Lucien (45) and Ken (60) are locked: tap a locked portrait to see the price, tap again to hire them for good.
 - **Hired Pals are stronger than Eugene:** all three do 10% more damage with every tool, on top of their own signature move. Kaya is now 12% faster (was 8%), Lucien has +30 health (was +20) and Ken gets +15 health along with his +50% against Diamond.
 - If you'd picked a Pal before this update, you're back to Dr. Moshkovich until you hire them. `?doctor=` still plays anyone, for testing.
+
+## v0.25.0: The Miracle Cure (a secret)
+- **There's a secret in the clinic.** No spoilers here. A hint: the 2009 magazines on the waiting-room table are worth a read between rounds. The full walkthrough is in the roadmap, for anyone who gives up.
+- Finishing it unlocks a new boss, a new tool, a new ending and something for Eugene to wear.
+- The stalls are numbered now, and every toilet in the clinic flushes. Nobody asked for this.
+- Two new achievements with deliberately vague hints.
+
+## v0.24.0: Boss rewards and exam curtains
+- **Exam-room privacy curtains:** every exam room's doorway has one. Press USE by an open exam room's door to pull it shut: it's a wall for 8 s (germs have to go round), then it slides back open. Free, 20 s to recharge.
+- **The Influenza Twins' strand now only snaps on a curtain.** Plain walls don't cut it any more: lure one twin into an exam room, step out and pull the curtain between them to stun both.
+- **Methicillin leaves a Prescription:** grab it and the tool in your hands is compounded straight to **Prescription Strength**, free (the other tool if that one's maxed, or $700 if both are).
+- **Flu Shot**, a new rare pill: +15 max health for the rest of the shift. The Influenza Twins always leave one instead of a random pill.
+
+## v0.23.0: Two new bosses
+- **Bosses now take turns in fours:** Diamond (round 5), Patient Zero (10), **Methicillin** (15), **the Influenza Twins** (20), then around again.
+- **Methicillin the Unkillable**, a bunch of armored grapes (that's what staph looks like). He **adapts**: once one tool has hurt him enough, he resists it (a gold ring and a RESISTANT label under him say which) and takes only 20% from it for 14 s. Switch tools, use your signature move, or lure him into the **Lab autoclave**, which he can never resist and which cooks him 50% harder.
+  - **Cluster Shot:** flings three grapes that hatch into germs.
+  - **Roll:** curls up (a red lane shows where), then bowls straight down it. Step aside.
+  - **Three layers:** his armored outer ring and then his middle ring peel off, shedding grapes, and his attacks come quicker each time.
+- **The Influenza Twins, H & N**: two flu virions sharing one health bar, tied together by a strand that hurts to touch. They circle you from opposite sides, so the strand sweeps across you.
+  - Get a wall between them and the strand **snaps**: both reel for 2 s and it takes 5 s to grow back.
+  - **Spiral Spit:** one of them spins and spits a ring of globs.
+  - Knock one out and it goes **down, not out**: finish the other within 6 s or the first gets back up at half health.
+  - Below half health, **antigenic shift**: only one twin can really be hurt (a yellow ring), the other is in a blue bubble, and they swap every 6 s.
+  - They always leave a pill behind.
+- 2 new achievements: *Sensitivity Report* (beat Methicillin) and *Herd Immunity* (beat the twins). Atlas notes for all three.
+- Fixed: the Discharge Summary blamed Diamond when Patient Zero's cough finished you.
+## v0.22.0: Music
+- **The clinic has a soundtrack**, and it follows the fight:
+  - Between rounds you get the waiting room's on-hold music, *Please Continue to Hold*: a lazy bossa nova with a vibraphone tune.
+  - When a round starts, drums and a buzzing arpeggio come in quietly, and they get louder as germs pile up. When your health runs low they go all out.
+  - Boss rounds switch to the boss theme, *Code Brown*: fast, in a minor key, with a siren-like lead. It changes on the beat and switches back once the boss round is over.
+  - The music turns down while paused and fades out when you go down.
+- **MUSIC: ON/OFF** in the pause menu, next to SOUND, so you can keep the sound effects and lose the music (or the other way round).
+
+## v0.19.2: The Pals talk like themselves
+- Dr. Kaya, PA Lucien and Ken now react to patients in their own voices, from Noah's notes on the real people. Three lines each for every health code violation:
+  - **Dr. Kaya** stays chill, talks like a gym bro, reminds you he's an ER doc, prescribes prednisone, Afrin, a Z-Pak and saline for everything, and brings up his old smoking days.
+  - **PA Lucien** laughs at everything and turns every violation into a lesson for the patient and the scribes.
+  - **Ken** finds every patient fucking ridiculous, wants a smoke break, pushes guaifenesin, leans on Omar and Alan, and takes shots at Diamond.
+- New patient: the **MTA worker** in an orange safety vest, sprinting for the bathroom and letting in 2 germs. Lucien has a diagnosis: MTAitis.
+
+## v0.19.1: A smaller clinic
+- **The clinic is 20% smaller** (Noah: "the map seems too large"). Same rooms in the same order at the same prices, just shorter corridors and smaller rooms, so there's less walking between fights.
+- Exam Room 1 can actually be reached now: a cabinet in the Supply Closet was blocking its door.
+- The Lab's entrance and the Manager's Office are roomier, so a Chonk Coccus no longer gets wedged in them, and germs find their way out of the small bathrooms and closets instead of pressing against the wall.
+
 
 ## v0.19.0: Milestone 17, Today's Shift
 - **Today's Shift** (📋 on the title screen): a daily challenge. Everyone gets the same shift on the same day: the date picks the random rolls and two modifiers, shown before you CLOCK IN. Always on Urgent. The title screen and the Discharge Summary show today's best, and your first finished Today's Shift each day earns +2 CME.
