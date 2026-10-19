@@ -990,12 +990,17 @@ try {
     for (const g of scene.germs.getChildren()) if (g.active && g.def.id === 'writeUp') g.kill();
     scene.player.hp = 100;
   });
-  // Down to 30% health, below the tantrum threshold
-  await hitBoss(await page.evaluate(() => { const b = window.game.scene.getScene('Game').boss.germ; return b.hp - b.maxHp * 0.3; }));
+  // Down to 30% health, below the tantrum threshold. Set directly: a hit can crit (random) and finish her off.
+  await page.evaluate(() => { const b = window.game.scene.getScene('Game').boss.germ; b.hp = b.maxHp * 0.3; });
   // (slow test browsers: allow plenty of game time for the wind-up and the stomp)
-  await page.waitForFunction(() => window.game.scene.getScene('Game').boss.mode === 'tantrumWindup', null, { timeout: 30000 });
-  await page.waitForFunction(() => window.game.scene.getScene('Game').boss.nextTantrumAt > 0, null, { timeout: 30000 });
-  check(true, 'Policy Tantrum winds up and stomps at low health');
+  const tantrum = await page.waitForFunction(() => window.game.scene.getScene('Game').boss.mode === 'tantrumWindup', null, { timeout: 30000 })
+    .then(() => page.waitForFunction(() => window.game.scene.getScene('Game').boss.nextTantrumAt > 0, null, { timeout: 30000 }))
+    .then(() => 'stomped', () => page.evaluate(() => {
+      const sc = window.game.scene.getScene('Game');
+      const b = sc.boss;
+      return JSON.stringify({ active: b.active, mode: b.mode, hp: Math.round(b.germ.hp), maxHp: b.germ.maxHp, nextTantrumAt: b.nextTantrumAt, now: Math.round(sc.time.now), dead: sc.player.dead });
+    }));
+  check(tantrum === 'stomped', `Policy Tantrum winds up and stomps at low health (${tantrum})`);
 
   // Finish her off
   await page.evaluate(() => { window.game.scene.getScene('Game').player.hp = 100; });
