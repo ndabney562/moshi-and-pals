@@ -378,6 +378,8 @@ export const BALANCE = {
    */
   scribes: {
     ms: 20000,
+    /** A helper waiting in a locked room: a dark silhouette there, `atY` of the way down the room, gently pulsing. */
+    silhouette: { color: 0x050c0e, alpha: 0.75, atY: 0.7, pulseMs: 1400 },
     speed: 300,
     /** Where they stand: this far behind Eugene, off to one side. */
     followDistance: 85,

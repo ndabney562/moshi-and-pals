@@ -2053,12 +2053,18 @@ try {
       const sc = window.game.scene.getScene('Game');
       const omar = sc.scribes.get('omar');
       if (omar) omar.until = 1; // out of the way, so the kill below is Donald's
+      const shadow = sc.scribeShadows.get('xray');
+      const silhouette = !!shadow?.visible && shadow.texture.key === 'scribe-donald';
       sc.unlockRoom('xray');
       const owned = JSON.parse(localStorage.getItem('moshi.progress.v1') ?? '{}').owned ?? [];
       const s = sc.scribes.list.find((x) => x.def.id === 'donald');
-      return { out: !!sc.scribes.get('donald'), unlocked: owned.includes('scribe:donald'), allShift: s.until > 1e12, still: sc.scribeRooms.has('xray') };
+      return {
+        silhouette, out: !!sc.scribes.get('donald'), unlocked: owned.includes('scribe:donald'), allShift: s.until === Infinity,
+        still: sc.scribeRooms.has('xray') || sc.scribeShadows.has('xray') || !!shadow?.scene,
+      };
     });
-    check(donald.out && donald.unlocked && donald.allShift && !donald.still, `opening X-ray unlocks Donald and he helps for the rest of the shift (${JSON.stringify(donald)})`);
+    check(donald.silhouette && donald.out && donald.unlocked && donald.allShift && !donald.still,
+      `Donald's silhouette waits in X-ray; opening it unlocks him and he stays for the rest of the shift (${JSON.stringify(donald)})`);
     await scribeWorks(sp2, 'donald');
     check(scribeErrors2.length === 0, `no errors with Omar and Donald${scribeErrors2.length ? ': ' + scribeErrors2.join(' | ') : ''}`);
     await sc2.close();

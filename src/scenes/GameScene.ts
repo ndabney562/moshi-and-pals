@@ -166,6 +166,8 @@ export class GameScene extends Phaser.Scene {
   private frontDesk!: FrontDesk;
   /** Which hired scribe waits in which locked exam room this shift (room id -> scribe). */
   private scribeRooms = new Map<string, ScribeId>();
+  /** Their silhouettes, standing in those locked rooms until they're let out (room id -> image). */
+  private scribeShadows = new Map<string, Phaser.GameObjects.Image>();
   /** Patients the scribes cleaned up this shift (the Delegation achievement). */
   private scribeCleans = 0;
   private kills = 0;
@@ -1298,12 +1300,30 @@ export class GameScene extends Phaser.Scene {
    */
   private hideScribes(forced?: ScribeId): void {
     this.scribeRooms = new Map();
+    this.scribeShadows = new Map();
     for (const def of SCRIBES) {
       if (!def.waitsIn || def.id === forced || (!scribeUnlocked(def.id) && !def.unlockRoom)) continue;
       const free = def.waitsIn.filter((id) => !this.unlocked.has(id) && !this.scribeRooms.has(id));
-      if (free.length > 0) this.scribeRooms.set(runRng.world.pick(free), def.id);
-      else if (scribeUnlocked(def.id)) this.scribes.summon(def.id, this.time.now, Number.MAX_SAFE_INTEGER);
+      if (free.length > 0) {
+        const roomId = runRng.world.pick(free);
+        this.scribeRooms.set(roomId, def.id);
+        this.drawScribeShadow(roomId, def.id);
+      } else if (scribeUnlocked(def.id)) this.scribes.summon(def.id, this.time.now, Infinity);
     }
+  }
+
+  /**
+   * A helper waiting in a locked room shows as a dark silhouette in there (over the room's fog, below its price sign),
+   * so you can see who you'd let out.
+   */
+  private drawScribeShadow(roomId: string, id: ScribeId): void {
+    const area = this.room.rooms.find((r) => r.id === roomId);
+    if (!area) return;
+    const cfg = BALANCE.scribes.silhouette;
+    const shadow = this.add.image(area.x + area.w / 2, area.y + area.h * cfg.atY, `scribe-${id}`)
+      .setTintFill(cfg.color).setAlpha(cfg.alpha).setRotation(Math.PI / 2).setDepth(9.5);
+    this.tweens.add({ targets: shadow, alpha: cfg.alpha * 0.6, duration: cfg.pulseMs, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
+    this.scribeShadows.set(roomId, shadow);
   }
 
   /**
@@ -1315,9 +1335,14 @@ export class GameScene extends Phaser.Scene {
     const area = this.room.rooms.find((r) => r.id === roomId);
     if (!id || !area) return;
     this.scribeRooms.delete(roomId);
+    const shadow = this.scribeShadows.get(roomId);
+    this.scribeShadows.delete(roomId);
+    const from = shadow ? { x: shadow.x, y: shadow.y } : { x: area.x + area.w / 2, y: area.y + area.h / 2 };
+    shadow?.destroy();
     const def = scribeById(id);
     if (def?.unlockRoom === roomId && unlockScribe(id) && def.unlockBanner) events.emit(GameEvents.SecretFound, def.unlockBanner);
-    this.scribes.summon(id, this.time.now, Number.MAX_SAFE_INTEGER, { x: area.x + area.w / 2, y: area.y + area.h / 2 });
+    // Out for good: they stay on shift (and can't be hurt) until the shift ends
+    this.scribes.summon(id, this.time.now, Infinity, from);
   }
 
   /**

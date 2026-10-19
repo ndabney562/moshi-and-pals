@@ -6,6 +6,8 @@
 - **Selina** checks people in fast (every 2.5 s, +$5). **Elaine** is slower (every 4 s) but collects the copay at check-in (+$25).
 - **Staff upgrades.** The Equipment Locker has a new **STAFF** shelf: Omar, Alan, Donald, Selina and Elaine each get three upgrades you keep for good, paid with banked Copays once they're on staff: **Coffee Run** ($500, +20% damage; the PSRs bring in 20% more Copays per check-in), **Overtime** ($1,200, they stay 50% longer) and **Employee of the Month** ($2,500, +15% damage and they work 20% faster). Overtime is only for the front desk: Omar, Alan and Donald already stay all shift once they're out, so they skip it.
 - **Donald waits in X-ray now, like the scribes in their exam rooms.** Open the X-ray room and he comes out and helps for the rest of the shift (the first time also unlocks him for good). No more Donald pill, and walking into X-ray no longer calls him for 20 s.
+- **You can see who's waiting.** A dark silhouette of Omar, Alan or Donald stands in the locked room they're waiting in, so you know which door to open.
+- **Once they're out, they're there for good.** Omar, Alan and Donald can't be hurt and stay on shift until it ends.
 
 ## v0.29.0: Germ vents and Prior Auth barricades
 - **Germs come in through vents** now: green, bubbling floor grates at random spots in every open room. At the start of every round the vents move somewhere new, so the same corner is never safe twice.
