@@ -41,6 +41,7 @@ export class BootScene extends Phaser.Scene {
     this.makeHalo();
     this.makeArrow();
     this.makeGlob();
+    this.makeVent();
     this.makeEliteRing();
     this.makePill();
     this.scene.start('Title');
@@ -1063,6 +1064,31 @@ export class BootScene extends Phaser.Scene {
     g.fillStyle(0xffffff, 0.7).fillCircle(8, 8, 2.5);
     g.lineStyle(2, 0x4f5e14).strokeCircle(12, 12, 10);
     g.generateTexture('glob', 24, 24);
+    g.destroy();
+  }
+
+  /** GERM VENT: a cracked floor grate with green ooze bubbling up (germs come in here). */
+  private makeVent(): void {
+    const g = this.add.graphics();
+    g.fillStyle(0x1b3a1f, 0.85).fillEllipse(28, 20, 54, 34);
+    g.fillStyle(0x4f7a1e).fillEllipse(28, 20, 42, 24);
+    g.fillStyle(0x2c3e2f);
+    for (let i = 0; i < 4; i++) g.fillRect(12 + i * 9, 10, 4, 20);
+    g.fillStyle(0x9bbf3a);
+    g.fillCircle(17, 14, 4).fillCircle(37, 25, 5).fillCircle(29, 9, 3);
+    g.fillStyle(0xc8e66b).fillCircle(36, 24, 2).fillCircle(16, 13, 1.5);
+    g.lineStyle(2, 0x0d2b2e, 0.9).strokeEllipse(28, 20, 54, 34);
+    g.generateTexture('germ-vent', 56, 40);
+    g.clear();
+    // PRIOR AUTH barricade: a striped sawhorse with a sign on it
+    g.fillStyle(0x6d4c41).fillRect(8, 30, 5, 18).fillRect(51, 30, 5, 18);
+    g.fillStyle(0xffd23f).fillRoundedRect(2, 22, 60, 12, 3);
+    g.fillStyle(0x222222);
+    for (let i = 0; i < 5; i++) g.fillTriangle(6 + i * 12, 22, 12 + i * 12, 22, 6 + i * 12, 34);
+    g.lineStyle(2, 0x0d2b2e).strokeRoundedRect(2, 22, 60, 12, 3);
+    g.fillStyle(0xffffff).fillRoundedRect(14, 2, 36, 20, 3);
+    g.lineStyle(2, 0xd62828).strokeRoundedRect(14, 2, 36, 20, 3);
+    g.generateTexture('vent-block', 64, 50);
     g.destroy();
   }
 

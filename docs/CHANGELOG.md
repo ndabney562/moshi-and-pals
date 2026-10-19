@@ -6,6 +6,12 @@
 - **Selina** checks people in fast (every 2.5 s, +$5). **Elaine** is slower (every 4 s) but collects the copay at check-in (+$25).
 - **Staff upgrades.** The Equipment Locker has a new **STAFF** shelf: Omar, Alan, Donald, Selina and Elaine each get three upgrades you keep for good, paid with banked Copays once they're on staff: **Coffee Run** ($500, +20% damage; the PSRs bring in 20% more Copays per check-in), **Overtime** ($1,200, they stay 50% longer) and **Employee of the Month** ($2,500, +15% damage and they work 20% faster).
 
+## v0.29.0: Germ vents and Prior Auth barricades
+- **Germs come in through vents** now: green, bubbling floor grates at random spots in every open room. At the start of every round the vents move somewhere new, so the same corner is never safe twice.
+- **BLOCK a vent for $50.** Stand by one and press USE: a PRIOR AUTH barricade goes up and germs have to wait for approval. They come in through another vent instead, but every germ that tries this one pushes on it (BANG!), and after 8 pushes or 30 seconds it gives way. A bar under it shows how much it has left. If every vent is blocked, germs pile up behind the barricades until one breaks.
+- Bosses don't wait for prior authorization.
+- **The scribes and Donald block vents too.** While they're helping, each one tapes off a vent near them every 15 s with your Copays, as long as you'd still have $100 left.
+
 ## v0.28.5: The gel burns
 - **Gel Launcher gel now burns.** Germs standing in it take 12 damage a second (18 with Family Size), and keep burning for 1.5 s after they crawl out. Bosses aren't slowed by gel, but they do burn. Burning germs flicker orange.
 - Overlapping gel doesn't stack the burn; the hottest puddle counts. Tool effectiveness and damage bonuses (Pals, perks) apply; STAT! crits don't.

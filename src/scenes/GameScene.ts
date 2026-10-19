@@ -52,6 +52,7 @@ import { MiracleCure } from '../systems/MiracleCure';
 import { PatientDirector } from '../systems/PatientDirector';
 import { Scribes } from '../systems/Scribes';
 import { FrontDesk } from '../systems/FrontDesk';
+import { Vents, type Vent } from '../systems/Vents';
 import { SCRIBES, scribeById, type ScribeId } from '../data/scribes';
 import { Sprayer } from '../systems/Sprayer';
 import { WaveDirector } from '../systems/WaveDirector';
@@ -111,6 +112,8 @@ export class GameScene extends Phaser.Scene {
   private fog = new Map<string, Phaser.GameObjects.GameObject[]>();
   private currentRoom?: RoomArea;
   private interactTarget?: Station;
+  /** GERM VENTS: where germs come in; BLOCK one with Copays. */
+  private vents!: Vents;
   private stations: Station[] = [];
   /** This run's statistics (Discharge Summary, records). */
   private runStats: RunStats = newRunStats(0);
@@ -391,6 +394,19 @@ export class GameScene extends Phaser.Scene {
         }
       },
     });
+    this.vents = new Vents({
+      scene: this,
+      flow: this.flow,
+      fx: this.fx,
+      rooms: room.rooms,
+      isOpen: (id) => this.unlocked.has(id),
+      stationFootprints: () => this.stations.filter((st) => st.o.kind !== 'vent' && !st.gone?.()).map((st) => st.o),
+      copays: () => this.copays,
+      pay: (cost) => this.addCopays(-cost),
+      helpers: () => this.scribes.onShift(),
+      sameFloor: (x0, y0, x1, y1) => this.floorOf(x0, y0) === this.floorOf(x1, y1),
+    }, (st) => this.stations.push(st));
+    this.vents.sync();
     const forced = scribeById(DEBUG.scribe);
     if (forced) {
       // ?scribe=omar: they work the whole shift
@@ -456,6 +472,7 @@ export class GameScene extends Phaser.Scene {
       if (p.round >= 10 && this.shift.difficulty === 'trauma') this.achieve('traumaTen');
       if (p.round >= 8 && this.hasMod('powerOutage')) this.achieve('darkShift');
       if (this.hasMod('construction')) this.closeForConstruction(p.round);
+      this.vents.shuffle();
       this.cure.onRoundStarted();
     };
     const onEscaped = () => this.achieve('ama');
@@ -658,6 +675,7 @@ export class GameScene extends Phaser.Scene {
     this.patients.update(time, delta, this.waves.round, this.waves.spawning, this.waves.isBossRound);
     this.scribes.update(time, delta);
     this.frontDesk.update(time, this.player.dead);
+    this.vents.update(time);
     this.updateStreak(time);
   }
 
@@ -1880,6 +1898,7 @@ export class GameScene extends Phaser.Scene {
     this.lockedDoors = this.lockedDoors.filter((d) => d.o.opens !== id);
     this.flow.rebuild(this.blockingObstacles());
     this.flow.setPortals(this.stairLinks());
+    this.vents.sync();
     for (const obj of this.fog.get(id) ?? []) {
       this.tweens.add({ targets: obj, alpha: 0, duration: 500, onComplete: () => obj.destroy() });
     }
@@ -2000,24 +2019,34 @@ export class GameScene extends Phaser.Scene {
     if (this.player.dead) this.endRun();
   }
 
-  /** Places one germ at a spawn point away from Eugene. Returns false if the pool is full. */
+  /**
+   * Places one germ at a germ vent away from Eugene. Returns false if the pool is full, or if every vent it could
+   * use is barricaded (it waits, pushing on a barricade, and the wave tries again).
+   */
   private spawnGerm(id: string, scaling: GermScaling): boolean {
     const def = GERMS[id];
-    const germ = this.germs.get() as Germ | null;
-    if (!def || !germ) return false;
+    if (!def) return false;
     if (def.boss) scaling = { ...scaling, hpMult: Math.min(scaling.hpMult, WAVES.bossHpMultMax) };
-    // Germs come in through every room that's open, but not right on top of Eugene or miles away
+    // Germs come in through the vents of every room that's open, but not right on top of Eugene or miles away
     const { minSpawnDistance, maxSpawnDistance } = BALANCE.spawning;
     // Waiting Room Rush: everyone comes in through the front
     const fromStart = !!this.waves.special?.fromStart;
+    const start = new Set(this.room.rooms.filter((r) => r.start).map((r) => r.id));
     // (not in a room Construction has closed: germs fit under the door, but they don't start there)
-    const spots = this.room.rooms.filter((r) => this.unlocked.has(r.id) && r.id !== this.closed?.roomId && (!fromStart || r.start)).flatMap((r) => r.germSpawns);
+    const usable = (roomId: string) => this.unlocked.has(roomId) && roomId !== this.closed?.roomId && (!fromStart || start.has(roomId));
     const dist = (p: { x: number; y: number }) => Phaser.Math.Distance.Between(p.x, p.y, this.player.x, this.player.y);
-    const far = spots.filter((p) => dist(p) >= minSpawnDistance);
-    const ideal = far.filter((p) => dist(p) <= maxSpawnDistance);
-    // Mold grows where Eugene isn't: the farthest open spawn point
-    const spot = def.spawner ? spots.reduce((a, b) => (dist(b) > dist(a) ? b : a))
-      : runRng.spawn.pick(ideal.length ? ideal : far.length ? far : spots);
+    const choose = (spots: Vent[]): Vent => {
+      // Mold grows where Eugene isn't: the farthest open vent
+      if (def.spawner) return spots.reduce((a, b) => (dist(b) > dist(a) ? b : a));
+      const far = spots.filter((p) => dist(p) >= minSpawnDistance);
+      const ideal = far.filter((p) => dist(p) <= maxSpawnDistance);
+      return runRng.spawn.pick(ideal.length ? ideal : far.length ? far : spots);
+    };
+    // Bosses don't wait for prior authorization
+    const spot = this.vents.pick(this.time.now, usable, choose, !!def.boss);
+    if (!spot) return false;
+    const germ = this.germs.get() as Germ | null;
+    if (!germ) return false;
     if (def.spawnAs) {
       // COLONY: a flock of specks instead of one germ
       const s = def.spawnAs;

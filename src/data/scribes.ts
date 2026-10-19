@@ -45,6 +45,8 @@ export interface ScribeDef {
     attack: string[];
     /** When a patient they've been after cleans up (a PSR: once the line is empty). */
     clean: string[];
+    /** When they barricade a germ vent (with your Copays). The front desk PSRs stay at the desk, so they never do. */
+    block?: string[];
     leave: string[];
   };
 }
@@ -60,6 +62,7 @@ export const SCRIBES: ScribeDef[] = [
       arrive: ['Omar here! Charting that!', "Don't worry, I'm charting everything!"],
       attack: ['Charting that!', 'Noted!', 'Pt. presents with... GERMS.'],
       clean: ['Documented!', 'Added to your chart, sir!'],
+      block: ['Prior auth pending!', "I'll put that on your tab, sir!"],
       leave: ['Signing off! Notes are in!'],
     },
   },
@@ -70,6 +73,7 @@ export const SCRIBES: ScribeDef[] = [
       arrive: ['Alan. Scribe. Let’s go.', 'Laptop charged. Germs not.'],
       attack: ['Documented. Next.', 'Ctrl+Z that germ.', 'Copy, paste, disinfect.'],
       clean: ['Documented. Next.', 'Noncompliant. Now compliant.'],
+      block: ['Denied. Pending review.', 'Filed. Germs can wait.'],
       leave: ['Shift over. Notes signed.'],
     },
   },
@@ -82,6 +86,7 @@ export const SCRIBES: ScribeDef[] = [
       arrive: ['Donald, X-ray. Need a film, doc?', 'Lead apron on. I got you.'],
       attack: ['Hold still... and done.', 'Two views, coming up.', "Don't breathe!", 'Clear shot.'],
       clean: ['Clean enough to image.', 'Read: no germs.'],
+      block: ['Lead apron on the vent.', 'Restricted area. Germs out.'],
       leave: ['Back to X-ray. Films are piling up.'],
     },
   },

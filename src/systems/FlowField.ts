@@ -156,6 +156,21 @@ export class FlowField {
     return this.dist[this.index(x, y)] >= 0;
   }
 
+  /** True if a germ fits at (x, y): its cell and the eight around it are clear of walls and furniture. */
+  roomy(x: number, y: number): boolean {
+    const { cols, rows, cell } = this;
+    const cx = Math.floor(x / cell);
+    const cy = Math.floor(y / cell);
+    for (let dy = -1; dy <= 1; dy++) {
+      for (let dx = -1; dx <= 1; dx++) {
+        const nx = cx + dx;
+        const ny = cy + dy;
+        if (nx < 0 || ny < 0 || nx >= cols || ny >= rows || this.blocked[ny * cols + nx]) return false;
+      }
+    }
+    return true;
+  }
+
   /** After `update`: true if a germ at (x, y) gets to Eugene by taking the staircase it's standing at. */
   takesStairs(x: number, y: number): boolean {
     return this.viaStairs[this.index(x, y)] === 1;
