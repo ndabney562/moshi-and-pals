@@ -1658,7 +1658,7 @@ try {
     labelWaits(hp);
     const hireErrors = [];
     hp.on('pageerror', (e) => hireErrors.push(where(e)));
-    await hp.goto(url);
+    await hp.goto(url, { timeout: 90000 });
     await hp.waitForFunction(() => window.game?.scene.isActive('Title'));
     const hire = await hp.evaluate(() => {
       const t = window.game.scene.getScene('Title');
