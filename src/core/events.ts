@@ -132,6 +132,12 @@ export interface RunResult {
   specialty: string;
   /** Who was on shift, as the chart names them. */
   chart: string;
+  /** M17: the difficulty's name, the modifiers in play (names), and Today's Shift's date if it was one. */
+  difficulty: string;
+  modifiers: string[];
+  daily?: string;
+  /** CME Credits (included in `cme`) for the day's first finished Today's Shift. */
+  dailyBonus?: number;
 }
 
 export const events = new Phaser.Events.EventEmitter();

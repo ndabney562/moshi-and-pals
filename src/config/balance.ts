@@ -232,6 +232,44 @@ export const BALANCE = {
   /** PA LUCIEN's signature: a sterile zone where he stands; germs inside are slowed and take damage. */
   cleanField: { cooldownMs: 20000, ms: 6000, radius: 180, slow: 0.4, dps: 22 },
   /**
+   * DIFFICULTY (title screen; data/difficulties.ts). Multipliers on germ health, every hit Eugene takes,
+   * the time between spawns (more = slower), and Copays from kills. Urgent is the game as tuned.
+   */
+  difficulty: {
+    walkIn: { germHp: 0.75, germDamage: 0.6, spawnInterval: 1.25, copays: 1.2 },
+    urgent: { germHp: 1, germDamage: 1, spawnInterval: 1, copays: 1 },
+    trauma: { germHp: 1.35, germDamage: 1.4, spawnInterval: 0.8, copays: 0.85 },
+  },
+  /** TODAY'S SHIFT (daily challenge). */
+  daily: {
+    /** Modifiers rolled from the date. */
+    modifiers: 2,
+    /** CME Credits for the first finished Today's Shift each day. */
+    firstFinishCme: 2,
+  },
+  /** MODIFIERS (data/modifiers.ts). */
+  modifiers: {
+    /** Flu Season: Viral Sprinter spawn weight ×, and their weight in rounds before they'd normally show up. */
+    fluSeason: { sprinterMult: 2, earlyWeight: 0.15 },
+    /**
+     * Power Outage: how dark the map gets (0..1), the flashlight's radius around the doctor and how soft its
+     * edge is (fraction of the radius that fades). The dark is one pre-drawn texture, drawn at 1/`texScale` size.
+     */
+    powerOutage: { darkness: 0.9, lightRadius: 330, softEdge: 0.45, texScale: 4 },
+    /** Inspection Day: Spotless bonus × (stacks with the Inspection Day special round). */
+    inspectionDay: { spotlessMult: 3 },
+    /** Short-Staffed: supply cart restock price ×. */
+    shortStaffed: { restockCostMult: 3 },
+    /**
+     * Construction: from this round, one opened room's doors close to Eugene for the round (germs fit under).
+     * Never a room he's in, never within `clearance` px of him, and only if he can still walk back to the
+     * waiting room.
+     */
+    construction: { fromRound: 2, clearance: 140 },
+    /** Full Moon: germ size range (looks only, hitboxes stay put), the moonlit floor tint. Patients walk backwards. */
+    fullMoon: { sizeMin: 0.7, sizeMax: 1.45, floorTint: 0xb8a8ff },
+  },
+  /**
    * KEN: his passive (damage × against Diamond, from everything) and his signature, FILE A GRIEVANCE: a blast
    * of paperwork that hits and stuns germs around him, and summons Diamond to HR (frozen, no meetings,
    * no tantrums) if she's within `hrRange`. Breaks a Mandatory Meeting in progress.

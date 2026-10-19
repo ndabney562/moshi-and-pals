@@ -86,3 +86,19 @@ Values live in `src/config/balance.ts` and `src/config/controls.ts`.
 | Omar | 13 damage every 0.42 s to the nearest germ within 280 px | `BALANCE.scribes.omar` |
 | Alan | 26 damage every 0.95 s, jumps to 2 more germs within 160 px, 0.4 s stun | `BALANCE.scribes.alan` |
 | Scribes vs patients | one "spray" every 0.3 s on a patient with a violation within 240 px (8 to clean, as Eugene's droplets) | `BALANCE.scribes.cleanEveryMs`, `BALANCE.patients.hitsToClean` |
+
+## M17: Today's Shift, modifiers, difficulty (`BALANCE.difficulty`, `daily`, `modifiers`)
+
+| Value | Current | Notes |
+|---|---|---|
+| Walk-In | germ HP ×0.75, damage to Eugene ×0.6, spawn interval ×1.25, kill Copays ×1.2 | Own records |
+| Urgent | all ×1 | The game as tuned; Today's Shift always uses it. v2 records became Urgent's |
+| Trauma Center | germ HP ×1.35, damage ×1.4, spawn interval ×0.8, kill Copays ×0.85 | Own records |
+| Today's Shift | 2 modifiers from the date; first finished shift each day +2 CME | Day's best kept apart from difficulty records |
+| Flu Season | Sprinter spawn weight ×2; weight 0.15 (×2) in rounds 1-2 | |
+| Power Outage | dark at 90% opacity, light radius 330 px, soft outer 45% | Texture drawn at 1/4 size |
+| Inspection Day | Spotless ×3 | Stacks with the Inspection Day special round (×9) |
+| Short-Staffed | restock ×3 ($120) | Not "no restocks": runs must stay winnable |
+| Construction | from round 2, one opened room per round closes to Eugene | Not his room, no door within 140 px, only if he can still walk to the waiting room; germs pass |
+| Full Moon | germ looks ×0.7-1.45 (hitboxes unchanged), moonlit floor, patients walk backwards | |
+

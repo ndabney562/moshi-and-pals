@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 import { BALANCE } from '../config/balance';
+import { runRng } from '../core/rng';
 import type { ViolationDef } from '../data/patients';
 import { SpeechBubble } from '../ui/SpeechBubble';
 
@@ -39,12 +40,12 @@ export class Patient extends Phaser.Physics.Arcade.Sprite {
     this.setPushable(false).setDepth(8).clearTint().setAlpha(1).setScale(1);
     this.exit.set(x, y);
     this.leaveAt = time + cfg.stayMs;
-    this.nextViolationAt = time + Phaser.Math.Between(...cfg.violationEveryMs) / 2;
+    this.nextViolationAt = time + runRng.patients.between(cfg.violationEveryMs) / 2;
     this.goalSetAt = -Infinity;
   }
 
-  /** Walk toward the goal; pick a new spot to loiter now and then. */
-  walk(time: number, dtMs: number, pickSpot: (out: Phaser.Math.Vector2) => void): void {
+  /** Walk toward the goal; pick a new spot to loiter now and then. `backwards`: Full Moon moonwalking. */
+  walk(time: number, dtMs: number, pickSpot: (out: Phaser.Math.Vector2) => void, backwards = false): void {
     if (!this.active) return;
     const target = this.state === 'leaving' ? this.exit : this.goal;
     if (this.state === 'wander' && (time - this.goalSetAt > 6000 || Phaser.Math.Distance.BetweenPoints(this, this.goal) < 12)) {
@@ -58,7 +59,7 @@ export class Patient extends Phaser.Physics.Arcade.Sprite {
     } else {
       const a = Phaser.Math.Angle.BetweenPoints(this, target);
       this.setVelocity(Math.cos(a) * speed, Math.sin(a) * speed);
-      this.rotation = Phaser.Math.Angle.RotateTo(this.rotation, a, 0.1 * (dtMs / (1000 / 60)));
+      this.rotation = Phaser.Math.Angle.RotateTo(this.rotation, backwards ? Phaser.Math.Angle.Wrap(a + Math.PI) : a, 0.1 * (dtMs / (1000 / 60)));
       // Shuffle
       this.step += dtMs / 120;
       const s = Math.sin(this.step) * 0.04;
