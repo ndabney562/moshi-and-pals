@@ -1,5 +1,19 @@
 # Changelog
 
+## v0.23.0: Two new bosses
+- **Bosses now take turns in fours:** Diamond (round 5), Patient Zero (10), **Methicillin** (15), **the Influenza Twins** (20), then around again.
+- **Methicillin the Unkillable**, a bunch of armored grapes (that's what staph looks like). He **adapts**: once one tool has hurt him enough, he resists it (a gold ring and a RESISTANT label under him say which) and takes only 20% from it for 14 s. Switch tools, use your signature move, or lure him into the **Lab autoclave**, which he can never resist and which cooks him 50% harder.
+  - **Cluster Shot:** flings three grapes that hatch into germs.
+  - **Roll:** curls up (a red lane shows where), then bowls straight down it. Step aside.
+  - **Three layers:** his armored outer ring and then his middle ring peel off, shedding grapes, and his attacks come quicker each time.
+- **The Influenza Twins, H & N**: two flu virions sharing one health bar, tied together by a strand that hurts to touch. They circle you from opposite sides, so the strand sweeps across you.
+  - Get a wall between them and the strand **snaps**: both reel for 2 s and it takes 5 s to grow back.
+  - **Spiral Spit:** one of them spins and spits a ring of globs.
+  - Knock one out and it goes **down, not out**: finish the other within 6 s or the first gets back up at half health.
+  - Below half health, **antigenic shift**: only one twin can really be hurt (a yellow ring), the other is in a blue bubble, and they swap every 6 s.
+  - They always leave a pill behind.
+- 2 new achievements: *Sensitivity Report* (beat Methicillin) and *Herd Immunity* (beat the twins). Atlas notes for all three.
+- Fixed: the Discharge Summary blamed Diamond when Patient Zero's cough finished you.
 ## v0.22.0: Music
 - **The clinic has a soundtrack**, and it follows the fight:
   - Between rounds you get the waiting room's on-hold music, *Please Continue to Hold*: a lazy bossa nova with a vibraphone tune.

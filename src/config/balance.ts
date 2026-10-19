@@ -122,6 +122,62 @@ export const BALANCE = {
     leaveSpeed: 85,
     escapeDistance: 130,
   },
+  /** METHICILLIN THE UNKILLABLE, boss #3 (systems/MethicillinBrain.ts). */
+  methicillin: {
+    /** Damage from one source (a tool, the signature move, a trap) before he adapts to it. */
+    adaptAfter: 260,
+    /** Damage he still takes from the source he's resisting. */
+    resisted: 0.2,
+    /** He forgets the resistance after this long (so a one-tool doctor still gets windows). */
+    resistMs: 14000,
+    /** The Lab autoclave is never resisted, and cooks him this much harder. */
+    autoclaveMult: 1.5,
+    /** His three layers: health fractions where the outer two peel off. */
+    layers: [2 / 3, 1 / 3],
+    /** Grapes that burst off when a layer peels (Basic Germs), and how much quicker his attacks come per layer lost. */
+    peelGerms: 4,
+    peelPaceMult: 0.8,
+    firstShotMs: 3000,
+    shotEveryMs: [4500, 6500] as [number, number],
+    shotWindupMs: 700,
+    /** Cluster Shot: grapes fired at Eugene that hatch into Basic Germs. */
+    shotGrapes: 3,
+    shotSpeed: 360,
+    /** ROLL: curls up (a red line shows the path), then bowls straight down it. */
+    rollEveryMs: [7000, 9500] as [number, number],
+    rollRange: 600,
+    rollWindupMs: 1000,
+    rollSpeed: 560,
+    rollMs: 1500,
+    rollDamage: 26,
+  },
+  /** THE INFLUENZA TWINS, H & N, boss #4 (systems/InfluenzaBrain.ts). */
+  influenza: {
+    /** Kill the second twin within this long of the first, or the first one gets back up. */
+    reviveMs: 6000,
+    /** Health a revived twin comes back with (fraction of max). */
+    reviveHp: 0.5,
+    /** The strand between them: how close to it counts as touching, and the damage. */
+    tetherWidth: 18,
+    tetherDamage: 12,
+    tetherMaxLength: 620,
+    /** A wall between them snaps the strand: both stunned, and it takes a while to grow back. */
+    snapStunMs: 2200,
+    regrowMs: 5000,
+    /** They circle Eugene from opposite sides, this far out, so the strand sweeps across him. */
+    orbitRadius: 230,
+    orbitDegPerSec: 38,
+    /** Spiral spit: globs fired in a turning spiral. */
+    spitEveryMs: [5000, 7000] as [number, number],
+    spitGlobs: 8,
+    spitStepDeg: 45,
+    spitIntervalMs: 120,
+    /** P2 ANTIGENIC SHIFT (combined health below this): only one twin is vulnerable, and they swap. */
+    shiftBelow: 0.5,
+    shiftEveryMs: 6000,
+    /** Damage the protected twin takes during the shift. */
+    shieldedDamageTaken: 0.15,
+  },
   /** Patients with health code violations (data/patients.ts). */
   patients: {
     /** First round they show up in. Boss rounds stay patient-free so Diamond gets the spotlight. */

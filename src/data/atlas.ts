@@ -20,4 +20,7 @@ export const ATLAS: { id: string; note: string }[] = [
   { id: 'writeUp', note: 'A pink slip with teeth. Filed in triplicate, delivered at speed.' },
   { id: 'diamond', note: 'Practice Manager. Leads with policy. Most vulnerable during her own meetings.' },
   { id: 'patientZero', note: 'Nine hours in the waiting room. Contagious, impatient, and finally being seen.' },
+  { id: 'methicillin', note: 'Staphylococcus, the bunch-of-grapes kind. Learns from every treatment. Hates steam.' },
+  { id: 'fluH', note: 'Influenza, the H half. Sticky spikes. Cannot stand to be apart from N.' },
+  { id: 'fluN', note: 'Influenza, the N half. Cuts its way out of everything. Mostly to find H.' },
 ];
