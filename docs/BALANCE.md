@@ -81,6 +81,7 @@ Values live in `src/config/balance.ts` and `src/config/controls.ts`.
 | Starter Kit | 15 CME; start with any crate tool | `STARTER_KIT_COST` |
 | NPS Scores | 1 per round reached, 1 per patient cleaned, 3 per boss | `BALANCE.nps`; a round-8 shift with a few patients is ~12 |
 | Hiring the Pals | Kaya 30, Lucien 45, Ken 60 NPS (Eugene free) | `BALANCE.nps.prices` |
+| Equipment Locker (v0.28.0) | 25% of a shift's Copays banked; per tool: $400 +10% damage, $1,000 +25% tank/jug/charge rate, $2,000 +10% damage and 10% faster use | `src/config/locker.ts`; multiplies on top of Compounding tiers; ~$3,400 per tool, ~$27,200 for all 8 |
 | Hired Pals' edge | All ×1.1 tool damage; Kaya ×1.12 speed, Lucien +30 health, Ken +15 health | `BALANCE.doctors` |
 | Atlas notes | unlock at 25 lifetime kills (bosses 1) | `src/data/atlas.ts` |
 | Dr. Kaya: CODE BLUE | 320 px sprint in 0.23 s, untouchable +0.25 s; 90 px lane, 30 damage, 650 knockback, 0.7 s stun; 9 s recharge. Passive ×1.12 speed, ×1.1 damage | `BALANCE.codeBlue`, `src/data/characters.ts` |

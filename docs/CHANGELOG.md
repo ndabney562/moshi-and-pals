@@ -1,5 +1,10 @@
 # Changelog
 
+## v0.28.0: The Equipment Locker
+- **Tool upgrades that stay.** A new **🧰 EQUIPMENT LOCKER** button on the title screen opens a page with every tool on it. Each one has three upgrades you keep for good: **Labeled & Dated** ($400, +10% damage), **Extra Refills** ($1,000, +25% tank, jug and charge rate) and **Name Engraved** ($2,000, +10% damage and 10% faster).
+- **A quarter of the Copays you earn on a shift come home** to pay for them. The Discharge Summary shows how much went to the Locker.
+- Locker upgrades stack with the Compounding Station's in-shift upgrades, and work on crate tools too, whenever you find them.
+
 ## v0.27.0: Donald, the X-ray tech
 - **Donald joins the helpers.** Walk into the X-ray room during a shift and he unlocks for good: he comes out right then and helps you for 20 s, like Omar and Alan.
 - After that, he comes out to help the first time you visit X-ray on every shift, and his pill (**X-RAY TECH: DONALD**) can drop from germs too.
