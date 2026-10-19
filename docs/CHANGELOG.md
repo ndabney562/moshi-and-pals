@@ -1,8 +1,11 @@
 # Changelog
 
-## v0.28.3: Every tool looks different
+## v0.28.4: Every tool looks different
 - **You can see what you're holding.** Each tool now has its own look in your hand: the white squirt bottle, a blue Lysol can, an orange Super Soaker with a tank, a glowing purple UV Wand, a brown peroxide bottle with a foam pump, a canister of wipes with one pulled out, a teal Gel Launcher, a paddle in each hand for the Defib, and a chrome ray gun for the Ionizer 9000.
 - SWAP changes the tool in your hand too, and the spray comes out of the new tool's nozzle.
+
+## v0.28.3: Cheaper supply crates
+- **Supply crates now cost $200** (was $250).
 
 ## v0.28.2: The scribes wait in the exam rooms
 - **No more scribe pills.** Once you hire Omar or Alan, each one waits every shift in a random locked exam room on the first floor (Exam Rooms 1 to 7).

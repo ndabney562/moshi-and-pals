@@ -213,7 +213,7 @@ export const BALANCE = {
     /** How close Eugene must be to a supply cart or locked door (from its edge) to use it. Door prices live in data/rooms.ts. */
     interactRange: 80,
     /** Price of a Supply Requisition at a crate (pick 1 of 2 tools). */
-    crateCost: 250,
+    crateCost: 200,
     /** Appealing the decision for a fresh pair: the first appeal, then this much more each time. */
     appealCost: 100,
     appealStep: 50,
