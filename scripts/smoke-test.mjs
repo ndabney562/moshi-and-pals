@@ -1931,7 +1931,8 @@ try {
       // They may already have taped one off on their own (they do whenever you can spare the Copays): ready again,
       // and every other vent already blocked, so this one is the only choice
       sc.vents.scribeReadyAt.delete(who);
-      const v = sc.vents.list.find((x) => !x.block);
+      // (rooms nobody has paid for have vents too, but scribes only block open ones: Donald's test teleports into X-ray)
+      const v = sc.vents.list.find((x) => !x.block && sc.unlocked.has(x.roomId));
       for (const x of sc.vents.list) if (x !== v && !x.block) sc.vents.barricade(x, sc.time.now);
       window.__scribeVent = v;
     }, id);
