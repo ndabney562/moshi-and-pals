@@ -1,8 +1,18 @@
 # Changelog
 
-## v0.27.3: Every tool looks different
+## v0.28.3: Every tool looks different
 - **You can see what you're holding.** Each tool now has its own look in your hand: the white squirt bottle, a blue Lysol can, an orange Super Soaker with a tank, a glowing purple UV Wand, a brown peroxide bottle with a foam pump, a canister of wipes with one pulled out, a teal Gel Launcher, a paddle in each hand for the Defib, and a chrome ray gun for the Ionizer 9000.
 - SWAP changes the tool in your hand too, and the spray comes out of the new tool's nozzle.
+
+## v0.28.0: The Equipment Locker
+- **Tool upgrades that stay.** A new **🧰 EQUIPMENT LOCKER** button on the title screen opens a page with every tool on it. Each one has three upgrades you keep for good: **Labeled & Dated** ($400, +10% damage), **Extra Refills** ($1,000, +25% tank, jug and charge rate) and **Name Engraved** ($2,000, +10% damage and 10% faster).
+- **A quarter of the Copays you earn on a shift come home** to pay for them. The Discharge Summary shows how much went to the Locker.
+- Locker upgrades stack with the Compounding Station's in-shift upgrades, and work on crate tools too, whenever you find them.
+
+## v0.27.1: Germs stop getting stuck
+- **Germs no longer jam together.** A crowd of germs used to brake each other to a crawl wherever they touched, so packs looked glued in place. They now shove each other aside and keep coming.
+- **Germs always find the stairs.** A germ squeezed against a wall or a stair rail lost its way and pushed into the wall forever; it now steps back onto the path. Germs at the foot of the stairs walk onto the steps instead of stopping beside them.
+- Germs keep to the middle of halls and doorways instead of scraping along walls, so big ones like the Chonk Coccus don't wedge on corners.
 
 ## v0.27.0: Donald, the X-ray tech
 - **Donald joins the helpers.** Walk into the X-ray room during a shift and he unlocks for good: he comes out right then and helps you for 20 s, like Omar and Alan.

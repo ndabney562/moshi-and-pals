@@ -15,7 +15,7 @@ import { nextShift, type ShiftSetup } from '../core/shift';
 import { CONSTRUCTION_LINES, CONSTRUCTION_SIGN, modifierById, type ModifierId } from '../data/modifiers';
 import { difficultyById } from '../data/difficulties';
 import { unlockAchievement } from '../core/achievements';
-import { activeSpecialty, creditsFor, doctorUnlocked, grant, npsFor, progress, recordShift, scribeUnlocked, unlockScribe } from '../core/progress';
+import { activeSpecialty, bankFor, creditsFor, doctorUnlocked, grant, lockerLevel, npsFor, progress, recordShift, scribeUnlocked, unlockScribe } from '../core/progress';
 import type { SpecialtyMods } from '../data/residency';
 import { newRunStats, type RunStats } from '../core/runStats';
 import { initSfx, sfx } from '../core/sfx';
@@ -37,7 +37,7 @@ import type { Patient } from '../entities/Patient';
 import { Player } from '../entities/Player';
 import { Arsenal } from '../systems/Arsenal';
 import { FlowField } from '../systems/FlowField';
-import { steerCharger, steerHealer, steerSpitter, type BehaviorHost } from '../systems/GermBehaviors';
+import { separateGerms, steerCharger, steerHealer, steerSpitter, type BehaviorHost } from '../systems/GermBehaviors';
 import { Puddles } from '../systems/Puddles';
 import { Powerups } from '../systems/Powerups';
 import { ELITE_AFFIXES, type EliteAffix, type PowerupDef } from '../data/powerups';
@@ -381,7 +381,9 @@ export class GameScene extends Phaser.Scene {
 
     this.physics.add.collider(this.player, solids);
     this.physics.add.collider(this.germs, solids);
-    this.physics.add.collider(this.germs, this.germs);
+    // Touching germs shove apart by position. (An Arcade collider also scaled both velocities by their bounce every
+    // frame they touched, so a pressed-together crowd crawled at a few percent of its speed: germs "stuck together".)
+    this.physics.add.overlap(this.germs, this.germs, (a, b) => separateGerms(a as Germ, b as Germ, BALANCE.germs.crowdPush));
     this.physics.add.collider(this.droplets, solids, (d) => {
       const drop = d as Droplet;
       this.fx.dropletSplash(drop.x, drop.y);
@@ -1215,7 +1217,8 @@ export class GameScene extends Phaser.Scene {
     for (const g of this.germs.getChildren() as Germ[]) {
       if (!g.active || g.def.boss) continue;
       const end = this.stairAt(g.x, g.y);
-      if (end && this.floorOf(g.x, g.y) !== here) (g.body as Phaser.Physics.Arcade.Body).reset(end.arrive.x, end.arrive.y);
+      // Take the stairs to reach Eugene's floor, or when the way to him runs over the other floor
+      if (end && (this.floorOf(g.x, g.y) !== here || this.flow.takesStairs(g.x, g.y))) (g.body as Phaser.Physics.Arcade.Body).reset(end.arrive.x, end.arrive.y);
     }
   }
 
@@ -1463,7 +1466,7 @@ export class GameScene extends Phaser.Scene {
 
   /** A tool, wired to the arsenal for the ones that don't spray. */
   private makeTool(id: string): Sprayer {
-    const tool = new Sprayer(EQUIPMENT[id], this.droplets, (def, x, y, a, t, shot, mult) => this.arsenal.fire(def, x, y, a, t, shot, mult));
+    const tool = new Sprayer(EQUIPMENT[id], this.droplets, (def, x, y, a, t, shot, mult) => this.arsenal.fire(def, x, y, a, t, shot, mult), lockerLevel(id));
     tool.refillScale = this.perks.refill;
     if (this.mods.jugSize) tool.scaleJug(this.mods.jugSize);
     return tool;
@@ -2342,7 +2345,9 @@ export class GameScene extends Phaser.Scene {
     const cme = creditsFor(round, st.achievements.length, this.bossesDefeated) + dailyBonus;
     // NPS Scores hire the Pals
     const nps = npsFor(round, st.patientsCleaned, this.bossesDefeated);
-    recordShift(cme, st.kills, nps);
+    // A share of the shift's Copays goes home to the Equipment Locker
+    const bank = bankFor(st.copaysEarned);
+    recordShift(cme, st.kills, nps, bank);
     const [favId, favCount] = Object.entries(st.kills).sort((a, b) => b[1] - a[1])[0] ?? [];
     const killer = st.killer ? GERMS[st.killer] : undefined;
     const result: RunResult = {
@@ -2361,6 +2366,7 @@ export class GameScene extends Phaser.Scene {
       chart: this.character.chart,
       cme,
       nps,
+      bank,
       specialty: this.specialtyName,
       difficulty: difficultyById(sh.difficulty).name,
       modifiers: sh.mods.map((id) => modifierById(id)?.name ?? id),

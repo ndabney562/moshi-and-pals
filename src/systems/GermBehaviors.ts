@@ -165,3 +165,39 @@ export function steerHealer(g: Germ, host: BehaviorHost, time: number, dtMs: num
     other.hp = Math.min(other.maxHp, other.hp + amount);
   }
 }
+
+/**
+ * Two touching germs: push them apart by `share` of their overlap, splitting the push between the ones that can be
+ * shoved (bosses, Chonk and Mold Spot hold their ground). Velocities are left alone so the crowd keeps moving.
+ */
+export function separateGerms(a: Germ, b: Germ, share: number): void {
+  const ba = a.body as Phaser.Physics.Arcade.Body;
+  const bb = b.body as Phaser.Physics.Arcade.Body;
+  let dx = bb.center.x - ba.center.x;
+  let dy = bb.center.y - ba.center.y;
+  let d = Math.hypot(dx, dy);
+  const overlap = ba.halfWidth + bb.halfWidth - d;
+  if (overlap <= 0) return;
+  if (d < 0.001) {
+    // Spawned on the same spot: pick any direction
+    const ang = runRng.ai.float(0, Math.PI * 2);
+    dx = Math.cos(ang);
+    dy = Math.sin(ang);
+    d = 1;
+  }
+  const canA = ba.pushable && !ba.immovable;
+  const canB = bb.pushable && !bb.immovable;
+  // Two unshovable germs still slide apart (or they'd stay wedged forever)
+  const ka = canA === canB ? 0.5 : canA ? 1 : 0;
+  const push = (overlap * share) / d;
+  if (ka > 0) {
+    ba.x -= dx * push * ka;
+    ba.y -= dy * push * ka;
+    ba.updateCenter();
+  }
+  if (ka < 1) {
+    bb.x += dx * push * (1 - ka);
+    bb.y += dy * push * (1 - ka);
+    bb.updateCenter();
+  }
+}

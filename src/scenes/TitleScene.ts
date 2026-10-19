@@ -28,6 +28,7 @@ export class TitleScene extends Phaser.Scene {
   private tap!: Phaser.GameObjects.Text;
   private updatePill!: Phaser.GameObjects.Text;
   private boardButton!: Phaser.GameObjects.Text;
+  private lockerButton!: Phaser.GameObjects.Text;
   /** WHO'S ON SHIFT: a portrait per doctor, and a line about the chosen one. */
   private picks: { id: string; ring: Phaser.GameObjects.Arc; art: Phaser.GameObjects.Image; name: Phaser.GameObjects.Text }[] = [];
   private pickInfo!: Phaser.GameObjects.Text;
@@ -82,6 +83,16 @@ export class TitleScene extends Phaser.Scene {
       e.stopPropagation();
       this.started = true;
       this.scene.start('Board');
+    });
+
+    // The Equipment Locker: tool upgrades that stay, bought with banked Copays
+    this.lockerButton = this.add.text(0, 0, `🧰 EQUIPMENT LOCKER · $${progress().bank.toLocaleString()}`, {
+      fontFamily: font, fontSize: '20px', fontStyle: '900', color: COLORS.uiText, backgroundColor: '#0d2b2ecc', padding: { x: 14, y: 9 },
+    }).setOrigin(0, 1).setInteractive({ useHandCursor: true });
+    this.lockerButton.on('pointerdown', (_p: Phaser.Input.Pointer, _x: number, _y: number, e: Phaser.Types.Input.EventData) => {
+      e.stopPropagation();
+      this.started = true;
+      this.scene.start('Locker');
     });
 
     // Who's on shift
@@ -140,7 +151,7 @@ export class TitleScene extends Phaser.Scene {
     this.input.keyboard?.once('keydown', () => (this.dailyPanel.visible ? this.begin(localDate()) : this.begin()));
     this.input.on('pointerdown', (_p: Phaser.Input.Pointer, over: Phaser.GameObjects.GameObject[]) => {
       if (this.dailyPanel.visible) return;
-      const buttons: Phaser.GameObjects.GameObject[] = [this.updatePill, this.boardButton, this.dailyButton, this.difficultyButton];
+      const buttons: Phaser.GameObjects.GameObject[] = [this.updatePill, this.boardButton, this.lockerButton, this.dailyButton, this.difficultyButton];
       if (!buttons.some((b) => over.includes(b)) && !this.picks.some((p) => over.includes(p.ring))) this.begin();
     });
   }
@@ -157,6 +168,7 @@ export class TitleScene extends Phaser.Scene {
     // The left-hand column: difficulty, Today's Shift, the board (clear of the notch)
     const left = Math.max(24, readSafeArea().left + 16);
     this.boardButton.setPosition(left, height - 20);
+    this.lockerButton.setPosition(left, height - 194);
     this.dailyButton.setPosition(left, height - 78);
     this.dailyBestText.setPosition(left + this.dailyButton.width + 10, height - 78 - this.dailyButton.height / 2);
     this.difficultyButton.setPosition(left, height - 136);
