@@ -25,7 +25,7 @@ Values live in `src/config/balance.ts` and `src/config/controls.ts`.
 | BLOCK a vent | $50: barricade holds up to 30 s or 8 germ pushes (one per 0.7 s) | Bosses walk through; germs wait if every vent is blocked |
 | Scribes blocking | a vent within 340 px, every 15 s each, only while you'd keep $100 | Paid from your Copays |
 | Sinus Purge | 240 px, 35 damage, big knockback, 0.6 s stun | 18 s cooldown; ready at start |
-| Supply crate | $250 Copays, random tool not already held | `BALANCE.economy.crateCost`; tools in `src/data/equipment.ts` |
+| Supply crate | $200 Copays, random tool not already held | `BALANCE.economy.crateCost`; tools in `src/data/equipment.ts` |
 | Lysol Fogger | 6 puffs × 3 dmg every 120 ms, 75° cone, 160 px | 200 mL tank, 2/shot, jug 600 |
 | Bleach Super Soaker | 1 × 10 dmg every 70 ms, 400 px, knockback 45 | 300 mL tank, 3/shot, jug 900 |
 | UV Wand | 1 × 6 dmg every 60 ms, 280 px, pierces 3 | 100% charge, 2/shot, recharges 22%/s after 0.4 s; spores ×1.5 |
@@ -71,9 +71,9 @@ Values live in `src/config/balance.ts` and `src/config/controls.ts`.
 | Mother Culture | 40 HP, 95 px/s, 6 contact, $16; from r9, 5%, 1 alive (2 from r14) | Keeps 330 px away; heals germs within 200 px by 10 HP/s (not bosses) |
 | Colony | from r10, 5%, 2 alive | 8 Specks (6 HP, 150 px/s, 4 contact, $1) |
 | Mold Spot | 120 HP, rooted, 10 contact, $20; from r11, 3.5%, 2 alive | Spawns at the farthest open door; a spore every 6 s (12 HP, 120 px/s), up to 5 per Mold Spot. Fungus: bottle ×0.6, fogger ×0.8, bleach ×2, UV ×1, foamer ×0.8 |
-| Supply Requisition | $250; pick 1 of 2; appeal $100 +$50 per appeal; 5% denied (50% back) | `BALANCE.economy.crateCost/appealCost/appealStep/claimDeniedChance/deniedRefund`; pool `CRATE_POOL` |
+| Supply Requisition | $200; pick 1 of 2; appeal $100 +$50 per appeal; 5% denied (50% back) | `BALANCE.economy.crateCost/appealCost/appealStep/claimDeniedChance/deniedRefund`; pool `CRATE_POOL` |
 | Disinfectant Wipes | 16 per swipe in a 150° × 100 px arc, every 3rd ×2.5 at 135 px; 0.28 s; 40 wipes, box of 160 | Biofilm ×1.6, fungus ×1.3, spore ×0.6; tiers 200° / 120 px, then DEEP CLEAN every 2nd |
-| Gel Launcher | 30 in a 95 px burst, up to 380 px; 0.62 s; 10 gels, case of 40 | Gel 85 px, 3.5 s, germs ×0.45 (not bosses); tiers 5.5 s at ×0.3, then 42 damage, 125 px burst |
+| Gel Launcher | 30 in a 95 px burst, up to 380 px; 0.62 s; 10 gels, case of 40 | Gel 85 px, 3.5 s, germs ×0.45 (not bosses); gel burns 12/s (bosses too, ticks every 0.25 s, keeps burning 1.5 s after leaving, puddles don't stack); tiers 5.5 s at ×0.3, then 42 damage, 125 px burst, burn 18/s |
 | Defib Paddles | 26 to the first germ within 170 px in front, then 4 jumps of 170 px at ×0.85 each; 0.35 s stun | 25% charge per zap, 30%/s recharge; tiers 6 jumps and 32 damage, then 60%/s and 0.9 s stun |
 | Hand dryer (bathrooms) | free; 240 px; 20 damage, 950 knockback, 0.9 s stun; 20 s recharge | `BALANCE.traps.dryer` |
 | Autoclave (Lab) | $25; 1.2 s hiss, then 140 in 175 px (ignores armor); 30 s recharge | `BALANCE.traps.autoclave` |
@@ -91,7 +91,7 @@ Values live in `src/config/balance.ts` and `src/config/controls.ts`.
 | Dr. Kaya: CODE BLUE | 320 px sprint in 0.23 s, untouchable +0.25 s; 90 px lane, 30 damage, 650 knockback, 0.7 s stun; 9 s recharge. Passive ×1.12 speed, ×1.1 damage | `BALANCE.codeBlue`, `src/data/characters.ts` |
 | PA Lucien: CLEAN FIELD | 180 px zone for 6 s; germs ×0.4 speed, 22 damage/s; 20 s recharge. Passive +30 health, ×1.1 damage | `BALANCE.cleanField` |
 | Ken: FILE A GRIEVANCE | 35 damage in 210 px, 420 knockback, 0.9 s stun; Diamond within 900 px goes to HR for 3.5 s (frozen, no meeting or tantrum, a meeting ends); 15 s recharge. Passive ×1.5 damage to Diamond from every source, +15 health, ×1.1 damage | `BALANCE.grievance`, `src/data/characters.ts` |
-| Scribes | 12 CME each to hire; pill joins the drop pool once hired; 20 s per visit; follow 85 px behind, 300 px/s (×1.5 when 220 px+ away); teleport past 650 px or 1.5 s stuck | `BALANCE.scribes`, costs in `src/data/scribes.ts` |
+| Scribes | 12 CME each to hire; once hired, each waits in a random locked first-floor exam room (Exam 1-7) every shift and, once that room is opened, helps for the rest of the shift (no pill); follow 85 px behind, 300 px/s (×1.5 when 220 px+ away); teleport past 650 px or 1.5 s stuck | `BALANCE.scribes`, costs in `src/data/scribes.ts` |
 | Omar | 13 damage every 0.42 s to the nearest germ within 280 px | `BALANCE.scribes.omar` |
 | Alan | 26 damage every 0.95 s, jumps to 2 more germs within 160 px, 0.4 s stun | `BALANCE.scribes.alan` |
 | Donald | unlocked by walking into X-ray during a shift (free); comes out for 20 s on the first X-ray visit each shift, pill drops once unlocked; beam every 1.3 s toward the nearest germ within 420 px on his floor, through walls, 30 damage to every germ within 26 px of the line, 0.25 s stun | `BALANCE.scribes.donald` |

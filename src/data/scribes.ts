@@ -1,7 +1,8 @@
 /**
  * THE HELPERS. THE SCRIBES (Noah's request, Oct 2026): Omar and Alan, the medical scribes, from Noah's reference photos
- * (the photos stay out of the repo). Unlocked on the Residency Board with CME Credits; once unlocked, their
- * pill joins the power-up drops. Grab it and they walk in, follow you, take care of germs and shame patients
+ * (the photos stay out of the repo). Unlocked on the Residency Board with CME Credits. Once hired (Noah, Oct 2026),
+ * each one waits every shift in a random locked exam room on the first floor (`waitsIn`); open that room and
+ * they come out and help for the rest of the shift: they follow you, take care of germs and shame patients
  * with health code violations into cleaning up. They can't be hurt (they're behind a laptop).
  * DONALD, the X-ray tech (Noah, Oct 2026), works the same way but isn't for sale: he unlocks the first time
  * the doctor walks into the X-ray room during a shift, and from then on comes out to help on the first visit
@@ -17,8 +18,10 @@ export interface ScribeDef {
   name: string;
   /** Their job, for the board. */
   role: string;
-  /** The power-up pill that brings them in. */
-  powerup: PowerupId;
+  /** The power-up pill that brings them in (Donald). */
+  powerup?: PowerupId;
+  /** Hired, they wait in one of these rooms (picked at random each shift) until the doctor opens it. */
+  waitsIn?: string[];
   /** CME Credits to unlock on the Residency Board; without one, they can't be bought. */
   cost?: number;
   /** How a helper who can't be bought is unlocked, for the board. */
@@ -43,9 +46,12 @@ export interface ScribeDef {
   };
 }
 
+/** The first floor's exam rooms, where the scribes wait to be let out. */
+const EXAM_ROOMS_FIRST_FLOOR = ['exam1', 'exam2', 'exam3', 'exam4', 'exam5', 'exam6', 'exam7'];
+
 export const SCRIBES: ScribeDef[] = [
   {
-    id: 'omar', name: 'Omar', role: 'SCRIBE', powerup: 'scribeOmar', cost: 12, color: 0xbfe9ff,
+    id: 'omar', name: 'Omar', role: 'SCRIBE', waitsIn: EXAM_ROOMS_FIRST_FLOOR, cost: 12, color: 0xbfe9ff,
     blurb: 'Sprays the nearest germ, fast and light. Never stops smiling.',
     lines: {
       arrive: ['Omar here! Charting that!', "Don't worry, I'm charting everything!"],
@@ -56,7 +62,7 @@ export const SCRIBES: ScribeDef[] = [
     },
   },
   {
-    id: 'alan', name: 'Alan', role: 'SCRIBE', powerup: 'scribeAlan', cost: 12, color: 0x9be7ff,
+    id: 'alan', name: 'Alan', role: 'SCRIBE', waitsIn: EXAM_ROOMS_FIRST_FLOOR, cost: 12, color: 0x9be7ff,
     blurb: 'Zaps a germ and the two next to it. Slower, harder, stuns.',
     lines: {
       arrive: ['Alan. Scribe. Let’s go.', 'Laptop charged. Germs not.'],

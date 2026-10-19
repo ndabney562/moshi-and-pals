@@ -52,7 +52,7 @@ import { MiracleCure } from '../systems/MiracleCure';
 import { PatientDirector } from '../systems/PatientDirector';
 import { Scribes } from '../systems/Scribes';
 import { Vents, type Vent } from '../systems/Vents';
-import { SCRIBES, scribeById } from '../data/scribes';
+import { SCRIBES, scribeById, type ScribeId } from '../data/scribes';
 import { Sprayer } from '../systems/Sprayer';
 import { WaveDirector } from '../systems/WaveDirector';
 
@@ -161,6 +161,8 @@ export class GameScene extends Phaser.Scene {
   private patients!: PatientDirector;
   /** Omar and Alan, the scribes (a power-up, once unlocked on the Residency Board). */
   private scribes!: Scribes;
+  /** Which hired scribe waits in which locked exam room this shift (room id -> scribe). */
+  private scribeRooms = new Map<string, ScribeId>();
   /** Patients the scribes cleaned up this shift (the Delegation achievement). */
   private scribeCleans = 0;
   /** Rooms where a helper already came out to help this shift (Donald in X-ray). */
@@ -393,9 +395,10 @@ export class GameScene extends Phaser.Scene {
     if (forced) {
       // ?scribe=omar: they work the whole shift
       const whole = 1e9;
-      this.powerups.start(forced.powerup, this.time.now, whole);
+      if (forced.powerup) this.powerups.start(forced.powerup, this.time.now, whole);
       this.scribes.summon(forced.id, this.time.now, whole);
     }
+    this.hideScribes(forced?.id);
 
     this.physics.add.collider(this.player, solids);
     this.physics.add.collider(this.germs, solids);
@@ -524,6 +527,7 @@ export class GameScene extends Phaser.Scene {
         ?? this.patients.nearestViolator(x, y, CONTROLS.autoAimRange, (p) => this.flow.lineClear(x, y, p.x, p.y));
     }
     this.player.drive(inputState, delta, aimTarget);
+    this.player.hold(this.sprayer.def.id);
     this.updateDarkness();
     // Camera follow eases per frame in Phaser; keep it the same at any frame rate
     const follow = damp(BALANCE.camera.followLerp, delta);
@@ -587,10 +591,22 @@ export class GameScene extends Phaser.Scene {
     const gelOn = this.gel.count > 0;
     for (const g of this.germs.getChildren() as Germ[]) {
       if (!g.active) continue;
-      // Sticky hand-sanitizer gel slows anything (but a boss) that walks through it
-      if (gelOn && !g.def.boss) {
-        const f = this.gel.slowAt(g.x, g.y);
-        if (f < 1) g.slow(time, f, 250);
+      // Sticky hand-sanitizer gel slows anything (but a boss) that walks through it, and burns everything
+      if (gelOn) {
+        if (!g.def.boss) {
+          const f = this.gel.slowAt(g.x, g.y);
+          if (f < 1) g.slow(time, f, 250);
+        }
+        const dps = this.gel.burnAt(g.x, g.y);
+        if (dps > 0) {
+          if (g.burnUntil <= time) g.nextBurnAt = time + BALANCE.gelBurn.tickMs;
+          g.burnDps = Math.max(g.burnUntil > time ? g.burnDps : 0, dps);
+          g.burnUntil = time + BALANCE.gelBurn.lingerMs;
+        }
+      }
+      if (g.burnUntil > time && time >= g.nextBurnAt) {
+        this.burnGerm(g, time);
+        if (!g.active) continue;
       }
       const override = bossOwns(this.boss, g) ? this.boss.movement(g) : undefined;
       if (override) {
@@ -880,6 +896,16 @@ export class GameScene extends Phaser.Scene {
       this.fx.number(germ.x, germ.y - germ.def.radius - 10, 'TINK! GET BEHIND IT', '#c8d6e5', 15);
     }
     this.damageGerm(germ, damage * mult * armor * (crit ? fb.critMult : 1), angle, knockback * (armor < 1 ? 0.3 : 1), def.id);
+  }
+
+  /** One Gel Launcher burn tick: tool effectiveness and damage bonuses apply, but no crits or knockback. */
+  private burnGerm(germ: Germ, time: number): void {
+    const tick = BALANCE.gelBurn.tickMs;
+    germ.nextBurnAt = time + tick;
+    const def = EQUIPMENT.gelLauncher;
+    const vs = this.mods.vs;
+    const mult = (def.effectiveness[germ.def.tag] ?? 1) * (this.mods.toolDamage ?? 1) * (this.character.passive.toolDamage ?? 1) * (vs && vs.tag === germ.def.tag ? vs.mult : 1);
+    this.damageGerm(germ, germ.burnDps * (tick / 1000) * mult, 0, 0, def.id);
   }
 
   /** Every way a germ gets hurt goes through here: numbers, boss bar, kills, score and Copays. */
@@ -1250,6 +1276,26 @@ export class GameScene extends Phaser.Scene {
       events.emit(GameEvents.RoomEntered, { id: here.id, name: here.name } satisfies RoomPayload);
       this.helperRoom(here.id);
     }
+  }
+
+  /** Each hired scribe waits in a random locked first-floor exam room this shift (not one forced in by ?scribe=). */
+  private hideScribes(forced?: ScribeId): void {
+    this.scribeRooms = new Map();
+    for (const def of SCRIBES) {
+      if (!def.waitsIn || def.id === forced || !scribeUnlocked(def.id)) continue;
+      const free = def.waitsIn.filter((id) => !this.unlocked.has(id) && !this.scribeRooms.has(id));
+      if (free.length === 0) this.scribes.summon(def.id, this.time.now, Number.MAX_SAFE_INTEGER);
+      else this.scribeRooms.set(runRng.world.pick(free), def.id);
+    }
+  }
+
+  /** Opening the exam room a scribe waits in lets them out to help for the rest of the shift. */
+  private releaseScribe(roomId: string): void {
+    const id = this.scribeRooms.get(roomId);
+    const area = this.room.rooms.find((r) => r.id === roomId);
+    if (!id || !area) return;
+    this.scribeRooms.delete(roomId);
+    this.scribes.summon(id, this.time.now, Number.MAX_SAFE_INTEGER, { x: area.x + area.w / 2, y: area.y + area.h / 2 });
   }
 
   /** DONALD: the first visit to X-ray each shift brings him out to help (and unlocks him the first time ever). */
@@ -1830,6 +1876,7 @@ export class GameScene extends Phaser.Scene {
     sfx.cash();
     const area = this.room.rooms.find((r) => r.id === id);
     events.emit(GameEvents.RoomUnlocked, { id, name: area?.name ?? id, cost } satisfies RoomPayload);
+    this.releaseScribe(id);
   }
 
   /** Everything solid right now: furniture, walls, doors not yet bought, and curtains pulled shut. */
@@ -2118,8 +2165,6 @@ export class GameScene extends Phaser.Scene {
       case 'prescription':
         this.prescribe(time);
         break;
-      case 'scribeOmar':
-      case 'scribeAlan':
       case 'techDonald':
         if (def.scribe) this.scribes.summon(def.scribe, time, def.ms);
         break;

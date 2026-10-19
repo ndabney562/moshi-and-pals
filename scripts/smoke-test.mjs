@@ -345,7 +345,7 @@ try {
   // Supply Requisition: pay at a crate, pick 1 of 2 tools (the game waits), appeal for a new pair, then SWAP back
   await page.evaluate(() => {
     const scene = window.game.scene.getScene('Game');
-    scene.addCopays(300 - scene.copays);
+    scene.addCopays(250 - scene.copays);
     scene.claimDeniedChance = 0;
     const crate = scene.crates[0];
     scene.player.setPosition(crate.x + crate.w / 2, crate.y - 45);
@@ -654,6 +654,24 @@ try {
     return scene.gel.count > 0 && (!g.active || g.hp < g.maxHp) ? { gel: scene.gel.count, slowed: g.active && g.slowUntil > scene.time.now } : null;
   }, null, { timeout: 15000 }).then((h) => h.jsonValue(), () => null);
   check(gelled && gelled.gel > 0, `the Gel Launcher's glob bursts on its target and leaves sticky gel (${JSON.stringify(gelled)})`);
+  // The gel burns: a germ dropped into it takes damage over time with no more shots
+  const burned = await page.waitForFunction(() => {
+    const scene = window.game.scene.getScene('Game');
+    if (!window.__burnGerm) {
+      const p = scene.gel.items.find((q) => q.img.visible);
+      if (!p) return null;
+      const before = new Set(scene.germs.getChildren().filter((c) => c.active));
+      scene.spawnGermAt('basic', p.x, p.y, true);
+      const g = scene.germs.getChildren().find((c) => c.active && !before.has(c));
+      g.freezeFor(scene.time.now, 8000);
+      g.hp = g.maxHp = 9999;
+      window.__burnGerm = g;
+      return null;
+    }
+    const g = window.__burnGerm;
+    return g.hp < g.maxHp ? { lost: Math.round(g.maxHp - g.hp), burning: g.burnUntil > scene.time.now } : null;
+  }, null, { timeout: 15000, polling: 100 }).then((h) => h.jsonValue(), () => null);
+  check(burned && burned.lost > 0 && burned.burning, `Gel Launcher gel burns germs standing in it (${JSON.stringify(burned)})`);
 
   // CLAIM DENIED: no form, a joke item, half the money back
   const denied = await page.evaluate(() => {
@@ -666,7 +684,7 @@ try {
     const hud = window.game.scene.getScene('Hud');
     return { copays: scene.copays, form: hud.requisitioning, same: scene.loadout.map((t) => t.def.id).join() === tools, banner: hud.banner.text, line: hud.bannerSub.text };
   });
-  check(denied.copays === 175 && !denied.form && denied.same && denied.banner === 'CLAIM DENIED', `a denied claim refunds half and sends a joke item (${JSON.stringify(denied)})`);
+  check(denied.copays === 200 && !denied.form && denied.same && denied.banner === 'CLAIM DENIED', `a denied claim refunds half and sends a joke item (${JSON.stringify(denied)})`);
 
   // ROOM TRAPS (M14): the bathroom dryer blasts germs back, the X-ray pulses through walls, the autoclave cooks
   const traps = await page.evaluate(() => {
@@ -1695,7 +1713,7 @@ try {
     const hireErrors = [];
     hp.on('pageerror', (e) => hireErrors.push(where(e)));
     await hp.goto(url, { timeout: 90000 });
-    await hp.waitForFunction(() => window.game?.scene.isActive('Title'));
+    await hp.waitForFunction(() => window.game?.scene.isActive('Title'), null, { timeout: 90000 });
     const hire = await hp.evaluate(() => {
       const t = window.game.scene.getScene('Title');
       const label = (id) => t.picks.find((p) => p.id === id).name.text;
@@ -1987,15 +2005,21 @@ try {
     await sp1.touchscreen.tap(426, 120);
     await scribeWorks(sp1, 'alan');
     const pool1 = await sp1.evaluate(() => window.game.scene.getScene('Game').powerups.dropPool);
-    check(pool1.includes('scribeOmar') && pool1.includes('scribeAlan'), `a hired scribe's pill is in the drop pool (${pool1.join(', ')})`);
-    // Picking up Omar's pill brings him in too
-    const omarIn = await sp1.evaluate(() => {
+    check(!pool1.some((id) => id.startsWith('scribe')), `the scribes have no pill (${pool1.join(', ')})`);
+    // The hired Omar waits in a random locked first-floor exam room; opening it lets him out for the rest of the shift
+    const hidden = await sp1.evaluate(() => {
       const sc = window.game.scene.getScene('Game');
-      sc.powerups.drop(sc.player.x, sc.player.y, sc.time.now, 'scribeOmar');
-      return true;
+      const room = [...sc.scribeRooms.entries()].find(([, who]) => who === 'omar')?.[0];
+      return { room, here: !!sc.scribes.get('omar'), locked: room ? !sc.unlocked.has(room) : false };
     });
-    const omarHere = await sp1.waitForFunction(() => !!window.game.scene.getScene('Game').scribes.get('omar'), null, { timeout: 10000 }).then(() => true, () => false);
-    check(omarIn && omarHere, "grabbing Omar's pill brings Omar in");
+    check(/^exam[1-7]$/.test(hidden.room ?? '') && hidden.locked && !hidden.here, `the hired Omar waits in a locked first-floor exam room (${JSON.stringify(hidden)})`);
+    const released = await sp1.evaluate((room) => {
+      const sc = window.game.scene.getScene('Game');
+      sc.unlockRoom(room);
+      const s = sc.scribes.get('omar');
+      return { here: !!s, staysMin: s ? Math.round((s.until - sc.time.now) / 60000) : 0 };
+    }, hidden.room);
+    check(released.here && released.staysMin > 60, `opening that room lets Omar out for the rest of the shift (${JSON.stringify(released)})`);
     check(scribeErrors.length === 0, `no errors with the scribes${scribeErrors.length ? ': ' + scribeErrors.join(' | ') : ''}`);
     await sc1.close();
 
@@ -2020,8 +2044,9 @@ try {
       for (const p of sc.powerups.pills) p.img.setVisible(false);
       return { pool: sc.powerups.dropPool, seen: [...seen] };
     });
-    check(!drops.pool.includes('scribeAlan') && !drops.seen.includes('scribeAlan') && drops.seen.includes('scribeOmar'),
-      `a locked scribe never drops (${drops.seen.join(', ')})`);
+    const unhired = await sp2.evaluate(() => [...window.game.scene.getScene('Game').scribeRooms.values()]);
+    check(!drops.seen.some((id) => id.startsWith('scribe')) && unhired.length === 0,
+      `no scribe pills drop, and an unhired scribe isn't waiting in a room (${JSON.stringify({ seen: drops.seen, unhired })})`);
     check(!drops.pool.includes('techDonald'), `Donald's pill doesn't drop before he's unlocked (${drops.pool.join(', ')})`);
     // DONALD: walking into X-ray during the shift unlocks him for good and brings him out to help
     const start = await sp2.evaluate(() => {

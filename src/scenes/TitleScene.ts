@@ -98,7 +98,7 @@ export class TitleScene extends Phaser.Scene {
     // Who's on shift
     this.picks = CHARACTERS.map((c) => {
       const ring = this.add.circle(0, 0, 40, 0x0d2b2e, 0.85).setStrokeStyle(4, 0xe8fff9, 0.5).setInteractive({ useHandCursor: true });
-      const art = this.add.image(0, 0, c.id).setAngle(-90).setScale(0.85);
+      const art = this.add.image(0, 0, `${c.id}-held`).setAngle(-90).setScale(0.85);
       const name = this.add.text(0, 0, '', {
         fontFamily: font, fontSize: '14px', fontStyle: '900', color: COLORS.uiText, backgroundColor: '#0d2b2ecc', padding: { x: 6, y: 2 },
       }).setOrigin(0.5, 0);
