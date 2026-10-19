@@ -1872,18 +1872,19 @@ try {
       exit.use(sc.time.now);
       return { lockedWhileFax, tool, back, leftovers, canClock, cureAch: sc.runStats.achievements };
     });
-    const ended = await mp.waitForFunction(() => window.game.scene.isActive('GameOver'), null, { timeout: 20000 }).then(() => true, () => false);
     // Skip the credits (keep tapping: on a slow machine the skip listener takes a moment to arm)
-    const shiftComplete = () => mp.evaluate(() => window.game.scene.getScene('GameOver').children.list.some((c) => c.text === 'SHIFT COMPLETE'));
+    // (the Discharge Summary waits 1.6 s of game time, which crawls on CI)
+    const shiftComplete = () => mp.evaluate(() => window.game.scene.isActive('GameOver')
+      && window.game.scene.getScene('GameOver').children.list.some((c) => c.text === 'SHIFT COMPLETE'));
     let title = false;
-    for (let i = 0; i < 20 && !title; i++) {
+    for (let i = 0; i < 60 && !title; i++) {
       await mp.touchscreen.tap(426, 200);
       await mp.waitForTimeout(1500);
       title = await shiftComplete();
     }
     const capped = await mp.evaluate(() => JSON.parse(localStorage.getItem('moshi.progress.v1') ?? '{}').owned ?? []);
-    check(won.lockedWhileFax && won.tool === 'ionizer9000' && won.back === 'up' && won.leftovers === 0 && won.canClock && ended && title,
-      `the Ionizer 9000, back to Stall 3, then CLOCK OUT: SHIFT COMPLETE (${JSON.stringify({ won, ended, title, capped })})`);
+    check(won.lockedWhileFax && won.tool === 'ionizer9000' && won.back === 'up' && won.leftovers === 0 && won.canClock && title,
+      `the Ionizer 9000, back to Stall 3, then CLOCK OUT: SHIFT COMPLETE (${JSON.stringify({ won, title, capped })})`);
     check(capped.includes('scrubCap'), `clocking out unlocks Eugene's scrub cap (${capped.join(', ')})`);
     check(cureErrors.length === 0, `no errors in the Miracle Cure${cureErrors.length ? ': ' + cureErrors.join(' | ') : ''}`);
     await mc.close();
