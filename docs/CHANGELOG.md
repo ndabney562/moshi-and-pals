@@ -1,5 +1,8 @@
 # Changelog
 
+## v0.28.3: Cheaper supply crates
+- **Supply crates now cost $200** (was $250).
+
 ## v0.28.2: The scribes wait in the exam rooms
 - **No more scribe pills.** Once you hire Omar or Alan, each one waits every shift in a random locked exam room on the first floor (Exam Rooms 1 to 7).
 - **Open that room and they come out** and help you for the rest of the shift: they follow you, fight germs and shame patients with health code violations into cleaning up.
