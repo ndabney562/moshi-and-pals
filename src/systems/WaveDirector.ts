@@ -111,7 +111,8 @@ export class WaveDirector {
 
     this.nextSpawnAt = time + 600;
     const titles = WAVES.titles;
-    const title = this.isBossRound ? `BOSS ROUND: ${GERMS[WAVES.bossFor(r)].name} has arrived`
+    const boss = this.isBossRound ? GERMS[WAVES.bossFor(r)] : undefined;
+    const title = boss ? `BOSS ROUND: ${boss.bossTitle ?? boss.name} ${boss.partner ? 'have' : 'has'} arrived`
       : sp ? `${sp.name}: ${sp.blurb}` : titles[Math.min(r - 1, titles.length - 1)];
     events.emit(GameEvents.RoundStarted, { round: r, title, special: sp?.name });
   }

@@ -38,7 +38,7 @@ Values live in `src/config/balance.ts` and `src/config/controls.ts`.
 | Breather | spawns ×1.6 slower while Eugene < 30% HP with ≥ half the round's max alive | `WAVES.breather` |
 | Score bonuses | streak ≥ 10: +5 per kill; Spotless: +25 × round | `BALANCE.streak.scorePerKill`, `economy.spotlessScorePerRound` |
 | Spawn interval | 750 ms at r1, -50 ms/round, min 260 | Was 940 ms at r1 |
-| Boss rounds | every 5th, boss + 50% escort | |
+| Boss rounds | every 5th, boss + 50% escort | Order: Diamond, Patient Zero, Methicillin, Influenza Twins (`WAVES.bossOrder`) |
 | Diamond | 850 HP, 55 px/s, 92% knockback resist, radius 62 | Tuning in `BALANCE.diamond` |
 | Mandatory Meeting | every 10 s within 320 px; pull 150 px/s, Eugene walks at 35% | Break free with 80 damage; door = 30 damage + shove |
 | Write-Ups | 3 per 20% of her health lost | 10 HP, 170 px/s |
@@ -59,6 +59,8 @@ Values live in `src/config/balance.ts` and `src/config/controls.ts`.
 | Power-ups | elites always drop; others 1.2%; 10 s on the floor (blinks last 3 s) | Durations in `src/data/powerups.ts`, tuning in `BALANCE.powerups` |
 | Special rounds | 7 Rush, 9 Slow Tuesday, 12 Outbreak, 14 Inspection, 17 Superbug; then odd non-boss rounds | `SPECIAL_ROUNDS` and `WAVES.specialFor` in `src/data/waves.ts` |
 | Patient Zero | 1100 HP, 52 px/s, 20 contact, $150 | Cough every 4.2-6 s (55° × 330 px, 14 dmg, 3 Sprinters); sneeze below 60% every 9 s (5 globs); mask after 70 hits for 8 s (×2 damage); leaves below 25%; `BALANCE.patientZero` |
+| Methicillin | 1300 HP, 48 px/s, 20 contact (26 rolling), $175 | Resists a source for 14 s (×0.2) after 260 damage from it; autoclave ×1.5, never resisted; layers peel at 2/3 and 1/3 (4 Basic Germs each, attacks ×0.8 interval); Cluster Shot every 4.5-6.5 s (3 grapes); Roll every 7-9.5 s (560 px/s, 1.5 s); `BALANCE.methicillin` |
+| Influenza Twins | H and N 520 HP each, 70 px/s, 16 contact, $90 each | Strand 12 dmg; wall snaps it (2.2 s stun, 5 s regrow); revive after 6 s at 50%; shift below 50% combined (other twin ×0.15, swap every 6 s); spiral of 8 globs every 5-7 s; always drops a pill; `BALANCE.influenza` |
 | Diplococcus Duo | 46 HP, 90 px/s, 14 contact, $10; from r7, 10% +2%/round (max 20%) | Splits into 2 Monococci (16 HP, 135 px/s, 8 contact, $3) |
 | Bacillus Bulldozer | 60 HP, 80 px/s, 12 contact, $14; from r8, 7% +1%/round (max 14%), 2-4 alive | Charges within 420 px with line of sight: 0.8 s aim, 560 px/s for 0.9 s, 24 damage; cooldown 2.8-4.2 s; a wall dazes it 1.5 s at ×2 damage taken |
 | Chonk Coccus | 380 HP, 55 px/s, 22 contact, $35, no knockback; from r8, 2.5%, 1 alive | Bursts into 6 Basic Germs |

@@ -327,6 +327,14 @@ export class BootScene extends Phaser.Scene {
       this.makePatientZero(def);
       return;
     }
+    if (def.look === 'staph') {
+      for (const layers of [3, 2, 1]) this.makeStaph(def, layers);
+      return;
+    }
+    if (def.look === 'flu') {
+      this.makeFluTwin(def);
+      return;
+    }
     if (def.shape === 'shell') {
       this.makeSporePod(def);
       return;
@@ -620,6 +628,113 @@ export class BootScene extends Phaser.Scene {
       g.fillRect(-8, -6, 16, 12);
       g.lineStyle(1, 0xbdbdbd).strokeRect(-8, -6, 16, 12);
       g.restore();
+    }
+    g.generateTexture(`germ-${def.id}`, size, size);
+    g.destroy();
+  }
+
+  /**
+   * Methicillin: a bunch of grapes (staph under the microscope), seen from above facing right (+x).
+   * `layers` 3..1: the armored outer ring and the middle ring peel off as he's hurt. Texture keys:
+   * germ-methicillin (all three), germ-methicillin-2, germ-methicillin-1.
+   */
+  private makeStaph(def: GermDef, layers: number): void {
+    const r = def.radius;
+    const size = (r + 14) * 2;
+    const c = size / 2;
+    const g = this.add.graphics();
+    const grape = (x: number, y: number, gr: number, fill: number, ink: number, plated = false) => {
+      g.fillStyle(fill).fillCircle(x, y, gr);
+      g.lineStyle(3, ink).strokeCircle(x, y, gr);
+      g.fillStyle(0xffffff, 0.35).fillCircle(x - gr * 0.35, y - gr * 0.35, gr * 0.3);
+      if (plated) {
+        // Armor plate with rivets
+        g.lineStyle(3, 0x8d8d8d).beginPath().arc(x, y, gr * 0.7, -2.2, 0.6, false).strokePath();
+        g.fillStyle(0x5d5d5d).fillCircle(x + gr * 0.45, y + gr * 0.2, 2.5);
+      }
+    };
+    // Outer ring: armored grapes
+    if (layers >= 3) {
+      for (let i = 0; i < 12; i++) {
+        const a = (i / 12) * Math.PI * 2;
+        grape(c + Math.cos(a) * r * 0.78, c + Math.sin(a) * r * 0.78, r * 0.26, 0xc9a227, def.outline, true);
+      }
+    }
+    // Middle ring
+    if (layers >= 2) {
+      for (let i = 0; i < 8; i++) {
+        const a = (i / 8) * Math.PI * 2 + 0.3;
+        grape(c + Math.cos(a) * r * 0.5, c + Math.sin(a) * r * 0.5, r * 0.25, def.color, def.outline);
+      }
+    }
+    // Core: a tight bunch, with the face on the front grape
+    for (let i = 0; i < 5; i++) {
+      const a = (i / 5) * Math.PI * 2 + Math.PI;
+      grape(c + Math.cos(a) * r * 0.24, c + Math.sin(a) * r * 0.24, r * 0.22, 0xf2d675, def.outline);
+    }
+    const fx = c + r * 0.2;
+    grape(fx, c, r * 0.3, 0xf2d675, def.outline);
+    for (const dy of [-0.12, 0.12]) {
+      g.fillStyle(0xffffff).fillCircle(fx + r * 0.1, c + r * dy, r * 0.09);
+      g.fillStyle(0x111111).fillCircle(fx + r * 0.14, c + r * dy, r * 0.045);
+    }
+    // Smug brows and a smirk
+    g.lineStyle(3, def.outline).lineBetween(fx + r * 0.02, c - r * 0.26, fx + r * 0.18, c - r * 0.16)
+      .lineBetween(fx + r * 0.02, c + r * 0.26, fx + r * 0.18, c + r * 0.16);
+    g.lineStyle(3, def.outline).beginPath().arc(fx + r * 0.1, c, r * 0.17, Phaser.Math.DegToRad(-25), Phaser.Math.DegToRad(40)).strokePath();
+    g.generateTexture(layers === 3 ? `germ-${def.id}` : `germ-${def.id}-${layers}`, size, size);
+    g.destroy();
+  }
+
+  /**
+   * An Influenza Twin: a round, balloon-like virion studded with surface spikes, its letter (H or N) on
+   * its back, and big eyes. H has lollipop spikes (hemagglutinin), N mushroom ones (neuraminidase).
+   */
+  private makeFluTwin(def: GermDef): void {
+    const r = def.radius;
+    const size = (r + 16) * 2;
+    const c = size / 2;
+    const g = this.add.graphics();
+    const n = 16;
+    for (let i = 0; i < n; i++) {
+      const a = (i / n) * Math.PI * 2;
+      const x0 = c + Math.cos(a) * r * 0.95, y0 = c + Math.sin(a) * r * 0.95;
+      const x1 = c + Math.cos(a) * (r + 10), y1 = c + Math.sin(a) * (r + 10);
+      g.lineStyle(3, def.outline).lineBetween(x0, y0, x1, y1);
+      if (def.id === 'fluH') {
+        g.fillStyle(0xfff3c4).fillCircle(x1, y1, 4.5);
+        g.lineStyle(2, def.outline).strokeCircle(x1, y1, 4.5);
+      } else {
+        g.fillStyle(0xd1f2eb).slice(x1, y1, 6, a - Math.PI / 2, a + Math.PI / 2, false).fillPath();
+        g.lineStyle(2, def.outline).slice(x1, y1, 6, a - Math.PI / 2, a + Math.PI / 2, false).strokePath();
+      }
+    }
+    g.fillStyle(def.color).fillCircle(c, c, r);
+    g.lineStyle(4, def.outline).strokeCircle(c, c, r);
+    g.fillStyle(0xffffff, 0.35).fillEllipse(c - r * 0.35, c - r * 0.4, r * 0.55, r * 0.32);
+    // Eyes facing right (+x)
+    for (const dy of [-0.3, 0.3]) {
+      g.fillStyle(0xffffff).fillCircle(c + r * 0.42, c + r * dy, r * 0.22);
+      g.fillStyle(0x111111).fillCircle(c + r * 0.5, c + r * dy, r * 0.1);
+    }
+    g.lineStyle(3, def.outline).beginPath().arc(c + r * 0.25, c, r * 0.5, Phaser.Math.DegToRad(-25), Phaser.Math.DegToRad(25)).strokePath();
+    // Its letter on the back half, drawn as blocks (reads sideways, which is how it travels)
+    const lx = c - r * 0.4, ly = c, h = r * 0.7, w = r * 0.5, t = r * 0.14;
+    const block = (x: number, y: number, bw: number, bh: number) => {
+      g.fillStyle(0xffffff).fillRect(x, y, bw, bh);
+      g.lineStyle(2, def.outline).strokeRect(x, y, bw, bh);
+    };
+    if (def.id === 'fluH') {
+      block(lx - w / 2, ly - h / 2, t, h);
+      block(lx + w / 2 - t, ly - h / 2, t, h);
+      block(lx - w / 2 + t, ly - t / 2, w - 2 * t, t);
+    } else {
+      block(lx - w / 2, ly - h / 2, t, h);
+      block(lx + w / 2 - t, ly - h / 2, t, h);
+      g.fillStyle(0xffffff).fillPoints([
+        new Phaser.Math.Vector2(lx - w / 2 + t, ly - h / 2), new Phaser.Math.Vector2(lx - w / 2 + t * 2, ly - h / 2),
+        new Phaser.Math.Vector2(lx + w / 2 - t, ly + h / 2), new Phaser.Math.Vector2(lx + w / 2 - t * 2, ly + h / 2),
+      ], true);
     }
     g.generateTexture(`germ-${def.id}`, size, size);
     g.destroy();
