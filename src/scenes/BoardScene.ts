@@ -6,7 +6,6 @@ import { CRATE_POOL, EQUIPMENT } from '../data/equipment';
 import { GERMS } from '../data/germs';
 import { SPECIALTIES, STARTER_KIT_COST } from '../data/residency';
 import { SCRIBES, scribeUnlockId } from '../data/scribes';
-import { BALANCE } from '../config/balance';
 
 type Tab = 'specialties' | 'kit' | 'scribes' | 'atlas';
 const font = 'system-ui, -apple-system, sans-serif';
@@ -120,13 +119,13 @@ export class BoardScene extends Phaser.Scene {
     });
   }
 
-  /** Omar and Alan: hire one and their pill can drop from germs on every shift after. Donald unlocks in X-ray. */
+  /** Omar and Alan: hire one and every shift they wait in a random first-floor exam room. Donald unlocks in X-ray. */
   private drawScribes(): void {
     const { width } = this.scale;
     const p = progress();
     const left = width / 2 - 520;
     const right = width / 2 + 520;
-    this.txt(left, 140, `Hire a scribe and their pill joins the power-up drops. They chart, they fight, ${BALANCE.scribes.ms / 1000} s a visit.`, 17, COLORS.uiAccent, 'italic');
+    this.txt(left, 140, 'Hired, each one waits in a random exam room on the first floor. Open it and they help you for the rest of the shift.', 17, COLORS.uiAccent, 'italic');
     SCRIBES.forEach((sc, i) => {
       const y = 190 + i * 120;
       const id = scribeUnlockId(sc.id);
