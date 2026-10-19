@@ -345,7 +345,7 @@ try {
   // Supply Requisition: pay at a crate, pick 1 of 2 tools (the game waits), appeal for a new pair, then SWAP back
   await page.evaluate(() => {
     const scene = window.game.scene.getScene('Game');
-    scene.addCopays(300 - scene.copays);
+    scene.addCopays(250 - scene.copays);
     scene.claimDeniedChance = 0;
     const crate = scene.crates[0];
     scene.player.setPosition(crate.x + crate.w / 2, crate.y - 45);
@@ -666,7 +666,7 @@ try {
     const hud = window.game.scene.getScene('Hud');
     return { copays: scene.copays, form: hud.requisitioning, same: scene.loadout.map((t) => t.def.id).join() === tools, banner: hud.banner.text, line: hud.bannerSub.text };
   });
-  check(denied.copays === 175 && !denied.form && denied.same && denied.banner === 'CLAIM DENIED', `a denied claim refunds half and sends a joke item (${JSON.stringify(denied)})`);
+  check(denied.copays === 200 && !denied.form && denied.same && denied.banner === 'CLAIM DENIED', `a denied claim refunds half and sends a joke item (${JSON.stringify(denied)})`);
 
   // ROOM TRAPS (M14): the bathroom dryer blasts germs back, the X-ray pulses through walls, the autoclave cooks
   const traps = await page.evaluate(() => {
