@@ -7,6 +7,7 @@ import { saveSettings, settings } from '../core/settings';
 import { CHARACTERS, characterById } from '../data/characters';
 import { readSafeArea } from '../core/safeArea';
 import { chooseShift, dailyShift, localDate, savedDifficulty } from '../core/shift';
+import { savedShift } from '../core/shiftSave';
 import { dailyBest } from '../core/save';
 import { BALANCE } from '../config/balance';
 import { DIFFICULTIES, difficultyById } from '../data/difficulties';
@@ -48,6 +49,8 @@ export class TitleScene extends Phaser.Scene {
   private panelButtons: { bg: Phaser.GameObjects.Rectangle; label: Phaser.GameObjects.Text }[] = [];
 
   private started = false;
+  /** CONTINUE SHIFT: shown when a shift was saved from the pause menu. */
+  private continueButton!: Phaser.GameObjects.Text;
 
   create(): void {
     this.started = false;
@@ -74,6 +77,17 @@ export class TitleScene extends Phaser.Scene {
     offerFilesToCache();
     navigator.serviceWorker?.ready.then(() => offerFilesToCache()).catch(() => undefined);
     this.events.once('shutdown', off);
+
+    // CONTINUE SHIFT: pick a saved shift up again at the start of its round
+    const saved = savedShift();
+    const diffName = saved ? difficultyById(saved.shift.difficulty).name.toUpperCase() : '';
+    this.continueButton = this.add.text(0, 0, saved ? `▶ CONTINUE SHIFT · ROUND ${saved.round} · ${saved.shift.daily ? "TODAY'S SHIFT" : diffName}` : '', {
+      fontFamily: font, fontSize: '24px', fontStyle: '900', color: '#0d2b2e', backgroundColor: '#7fffd4', padding: { x: 18, y: 10 },
+    }).setOrigin(0.5).setVisible(!!saved).setInteractive({ useHandCursor: true });
+    this.continueButton.on('pointerdown', (_p: Phaser.Input.Pointer, _x: number, _y: number, e: Phaser.Types.Input.EventData) => {
+      e.stopPropagation();
+      this.begin(undefined, true);
+    });
 
     // The Residency Board: spend CME Credits between shifts
     this.boardButton = this.add.text(0, 0, `🎓 RESIDENCY BOARD · ${progress().credits} CME`, {
@@ -151,7 +165,7 @@ export class TitleScene extends Phaser.Scene {
     this.input.keyboard?.once('keydown', () => (this.dailyPanel.visible ? this.begin(localDate()) : this.begin()));
     this.input.on('pointerdown', (_p: Phaser.Input.Pointer, over: Phaser.GameObjects.GameObject[]) => {
       if (this.dailyPanel.visible) return;
-      const buttons: Phaser.GameObjects.GameObject[] = [this.updatePill, this.boardButton, this.lockerButton, this.dailyButton, this.difficultyButton];
+      const buttons: Phaser.GameObjects.GameObject[] = [this.updatePill, this.continueButton, this.boardButton, this.lockerButton, this.dailyButton, this.difficultyButton];
       if (!buttons.some((b) => over.includes(b)) && !this.picks.some((p) => over.includes(p.ring))) this.begin();
     });
   }
@@ -164,7 +178,8 @@ export class TitleScene extends Phaser.Scene {
     const spare = art.height - height / k; // image rows that don't fit
     art.setScale(k).setPosition(width / 2, -Math.min(spare, 30) * k);
     this.tap.setPosition(width / 2, height * 0.92);
-    this.updatePill.setPosition(width / 2, height * 0.8);
+    this.continueButton.setPosition(width / 2, height * 0.8);
+    this.updatePill.setPosition(width / 2, this.continueButton.visible ? height * 0.68 : height * 0.8);
     // The left-hand column: difficulty, Today's Shift, the board (clear of the notch)
     const left = Math.max(24, readSafeArea().left + 16);
     this.boardButton.setPosition(left, height - 20);
@@ -338,14 +353,15 @@ export class TitleScene extends Phaser.Scene {
     back.label.setPosition(width / 2 + 150, by);
   }
 
-  /** Starts a shift: a normal one, or TODAY'S SHIFT for `daily` (a date). */
-  private begin(daily?: string): void {
+  /** Starts a shift: a normal one, TODAY'S SHIFT for `daily` (a date), or the saved one (`resume`). */
+  private begin(daily?: string, resume = false): void {
     if (this.started) return;
     this.started = true;
-    chooseShift(daily);
+    // (A continued Today's Shift stays one for PLAY AGAIN)
+    chooseShift(resume ? savedShift()?.shift.daily : daily);
     // Fade to black, then the clinic fades in from black (GameScene/HudScene.create)
     this.input.enabled = false;
     this.cameras.main.fadeOut(DISPLAY.fadeOutMs, 0, 0, 0);
-    this.cameras.main.once(Phaser.Cameras.Scene2D.Events.FADE_OUT_COMPLETE, () => this.scene.start('Game'));
+    this.cameras.main.once(Phaser.Cameras.Scene2D.Events.FADE_OUT_COMPLETE, () => this.scene.start('Game', { resume }));
   }
 }

@@ -16,7 +16,8 @@ import { CONSTRUCTION_LINES, CONSTRUCTION_SIGN, modifierById, type ModifierId } 
 import { difficultyById } from '../data/difficulties';
 import { unlockAchievement } from '../core/achievements';
 import { activeSpecialty, bankFor, creditsFor, doctorUnlocked, grant, lockerLevel, npsFor, progress, recordShift, scribeUnlocked, staffBoost, unlockScribe } from '../core/progress';
-import type { SpecialtyMods } from '../data/residency';
+import { SPECIALTIES, type SpecialtyMods } from '../data/residency';
+import { clearSavedShift, saveShift, savedShift, type ShiftSave } from '../core/shiftSave';
 import { newRunStats, type RunStats } from '../core/runStats';
 import { initSfx, sfx } from '../core/sfx';
 import { initMusic, musicState, setMusicMix, startMusic, stopMusic } from '../core/music';
@@ -168,6 +169,12 @@ export class GameScene extends Phaser.Scene {
   private scribeRooms = new Map<string, ScribeId>();
   /** Their silhouettes, standing in those locked rooms until they're let out (room id -> image). */
   private scribeShadows = new Map<string, Phaser.GameObjects.Image>();
+  /** Helpers let out of their rooms this shift (or who started it with you): they stay all shift, and a save keeps them. */
+  private released = new Set<ScribeId>();
+  /** SAVE & QUIT: the shift as it stood when this round began (a save made mid-round picks up from here). */
+  private roundStartSave?: ShiftSave;
+  /** This shift's Specialty id ('' for none), for a save. */
+  private specialtyId = '';
   /** Patients the scribes cleaned up this shift (the Delegation achievement). */
   private scribeCleans = 0;
   private kills = 0;
@@ -209,11 +216,16 @@ export class GameScene extends Phaser.Scene {
     super('Game');
   }
 
-  create(): void {
+  create(data?: { resume?: boolean }): void {
     // time.now stops while paused, so cooldowns and timers don't run out in the background
     useGameTime(this);
+    // CONTINUE SHIFT: a saved shift picks up at the start of its round. Continuing uses the save up.
+    const resume = data?.resume ? savedShift() : undefined;
+    if (resume) clearSavedShift();
+    this.roundStartSave = undefined;
+    this.released = new Set();
     // Today's Shift or a normal one: the seed drives this run's rolls (core/rng)
-    this.shift = nextShift();
+    this.shift = resume?.shift ?? nextShift();
     seedRun(this.shift.seed);
     this.diff = BALANCE.difficulty[this.shift.difficulty];
     this.closed = undefined;
@@ -272,7 +284,7 @@ export class GameScene extends Phaser.Scene {
     this.fx = new Fx(this);
     this.flow = new FlowField(room.width, room.height, this.blockingObstacles());
     // A Pal who hasn't been hired with NPS Scores can't go on shift (?doctor= skips that, for testing)
-    this.character = characterById(DEBUG.doctor ?? (doctorUnlocked(settings.character) ? settings.character : 'eugene'));
+    this.character = characterById(resume?.character ?? DEBUG.doctor ?? (doctorUnlocked(settings.character) ? settings.character : 'eugene'));
     // The Miracle Cure's reward: Eugene wears his scrub cap from then on
     const capped = this.character.id === 'eugene' && progress().owned.includes('scrubCap');
     this.player = new Player(this, room.playerSpawn.x, room.playerSpawn.y, capped ? 'eugene-cap' : this.character.id);
@@ -334,9 +346,9 @@ export class GameScene extends Phaser.Scene {
     this.stations = this.buildStations();
     this.runStats = newRunStats(this.time.now);
     this.bossesDefeated = 0;
-    this.applyResidency();
+    this.applyResidency(resume?.specialty);
     this.slot = 0;
-    this.waves = new WaveDirector(this.time.now, DEBUG.startRound);
+    this.waves = new WaveDirector(this.time.now, resume?.round ?? DEBUG.startRound);
     this.waves.intervalMult = this.diff.spawnInterval;
     if (this.hasMod('fluSeason')) {
       // FLU SEASON: Viral Sprinters twice as often, and from round 1
@@ -406,6 +418,7 @@ export class GameScene extends Phaser.Scene {
       sameFloor: (x0, y0, x1, y1) => this.floorOf(x0, y0) === this.floorOf(x1, y1),
     }, (st) => this.stations.push(st));
     this.vents.sync();
+    if (resume) this.restoreShift(resume);
     const forced = scribeById(DEBUG.scribe);
     if (forced) {
       // ?scribe=omar: they work the whole shift
@@ -473,6 +486,7 @@ export class GameScene extends Phaser.Scene {
       if (this.hasMod('construction')) this.closeForConstruction(p.round);
       this.vents.shuffle();
       this.cure.onRoundStarted();
+      this.roundStartSave = this.snapshot(p.round);
     };
     const onEscaped = () => this.achieve('ama');
     const onSnack = (p: { id: string }) => this.buySnack(p.id);
@@ -1302,13 +1316,16 @@ export class GameScene extends Phaser.Scene {
     this.scribeRooms = new Map();
     this.scribeShadows = new Map();
     for (const def of SCRIBES) {
-      if (!def.waitsIn || def.id === forced || (!scribeUnlocked(def.id) && !def.unlockRoom)) continue;
+      if (!def.waitsIn || def.id === forced || this.released.has(def.id) || (!scribeUnlocked(def.id) && !def.unlockRoom)) continue;
       const free = def.waitsIn.filter((id) => !this.unlocked.has(id) && !this.scribeRooms.has(id));
       if (free.length > 0) {
         const roomId = runRng.world.pick(free);
         this.scribeRooms.set(roomId, def.id);
         this.drawScribeShadow(roomId, def.id);
-      } else if (scribeUnlocked(def.id)) this.scribes.summon(def.id, this.time.now, Infinity);
+      } else if (scribeUnlocked(def.id)) {
+        this.released.add(def.id);
+        this.scribes.summon(def.id, this.time.now, Infinity);
+      }
     }
   }
 
@@ -1342,6 +1359,7 @@ export class GameScene extends Phaser.Scene {
     const def = scribeById(id);
     if (def?.unlockRoom === roomId && unlockScribe(id) && def.unlockBanner) events.emit(GameEvents.SecretFound, def.unlockBanner);
     // Out for good: they stay on shift (and can't be hurt) until the shift ends
+    this.released.add(id);
     this.scribes.summon(id, this.time.now, Infinity, from);
   }
 
@@ -1356,6 +1374,116 @@ export class GameScene extends Phaser.Scene {
     if (long > ms && def.powerup) this.powerups.start(def.powerup, time, long);
     if (def.desk) this.frontDesk.summon(id, time, long);
     else this.scribes.summon(id, time, long);
+  }
+
+  /** The Miracle Cure flags a save keeps (a Fax Machine fight in progress starts over). */
+  private static readonly CURE_FLAGS = ['magazineRead', 'codeA', 'codeB', 'keySeen', 'hasKey', 'panelOpen', 'faxDefeated', 'ionizer', 'canClockOut'] as const;
+
+  /** The shift as it stands, to pick up again at the start of `round`. */
+  private snapshot(round: number): ShiftSave {
+    const { startedAt, ...stats } = this.runStats;
+    const cure = this.cure as unknown as Record<string, boolean>;
+    return {
+      version: 1,
+      savedAt: Date.now(),
+      shift: { ...this.shift, mods: [...this.shift.mods] },
+      character: this.character.id,
+      specialty: this.specialtyId,
+      round: Math.max(1, round),
+      score: this.score,
+      kills: this.kills,
+      copays: this.copays,
+      bossesDefeated: this.bossesDefeated,
+      scribeCleans: this.scribeCleans,
+      hp: Math.max(1, this.player.hp),
+      maxHp: this.player.maxHp,
+      rooms: [...this.unlocked],
+      loadout: this.loadout.map((t) => ({ id: t.def.id, tier: t.tier })),
+      slot: this.slot,
+      snacks: [...this.snacks],
+      helpers: [...this.released],
+      claimDeniedChance: this.claimDeniedChance,
+      playedMs: Math.max(0, this.time.now - startedAt),
+      stats: JSON.parse(JSON.stringify(stats)) as ShiftSave['stats'],
+      cure: Object.fromEntries(GameScene.CURE_FLAGS.map((k) => [k, !!cure[k]])),
+    };
+  }
+
+  /**
+   * SAVE & QUIT (pause menu): saves the shift to pick up later at the start of a round. Mid-round, that's the round
+   * as it began (whatever happened since is lost); in a break, it's the shift as it is now, starting the next round.
+   * Returns the round it will start at, or 0 if it couldn't be saved.
+   */
+  /** The round SAVE & QUIT would pick up at, right now. */
+  get saveRound(): number {
+    return this.waves.roundActive && this.roundStartSave ? this.roundStartSave.round : this.waves.round + 1;
+  }
+
+  saveAndQuit(): number {
+    if (this.runOver || this.player.dead) return 0;
+    const save = this.waves.roundActive && this.roundStartSave ? this.roundStartSave : this.snapshot(this.waves.round + 1);
+    return saveShift({ ...save, savedAt: Date.now() }) ? save.round : 0;
+  }
+
+  /** CONTINUE SHIFT: puts a saved shift back (called in create, before the helpers are placed and the HUD starts). */
+  private restoreShift(save: ShiftSave): void {
+    const now = this.time.now;
+    this.copays = save.copays;
+    this.score = save.score;
+    this.kills = save.kills;
+    this.bossesDefeated = save.bossesDefeated;
+    this.scribeCleans = save.scribeCleans;
+    this.claimDeniedChance = save.claimDeniedChance;
+    this.runStats = { ...newRunStats(now), ...save.stats, startedAt: now - save.playedMs };
+    // Tools, compounded back up to their tiers
+    const tools = save.loadout.filter((t) => EQUIPMENT[t.id]).map((t) => {
+      const tool = this.makeTool(t.id);
+      for (let i = 0; i < t.tier && tool.nextTier; i++) tool.upgrade(now);
+      return tool;
+    });
+    if (tools.length > 0) {
+      this.loadout = tools;
+      for (const t of tools) t.slots = tools.length;
+      this.slot = Math.min(save.slot, tools.length - 1);
+    }
+    // Snacks, replayed in order to rebuild their perks
+    for (const id of save.snacks) {
+      const snack = SNACKS.find((x) => x.id === id);
+      if (!snack) continue;
+      this.snacks.push(id);
+      this.applySnack(snack);
+    }
+    this.player.maxHp = save.maxHp;
+    this.player.hp = Math.min(save.hp, save.maxHp);
+    // Rooms that were open
+    for (const id of save.rooms) this.restoreRoom(id);
+    this.flow.rebuild(this.blockingObstacles());
+    this.flow.setPortals(this.stairLinks());
+    this.vents.sync();
+    // The Miracle Cure, as far as it got
+    const cure = this.cure as unknown as Record<string, boolean>;
+    for (const k of GameScene.CURE_FLAGS) if (save.cure[k]) cure[k] = true;
+    if (save.cure.faxDefeated) cure.faxSpawned = true;
+    // Helpers who were out stay out
+    for (const id of save.helpers) {
+      if (!scribeById(id)) continue;
+      this.released.add(id as ScribeId);
+      this.scribes.summon(id as ScribeId, now, Infinity);
+    }
+  }
+
+  /** Opens a room without the fanfare (a continued shift): its doors and fog go, nothing else happens. */
+  private restoreRoom(id: string): void {
+    if (this.unlocked.has(id) || !this.room.rooms.some((r) => r.id === id)) return;
+    this.unlocked.add(id);
+    for (const d of this.lockedDoors.filter((d) => d.o.opens === id)) {
+      this.solids.remove(d.zone, true, true);
+      d.art.destroy();
+      d.label.destroy();
+    }
+    this.lockedDoors = this.lockedDoors.filter((d) => d.o.opens !== id);
+    for (const obj of this.fog.get(id) ?? []) obj.destroy();
+    this.fog.delete(id);
   }
 
   /** Every station in the clinic. */
@@ -1586,8 +1714,10 @@ export class GameScene extends Phaser.Scene {
    * RESIDENCY BOARD: this shift's Specialty (a perk and its catch) and the Starter Kit tool, chosen between
    * runs with CME Credits.
    */
-  private applyResidency(): void {
-    const spec = activeSpecialty();
+  private applyResidency(savedSpecialty?: string): void {
+    // A continued shift keeps the Specialty it was saved with, even if the board's choice changed since
+    const spec = savedSpecialty === undefined ? activeSpecialty() : SPECIALTIES.find((x) => x.id === savedSpecialty);
+    this.specialtyId = spec?.id ?? '';
     this.mods = spec?.mods ?? {};
     this.specialtyName = spec?.name ?? '';
     const m = this.mods;

@@ -1,5 +1,11 @@
 # Changelog
 
+## v0.31.0: Save & Quit
+- **Save your shift and come back later.** The pause menu has **SAVE & QUIT** next to QUIT. The title screen then shows **▶ CONTINUE SHIFT** with the round it'll pick up at.
+- **It picks up at the start of a round.** Your Copays, score, health, open rooms, tools and their upgrades, snacks, the helpers you've let out and the Miracle Cure's progress all come back. Germs on the floor, pills and timers start fresh.
+- Saved in the middle of a round, it's the shift as it was when that round began, so anything since then is lost (the pause screen says which round you'd pick up at). Saved in a break, it's the shift as it is, starting the next round.
+- One saved shift at a time: saving again replaces it, and continuing uses it up. Starting a new shift doesn't touch it. Plain QUIT still throws the shift away (two taps).
+
 ## v0.30.0: Selina and Elaine at the front desk, and staff upgrades
 - **Two new helpers: Selina and Elaine, the front desk PSRs.** Hire them on the Residency Board (15 CME each, under the new **STAFF** tab) and their pills join the power-up drops.
 - **Grab one and she opens the front desk.** Every patient lines up in front of RECEPTION and complains about the wait ("I've been here since NINE.") instead of committing health code violations, and she checks them in and sends them home one at a time. Each check-in counts as cleaning up the patient, with the usual reward.
