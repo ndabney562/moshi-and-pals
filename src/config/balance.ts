@@ -363,6 +363,11 @@ export const BALANCE = {
     omar: { everyMs: 420, damage: 13, knockback: 120 },
     /** Alan zaps: slower, harder, jumps to `chain` more germs and stuns each. */
     alan: { everyMs: 950, damage: 26, knockback: 60, chain: 2, chainRange: 160, stunMs: 400 },
+    /**
+     * Donald (X-ray tech): a beam `range` long through walls (same floor) that hits every germ within `width` of
+     * its line and stuns them. He comes out to help for `ms` on the first visit to X-ray each shift.
+     */
+    donald: { everyMs: 1300, damage: 30, knockback: 90, range: 420, width: 26, stunMs: 250 },
   },
   /**
    * NPS SCORES: the saved currency that hires the Pals. Eugene is free; everyone else is bought once with NPS

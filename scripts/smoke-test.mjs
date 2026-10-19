@@ -1909,7 +1909,27 @@ try {
     });
     check(!drops.pool.includes('scribeAlan') && !drops.seen.includes('scribeAlan') && drops.seen.includes('scribeOmar'),
       `a locked scribe never drops (${drops.seen.join(', ')})`);
-    check(scribeErrors2.length === 0, `no errors with Omar${scribeErrors2.length ? ': ' + scribeErrors2.join(' | ') : ''}`);
+    check(!drops.pool.includes('techDonald'), `Donald's pill doesn't drop before he's unlocked (${drops.pool.join(', ')})`);
+    // DONALD: walking into X-ray during the shift unlocks him for good and brings him out to help
+    const start = await sp2.evaluate(() => {
+      const sc = window.game.scene.getScene('Game');
+      const omar = sc.scribes.get('omar');
+      if (omar) omar.until = 1; // out of the way, so the kill below is Donald's
+      const p = sc.player;
+      const at = { x: p.x, y: p.y };
+      const r = sc.room.rooms.find((rm) => rm.id === 'xray');
+      p.body.reset(r.x + r.w * 0.2, r.y + r.h * 0.85);
+      return at;
+    });
+    const donald = await sp2.waitForFunction(() => {
+      const sc = window.game.scene.getScene('Game');
+      const owned = JSON.parse(localStorage.getItem('moshi.progress.v1') ?? '{}').owned ?? [];
+      return sc.scribes.get('donald') && owned.includes('scribe:donald') ? { pool: sc.powerups.dropPool } : null;
+    }, null, { timeout: 30000 }).then((h) => h.jsonValue(), () => null);
+    check(!!donald && donald.pool.includes('techDonald'), `walking into X-ray unlocks Donald, he comes out and his pill drops (${JSON.stringify(donald)})`);
+    await sp2.evaluate((at) => window.game.scene.getScene('Game').player.body.reset(at.x, at.y), start);
+    await scribeWorks(sp2, 'donald');
+    check(scribeErrors2.length === 0, `no errors with Omar and Donald${scribeErrors2.length ? ': ' + scribeErrors2.join(' | ') : ''}`);
     await sc2.close();
   }
 
