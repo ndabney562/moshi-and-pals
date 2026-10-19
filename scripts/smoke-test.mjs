@@ -1324,6 +1324,8 @@ try {
   check(cme.saved.credits > 0 && cme.line.includes(`+${cme.saved.credits} CME`) && (cme.saved.kills?.basic ?? 0) > 0,
     `the shift earns CME Credits and banks lifetime kills for the Atlas (${cme.line}, ${cme.saved.credits} CME, ${cme.saved.kills?.basic} basics)`);
   check(cme.saved.nps > 0 && cme.line.includes(`+${cme.saved.nps} NPS`), `the shift earns NPS Scores (${cme.line}, ${cme.saved.nps} NPS)`);
+  const earned = await page.evaluate(() => window.game.scene.getScene('Game').runStats.copaysEarned);
+  check(cme.saved.bank === Math.floor(earned * 0.25), `a quarter of the shift's Copays goes home to the Equipment Locker ($${cme.saved.bank} of $${earned})`);
 
   // Restart from the game over screen
   const again = await page.evaluate(() => {
@@ -1680,6 +1682,58 @@ try {
       `the second tap hires Dr. Kaya for 30 NPS and puts him on shift (${JSON.stringify({ owned: hire.owned, nps: hire.nps, on: hire.on })})`);
     check(hireErrors.length === 0, `no errors hiring a Pal${hireErrors.length ? ': ' + hireErrors.join(' | ') : ''}`);
     await hc.close();
+  }
+
+  // EQUIPMENT LOCKER: banked Copays buy tool upgrades on the title screen that make every later shift's tool stronger
+  {
+    const lc = await browser.newContext({ viewport: { width: 852, height: 393 }, deviceScaleFactor: 1, isMobile: true, hasTouch: true });
+    await lc.addInitScript(() => {
+      if (localStorage.getItem('moshi.progress.v1')) return;
+      localStorage.setItem('moshi.settings.v1', JSON.stringify({ learned: { move: true, spray: true, pour: true, purge: true, buy: true } }));
+      localStorage.setItem('moshi.progress.v1', JSON.stringify({ credits: 0, earned: 0, nps: 0, npsEarned: 0, owned: [], specialty: '', startTool: '', kills: {}, bank: 1500 }));
+    });
+    const lp = await lc.newPage();
+    labelWaits(lp);
+    const lockerErrors = [];
+    lp.on('pageerror', (e) => lockerErrors.push(where(e)));
+    await lp.goto(url + '?god', { timeout: 90000 });
+    await lp.waitForFunction(() => window.game?.scene.isActive('Title'));
+    const tapIn = async (key, match) => {
+      const at = await lp.evaluate(([k, m]) => {
+        const sc = window.game.scene.getScene(k);
+        const t = sc.children.list.concat(...sc.children.list.filter((c) => c.list).map((c) => c.list)).find((c) => typeof c.text === 'string' && c.text.includes(m) && c.visible);
+        if (!t) return null;
+        const b = t.getBounds();
+        const canvas = window.game.canvas.getBoundingClientRect();
+        const k2 = canvas.width / window.game.scale.width;
+        return { x: canvas.left + b.centerX * k2, y: canvas.top + b.centerY * k2 };
+      }, [key, match]);
+      if (at) await lp.touchscreen.tap(at.x, at.y);
+      return !!at;
+    };
+    await tapIn('Title', 'EQUIPMENT LOCKER');
+    const opened = await lp.waitForFunction(() => window.game.scene.isActive('Locker'), null, { timeout: 10000 }).then(() => true, () => false);
+    await tapIn('Locker', 'UPGRADE');
+    await lp.waitForTimeout(300);
+    await tapIn('Locker', 'UPGRADE');
+    await lp.waitForTimeout(300);
+    const bought = await lp.evaluate(() => JSON.parse(localStorage.getItem('moshi.progress.v1')));
+    check(opened && bought.locker?.squirtBottle === 2 && bought.bank === 100,
+      `the Equipment Locker sells the bottle's first two upgrades for $400 and $1,000 of banked Copays (${JSON.stringify({ opened, locker: bought.locker, bank: bought.bank })})`);
+    const poor = await lp.evaluate(() => window.game.scene.getScene('Locker').children.list.filter((c) => c.list).flatMap((c) => c.list).filter((c) => typeof c.text === 'string' && c.text.startsWith('UPGRADE') && c.input?.enabled).length);
+    check(poor === 0, `with $100 left, no upgrade can be bought (${poor} tappable)`);
+    await tapIn('Locker', 'BACK');
+    await lp.waitForFunction(() => window.game.scene.isActive('Title'), null, { timeout: 10000 }).catch(() => {});
+    await lp.touchscreen.tap(426, 120);
+    await lp.waitForFunction(() => window.game.scene.isActive('Hud'), null, { timeout: 30000 }).catch(() => {});
+    const tool = await lp.evaluate(() => {
+      const d = window.game.scene.getScene('Game').sprayer.def;
+      return { damage: d.damage, capacity: d.capacity, reserve: d.reserve };
+    });
+    check(Math.abs(tool.damage - 4.4) < 0.01 && tool.capacity === 150 && tool.reserve === 600,
+      `on the next shift the bottle does 10% more damage and holds 25% more (${JSON.stringify(tool)})`);
+    check(lockerErrors.length === 0, `no errors in the Equipment Locker${lockerErrors.length ? ': ' + lockerErrors.join(' | ') : ''}`);
+    await lc.close();
   }
 
   // THE PALS (M16): Dr. Kaya and PA Lucien are playable (once hired with NPS), each with their own signature move
