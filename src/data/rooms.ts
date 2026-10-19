@@ -24,6 +24,8 @@ export type ObstacleKind =
   | 'handDryer' | 'autoclave' | 'xrayControls' | 'vending'
   /** M9: the Lab's Compounding Station (weapon upgrades). */
   | 'compounder'
+  /** The Miracle Cure (secret): the waiting-room magazine table, the office microwave, the Records Room's way out. */
+  | 'magTable' | 'microwave' | 'recordsDoor'
   /** Exam-room privacy curtain across a doorway (layout `curtains`; solid only while pulled shut). */
   | 'curtain';
 
@@ -53,6 +55,8 @@ export interface RoomArea {
   /** Floor tint, so each room reads differently at a glance. */
   tint?: number;
   germSpawns: { x: number; y: number }[];
+  /** Hidden (the Records Room): never fogged, never counted, never bought. */
+  secret?: boolean;
 }
 
 export interface RoomLayout {

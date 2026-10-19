@@ -110,3 +110,17 @@ Values live in `src/config/balance.ts` and `src/config/controls.ts`.
 | Clinic theme / boss theme | 108 BPM, light swing / 140 BPM, straight | Song changes wait for the next bar |
 | Pressure layer in a round | at least 35%; climbs from 20% to 70% of the round's germ cap | Full at or below 30% health; off between rounds |
 | Layer fade | 0.8 s time constant | Fade-out on game over 1.2 s |
+
+## The Miracle Cure (`BALANCE.miracleCure`, `BALANCE.faxMachine`; walkthrough in ROADMAP)
+| Value | Current | Notes |
+|---|---|---|
+| Phone hold | 20 s within 260 px of the front desk, during a live round | Walking away or the round ending drops the call |
+| Fish | $5, 25 s of stench | The fridge's sticky note is readable only during the stench |
+| Mystery Key (vending B4) | $1 | Doesn't count toward the 3-snack limit |
+| Stall 3 | 3 flushes in one boss round | Needs the key and both code halves |
+| Last Fax Machine | 1400 HP (× the round's HP scaling, boss cap), 18 contact | Fought between rounds; the break waits |
+| Fax volley | 4 pages every 3.2 s (2.4 s below half health) | Fax Page: 9 HP, 190 speed, 5 contact |
+| Dial-up screech | below 75%: every 7 s, 1.1 s wind-up, 230 px, 22 damage | Step outside the red ring |
+| Paper jam | below 50%: every 9 s, 2.6 s, takes ×2 damage | |
+| Ionizer 9000 | 3 droplets × 9, ×1.3 vs everything, pierces 2, 300 range, recharges 30%/s | Replaces the crate tool |
+| Clock out | after one more cleared boss round with the Ionizer | Ends the run as SHIFT COMPLETE; unlocks the scrub cap |

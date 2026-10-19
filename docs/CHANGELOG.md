@@ -1,5 +1,11 @@
 # Changelog
 
+## v0.25.0: The Miracle Cure (a secret)
+- **There's a secret in the clinic.** No spoilers here. A hint: the 2009 magazines on the waiting-room table are worth a read between rounds. The full walkthrough is in the roadmap, for anyone who gives up.
+- Finishing it unlocks a new boss, a new tool, a new ending and something for Eugene to wear.
+- The stalls are numbered now, and every toilet in the clinic flushes. Nobody asked for this.
+- Two new achievements with deliberately vague hints.
+
 ## v0.24.0: Boss rewards and exam curtains
 - **Exam-room privacy curtains:** every exam room's doorway has one. Press USE by an open exam room's door to pull it shut: it's a wall for 8 s (germs have to go round), then it slides back open. Free, 20 s to recharge.
 - **The Influenza Twins' strand now only snaps on a curtain.** Plain walls don't cut it any more: lure one twin into an exam room, step out and pull the curtain between them to stun both.

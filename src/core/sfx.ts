@@ -237,4 +237,25 @@ export const sfx = {
     tone(c, o, t, 0.12, 200, 200, 0.2, 'square');
     tone(c, o, t + 0.14, 0.18, 150, 150, 0.2, 'square');
   }),
+  /** Hold music: one lazy electric-piano note (`n` walks a little tune) */
+  holdNote: (n: number) => play('holdNote', 200, (c, o, t) => {
+    const tune = [392, 494, 587, 523, 440, 494, 392, 330];
+    const f = tune[n % tune.length];
+    tone(c, o, t, 0.5, f, f, 0.12, 'triangle');
+    tone(c, o, t, 0.5, f * 2, f * 2, 0.03, 'sine');
+  }),
+  /** A toilet flush: a long gurgling whoosh */
+  flush: () => play('flush', 400, (c, o, t) => {
+    noiseBurst(c, o, t, 0.9, 700, 0.35, 'lowpass');
+    tone(c, o, t + 0.2, 0.6, 260, 90, 0.08, 'sine');
+  }),
+  /** The microwave: DING */
+  ding: () => play('ding', 300, (c, o, t) => tone(c, o, t, 0.6, 1760, 1740, 0.18, 'sine')),
+  /** A fax handshake: beeps, then the screech */
+  faxScreech: () => play('faxScreech', 600, (c, o, t) => {
+    tone(c, o, t, 0.15, 1100, 1100, 0.12, 'sine');
+    tone(c, o, t + 0.18, 0.15, 2100, 2100, 0.1, 'sine');
+    tone(c, o, t + 0.36, 0.7, 1200, 2400, 0.12, 'square');
+    noiseBurst(c, o, t + 0.4, 0.6, 3000, 0.2, 'bandpass');
+  }),
 };

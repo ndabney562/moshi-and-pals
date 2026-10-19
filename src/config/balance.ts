@@ -362,4 +362,29 @@ export const BALANCE = {
     /** Alan zaps: slower, harder, jumps to `chain` more germs and stuns each. */
     alan: { everyMs: 950, damage: 26, knockback: 60, chain: 2, chainRange: 160, stunMs: 400 },
   },
+  /**
+   * THE MIRACLE CURE (secret quest; content in data/miracleCure.ts, logic in systems/MiracleCure.ts).
+   * Phone: stay within `phoneRange` of the front desk for `holdMs` during a live round. Fish: `fishCost` buys
+   * `stenchMs` of stench (the fridge's sticky note is readable meanwhile). Key: `keyPrice` at the vending machine.
+   * Stall 3 opens after `flushes` flushes in one boss round.
+   */
+  miracleCure: {
+    holdMs: 20000,
+    phoneRange: 260,
+    fishCost: 5,
+    stenchMs: 25000,
+    keyPrice: 1,
+    flushes: 3,
+  },
+  /**
+   * THE LAST FAX MACHINE (Records Room boss; systems/FaxMachineBrain.ts). Shuffles along its shelf, faxes out
+   * `pages` Fax Pages every `faxEveryMs`, and below `screechBelow` health winds up a DIAL-UP SCREECH (hurts within
+   * `screechRadius`). Below `jamBelow` it jams now and then: stopped and taking `jamDamageTaken` × damage for `jamMs`.
+   */
+  faxMachine: {
+    shuffle: 260,
+    faxEveryMs: 3200, pages: 4, pageSpeed: 300,
+    screechBelow: 0.75, screechEveryMs: 7000, screechWindupMs: 1100, screechRadius: 230, screechDamage: 22,
+    jamBelow: 0.5, jamEveryMs: 9000, jamMs: 2600, jamDamageTaken: 2,
+  },
 };

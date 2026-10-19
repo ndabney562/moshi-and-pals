@@ -156,7 +156,7 @@ On a phone screen the map stays readable thanks to **off-screen threat arrows** 
 - **Item warnings:** Bottle: "70% isopropyl, 30% hope." · Bleach: "Do not mix with ammonia, sanity, or other weapons." · Fogger: "Not for indoor use. This is indoors." · UV Wand: "Do not look directly into wand." · Peroxide: "Fizzing means it's working. Or that it's angry."
 - **Visual gags:** germs wear tiny masks under their chins · a "Wait time" sign climbs from 3 hrs to 14 hrs to ∞ each round · Diamond's office has an "Employee of the Month" frame holding a germ · killed germs lose a tiny halo that floats up · elites wear "RESISTANT" sashes.
 
-### Easter egg quest: "The Miracle Cure"
+### Easter egg quest: "The Miracle Cure" (DONE v0.25.0; as built, below the original spec)
 
 1. **The 2009 magazine** (waiting-room table, interact during a break between rounds): an ad reads "IONIZER 9000! Call now!" and gives half a phone number.
 2. **The front-desk phone:** call it and stay near the desk through 20 s of hold music *during a live round*. The operator gives code half A.
@@ -164,6 +164,16 @@ On a phone screen the map stays readable thanks to **off-screen threat arrows** 
 4. **X-ray the vending machine** (X-ray room controls): it shows a key in slot B4. Buy B4 for $1 ("Mystery Key, expired 2011").
 5. **Flush the third stall three times during a boss round.** A panel slides open: **RECORDS**. Key + code opens it.
 6. **The Records Room:** fight The Last Fax Machine and take the **Ionizer 9000**. Win the run afterwards and you get the alternate ending ("SHIFT COMPLETE": Eugene clocks out, credits roll) plus the scrub cap from the backlog.
+
+**As built (v0.25.0; logic in `systems/MiracleCure.ts`, words in `data/miracleCure.ts`).** Each step only appears once the one before it is done. The map has no break room, so the fish and fridge are in the Manager's Office (Diamond's). The code is two random 2-digit halves per run (seeded).
+1. READ the magazine table in the waiting room **between rounds**: the IONIZER 9000 ad, 1-800-466-.... (During a round you get an old headline instead.)
+2. The RECEPTION desk now offers CALL **during a round**: stay within 260 px for 20 s of hold music. The operator gives half A.
+3. FISH at the office microwave ($5): 25 s of stench. Meanwhile READ behind the fridge: half B.
+4. Fire the X-ray (controls in the X-ray room): the film shows a key in the snack machine, slot B4. Buy it ($1, not a snack).
+5. FLUSH Stall 3 (upstairs, Bathroom 3) three times in one **boss round**: the RECORDS panel opens.
+6. Between rounds, Stall 3 offers RECORDS: the Records Room (its own little floor; the break waits). Beat the Last Fax Machine: the Ionizer 9000 replaces your crate tool. LEAVE puts you back by Stall 3.
+7. Clear one more boss round, then CLOCK OUT at the front door: credits, SHIFT COMPLETE, and Eugene wears his scrub cap from then on.
+Testing: `?secret=records` (everything found, panel open) or `?secret=clockout`.
 
 ### Controls spec (iPhone, landscape)
 
@@ -244,7 +254,7 @@ On a phone screen the map stays readable thanks to **off-screen threat arrows** 
 | ID | Change | Diff | When |
 |---|---|---|---|
 | P4-1 | Bosses: Diamond 2.0, ~~Patient Zero, Methicillin, H & N~~ (done) | 6–8 each | One per sprint, from Sprint 4 |
-| P4-2 | Miracle Cure Easter egg + Fax Machine + alternate ending | 8 | After P2-6 rooms |
+| P4-2 | ~~Miracle Cure Easter egg + Fax Machine + alternate ending~~ DONE v0.25.0 | 8 | After P2-6 rooms |
 | P4-3 | ~~Today's Shift dailies, modifiers, difficulty modes~~ DONE v0.19.0 | 5 | After P2-9 |
 | P4-4 | Night Shift map variant (lighting, then layout) | 6 | Late |
 | P4-5 | Leaderboards / Game Center | 6 | With Capacitor |

@@ -22,7 +22,7 @@ export interface GermDef {
   /** Copays (currency) earned on kill. */
   copays: number;
   /** Placeholder art style: round blob with cilia, spiky virus, sheet of paper, armored hex shell, or droopy sneezer. */
-  shape: 'blob' | 'spiky' | 'paper' | 'shell' | 'sneezer' | 'duo' | 'rod' | 'dish' | 'mold';
+  shape: 'blob' | 'spiky' | 'paper' | 'shell' | 'sneezer' | 'duo' | 'rod' | 'dish' | 'mold' | 'fax';
   /** 0 = full knockback from spray, 1 = immovable. */
   knockbackResist: number;
   /** "Cause of death" on the Discharge Summary when this germ lands the final hit. */
@@ -32,7 +32,7 @@ export interface GermDef {
   /** Extra costume drawn on top of the body. */
   look?: 'manager' | 'patient' | 'staph' | 'flu';
   /** Special behavior controller. Germs without one simply chase Eugene. */
-  brain?: 'diamond' | 'patientZero' | 'methicillin' | 'influenza';
+  brain?: 'diamond' | 'patientZero' | 'methicillin' | 'influenza' | 'faxMachine';
   /** A boss that arrives with a second germ (the Influenza Twins): spawned right beside it. */
   partner?: string;
   /** What the boss round's banner and health bar call it, if not `name` (the twins as a pair). */
@@ -348,6 +348,47 @@ export const GERMS: Record<string, GermDef> = {
     contactDamage: 6,
     points: 5,
     copays: 2,
+    shape: 'paper',
+    knockbackResist: 0,
+  },
+  /**
+   * THE LAST FAX MACHINE: the Miracle Cure's secret boss, alone in the Records Room since 1997.
+   * Moves in systems/FaxMachineBrain.ts, lines in data/miracleCure.ts, numbers in BALANCE.faxMachine.
+   */
+  faxMachine: {
+    id: 'faxMachine',
+    deathNote: 'Faxed to death. Confirmation page to follow.',
+    name: 'The Last Fax Machine',
+    tag: 'biofilm',
+    hp: 1400,
+    speed: 70,
+    radius: 58,
+    color: 0xd9d2bf,
+    outline: 0x3e3a30,
+    contactBounce: 160,
+    contactDamage: 18,
+    points: 600,
+    copays: 200,
+    shape: 'fax',
+    knockbackResist: 1,
+    boss: true,
+    brain: 'faxMachine',
+  },
+  /** Fax pages: what the Last Fax Machine prints at you. Quick, flimsy, sharp edges. */
+  faxPage: {
+    id: 'faxPage',
+    deathNote: 'Paper cut. A big one.',
+    name: 'Fax Page',
+    tag: 'bacteria',
+    hp: 9,
+    speed: 190,
+    radius: 12,
+    color: 0xf7f4ea,
+    outline: 0x3e3a30,
+    contactBounce: 320,
+    contactDamage: 5,
+    points: 5,
+    copays: 1,
     shape: 'paper',
     knockbackResist: 0,
   },

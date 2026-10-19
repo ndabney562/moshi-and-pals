@@ -42,4 +42,7 @@ export const ACHIEVEMENTS: AchievementDef[] = [
   { id: 'clockedIn', name: 'Clocked In', how: "Finish a Today's Shift" },
   { id: 'traumaTen', name: 'Level One Trauma', how: 'Reach round 10 on Trauma Center' },
   { id: 'darkShift', name: 'Working in the Dark', how: 'Reach round 8 during a Power Outage' },
+  // The Miracle Cure: the hints are deliberately vague
+  { id: 'miracleCure', name: 'The Miracle Cure', how: 'Read the old magazines. All of them. Then call.' },
+  { id: 'shiftComplete', name: 'Shift Complete', how: 'Clock out. Actually clock out.' },
 ];

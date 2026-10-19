@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import { COLORS } from '../config/theme';
 import type { RunResult } from '../core/events';
+import { CREDITS } from '../data/miracleCure';
 
 /**
  * Game over: the DISCHARGE SUMMARY. Shown over the frozen clinic. What killed you, how far you got,
@@ -20,13 +21,40 @@ export class GameOverScene extends Phaser.Scene {
 
   create(result: RunResult): void {
     const { width, height } = this.scale;
-    const font = 'system-ui, -apple-system, sans-serif';
     this.add.rectangle(0, 0, width, height, 0x0d2b2e, 0).setOrigin(0).setInteractive(); // swallow taps
     const shade = this.add.rectangle(0, 0, width, height, 0x0d2b2e, 0.86).setOrigin(0).setAlpha(0);
     this.tweens.add({ targets: shade, alpha: 1, duration: 350 });
+    // The Miracle Cure's alternate ending: the credits roll first
+    if (result.clockedOut) this.rollCredits(() => this.summary(result));
+    else this.summary(result);
+  }
 
-    const title = this.add.text(width / 2, height * 0.085, 'CONTAMINATED', {
-      fontFamily: font, fontSize: '58px', fontStyle: '900', color: '#ff6b6b',
+  /** SHIFT COMPLETE: the credits scroll up (tap to skip), then the Discharge Summary. */
+  private rollCredits(done: () => void): void {
+    const { width, height } = this.scale;
+    const font = 'system-ui, -apple-system, sans-serif';
+    const roll = this.add.text(width / 2, height + 20, CREDITS.join('\n'), {
+      fontFamily: font, fontSize: '30px', fontStyle: 'bold', color: '#e8fff9', align: 'center', lineSpacing: 14,
+    }).setOrigin(0.5, 0);
+    roll.setShadow(0, 3, '#000', 6);
+    let finished = false;
+    const finish = () => {
+      if (finished) return;
+      finished = true;
+      this.tweens.killTweensOf(roll);
+      roll.destroy();
+      done();
+    };
+    this.tweens.add({ targets: roll, y: -roll.height - 20, duration: 14000, ease: 'Linear', onComplete: finish });
+    this.time.delayedCall(400, () => this.input.once('pointerup', finish));
+    this.input.keyboard?.once('keydown-ENTER', finish);
+  }
+
+  private summary(result: RunResult): void {
+    const { width, height } = this.scale;
+    const font = 'system-ui, -apple-system, sans-serif';
+    const title = this.add.text(width / 2, height * 0.085, result.clockedOut ? 'SHIFT COMPLETE' : 'CONTAMINATED', {
+      fontFamily: font, fontSize: '58px', fontStyle: '900', color: result.clockedOut ? '#7fffd4' : '#ff6b6b',
     }).setOrigin(0.5).setShadow(0, 5, '#000', 10).setScale(0.6).setAlpha(0);
     this.tweens.add({ targets: title, scale: 1, alpha: 1, duration: 420, ease: 'Back.out' });
 
@@ -47,7 +75,7 @@ export class GameOverScene extends Phaser.Scene {
       t(cx + 28, cy + 16, 'DISCHARGE SUMMARY', 28, INK, '900'),
       t(cx + cw - 28, cy + 22, `PATIENT: ${result.chart ?? 'MOSHKOVICH, E.'}  ·  SHIFT ${result.runs}  ·  ${(result.difficulty ?? 'Urgent').toUpperCase()}${result.specialty ? `  ·  ${result.specialty.toUpperCase()}` : ''}`, 16, INK_SOFT, 'bold').setOrigin(1, 0),
       t(cx + cw - 28, cy + 80, `🎓 +${result.cme ?? 0} CME CREDITS${result.dailyBonus ? `  (+${result.dailyBonus} FIRST SHIFT TODAY)` : ''}`, 20, RECORD, '900').setOrigin(1, 0),
-      t(cx + 28, cy + 76, 'CAUSE OF DEATH', 14, INK_SOFT),
+      t(cx + 28, cy + 76, result.clockedOut ? 'CAUSE OF DEATH (NONE)' : 'CAUSE OF DEATH', 14, INK_SOFT),
       t(cx + 28, cy + 96, result.causeOfDeath, 22, INK, 'italic'),
     ]);
     // Today's Shift (or forced modifiers): which ones were in play

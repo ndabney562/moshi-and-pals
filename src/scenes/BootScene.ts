@@ -19,6 +19,7 @@ export class BootScene extends Phaser.Scene {
 
   create(): void {
     this.makeEugene();
+    this.makeEugene(true);
     this.makeKaya();
     this.makeLucien();
     this.makeKen();
@@ -44,7 +45,7 @@ export class BootScene extends Phaser.Scene {
    * Matches Noah's title poster: messy brown-grey hair, blue surgical mask,
    * stethoscope, white lab coat over navy scrubs, white spray bottle.
    */
-  private makeEugene(): void {
+  private makeEugene(cap = false): void {
     const g = this.add.graphics();
     const outline = 0x1b2b30;
 
@@ -96,7 +97,15 @@ export class BootScene extends Phaser.Scene {
     g.fillStyle(COLORS.mask).lineStyle(2, outline).fillRoundedRect(57, 34, 11, 24, 4).strokeRoundedRect(57, 34, 11, 24, 4);
     g.lineStyle(1.5, COLORS.maskFold).lineBetween(60, 38, 60, 54).lineBetween(64, 38, 64, 54);
 
-    g.generateTexture('eugene', 96, 96);
+    if (cap) {
+      // The Miracle Cure's reward: his dark patterned scrub cap, tied at the back
+      g.fillStyle(0x1f2a44).lineStyle(2, outline).fillCircle(45, 46, 14).strokeCircle(45, 46, 14);
+      g.fillStyle(0x1f2a44).fillEllipse(54, 46, 8, 22);
+      g.fillStyle(0x6fa8dc);
+      for (const [dx, dy] of [[-7, -6], [0, -9], [6, -3], [-4, 2], [3, 6], [-8, 8], [8, 5], [0, 0]]) g.fillCircle(45 + dx, 46 + dy, 1.6);
+      g.lineStyle(3, 0x1f2a44).lineBetween(31, 46, 24, 42).lineBetween(31, 46, 24, 51);
+    }
+    g.generateTexture(cap ? 'eugene-cap' : 'eugene', 96, 96);
     g.destroy();
   }
 
@@ -304,6 +313,10 @@ export class BootScene extends Phaser.Scene {
     const c = size / 2;
     if (def.shape === 'paper') {
       this.makePaperGerm(def);
+      return;
+    }
+    if (def.shape === 'fax') {
+      this.makeFaxMachine(def);
       return;
     }
     if (def.look === 'manager') {
@@ -723,6 +736,44 @@ export class BootScene extends Phaser.Scene {
         new Phaser.Math.Vector2(lx + w / 2 - t, ly + h / 2), new Phaser.Math.Vector2(lx + w / 2 - t * 2, ly + h / 2),
       ], true);
     }
+    g.generateTexture(`germ-${def.id}`, size, size);
+    g.destroy();
+  }
+
+  /**
+   * THE LAST FAX MACHINE, from above, facing +x: a yellowed beige box, a paper tray sticking out the back,
+   * the output slot in front, an angry green LCD for a face, a keypad, and the handset on its curly cord.
+   */
+  private makeFaxMachine(def: GermDef): void {
+    const r = def.radius;
+    const size = (r + 14) * 2;
+    const c = size / 2;
+    const g = this.add.graphics();
+    const ink = def.outline;
+    // Paper tray out the back, with a sheet still in it
+    g.fillStyle(0x9e9682).lineStyle(3, ink).fillRect(c - r - 12, c - r * 0.55, 24, r * 1.1).strokeRect(c - r - 12, c - r * 0.55, 24, r * 1.1);
+    g.fillStyle(0xffffff).fillRect(c - r - 8, c - r * 0.45, 22, r * 0.9);
+    // The body: a chunky rounded box with a shadowed back half
+    g.fillStyle(def.color).fillRoundedRect(c - r, c - r * 0.85, r * 2, r * 1.7, 10);
+    g.fillStyle(0xbcb49c).fillRoundedRect(c - r, c - r * 0.85, r * 0.8, r * 1.7, 10);
+    g.lineStyle(3, ink).strokeRoundedRect(c - r, c - r * 0.85, r * 2, r * 1.7, 10);
+    // The output slot along the front, a page halfway out
+    g.fillStyle(0x23211c).fillRect(c + r * 0.72, c - r * 0.6, 8, r * 1.2);
+    g.fillStyle(0xffffff).lineStyle(1.5, ink).fillRect(c + r * 0.8, c - r * 0.5, 16, r).strokeRect(c + r * 0.8, c - r * 0.5, 16, r);
+    // Angry LCD face
+    g.fillStyle(0x23211c).fillRoundedRect(c + r * 0.05, c - r * 0.5, r * 0.55, r * 0.6, 4);
+    g.fillStyle(0x9ccc65).fillRoundedRect(c + r * 0.1, c - r * 0.45, r * 0.45, r * 0.5, 3);
+    g.lineStyle(3, 0x1b3a0e).lineBetween(c + r * 0.18, c - r * 0.38, c + r * 0.3, c - r * 0.3)
+      .lineBetween(c + r * 0.18, c - r * 0.07, c + r * 0.3, c - r * 0.15)
+      .lineBetween(c + r * 0.45, c - r * 0.38, c + r * 0.45, c - r * 0.07);
+    // Keypad
+    g.fillStyle(0x6d6656);
+    for (let i = 0; i < 3; i++) for (let j = 0; j < 3; j++) g.fillRect(c - r * 0.35 + i * 9, c + r * 0.12 + j * 8, 6, 5);
+    // Handset on the side, and its curly cord
+    g.fillStyle(0x4e4a3e).lineStyle(2, ink).fillRoundedRect(c - r * 0.75, c + r * 0.25, r * 0.38, r * 0.62, 6)
+      .strokeRoundedRect(c - r * 0.75, c + r * 0.25, r * 0.38, r * 0.62, 6);
+    g.lineStyle(2, ink);
+    for (let i = 0; i < 5; i++) g.strokeCircle(c - r * 0.82 - i * 3, c + r * 0.95 + i * 2, 3);
     g.generateTexture(`germ-${def.id}`, size, size);
     g.destroy();
   }

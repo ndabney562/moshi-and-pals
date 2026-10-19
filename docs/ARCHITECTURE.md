@@ -68,6 +68,9 @@ Traps are stations (`GameScene.buildStations`, kinds `handDryer`, `autoclave`, `
 - Modifiers are data (`data/modifiers.ts`), numbers in `BALANCE.modifiers`; `GameScene.hasMod(id)` gates each effect. Power Outage is one pre-drawn canvas texture (dark with a soft hole) moved to Eugene's screen position each frame. Construction adds the room's doors to a static group that collides with Eugene only, after a coarse `FlowField` check that he can still walk back to the waiting room.
 - Difficulty multipliers (`BALANCE.difficulty`) apply in `scaled()` (germ HP), `hurtPlayer` (damage), `WaveDirector.intervalMult` and kill Copays. Save v3 keeps records per difficulty plus the day's best (`core/save.ts`).
 
+## The Miracle Cure (secret quest)
+`systems/MiracleCure.ts` keeps the quest's state and hands GameScene its stations (magazine table, reception phone, office microwave and fridge, the stalls, the Records Room door, CLOCK OUT on the front exit); each is `gone` until the step before it is done. GameScene calls it on X-ray pulses, vending (slot B4), round start/end and the Fax Machine's death. The Records Room is a sealed extra floor in `data/clinic.ts` (`RECORDS_ROOM`, room `secret: true`: no fog, not counted); entering teleports Eugene, `WaveDirector.holdBreak` keeps the break from running out while he's inside, and leaving clears what's left in there. `systems/FaxMachineBrain.ts` is the boss. `endRun(true)` is the alternate ending (`RunResult.clockedOut`: credits roll in GameOverScene, `progress.grant('scrubCap')`, then Eugene uses the `eugene-cap` texture).
+
 ## Content as data
 - `src/config/`: tuning numbers (balance, controls, display, theme colors).
 - `src/data/`: content (rooms now; germs, equipment, waves, dialogue later).
