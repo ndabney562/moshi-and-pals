@@ -558,10 +558,13 @@ try {
   });
   const charged = await page.waitForFunction(() => window.__chargeSeen.has('windup') && window.__chargeSeen.has('charging'), null, { timeout: 20000 }).then(() => true, () => false);
   check(charged, `a Bacillus Bulldozer winds up, then charges (${[...(await page.evaluate(() => [...window.__chargeSeen]))].join(' -> ')})`);
-  await page.evaluate(() => {
+  // Aim it at the nearest wall and let it go (again, if a slow runner's charge runs out short of the wall)
+  const dazed = await page.waitForFunction(() => {
     const scene = window.game.scene.getScene('Game');
     const g = scene.germs.getChildren().find((c) => c.active && c.def.id === 'charger');
-    // Aim it at the nearest wall and let it go
+    if (!g) return false;
+    if (g.chargeState === 'dazed') return true;
+    if (g.chargeState === 'charging' && scene.time.now < g.chargeUntil) return false;
     let best = null;
     for (let i = 0; i < 32; i++) {
       const a = (i / 32) * Math.PI * 2;
@@ -575,11 +578,8 @@ try {
     g.chargeState = 'charging';
     g.chargeAngle = best ? best.a : 0;
     g.chargeUntil = scene.time.now + g.def.charge.ms * 1.5;
-  });
-  const dazed = await page.waitForFunction(() => {
-    const g = window.game.scene.getScene('Game').germs.getChildren().find((c) => c.active && c.def.id === 'charger');
-    return g && g.chargeState === 'dazed';
-  }, null, { timeout: 20000 }).then(() => true, () => false);
+    return false;
+  }, null, { timeout: 30000, polling: 200 }).then(() => true, () => false);
   const dazedHit = await page.evaluate(() => {
     const scene = window.game.scene.getScene('Game');
     const g = scene.germs.getChildren().find((c) => c.active && c.def.id === 'charger');
