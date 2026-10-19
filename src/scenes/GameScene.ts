@@ -139,6 +139,7 @@ export class GameScene extends Phaser.Scene {
   /** Snacks bought this run, the run-long perks they add up to, and the machine's offer while its form is up. */
   private snacks: string[] = [];
   private perks = { refill: 1, purge: 1, crit: 1 };
+  private snackSpeed = 1;
   private vendingOffer?: string[];
   /** This shift's Specialty (from the Residency Board), if any. */
   private mods: SpecialtyMods = {};
@@ -292,6 +293,7 @@ export class GameScene extends Phaser.Scene {
     this.trapReadyAt = new Map();
     this.snacks = [];
     this.perks = { refill: 1, purge: 1, crit: 1 };
+    this.snackSpeed = 1;
     this.vendingOffer = undefined;
     // Scribe pills only drop once that scribe is unlocked (or forced with ?scribe=)
     this.powerups = new Powerups(this, (def, t) => this.onPowerup(def, t),
@@ -1315,11 +1317,7 @@ export class GameScene extends Phaser.Scene {
     for (const o of this.room.obstacles.filter((ob) => ob.kind === 'vending')) {
       list.push({
         o, use: () => this.openVending(),
-        info: () => {
-          const left = BALANCE.vending.maxPerRun - this.snacks.length;
-          return left <= 0 && !this.cure.keyForSale ? { verb: 'SOLD OUT', cost: 0, note: "That's enough snacks for one shift", blocked: true }
-            : { verb: 'SNACKS', cost: 0, note: `${left} snack${left === 1 ? '' : 's'} left this shift` };
-        },
+        info: () => ({ verb: 'SNACKS', cost: 0, note: 'Break-time snacks. They stack.' }),
       });
     }
     const curtain = traps.curtain;
@@ -1621,25 +1619,27 @@ export class GameScene extends Phaser.Scene {
     this.cure.onXray();
   }
 
-  /** VENDING MACHINE: three snacks you haven't had this shift; the game waits while you choose. */
+  /** VENDING MACHINE: three random snacks, as many times as you like; the game waits while you choose. */
   private openVending(): void {
-    const soldOut = this.snacks.length >= BALANCE.vending.maxPerRun;
-    if (soldOut && !this.cure.keyForSale) return;
-    const left = SNACKS.filter((s) => !this.snacks.includes(s.id));
-    this.vendingOffer = soldOut ? [] : runRng.loot.sample(left, BALANCE.vending.choices).map((s) => s.id);
+    this.vendingOffer = runRng.loot.sample(SNACKS, BALANCE.vending.choices).map((s) => s.id);
     this.showVending('');
+  }
+
+  /** A snack's price this shift: dearer for every one of it you've already had. */
+  private snackPrice(s: SnackDef): number {
+    const had = this.snacks.filter((id) => id === s.id).length;
+    return Math.round(s.price * (1 + BALANCE.vending.repeatMarkup * had));
   }
 
   private showVending(note: string): void {
     const offer = this.vendingOffer;
     if (!offer) return;
-    const left = BALANCE.vending.maxPerRun - this.snacks.length;
     events.emit(GameEvents.VendingOpened, {
-      note: note || `Exact change only. ${left} snack${left === 1 ? '' : 's'} left this shift.`,
+      note: note || 'Exact change only. Snacks stack; seconds cost more.',
       options: [
         ...offer.map((id) => {
           const s = SNACKS.find((x) => x.id === id)!;
-          return { id, name: `${s.name}  $${s.price}`, blurb: s.blurb, color: s.color };
+          return { id, name: `${s.name}  $${this.snackPrice(s)}`, blurb: s.blurb, color: s.color };
         }),
         // The Miracle Cure: slot B4, once the X-ray has shown what's in it
         ...(this.cure.keyForSale ? [this.cure.keyOption()] : []),
@@ -1660,12 +1660,13 @@ export class GameScene extends Phaser.Scene {
     }
     const s = SNACKS.find((x) => x.id === id);
     if (!s || !this.vendingOffer?.includes(id)) return;
-    if (this.copays < s.price) {
+    const price = this.snackPrice(s);
+    if (this.copays < price) {
       sfx.denied();
-      this.showVending(`INSUFFICIENT FUNDS. ${s.name} is $${s.price}; you have $${this.copays}.`);
+      this.showVending(`INSUFFICIENT FUNDS. ${s.name} is $${price}; you have $${this.copays}.`);
       return;
     }
-    this.addCopays(-s.price);
+    this.addCopays(-price);
     this.snacks.push(id);
     this.vendingOffer = undefined;
     this.applySnack(s);
@@ -1675,7 +1676,9 @@ export class GameScene extends Phaser.Scene {
     events.emit(GameEvents.VendingDone);
   }
 
+  /** Snacks stack: each multiplies its perk again, up to `BALANCE.vending.caps`. */
   private applySnack(s: SnackDef): void {
+    const caps = BALANCE.vending.caps;
     switch (s.effect) {
       case 'maxHp':
         this.player.maxHp += s.amount;
@@ -1683,17 +1686,18 @@ export class GameScene extends Phaser.Scene {
         events.emit(GameEvents.PlayerHealthChanged, { hp: this.player.hp, maxHp: this.player.maxHp });
         break;
       case 'speed':
-        this.player.setSpeedMod('snack', s.amount);
+        this.snackSpeed = Math.min(caps.speed, this.snackSpeed * s.amount);
+        this.player.setSpeedMod('snack', this.snackSpeed);
         break;
       case 'refill':
-        this.perks.refill *= s.amount;
+        this.perks.refill = Math.max(caps.refill, this.perks.refill * s.amount);
         for (const t of this.loadout) t.refillScale = this.perks.refill;
         break;
       case 'purge':
-        this.perks.purge *= s.amount;
+        this.perks.purge = Math.max(caps.purge, this.perks.purge * s.amount);
         break;
       case 'crit':
-        this.perks.crit *= s.amount;
+        this.perks.crit = Math.min(caps.crit, this.perks.crit * s.amount);
         break;
     }
   }
