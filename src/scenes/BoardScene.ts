@@ -13,7 +13,7 @@ const font = 'system-ui, -apple-system, sans-serif';
 
 /**
  * THE RESIDENCY BOARD (from the title screen): spend CME Credits on Specialties and the Starter Kit,
- * hire the scribes, choose what to bring to the next shift, and read the Microbiology Atlas.
+ * hire the scribes (and see if Donald is on call), choose what to bring to the next shift, and read the Microbiology Atlas.
  */
 export class BoardScene extends Phaser.Scene {
   private tab: Tab = 'specialties';
@@ -120,7 +120,7 @@ export class BoardScene extends Phaser.Scene {
     });
   }
 
-  /** Omar and Alan: hire one and their pill can drop from germs on every shift after. */
+  /** Omar and Alan: hire one and their pill can drop from germs on every shift after. Donald unlocks in X-ray. */
   private drawScribes(): void {
     const { width } = this.scale;
     const p = progress();
@@ -128,15 +128,16 @@ export class BoardScene extends Phaser.Scene {
     const right = width / 2 + 520;
     this.txt(left, 140, `Hire a scribe and their pill joins the power-up drops. They chart, they fight, ${BALANCE.scribes.ms / 1000} s a visit.`, 17, COLORS.uiAccent, 'italic');
     SCRIBES.forEach((sc, i) => {
-      const y = 200 + i * 130;
+      const y = 190 + i * 120;
       const id = scribeUnlockId(sc.id);
       const hired = p.owned.includes(id);
       const portrait = this.add.image(left + 44, y + 34, `scribe-${sc.id}`).setAngle(-90).setAlpha(hired ? 1 : 0.6);
       this.body.add(portrait);
-      this.txt(left + 110, y, `${sc.name.toUpperCase()}, SCRIBE`, 24, hired ? COLORS.uiText : '#9fb8b3', '900');
+      this.txt(left + 110, y, `${sc.name.toUpperCase()}, ${sc.role}`, 24, hired ? COLORS.uiText : '#9fb8b3', '900');
       this.txt(left + 110, y + 34, sc.blurb, 16, hired ? '#cfe9e4' : '#6f8f8a');
       this.txt(left + 110, y + 58, 'Also shames patients with health code violations into cleaning up.', 15, hired ? '#cfe9e4' : '#6f8f8a', 'italic');
       if (hired) this.pill(right, y + 30, 'ON CALL', () => undefined, true, false).setAlpha(1);
+      else if (sc.cost === undefined) this.pill(right, y + 30, (sc.unlockHint ?? 'LOCKED').toUpperCase(), () => undefined, false, false);
       else this.pill(right, y + 30, `HIRE  ${sc.cost} CME`, () => { buy(id); this.show('scribes'); }, false, p.credits >= sc.cost);
     });
   }

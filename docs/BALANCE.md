@@ -90,6 +90,7 @@ Values live in `src/config/balance.ts` and `src/config/controls.ts`.
 | Scribes | 12 CME each to hire; pill joins the drop pool once hired; 20 s per visit; follow 85 px behind, 300 px/s (×1.5 when 220 px+ away); teleport past 650 px or 1.5 s stuck | `BALANCE.scribes`, costs in `src/data/scribes.ts` |
 | Omar | 13 damage every 0.42 s to the nearest germ within 280 px | `BALANCE.scribes.omar` |
 | Alan | 26 damage every 0.95 s, jumps to 2 more germs within 160 px, 0.4 s stun | `BALANCE.scribes.alan` |
+| Donald | unlocked by walking into X-ray during a shift (free); comes out for 20 s on the first X-ray visit each shift, pill drops once unlocked; beam every 1.3 s toward the nearest germ within 420 px on his floor, through walls, 30 damage to every germ within 26 px of the line, 0.25 s stun | `BALANCE.scribes.donald` |
 | Scribes vs patients | one "spray" every 0.3 s on a patient with a violation within 240 px (8 to clean, as Eugene's droplets) | `BALANCE.scribes.cleanEveryMs`, `BALANCE.patients.hitsToClean` |
 
 ## M17: Today's Shift, modifiers, difficulty (`BALANCE.difficulty`, `daily`, `modifiers`)

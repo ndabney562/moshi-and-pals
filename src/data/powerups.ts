@@ -3,8 +3,9 @@
  * They blink before they vanish, so grabbing one is a choice. Effects live in systems/Powerups.ts.
  */
 import { BALANCE } from '../config/balance';
+import type { ScribeId } from './scribes';
 
-export type PowerupId = 'priorAuth' | 'freeRefills' | 'erWait' | 'triage' | 'statClean' | 'doubleCopay' | 'scribeOmar' | 'scribeAlan'
+export type PowerupId = 'priorAuth' | 'freeRefills' | 'erWait' | 'triage' | 'statClean' | 'doubleCopay' | 'scribeOmar' | 'scribeAlan' | 'techDonald'
   | 'fluShot' | 'prescription';
 
 export interface PowerupDef {
@@ -15,8 +16,8 @@ export interface PowerupDef {
   color: number;
   /** How long it lasts (0 = instant). */
   ms: number;
-  /** A scribe pill (data/scribes.ts): only drops once that scribe is unlocked on the Residency Board. */
-  scribe?: 'omar' | 'alan';
+  /** A helper's pill (data/scribes.ts): only drops once that helper is unlocked. */
+  scribe?: ScribeId;
   /** How often random drops pick it, next to the others (default 1). */
   weight?: number;
   /** Never a random drop: only a boss leaves it. */
@@ -33,6 +34,7 @@ export const POWERUPS: Record<PowerupId, PowerupDef> = {
   // Scribes (data/scribes.ts): they stay for BALANCE.scribes.ms
   scribeOmar: { id: 'scribeOmar', name: 'SCRIBE: OMAR', blurb: 'Charting that!', color: 0xffd54f, ms: BALANCE.scribes.ms, scribe: 'omar' },
   scribeAlan: { id: 'scribeAlan', name: 'SCRIBE: ALAN', blurb: 'Documented. Next.', color: 0xb39ddb, ms: BALANCE.scribes.ms, scribe: 'alan' },
+  techDonald: { id: 'techDonald', name: 'X-RAY TECH: DONALD', blurb: 'Need a film, doc?', color: 0xa5d6a7, ms: BALANCE.scribes.ms, scribe: 'donald' },
   // Rare from any germ; the Influenza Twins always leave one
   fluShot: { id: 'fluShot', name: 'FLU SHOT', blurb: `+${BALANCE.powerups.fluShotHp} max health for this shift`, color: 0x80cbc4, ms: 0, weight: BALANCE.powerups.fluShotWeight },
   // Methicillin's reward: the tool in hand compounded all the way up, on the house

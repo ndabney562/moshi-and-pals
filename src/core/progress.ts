@@ -15,7 +15,7 @@ export interface Progress {
   /** NPS Scores to spend on hiring doctors, and lifetime NPS. */
   nps: number;
   npsEarned: number;
-  /** Bought specialty ids, plus 'starterKit', unlocked scribes ('scribe:omar') and hired doctors ('doctor:kaya'). Older saves simply have none. */
+  /** Bought specialty ids, plus 'starterKit', unlocked scribes and Donald ('scribe:omar') and hired doctors ('doctor:kaya'). Older saves simply have none. */
   owned: string[];
   /** Active specialty for the next shift (must be owned), or ''. */
   specialty: string;
@@ -89,6 +89,15 @@ export function recordShift(credits: number, kills: Record<string, number>, nps 
 /** Whether a scribe has been unlocked on the Residency Board (their pill can drop). */
 export function scribeUnlocked(id: ScribeId): boolean {
   return state.owned.includes(scribeUnlockId(id));
+}
+
+/** Unlocks a helper who isn't bought (Donald). Returns true the first time. */
+export function unlockScribe(id: ScribeId): boolean {
+  const key = scribeUnlockId(id);
+  if (state.owned.includes(key)) return false;
+  state = { ...state, owned: [...state.owned, key] };
+  save();
+  return true;
 }
 
 /** Buys a board item (a specialty id, 'starterKit' or 'scribe:<id>'). Returns false if it's owned or too expensive. */

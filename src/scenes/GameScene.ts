@@ -15,7 +15,7 @@ import { nextShift, type ShiftSetup } from '../core/shift';
 import { CONSTRUCTION_LINES, CONSTRUCTION_SIGN, modifierById, type ModifierId } from '../data/modifiers';
 import { difficultyById } from '../data/difficulties';
 import { unlockAchievement } from '../core/achievements';
-import { activeSpecialty, creditsFor, doctorUnlocked, grant, npsFor, progress, recordShift, scribeUnlocked } from '../core/progress';
+import { activeSpecialty, creditsFor, doctorUnlocked, grant, npsFor, progress, recordShift, scribeUnlocked, unlockScribe } from '../core/progress';
 import type { SpecialtyMods } from '../data/residency';
 import { newRunStats, type RunStats } from '../core/runStats';
 import { initSfx, sfx } from '../core/sfx';
@@ -51,7 +51,7 @@ import { FaxMachineBrain } from '../systems/FaxMachineBrain';
 import { MiracleCure } from '../systems/MiracleCure';
 import { PatientDirector } from '../systems/PatientDirector';
 import { Scribes } from '../systems/Scribes';
-import { scribeById } from '../data/scribes';
+import { SCRIBES, scribeById } from '../data/scribes';
 import { Sprayer } from '../systems/Sprayer';
 import { WaveDirector } from '../systems/WaveDirector';
 
@@ -159,6 +159,8 @@ export class GameScene extends Phaser.Scene {
   private scribes!: Scribes;
   /** Patients the scribes cleaned up this shift (the Delegation achievement). */
   private scribeCleans = 0;
+  /** Rooms where a helper already came out to help this shift (Donald in X-ray). */
+  private helperRooms = new Set<string>();
   private kills = 0;
   private score = 0;
   private runOver = false;
@@ -349,6 +351,7 @@ export class GameScene extends Phaser.Scene {
     this.physics.add.collider(this.player, this.constructionWalls);
     this.dark = this.hasMod('powerOutage') ? this.buildDarkness() : undefined;
     this.scribeCleans = 0;
+    this.helperRooms = new Set();
     this.scribes = new Scribes({
       scene: this,
       player: this.player,
@@ -1225,6 +1228,18 @@ export class GameScene extends Phaser.Scene {
     if (here && here !== this.currentRoom) {
       this.currentRoom = here;
       events.emit(GameEvents.RoomEntered, { id: here.id, name: here.name } satisfies RoomPayload);
+      this.helperRoom(here.id);
+    }
+  }
+
+  /** DONALD: the first visit to X-ray each shift brings him out to help (and unlocks him the first time ever). */
+  private helperRoom(id: string): void {
+    if (this.helperRooms.has(id) || this.player.dead) return;
+    this.helperRooms.add(id);
+    for (const def of SCRIBES) {
+      if (def.unlockRoom !== id) continue;
+      if (unlockScribe(def.id) && def.unlockBanner) events.emit(GameEvents.SecretFound, def.unlockBanner);
+      this.scribes.summon(def.id, this.time.now, BALANCE.scribes.ms);
     }
   }
 
@@ -2072,6 +2087,7 @@ export class GameScene extends Phaser.Scene {
         break;
       case 'scribeOmar':
       case 'scribeAlan':
+      case 'techDonald':
         if (def.scribe) this.scribes.summon(def.scribe, time, def.ms);
         break;
       // triage and doubleCopay are checked where they apply

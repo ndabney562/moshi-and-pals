@@ -1,9 +1,15 @@
 # Changelog
 
-## v0.26.1: Germs stop getting stuck
+## v0.27.1: Germs stop getting stuck
 - **Germs no longer jam together.** A crowd of germs used to brake each other to a crawl wherever they touched, so packs looked glued in place. They now shove each other aside and keep coming.
 - **Germs always find the stairs.** A germ squeezed against a wall or a stair rail lost its way and pushed into the wall forever; it now steps back onto the path. Germs at the foot of the stairs walk onto the steps instead of stopping beside them.
 - Germs keep to the middle of halls and doorways instead of scraping along walls, so big ones like the Chonk Coccus don't wedge on corners.
+
+## v0.27.0: Donald, the X-ray tech
+- **Donald joins the helpers.** Walk into the X-ray room during a shift and he unlocks for good: he comes out right then and helps you for 20 s, like Omar and Alan.
+- After that, he comes out to help the first time you visit X-ray on every shift, and his pill (**X-RAY TECH: DONALD**) can drop from germs too.
+- **His X-ray beam goes through walls** and hits every germ in a line (30 damage, a short stun). Like the scribes, he also shames patients with health code violations into cleaning up.
+- The Residency Board's Scribes tab shows him, with how to unlock him.
 
 ## v0.26.0: NPS Scores hire the Pals
 - **NPS Scores**, a new currency that stays between shifts. Every shift earns 1 per round reached, 1 per patient you clean up and 3 per boss beaten. The Discharge Summary shows what you earned; the title screen shows what you have.
