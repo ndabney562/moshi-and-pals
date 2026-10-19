@@ -1,5 +1,11 @@
 # Changelog
 
+## v0.28.0: Germ vents and Prior Auth barricades
+- **Germs come in through vents** now: green, bubbling floor grates at random spots in every open room. At the start of every round the vents move somewhere new, so the same corner is never safe twice.
+- **BLOCK a vent for $50.** Stand by one and press USE: a PRIOR AUTH barricade goes up and germs have to wait for approval. They come in through another vent instead, but every germ that tries this one pushes on it (BANG!), and after 8 pushes or 30 seconds it gives way. A bar under it shows how much it has left. If every vent is blocked, germs pile up behind the barricades until one breaks.
+- Bosses don't wait for prior authorization.
+- **The scribes and Donald block vents too.** While they're helping, each one tapes off a vent near them every 15 s with your Copays, as long as you'd still have $100 left.
+
 ## v0.27.0: Donald, the X-ray tech
 - **Donald joins the helpers.** Walk into the X-ray room during a shift and he unlocks for good: he comes out right then and helps you for 20 s, like Omar and Alan.
 - After that, he comes out to help the first time you visit X-ray on every shift, and his pill (**X-RAY TECH: DONALD**) can drop from germs too.

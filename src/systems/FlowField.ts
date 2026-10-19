@@ -116,6 +116,21 @@ export class FlowField {
     return this.dist[this.index(x, y)] >= 0;
   }
 
+  /** True if a germ fits at (x, y): its cell and the eight around it are clear of walls and furniture. */
+  roomy(x: number, y: number): boolean {
+    const { cols, rows, cell } = this;
+    const cx = Math.floor(x / cell);
+    const cy = Math.floor(y / cell);
+    for (let dy = -1; dy <= 1; dy++) {
+      for (let dx = -1; dx <= 1; dx++) {
+        const nx = cx + dx;
+        const ny = cy + dy;
+        if (nx < 0 || ny < 0 || nx >= cols || ny >= rows || this.blocked[ny * cols + nx]) return false;
+      }
+    }
+    return true;
+  }
+
   /** Sets the active staircases (germs path through them to reach Eugene on another floor). */
   setPortals(links: { from: { x: number; y: number }; to: { x: number; y: number } }[]): void {
     this.portals = links.map((l) => ({ from: this.index(l.from.x, l.from.y), to: this.index(l.to.x, l.to.y) }));

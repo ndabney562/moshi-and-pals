@@ -21,6 +21,9 @@ Values live in `src/config/balance.ts` and `src/config/controls.ts`.
 | Spray zone / drag-aim | right half below 22% of height / 28 px drag | `CONTROLS.sprayZoneTop`, `dragAimDistance` |
 | Auto-aim stickiness | keeps target unless another is 25% closer | Line of sight required |
 | Germ spawn distance | at least 380 px from Eugene, preferably within 1600 px | Only from rooms that are open |
+| Germ vents (v0.28.0) | one per planned spawn point of each open room, at random open spots; unblocked ones move every round | `BALANCE.vents`: 140 px apart, 160 px from anything with USE |
+| BLOCK a vent | $50: barricade holds up to 30 s or 8 germ pushes (one per 0.7 s) | Bosses walk through; germs wait if every vent is blocked |
+| Scribes blocking | a vent within 340 px, every 15 s each, only while you'd keep $100 | Paid from your Copays |
 | Sinus Purge | 240 px, 35 damage, big knockback, 0.6 s stun | 18 s cooldown; ready at start |
 | Supply crate | $250 Copays, random tool not already held | `BALANCE.economy.crateCost`; tools in `src/data/equipment.ts` |
 | Lysol Fogger | 6 puffs × 3 dmg every 120 ms, 75° cone, 160 px | 200 mL tank, 2/shot, jug 600 |

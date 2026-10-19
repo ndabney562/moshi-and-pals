@@ -25,6 +25,24 @@ export const BALANCE = {
     /** ...and prefer spawn points within this distance, so germs in far-off rooms don't take forever to arrive. */
     maxSpawnDistance: 1600,
   },
+  /**
+   * GERM VENTS: where germs come in (words in data/vents.ts). Each open room has as many vents as its plan lists
+   * spawn points; every round the ones that aren't blocked move to new random spots in their room.
+   */
+  vents: {
+    /** Vents keep this far apart... */
+    spacing: 140,
+    /** ...and this far from anything with a USE button (from its edge), so BLOCK never gets in the way. */
+    stationClearance: 160,
+    /** Random spots tried per vent before it settles for its room's planned spawn point. */
+    tries: 40,
+    /** Footprint for USE (a square this wide around the vent). */
+    size: 44,
+    /** BLOCK: a barricade holds germs back for up to `holdMs`; each germ that tries the vent pushes on it (at most once per `pushEveryMs`) and it gives way after `pushes` pushes. */
+    block: { cost: 50, holdMs: 30000, pushes: 8, pushEveryMs: 700 },
+    /** Scribes on shift barricade an open vent near them on their own, paid from your Copays, once per `everyMs` each, only while you'd still have `reserve` left. */
+    scribes: { range: 340, everyMs: 15000, reserve: 100 },
+  },
   germs: {
     /** How often germ paths are recalculated around furniture. */
     pathRefreshMs: 250,

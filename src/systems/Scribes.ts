@@ -95,6 +95,14 @@ export class Scribes {
     s.bubble.say(pick(s.def.lines.arrive), s.img, 44, 2000);
   }
 
+  /** Every helper on the floor right now, where they stand, and a way to have them say something. */
+  onShift(): { id: ScribeId; x: number; y: number; say(lines: string[]): void }[] {
+    return this.list.filter((s) => s.here).map((s) => ({
+      id: s.def.id, x: s.img.x, y: s.img.y,
+      say: (lines: string[]) => s.bubble.say(pick(lines), s.img, 44, 2000),
+    }));
+  }
+
   /** The scribe here now (tests, debug). */
   get(id: ScribeId): Scribe | undefined {
     return this.list.find((s) => s.def.id === id && s.here);

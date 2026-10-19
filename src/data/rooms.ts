@@ -27,7 +27,9 @@ export type ObstacleKind =
   /** The Miracle Cure (secret): the waiting-room magazine table, the office microwave, the Records Room's way out. */
   | 'magTable' | 'microwave' | 'recordsDoor'
   /** Exam-room privacy curtain across a doorway (layout `curtains`; solid only while pulled shut). */
-  | 'curtain';
+  | 'curtain'
+  /** A germ vent's USE footprint (not part of the map: vents move every round, systems/Vents.ts). */
+  | 'vent';
 
 export interface Obstacle {
   kind: ObstacleKind;
