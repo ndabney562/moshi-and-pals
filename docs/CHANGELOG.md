@@ -1,5 +1,10 @@
 # Changelog
 
+## v0.26.1: Germs stop getting stuck
+- **Germs no longer jam together.** A crowd of germs used to brake each other to a crawl wherever they touched, so packs looked glued in place. They now shove each other aside and keep coming.
+- **Germs always find the stairs.** A germ squeezed against a wall or a stair rail lost its way and pushed into the wall forever; it now steps back onto the path. Germs at the foot of the stairs walk onto the steps instead of stopping beside them.
+- Germs keep to the middle of halls and doorways instead of scraping along walls, so big ones like the Chonk Coccus don't wedge on corners.
+
 ## v0.26.0: NPS Scores hire the Pals
 - **NPS Scores**, a new currency that stays between shifts. Every shift earns 1 per round reached, 1 per patient you clean up and 3 per boss beaten. The Discharge Summary shows what you earned; the title screen shows what you have.
 - **Dr. Moshkovich is the only doctor on shift at first.** Dr. Kaya (30 NPS), PA Lucien (45) and Ken (60) are locked: tap a locked portrait to see the price, tap again to hire them for good.
