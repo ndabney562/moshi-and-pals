@@ -1,9 +1,14 @@
 # Changelog
 
-## v0.27.1: Unlimited snacks
+## v0.27.4: Unlimited snacks
 - **No more snack limit.** The vending machine never sells out: buy as many snacks as you can pay for, and the same snack again as often as you like.
 - **Snacks stack.** A second Energy Drink makes you faster again, a second Fortune Cookie doubles your STAT! chance again, and so on, up to a cap (walk ×1.5, pours and signature recharge down to 40% of normal, STAT! chance ×6).
 - **Seconds cost more:** each one you've already had adds half the snack's price (a $100 Fortune Cookie is $150, then $200...).
+
+## v0.27.1: Germs stop getting stuck
+- **Germs no longer jam together.** A crowd of germs used to brake each other to a crawl wherever they touched, so packs looked glued in place. They now shove each other aside and keep coming.
+- **Germs always find the stairs.** A germ squeezed against a wall or a stair rail lost its way and pushed into the wall forever; it now steps back onto the path. Germs at the foot of the stairs walk onto the steps instead of stopping beside them.
+- Germs keep to the middle of halls and doorways instead of scraping along walls, so big ones like the Chonk Coccus don't wedge on corners.
 
 ## v0.27.0: Donald, the X-ray tech
 - **Donald joins the helpers.** Walk into the X-ray room during a shift and he unlocks for good: he comes out right then and helps you for 20 s, like Omar and Alan.

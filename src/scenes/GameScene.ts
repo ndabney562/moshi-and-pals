@@ -37,7 +37,7 @@ import type { Patient } from '../entities/Patient';
 import { Player } from '../entities/Player';
 import { Arsenal } from '../systems/Arsenal';
 import { FlowField } from '../systems/FlowField';
-import { steerCharger, steerHealer, steerSpitter, type BehaviorHost } from '../systems/GermBehaviors';
+import { separateGerms, steerCharger, steerHealer, steerSpitter, type BehaviorHost } from '../systems/GermBehaviors';
 import { Puddles } from '../systems/Puddles';
 import { Powerups } from '../systems/Powerups';
 import { ELITE_AFFIXES, type EliteAffix, type PowerupDef } from '../data/powerups';
@@ -383,7 +383,9 @@ export class GameScene extends Phaser.Scene {
 
     this.physics.add.collider(this.player, solids);
     this.physics.add.collider(this.germs, solids);
-    this.physics.add.collider(this.germs, this.germs);
+    // Touching germs shove apart by position. (An Arcade collider also scaled both velocities by their bounce every
+    // frame they touched, so a pressed-together crowd crawled at a few percent of its speed: germs "stuck together".)
+    this.physics.add.overlap(this.germs, this.germs, (a, b) => separateGerms(a as Germ, b as Germ, BALANCE.germs.crowdPush));
     this.physics.add.collider(this.droplets, solids, (d) => {
       const drop = d as Droplet;
       this.fx.dropletSplash(drop.x, drop.y);
@@ -1216,7 +1218,8 @@ export class GameScene extends Phaser.Scene {
     for (const g of this.germs.getChildren() as Germ[]) {
       if (!g.active || g.def.boss) continue;
       const end = this.stairAt(g.x, g.y);
-      if (end && this.floorOf(g.x, g.y) !== here) (g.body as Phaser.Physics.Arcade.Body).reset(end.arrive.x, end.arrive.y);
+      // Take the stairs to reach Eugene's floor, or when the way to him runs over the other floor
+      if (end && (this.floorOf(g.x, g.y) !== here || this.flow.takesStairs(g.x, g.y))) (g.body as Phaser.Physics.Arcade.Body).reset(end.arrive.x, end.arrive.y);
     }
   }
 
