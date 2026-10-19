@@ -320,7 +320,7 @@ try {
   check(opened.unlocked && opened.doorGone && opened.copays === 50, `USE (${JSON.stringify(doorLabel)}) buys the HALLWAYS gate open (${JSON.stringify(opened)})`);
   check(opened.room.includes('WAITING ROOM'), `HUD shows which room Eugene is in (${opened.room})`);
   // Walk into the west hallway (plan 460, 900)
-  await page.evaluate(() => window.game.scene.getScene('Game').player.setPosition(930, 1590));
+  await page.evaluate(() => { const sc = window.game.scene.getScene('Game'); const p = sc.room.fromPlan('ground', 460, 900); sc.player.setPosition(p.x, p.y); });
   await page.waitForFunction(() => window.game.scene.getScene('Hud').roomText.text.includes('HALLWAYS'), null, { timeout: 15000 }).catch(() => {});
   check((await page.evaluate(() => window.game.scene.getScene('Hud').roomText.text)).includes('HALLWAYS'), 'walking into the hallways updates the room label');
   await page.screenshot({ path: 'smoke-rooms.png' });
@@ -432,8 +432,9 @@ try {
   await page.evaluate(() => {
     const scene = window.game.scene.getScene('Game');
     for (const g of scene.germs.getChildren()) if (g.active) g.kill();
-    scene.player.setPosition(1350, 3330); // in front of reception, so the camera isn't against a wall
-    scene.cameras.main.centerOn(1350, 3330);
+    const front = scene.room.fromPlan('ground', 600, 1480); // in front of reception, so the camera isn't against a wall
+    scene.player.setPosition(front.x, front.y);
+    scene.cameras.main.centerOn(front.x, front.y);
     scene.spawnGerm('basic', { hpMult: 1, speedMult: 1 });
     const g = scene.germs.getChildren().find((c) => c.active);
     const v = scene.cameras.main.worldView;
@@ -801,13 +802,13 @@ try {
     scene.stairsReadyAt = 0;
     scene.player.setPosition(z.x + z.w / 2, z.y + z.h / 2);
   });
-  const wentUp = await page.waitForFunction(() => window.game.scene.getScene('Game').player.x >= 3800, null, { timeout: 15000 }).then(() => true, () => false);
+  const wentUp = await page.waitForFunction(() => { const sc = window.game.scene.getScene('Game'); return sc.player.x >= sc.room.floors[1].x; }, null, { timeout: 15000 }).then(() => true, () => false);
   const upState = await page.evaluate(() => {
     const scene = window.game.scene.getScene('Game');
     const cam = scene.cameras.main;
-    return { x: Math.round(scene.player.x), room: window.game.scene.getScene('Hud').roomText.text, camX: Math.round(cam.worldView.x) };
+    return { x: Math.round(scene.player.x), room: window.game.scene.getScene('Hud').roomText.text, camX: Math.round(cam.worldView.x), upX: scene.room.floors[1].x };
   });
-  check(wentUp && upState.camX >= 3800, `the stairs take Eugene upstairs, camera follows (${JSON.stringify(upState)})`);
+  check(wentUp && upState.camX >= upState.upX, `the stairs take Eugene upstairs, camera follows (${JSON.stringify(upState)})`);
   const followed = await page.evaluate(() => {
     const scene = window.game.scene.getScene('Game');
     scene.spawnGerm('basic', { hpMult: 1, speedMult: 1 });
@@ -816,7 +817,7 @@ try {
     g.setPosition(z.x + z.w / 2, z.y + z.h / 2); // a germ on the ground-floor stairs...
     return true;
   });
-  const germUp = await page.waitForFunction(() => window.game.scene.getScene('Game').germs.getChildren().some((g) => g.active && g.x >= 3800), null, { timeout: 15000 }).then(() => true, () => false);
+  const germUp = await page.waitForFunction(() => { const sc = window.game.scene.getScene('Game'); return sc.germs.getChildren().some((g) => g.active && g.x >= sc.room.floors[1].x); }, null, { timeout: 15000 }).then(() => true, () => false);
   check(followed && germUp, 'germs follow Eugene up the stairs');
   await page.evaluate(() => {
     const scene = window.game.scene.getScene('Game');
@@ -825,7 +826,7 @@ try {
     const z = scene.room.stairs[0].b.zone;
     scene.player.setPosition(z.x + z.w / 2, z.y + z.h / 2);
   });
-  const wentDown = await page.waitForFunction(() => window.game.scene.getScene('Game').player.x < 3400, null, { timeout: 15000 }).then(() => true, () => false);
+  const wentDown = await page.waitForFunction(() => { const sc = window.game.scene.getScene('Game'); return sc.player.x < sc.room.floors[0].w; }, null, { timeout: 15000 }).then(() => true, () => false);
   check(wentDown, 'and back down again');
 
   // COMPOUNDING STATION (Lab): hold USE to upgrade the tool in hand (the bottle gets a Pressure Nozzle)

@@ -1,5 +1,10 @@
 # Changelog
 
+## v0.19.1: A smaller clinic
+- **The clinic is 20% smaller** (Noah: "the map seems too large"). Same rooms in the same order at the same prices, just shorter corridors and smaller rooms, so there's less walking between fights.
+- Exam Room 1 can actually be reached now: a cabinet in the Supply Closet was blocking its door.
+- The Lab's entrance and the Manager's Office are roomier, so a Chonk Coccus no longer gets wedged in them, and germs find their way out of the small bathrooms and closets instead of pressing against the wall.
+
 ## v0.19.0: Milestone 17, Today's Shift
 - **Today's Shift** (📋 on the title screen): a daily challenge. Everyone gets the same shift on the same day: the date picks the random rolls and two modifiers, shown before you CLOCK IN. Always on Urgent. The title screen and the Discharge Summary show today's best, and your first finished Today's Shift each day earns +2 CME.
 - **Six modifiers:**
