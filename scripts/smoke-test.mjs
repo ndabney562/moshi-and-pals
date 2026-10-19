@@ -279,6 +279,12 @@ try {
   const purgeAt = await buttonAt('purgeButton');
   await page.touchscreen.tap(purgeAt.x, purgeAt.y);
   await page.waitForTimeout(300);
+  // On the slow CI runner the tap sometimes lands while the SPRAY ring covers the button: tap once more if nothing fired
+  if (!(await page.evaluate(() => { const sc = window.game.scene.getScene('Game'); return sc.purgeReadyAt > sc.time.now; }))) {
+    const again = await buttonAt('purgeButton');
+    await page.touchscreen.tap(again.x, again.y);
+    await page.waitForTimeout(300);
+  }
   const purged = await page.evaluate(() => {
     const scene = window.game.scene.getScene('Game');
     const g = window.__purgeTarget;
