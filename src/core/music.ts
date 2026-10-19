@@ -71,6 +71,13 @@ let nextTime = 0;
 let pressure = -1;
 let paused = false;
 let notesPlayed = 0;
+let stepsPlayed = 0;
+/**
+ * Automated test browsers keep the sequencer running but make no sound: on the
+ * slow CI runner, synthesizing every note took enough CPU to double the smoke
+ * test's run time and starve its timing checks.
+ */
+const SILENT = typeof navigator !== 'undefined' && navigator.webdriver;
 
 const midiHz = (m: number) => 440 * Math.pow(2, (m - 69) / 12);
 
@@ -155,8 +162,8 @@ export function applyVolume(): void {
 }
 
 /** For the smoke test and the debug overlay. */
-export function musicState(): { playing: boolean; song: SongId; pressure: number; notes: number; context: string } {
-  return { playing: timer !== undefined && stopping === undefined, song: current, pressure: Math.max(0, pressure), notes: notesPlayed, context: ctx?.state ?? 'none' };
+export function musicState(): { playing: boolean; song: SongId; pressure: number; steps: number; notes: number; context: string } {
+  return { playing: timer !== undefined && stopping === undefined, song: current, pressure: Math.max(0, pressure), steps: stepsPlayed, notes: notesPlayed, context: ctx?.state ?? 'none' };
 }
 
 function stepSec(def: SongDef, i: number): number {
@@ -177,7 +184,8 @@ function tick(): void {
     }
     const song = songs[current];
     // Muted: keep time but make no sound (saves battery)
-    if (settings.music) playStep(song, step, nextTime);
+    if (settings.music && !SILENT) playStep(song, step, nextTime);
+    stepsPlayed++;
     nextTime += stepSec(song.def, step);
     step++;
   }

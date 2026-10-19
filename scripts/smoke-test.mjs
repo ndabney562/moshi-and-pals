@@ -192,9 +192,10 @@ try {
   });
   check(spill.spilled && spill.refilling, 'tapping REFILL too early spills (the pour takes longer)');
   await page.waitForFunction(() => !window.game.scene.getScene('Game').sprayer.refilling, null, { timeout: 15000 }).catch(() => {});
-  // Music: the sequencer runs during the shift and (when the browser lets audio run) plays notes
+  // Music: the sequencer runs during the shift and (when the browser lets audio run) steps through the song.
+  // Test browsers make no sound (core/music SILENT), so this checks the sequencer, not the synthesis.
   const music = await page.evaluate(() => window.game.scene.getScene('Game').musicState());
-  check(music.playing && music.song === 'clinic' && (music.context !== 'running' || music.notes > 0), `the clinic theme plays during the shift (${JSON.stringify(music)})`);
+  check(music.playing && music.song === 'clinic' && (music.context !== 'running' || music.steps > 0), `the clinic theme plays during the shift (${JSON.stringify(music)})`);
   // Pause: the button freezes the game and opens the menu; AUTO-AIM lives there now
   const pauseAt = await buttonAt('pauseButton');
   await page.touchscreen.tap(pauseAt.x, pauseAt.y);
