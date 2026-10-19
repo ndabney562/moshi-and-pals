@@ -120,13 +120,13 @@ export class BoardScene extends Phaser.Scene {
     });
   }
 
-  /** Omar and Alan: hire one and their pill can drop from germs on every shift after. Donald unlocks in X-ray. */
+  /** Omar and Alan: hire one and they clock in once every shift, and their pill can drop from germs. Donald unlocks in X-ray. */
   private drawScribes(): void {
     const { width } = this.scale;
     const p = progress();
     const left = width / 2 - 520;
     const right = width / 2 + 520;
-    this.txt(left, 140, `Hire a scribe and their pill joins the power-up drops. They chart, they fight, ${BALANCE.scribes.ms / 1000} s a visit.`, 17, COLORS.uiAccent, 'italic');
+    this.txt(left, 140, `Hired scribes clock in once every shift (Omar round ${BALANCE.scribes.clockIn.omar}, Alan round ${BALANCE.scribes.clockIn.alan}) and their pills drop too. ${BALANCE.scribes.ms / 1000} s a visit.`, 17, COLORS.uiAccent, 'italic');
     SCRIBES.forEach((sc, i) => {
       const y = 190 + i * 120;
       const id = scribeUnlockId(sc.id);

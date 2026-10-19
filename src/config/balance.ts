@@ -349,6 +349,8 @@ export const BALANCE = {
    */
   scribes: {
     ms: 20000,
+    /** Each hired scribe also clocks in on its own when this round starts, once every shift (the pill still drops too). */
+    clockIn: { omar: 2, alan: 3 } as Partial<Record<'omar' | 'alan' | 'donald', number>>,
     speed: 300,
     /** Where they stand: this far behind Eugene, off to one side. */
     followDistance: 85,

@@ -1,5 +1,9 @@
 # Changelog
 
+## v0.27.1: The scribes clock in
+- **Hired scribes now show up every shift.** Omar clocks in at the start of round 2 and Alan at the start of round 3, for 20 s each. Before, they only came if their pill happened to drop (about 1 germ in 80 drops a pill, and the scribe's is one of several), so you could go many shifts without seeing them.
+- Their pills still drop from germs, so you can get extra visits. The Residency Board's Scribes tab says when they clock in.
+
 ## v0.27.0: Donald, the X-ray tech
 - **Donald joins the helpers.** Walk into the X-ray room during a shift and he unlocks for good: he comes out right then and helps you for 20 s, like Omar and Alan.
 - After that, he comes out to help the first time you visit X-ray on every shift, and his pill (**X-RAY TECH: DONALD**) can drop from germs too.

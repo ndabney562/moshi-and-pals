@@ -434,6 +434,7 @@ export class GameScene extends Phaser.Scene {
       if (p.round >= 8 && this.hasMod('powerOutage')) this.achieve('darkShift');
       if (this.hasMod('construction')) this.closeForConstruction(p.round);
       this.cure.onRoundStarted();
+      this.clockInScribes(p.round);
     };
     const onEscaped = () => this.achieve('ama');
     const onSnack = (p: { id: string }) => this.buySnack(p.id);
@@ -1226,6 +1227,16 @@ export class GameScene extends Phaser.Scene {
       this.currentRoom = here;
       events.emit(GameEvents.RoomEntered, { id: here.id, name: here.name } satisfies RoomPayload);
       this.helperRoom(here.id);
+    }
+  }
+
+  /** Hired scribes clock in on their round (BALANCE.scribes.clockIn), once a shift, so you actually get to see them. */
+  private clockInScribes(round: number): void {
+    if (this.player.dead) return;
+    for (const def of SCRIBES) {
+      if (BALANCE.scribes.clockIn[def.id] !== round || !scribeUnlocked(def.id)) continue;
+      this.powerups.start(def.powerup, this.time.now);
+      this.scribes.summon(def.id, this.time.now, BALANCE.scribes.ms);
     }
   }
 

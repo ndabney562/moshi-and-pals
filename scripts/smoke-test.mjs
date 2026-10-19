@@ -1865,6 +1865,15 @@ try {
     });
     const omarHere = await sp1.waitForFunction(() => !!window.game.scene.getScene('Game').scribes.get('omar'), null, { timeout: 10000 }).then(() => true, () => false);
     check(omarIn && omarHere, "grabbing Omar's pill brings Omar in");
+    // A hired scribe also clocks in on his own at his round (Omar: round 2), once a shift
+    await sp1.evaluate(() => { const o = window.game.scene.getScene('Game').scribes.get('omar'); if (o) o.until = 1; });
+    await sp1.waitForFunction(() => !window.game.scene.getScene('Game').scribes.get('omar'), null, { timeout: 30000 }).catch(() => {});
+    const clocked = await sp1.evaluate(() => {
+      const sc = window.game.scene.getScene('Game');
+      sc.clockInScribes(2);
+      return { here: !!sc.scribes.get('omar'), pill: sc.powerups.isActive('scribeOmar', sc.time.now) };
+    });
+    check(clocked.here && clocked.pill, `a hired Omar clocks in on round 2 (${JSON.stringify(clocked)})`);
     check(scribeErrors.length === 0, `no errors with the scribes${scribeErrors.length ? ': ' + scribeErrors.join(' | ') : ''}`);
     await sc1.close();
 
@@ -1891,6 +1900,12 @@ try {
     });
     check(!drops.pool.includes('scribeAlan') && !drops.seen.includes('scribeAlan') && drops.seen.includes('scribeOmar'),
       `a locked scribe never drops (${drops.seen.join(', ')})`);
+    const alanClock = await sp2.evaluate(() => {
+      const sc = window.game.scene.getScene('Game');
+      sc.clockInScribes(3);
+      return !!sc.scribes.get('alan');
+    });
+    check(!alanClock, "an unhired Alan doesn't clock in on round 3");
     check(!drops.pool.includes('techDonald'), `Donald's pill doesn't drop before he's unlocked (${drops.pool.join(', ')})`);
     // DONALD: walking into X-ray during the shift unlocks him for good and brings him out to help
     const start = await sp2.evaluate(() => {
