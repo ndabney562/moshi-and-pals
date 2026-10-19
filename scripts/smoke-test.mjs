@@ -253,7 +253,8 @@ try {
   const purgeBefore = await page.evaluate(() => {
     const scene = window.game.scene.getScene('Game');
     scene.player.hp = 100;
-    scene.spawnGermAt('basic', scene.player.x + 80, scene.player.y);
+    // Past the round's on-screen cap (a fast runner can be there by now) so the nearest germ is this one, in reach
+    scene.spawnGermAt('basic', scene.player.x + 80, scene.player.y, true);
     const g = scene.germs.getChildren().filter((c) => c.active).sort((a, b) =>
       Math.hypot(a.x - scene.player.x, a.y - scene.player.y) - Math.hypot(b.x - scene.player.x, b.y - scene.player.y))[0];
     window.__purgeTarget = g;
