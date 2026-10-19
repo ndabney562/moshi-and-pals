@@ -2,7 +2,7 @@ import Phaser from 'phaser';
 import { COLORS } from '../config/theme';
 import { LOCKER, STAFF } from '../config/locker';
 import { sfx } from '../core/sfx';
-import { buyLockerLevel, buyStaffLevel, lockerLevel, progress, scribeUnlocked, staffLevel } from '../core/progress';
+import { buyLockerLevel, buyStaffLevel, lockerLevel, progress, scribeUnlocked, staffLevel, staffTiers } from '../core/progress';
 import { EQUIPMENT } from '../data/equipment';
 import { LOCKER_LEVEL_TEXT, LOCKER_TOOLS, STAFF_LEVEL_TEXT } from '../data/locker';
 import { SCRIBES } from '../data/scribes';
@@ -93,7 +93,10 @@ export class LockerScene extends Phaser.Scene {
     });
   }
 
-  /** THE STAFF SHELF: three upgrades per helper, bought once they're unlocked (Residency Board, or X-ray for Donald). */
+  /**
+   * THE STAFF SHELF: upgrades per helper, bought once they're unlocked (Residency Board, or X-ray for Donald). The front
+   * desk gets all three; Omar, Alan and Donald stay all shift once they're out, so they skip Overtime.
+   */
   private drawStaff(bank: number): void {
     const { width, height } = this.scale;
     const half = Math.min(520, width / 2 - 30);
@@ -101,16 +104,19 @@ export class LockerScene extends Phaser.Scene {
     const right = width / 2 + half;
     const top = 146;
     const rowH = Math.min(78, (height - top - 90) / SCRIBES.length);
-    const max = STAFF.levels.length;
     SCRIBES.forEach((sc, i) => {
       const y = top + i * rowH;
       const open = scribeUnlocked(sc.id);
       const level = staffLevel(sc.id);
-      const next = STAFF.levels[level];
+      // (Omar, Alan and Donald stay all shift once they're out, so they don't get Overtime)
+      const tiers = staffTiers(sc.id);
+      const max = tiers.length;
+      const tier = tiers[level];
+      const next = tier === undefined ? undefined : STAFF.levels[tier];
       this.body.add(this.add.image(left + 24, y + 24, `scribe-${sc.id}`).setAngle(-90).setScale(0.55).setAlpha(open ? 1 : 0.4));
       this.txt(left + 56, y, `${sc.name}, ${sc.role.toLowerCase()}`, 20, open ? COLORS.uiText : '#9fb8b3', '900');
       for (let k = 0; k < max; k++) this.txt(left + 56 + k * 22, y + 27, '★', 18, k < level ? '#ffe66d' : '#3f5f66', '900');
-      const nextText = STAFF_LEVEL_TEXT[level];
+      const nextText = tier === undefined ? undefined : STAFF_LEVEL_TEXT[tier];
       const line = !open ? `Not on staff yet. ${sc.unlockHint ?? 'Hire them on the Residency Board'}.`
         : next && nextText ? `Next: ${nextText.name} (${nextText.blurb})` : 'Fully upgraded. Somebody give them a raise.';
       this.txt(left + 132, y + 29, line, 15, open && next ? '#cfe9e4' : '#9fb8b3');

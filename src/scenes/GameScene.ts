@@ -168,8 +168,6 @@ export class GameScene extends Phaser.Scene {
   private scribeRooms = new Map<string, ScribeId>();
   /** Patients the scribes cleaned up this shift (the Delegation achievement). */
   private scribeCleans = 0;
-  /** Rooms where a helper already came out to help this shift (Donald in X-ray). */
-  private helperRooms = new Set<string>();
   private kills = 0;
   private score = 0;
   private runOver = false;
@@ -361,7 +359,6 @@ export class GameScene extends Phaser.Scene {
     this.physics.add.collider(this.player, this.constructionWalls);
     this.dark = this.hasMod('powerOutage') ? this.buildDarkness() : undefined;
     this.scribeCleans = 0;
-    this.helperRooms = new Set();
     this.scribes = new Scribes({
       scene: this,
       player: this.player,
@@ -1291,44 +1288,41 @@ export class GameScene extends Phaser.Scene {
     if (here && here !== this.currentRoom) {
       this.currentRoom = here;
       events.emit(GameEvents.RoomEntered, { id: here.id, name: here.name } satisfies RoomPayload);
-      this.helperRoom(here.id);
     }
   }
 
-  /** Each hired scribe waits in a random locked first-floor exam room this shift (not one forced in by ?scribe=). */
+  /**
+   * Each hired scribe waits in a random locked first-floor exam room this shift, and Donald waits in X-ray (hired or
+   * not: opening it is what unlocks him). Not one forced in by ?scribe=. If their room is already open, they start
+   * the shift with you.
+   */
   private hideScribes(forced?: ScribeId): void {
     this.scribeRooms = new Map();
     for (const def of SCRIBES) {
-      if (!def.waitsIn || def.id === forced || !scribeUnlocked(def.id)) continue;
+      if (!def.waitsIn || def.id === forced || (!scribeUnlocked(def.id) && !def.unlockRoom)) continue;
       const free = def.waitsIn.filter((id) => !this.unlocked.has(id) && !this.scribeRooms.has(id));
-      if (free.length === 0) this.scribes.summon(def.id, this.time.now, Number.MAX_SAFE_INTEGER);
-      else this.scribeRooms.set(runRng.world.pick(free), def.id);
+      if (free.length > 0) this.scribeRooms.set(runRng.world.pick(free), def.id);
+      else if (scribeUnlocked(def.id)) this.scribes.summon(def.id, this.time.now, Number.MAX_SAFE_INTEGER);
     }
   }
 
-  /** Opening the exam room a scribe waits in lets them out to help for the rest of the shift. */
+  /**
+   * Opening the room a helper waits in lets them out to help for the rest of the shift. Donald's first time out
+   * (opening X-ray) also unlocks him for good.
+   */
   private releaseScribe(roomId: string): void {
     const id = this.scribeRooms.get(roomId);
     const area = this.room.rooms.find((r) => r.id === roomId);
     if (!id || !area) return;
     this.scribeRooms.delete(roomId);
+    const def = scribeById(id);
+    if (def?.unlockRoom === roomId && unlockScribe(id) && def.unlockBanner) events.emit(GameEvents.SecretFound, def.unlockBanner);
     this.scribes.summon(id, this.time.now, Number.MAX_SAFE_INTEGER, { x: area.x + area.w / 2, y: area.y + area.h / 2 });
   }
 
-  /** DONALD: the first visit to X-ray each shift brings him out to help (and unlocks him the first time ever). */
-  private helperRoom(id: string): void {
-    if (this.helperRooms.has(id) || this.player.dead) return;
-    this.helperRooms.add(id);
-    for (const def of SCRIBES) {
-      if (def.unlockRoom !== id) continue;
-      if (unlockScribe(def.id) && def.unlockBanner) events.emit(GameEvents.SecretFound, def.unlockBanner);
-      this.summonHelper(def.id, this.time.now, BALANCE.scribes.ms);
-    }
-  }
-
   /**
-   * Brings a helper in for `ms`, stretched by their Overtime upgrade: a scribe or Donald follows the doctor, a PSR
-   * goes to the front desk. Their pill's HUD timer matches.
+   * Brings a helper in for `ms` (a pill, or ?scribe=), stretched by their Overtime upgrade: a PSR goes to the front
+   * desk, anyone else follows the doctor. Their pill's HUD timer matches.
    */
   private summonHelper(id: ScribeId, time: number, ms: number): void {
     const def = scribeById(id);
@@ -2195,7 +2189,6 @@ export class GameScene extends Phaser.Scene {
       case 'prescription':
         this.prescribe(time);
         break;
-      case 'techDonald':
       case 'psrSelina':
       case 'psrElaine':
         if (def.scribe) this.summonHelper(def.scribe, time, def.ms);

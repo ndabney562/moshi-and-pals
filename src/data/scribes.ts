@@ -4,9 +4,9 @@
  * each one waits every shift in a random locked exam room on the first floor (`waitsIn`); open that room and
  * they come out and help for the rest of the shift: they follow you, take care of germs and shame patients
  * with health code violations into cleaning up. They can't be hurt (they're behind a laptop).
- * DONALD, the X-ray tech (Noah, Oct 2026), works the same way but isn't for sale: he unlocks the first time
- * the doctor walks into the X-ray room during a shift, and from then on comes out to help on the first visit
- * to X-ray every shift, and his pill drops too. His X-ray beam goes through walls and every germ in its line.
+ * DONALD, the X-ray tech (Noah, Oct 2026), works the same way but isn't for sale: every shift he waits in the
+ * X-ray room, and opening it lets him out to help for the rest of the shift (the first time also unlocks him for
+ * good). No pill. His X-ray beam goes through walls and every germ in its line.
  * SELINA and ELAINE, the front desk PSRs (Noah, Oct 2026), are bought like the scribes but don't follow you: their pill
  * sends them to the RECEPTION desk, and while one is there every patient lines up at the desk and complains about the
  * wait instead of committing violations, and gets checked in and sent home one at a time (systems/FrontDesk.ts).
@@ -21,7 +21,7 @@ export interface ScribeDef {
   name: string;
   /** Their job, for the board. */
   role: string;
-  /** The power-up pill that brings them in (Donald). */
+  /** The power-up pill that brings them in (the front desk PSRs). */
   powerup?: PowerupId;
   /** Hired, they wait in one of these rooms (picked at random each shift) until the doctor opens it. */
   waitsIn?: string[];
@@ -29,7 +29,7 @@ export interface ScribeDef {
   cost?: number;
   /** How a helper who can't be bought is unlocked, for the board. */
   unlockHint?: string;
-  /** Only a helper with this unlocks by walking into this room during a shift (and comes out to help there). */
+  /** Only a helper with this unlocks by opening this room during a shift (Donald); they wait there until it's opened. */
   unlockRoom?: string;
   /** The banner when that happens for the first time. */
   unlockBanner?: { title: string; line: string };
@@ -78,9 +78,9 @@ export const SCRIBES: ScribeDef[] = [
     },
   },
   {
-    id: 'donald', name: 'Donald', role: 'X-RAY TECH', powerup: 'techDonald', color: 0xc8ffe6,
-    unlockHint: 'Walk into X-ray during a shift', unlockRoom: 'xray',
-    unlockBanner: { title: 'DONALD UNLOCKED', line: 'The X-ray tech has your back. His pill drops from now on.' },
+    id: 'donald', name: 'Donald', role: 'X-RAY TECH', waitsIn: ['xray'], color: 0xc8ffe6,
+    unlockHint: 'Open X-ray during a shift', unlockRoom: 'xray',
+    unlockBanner: { title: 'DONALD UNLOCKED', line: 'The X-ray tech has your back. Open X-ray and he helps all shift.' },
     blurb: 'Shoots an X-ray beam through walls and every germ in its line.',
     lines: {
       arrive: ['Donald, X-ray. Need a film, doc?', 'Lead apron on. I got you.'],

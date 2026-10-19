@@ -2044,28 +2044,21 @@ try {
       for (const p of sc.powerups.pills) p.img.setVisible(false);
       return { pool: sc.powerups.dropPool, seen: [...seen] };
     });
-    const unhired = await sp2.evaluate(() => [...window.game.scene.getScene('Game').scribeRooms.values()]);
-    check(!drops.seen.some((id) => id.startsWith('scribe')) && unhired.length === 0,
-      `no scribe pills drop, and an unhired scribe isn't waiting in a room (${JSON.stringify({ seen: drops.seen, unhired })})`);
-    check(!drops.pool.includes('techDonald'), `Donald's pill doesn't drop before he's unlocked (${drops.pool.join(', ')})`);
-    // DONALD: walking into X-ray during the shift unlocks him for good and brings him out to help
-    const start = await sp2.evaluate(() => {
+    const waiting = await sp2.evaluate(() => Object.fromEntries(window.game.scene.getScene('Game').scribeRooms));
+    const unhired = Object.entries(waiting).filter(([room, id]) => !(room === 'xray' && id === 'donald'));
+    check(!drops.seen.some((id) => id.startsWith('scribe') || id === 'techDonald') && unhired.length === 0 && waiting.xray === 'donald',
+      `no scribe or Donald pills drop, an unhired scribe isn't waiting in a room, and Donald waits in X-ray (${JSON.stringify({ seen: drops.seen, waiting })})`);
+    // DONALD: opening X-ray during the shift unlocks him for good and lets him out to help for the rest of the shift
+    const donald = await sp2.evaluate(() => {
       const sc = window.game.scene.getScene('Game');
       const omar = sc.scribes.get('omar');
       if (omar) omar.until = 1; // out of the way, so the kill below is Donald's
-      const p = sc.player;
-      const at = { x: p.x, y: p.y };
-      const r = sc.room.rooms.find((rm) => rm.id === 'xray');
-      p.body.reset(r.x + r.w * 0.2, r.y + r.h * 0.85);
-      return at;
-    });
-    const donald = await sp2.waitForFunction(() => {
-      const sc = window.game.scene.getScene('Game');
+      sc.unlockRoom('xray');
       const owned = JSON.parse(localStorage.getItem('moshi.progress.v1') ?? '{}').owned ?? [];
-      return sc.scribes.get('donald') && owned.includes('scribe:donald') ? { pool: sc.powerups.dropPool } : null;
-    }, null, { timeout: 30000 }).then((h) => h.jsonValue(), () => null);
-    check(!!donald && donald.pool.includes('techDonald'), `walking into X-ray unlocks Donald, he comes out and his pill drops (${JSON.stringify(donald)})`);
-    await sp2.evaluate((at) => window.game.scene.getScene('Game').player.body.reset(at.x, at.y), start);
+      const s = sc.scribes.list.find((x) => x.def.id === 'donald');
+      return { out: !!sc.scribes.get('donald'), unlocked: owned.includes('scribe:donald'), allShift: s.until > 1e12, still: sc.scribeRooms.has('xray') };
+    });
+    check(donald.out && donald.unlocked && donald.allShift && !donald.still, `opening X-ray unlocks Donald and he helps for the rest of the shift (${JSON.stringify(donald)})`);
     await scribeWorks(sp2, 'donald');
     check(scribeErrors2.length === 0, `no errors with Omar and Donald${scribeErrors2.length ? ': ' + scribeErrors2.join(' | ') : ''}`);
     await sc2.close();
@@ -2110,6 +2103,12 @@ try {
     const staff = await fp.evaluate(() => JSON.parse(localStorage.getItem('moshi.progress.v1')));
     check(staff.staff?.omar === 1 && staff.bank === 100 && !staff.staff?.alan,
       `the Locker's STAFF shelf sells Omar's first upgrade for $500, and locked helpers can't be upgraded (${JSON.stringify({ staff: staff.staff, bank: staff.bank })})`);
+    // Omar stays all shift once he's out of his exam room, so his shelf skips Overtime: next up is Employee of the Month
+    const omarNext = await fp.evaluate(() => {
+      const shelf = window.game.scene.getScene('Locker').body.list;
+      return shelf.filter((c) => typeof c.text === 'string' && c.text.startsWith('Next:')).map((c) => c.text);
+    });
+    check(omarNext[0]?.includes('Employee of the Month'), `Omar skips Overtime on the STAFF shelf (${JSON.stringify(omarNext)})`);
     await tapIn('Locker', 'BACK');
     await fp.waitForFunction(() => window.game.scene.isActive('Title'), null, { timeout: 10000 }).catch(() => {});
     await fp.touchscreen.tap(426, 120);

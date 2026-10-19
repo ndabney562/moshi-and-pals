@@ -185,10 +185,19 @@ export function staffLevel(id: ScribeId): number {
   return state.staff[id] ?? 0;
 }
 
+/**
+ * The staff upgrades a helper can get, as indexes into STAFF.levels, in order. Overtime (a `duration` level) is left
+ * out for helpers who stay the whole shift once they're let out of their room (Omar, Alan, Donald).
+ */
+export function staffTiers(id: ScribeId): number[] {
+  const allShift = !!SCRIBES.find((s) => s.id === id)?.waitsIn;
+  return STAFF.levels.map((_, i) => i).filter((i) => !(allShift && STAFF.levels[i].duration));
+}
+
 /** A helper's upgrades multiplied together: × damage (or check-in Copays), × time between attacks, × time on the floor. */
 export function staffBoost(id: ScribeId): { power: number; speed: number; duration: number } {
   const b = { power: 1, speed: 1, duration: 1 };
-  for (const l of STAFF.levels.slice(0, staffLevel(id))) {
+  for (const l of staffTiers(id).slice(0, staffLevel(id)).map((i) => STAFF.levels[i])) {
     b.power *= l.power ?? 1;
     b.speed *= l.speed ?? 1;
     b.duration *= l.duration ?? 1;
@@ -199,7 +208,8 @@ export function staffBoost(id: ScribeId): { power: number; speed: number; durati
 /** Buys a helper's next staff upgrade with banked Copays. Returns false if they're locked, maxed or it's too expensive. */
 export function buyStaffLevel(id: ScribeId): boolean {
   const level = staffLevel(id);
-  const next = STAFF.levels[level];
+  const tier = staffTiers(id)[level];
+  const next = tier === undefined ? undefined : STAFF.levels[tier];
   if (!next || !scribeUnlocked(id) || state.bank < next.cost) return false;
   state = { ...state, bank: state.bank - next.cost, staff: { ...state.staff, [id]: level + 1 } };
   save();

@@ -5,7 +5,7 @@
 import { BALANCE } from '../config/balance';
 import type { ScribeId } from './scribes';
 
-export type PowerupId = 'priorAuth' | 'freeRefills' | 'erWait' | 'triage' | 'statClean' | 'doubleCopay' | 'techDonald' | 'psrSelina' | 'psrElaine'
+export type PowerupId = 'priorAuth' | 'freeRefills' | 'erWait' | 'triage' | 'statClean' | 'doubleCopay' | 'psrSelina' | 'psrElaine'
   | 'fluShot' | 'prescription';
 
 export interface PowerupDef {
@@ -31,8 +31,7 @@ export const POWERUPS: Record<PowerupId, PowerupDef> = {
   triage: { id: 'triage', name: 'TRIAGE', blurb: 'Every hit is a STAT! crit', color: 0xff8a80, ms: 10000 },
   statClean: { id: 'statClean', name: 'STAT CLEAN', blurb: 'Everything nearby: disinfected', color: 0xffffff, ms: 0 },
   doubleCopay: { id: 'doubleCopay', name: 'DOUBLE COPAY', blurb: 'Germs pay double', color: 0x7fffd4, ms: 15000 },
-  // Donald (data/scribes.ts) stays for BALANCE.scribes.ms. Omar and Alan have no pill: they wait in an exam room
-  techDonald: { id: 'techDonald', name: 'X-RAY TECH: DONALD', blurb: 'Need a film, doc?', color: 0xa5d6a7, ms: BALANCE.scribes.ms, scribe: 'donald' },
+  // Omar, Alan and Donald have no pill: they wait in a room until it's opened (data/scribes.ts)
   // The front desk PSRs (systems/FrontDesk.ts): everyone lines up at the desk while they're there
   psrSelina: { id: 'psrSelina', name: 'FRONT DESK: SELINA', blurb: 'Everyone, line up please!', color: 0xff8fab, ms: BALANCE.scribes.ms, scribe: 'selina' },
   psrElaine: { id: 'psrElaine', name: 'FRONT DESK: ELAINE', blurb: 'Copays are due at check-in.', color: 0xf48fb1, ms: BALANCE.scribes.ms, scribe: 'elaine' },

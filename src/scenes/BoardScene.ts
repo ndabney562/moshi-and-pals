@@ -121,7 +121,8 @@ export class BoardScene extends Phaser.Scene {
   }
 
   /**
-   * Omar and Alan: hire one and every shift they wait in a random first-floor exam room. Donald unlocks in X-ray.
+   * Omar and Alan: hire one and every shift they wait in a random first-floor exam room. Donald waits in X-ray (and
+   * unlocks the first time it's opened).
    * Selina and Elaine (the front desk) drop as pills once hired. Their upgrades are in the Equipment Locker's STAFF shelf.
    */
   private drawScribes(): void {
@@ -129,7 +130,7 @@ export class BoardScene extends Phaser.Scene {
     const p = progress();
     const left = width / 2 - 520;
     const right = width / 2 + 520;
-    this.txt(left, 140, `Omar and Alan wait in a first-floor exam room: open it and they help all shift. Front desk pills drop, ${BALANCE.scribes.ms / 1000} s a visit.`, 17, COLORS.uiAccent, 'italic');
+    this.txt(left, 140, `Omar and Alan wait in an exam room, Donald in X-ray: open it and they help all shift. Front desk pills drop, ${BALANCE.scribes.ms / 1000} s a visit.`, 17, COLORS.uiAccent, 'italic');
     const top = 176;
     const rowH = Math.min(120, (height - top - 84) / SCRIBES.length);
     const small = rowH < 110;
