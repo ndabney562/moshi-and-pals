@@ -25,6 +25,7 @@ export class BootScene extends Phaser.Scene {
     this.makeKen();
     this.makeOmar();
     this.makeAlan();
+    this.makeDonald();
     this.makeFloorTile();
     this.makeShadow();
     for (const def of Object.values(GERMS)) this.makeGerm(def);
@@ -287,6 +288,45 @@ export class BootScene extends Phaser.Scene {
     g.lineStyle(3, outline).strokeCircle(48, 46, 13);
     g.fillStyle(0xd6ad86).fillCircle(61, 46, 2.5);
     g.generateTexture('scribe-alan', 96, 96);
+    g.destroy();
+  }
+
+  /**
+   * DONALD, X-ray tech (from Noah's photo): dark brown hair swept back, a short stubble beard along the jaw,
+   * a black zip-up fleece over a black tee. Holds an X-ray film out front instead of a laptop. Plain fleece, no logo.
+   */
+  private makeDonald(): void {
+    const g = this.add.graphics();
+    const outline = 0x1b2b30;
+    const skin = 0xe2b896;
+    const fleece = 0x1d1f23;
+    // Arms forward to the film
+    g.fillStyle(fleece).lineStyle(3, outline).fillRoundedRect(44, 20, 22, 12, 6).strokeRoundedRect(44, 20, 22, 12, 6)
+      .fillRoundedRect(44, 60, 22, 12, 6).strokeRoundedRect(44, 60, 22, 12, 6);
+    // X-ray film: a dark sheet with a pale rib cage on it
+    g.fillStyle(0x22343c).lineStyle(2, outline).fillRoundedRect(64, 24, 16, 44, 2).strokeRoundedRect(64, 24, 16, 44, 2);
+    g.lineStyle(1.5, 0xc8ffe6, 0.85).lineBetween(72, 28, 72, 64);
+    for (const ry of [32, 39, 46, 53, 60]) g.lineBetween(67, ry, 77, ry);
+    g.fillStyle(skin).lineStyle(2, outline).fillCircle(66, 27, 5).strokeCircle(66, 27, 5).fillCircle(66, 65, 5).strokeCircle(66, 65, 5);
+    // Shoulders: black fleece, a zip down the front
+    g.fillStyle(fleece).lineStyle(3, outline).fillEllipse(42, 46, 42, 74).strokeEllipse(42, 46, 42, 74);
+    g.fillStyle(0x121316).fillEllipse(34, 46, 16, 54);
+    g.lineStyle(2, 0x3a3d44).beginPath().arc(48, 46, 18, Phaser.Math.DegToRad(-70), Phaser.Math.DegToRad(70), false).strokePath();
+    g.lineStyle(1.5, 0x6b6f78).lineBetween(61, 40, 61, 52);
+    // Head: dark brown hair swept back from the forehead, stubble beard along the jaw
+    g.fillStyle(skin).lineStyle(3, outline).fillCircle(48, 46, 14).strokeCircle(48, 46, 14);
+    g.fillStyle(0x3b2a1f).beginPath().slice(48, 46, 14, Phaser.Math.DegToRad(55), Phaser.Math.DegToRad(305), false).fillPath();
+    g.fillEllipse(45, 46, 22, 26);
+    // Combed-back strands and a little volume up front
+    g.lineStyle(1.5, 0x5a4232).lineBetween(55, 40, 37, 38).lineBetween(56, 46, 36, 46).lineBetween(55, 52, 37, 54)
+      .lineBetween(54, 36, 41, 33).lineBetween(54, 56, 41, 59);
+    g.fillStyle(0x4a3527).fillEllipse(55, 46, 6, 16);
+    // Stubble beard around the front of the jaw
+    g.lineStyle(4, 0x4e3a2e, 0.6).beginPath().arc(48, 46, 12, Phaser.Math.DegToRad(-55), Phaser.Math.DegToRad(55), false).strokePath();
+    g.lineStyle(3, outline).strokeCircle(48, 46, 14);
+    // Nose out front
+    g.fillStyle(0xcf9e7c).fillCircle(61, 46, 2.5);
+    g.generateTexture('scribe-donald', 96, 96);
     g.destroy();
   }
 

@@ -17,7 +17,7 @@ Systems will announce gameplay events on `core/events.ts` (event bus); dialogue,
 
 ## Pals and scribes (M16, M18)
 - `data/characters.ts` lists the playable Pals (passive + signature id); GameScene runs the signature (`sinusPurge`, `codeBlue`, `cleanField`, `grievance`). Ken's passive multiplies damage to Diamond inside `damageGerm`, so every source counts.
-- `systems/Scribes` runs Omar and Alan (no physics bodies; steer toward a spot behind Eugene, FlowField steps when a wall is in the way, straight over furniture to a patient in the same room, teleport when far or stuck). They hurt germs through `damageGerm` and patients through `PatientDirector.sprayed`, the same paths as Eugene. Unlocks are `scribe:<id>` in progress `owned`; `Powerups` filters its drop pool with them.
+- `systems/Scribes` runs Omar, Alan and Donald the X-ray tech (no physics bodies; steer toward a spot behind Eugene, FlowField steps when a wall is in the way, straight over furniture to a patient in the same room, teleport when far or stuck). They hurt germs through `damageGerm` and patients through `PatientDirector.sprayed`, the same paths as Eugene. Unlocks are `scribe:<id>` in progress `owned`; `Powerups` filters its drop pool with them. Donald has no `cost`: `ScribeDef.unlockRoom` makes `GameScene.helperRoom` unlock him (`progress.unlockScribe`) and summon him on the first visit to that room each shift.
 
 ## Combat (M2)
 - `systems/Sprayer` runs any spray-type equipment from `data/equipment.ts` (supply, fire rate, spread, refill) and fires pooled `entities/Droplet`s.
