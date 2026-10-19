@@ -1,8 +1,12 @@
 # Changelog
 
-## v0.28.4: The gel burns
+## v0.28.5: The gel burns
 - **Gel Launcher gel now burns.** Germs standing in it take 12 damage a second (18 with Family Size), and keep burning for 1.5 s after they crawl out. Bosses aren't slowed by gel, but they do burn. Burning germs flicker orange.
 - Overlapping gel doesn't stack the burn; the hottest puddle counts. Tool effectiveness and damage bonuses (Pals, perks) apply; STAT! crits don't.
+
+## v0.28.4: Every tool looks different
+- **You can see what you're holding.** Each tool now has its own look in your hand: the white squirt bottle, a blue Lysol can, an orange Super Soaker with a tank, a glowing purple UV Wand, a brown peroxide bottle with a foam pump, a canister of wipes with one pulled out, a teal Gel Launcher, a paddle in each hand for the Defib, and a chrome ray gun for the Ionizer 9000.
+- SWAP changes the tool in your hand too, and the spray comes out of the new tool's nozzle.
 
 ## v0.28.3: Cheaper supply crates
 - **Supply crates now cost $200** (was $250).
