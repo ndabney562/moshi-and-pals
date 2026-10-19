@@ -192,6 +192,9 @@ try {
   });
   check(spill.spilled && spill.refilling, 'tapping REFILL too early spills (the pour takes longer)');
   await page.waitForFunction(() => !window.game.scene.getScene('Game').sprayer.refilling, null, { timeout: 15000 }).catch(() => {});
+  // Music: the sequencer runs during the shift and (when the browser lets audio run) plays notes
+  const music = await page.evaluate(() => window.game.scene.getScene('Game').musicState());
+  check(music.playing && music.song === 'clinic' && (music.context !== 'running' || music.notes > 0), `the clinic theme plays during the shift (${JSON.stringify(music)})`);
   // Pause: the button freezes the game and opens the menu; AUTO-AIM lives there now
   const pauseAt = await buttonAt('pauseButton');
   await page.touchscreen.tap(pauseAt.x, pauseAt.y);
@@ -230,6 +233,14 @@ try {
   await page.touchscreen.tap(soundAt.x, soundAt.y);
   await page.waitForTimeout(200);
   check(muted === false, 'SOUND toggle mutes and saves');
+  // MUSIC toggles and saves separately from SOUND (turn it back on afterwards)
+  const musicAt = await buttonAt('musicToggle');
+  await page.touchscreen.tap(musicAt.x, musicAt.y);
+  await page.waitForTimeout(200);
+  const musicOff = await page.evaluate(() => JSON.parse(localStorage.getItem('moshi.settings.v1') ?? '{}'));
+  await page.touchscreen.tap(musicAt.x, musicAt.y);
+  await page.waitForTimeout(200);
+  check(musicOff.music === false && musicOff.sound === true, `MUSIC toggle turns the music off and saves, leaving SOUND alone (${JSON.stringify({ music: musicOff.music, sound: musicOff.sound })})`);
   // RESUME
   const resumeAt = await buttonAt('resumeItem');
   await page.touchscreen.tap(resumeAt.x, resumeAt.y);
@@ -961,6 +972,12 @@ try {
     return { said: scene.boss.bubble.text, bar: window.game.scene.getScene('Hud').bossBar?.visible };
   });
   check(intro.said.length > 0, `Diamond talks ("${intro.said}")`);
+  // The music switches to the boss theme on the next bar (only when the browser lets audio run)
+  const bossMusic = await page.waitForFunction(() => {
+    const m = window.game.scene.getScene('Game').musicState();
+    return m.context !== 'running' || m.song === 'boss';
+  }, null, { timeout: 20000 }).then(() => page.evaluate(() => window.game.scene.getScene('Game').musicState()), () => null);
+  check(!!bossMusic, `the boss theme plays while Diamond is about (${JSON.stringify(bossMusic)})`);
   await page.waitForFunction(() => window.game.scene.getScene('Game').boss.mode === 'meeting', null, { timeout: 15000 });
   const meetingStart = await page.evaluate(() => window.game.scene.getScene('Game').player.y);
   // Headless frame rates are low, so wait for progress instead of a fixed time

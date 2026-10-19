@@ -36,6 +36,11 @@ export function initSfx(scene: Phaser.Scene): void {
   for (let i = 0; i < data.length; i++) data[i] = Math.random() * 2 - 1;
 }
 
+/** The shared audio context once initSfx has run (core/music plays on it too). */
+export function audioContext(): AudioContext | null {
+  return ctx;
+}
+
 export function setSfxMuted(muted: boolean): void {
   if (master) master.gain.value = muted ? 0 : VOLUME;
 }
