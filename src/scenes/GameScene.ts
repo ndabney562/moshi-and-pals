@@ -15,7 +15,7 @@ import { nextShift, type ShiftSetup } from '../core/shift';
 import { CONSTRUCTION_LINES, CONSTRUCTION_SIGN, modifierById, type ModifierId } from '../data/modifiers';
 import { difficultyById } from '../data/difficulties';
 import { unlockAchievement } from '../core/achievements';
-import { activeSpecialty, creditsFor, progress, recordShift, scribeUnlocked } from '../core/progress';
+import { activeSpecialty, creditsFor, grant, progress, recordShift, scribeUnlocked } from '../core/progress';
 import type { SpecialtyMods } from '../data/residency';
 import { newRunStats, type RunStats } from '../core/runStats';
 import { initSfx, sfx } from '../core/sfx';
@@ -25,7 +25,8 @@ import { CRATE_POOL, EQUIPMENT, STARTING_EQUIPMENT, type EquipmentDef } from '..
 import { DENIED_ITEMS } from '../data/requisition';
 import { GERMS } from '../data/germs';
 import { WAVES } from '../data/waves';
-import { CLINIC } from '../data/clinic';
+import { CLINIC, RECORDS_ROOM } from '../data/clinic';
+import { KEY } from '../data/miracleCure';
 import type { FloorArea, Obstacle, ObstacleKind, RoomArea, RoomLayout, Stairway } from '../data/rooms';
 import { SNACKS, type SnackDef } from '../data/vending';
 import { characterById, type CharacterDef } from '../data/characters';
@@ -44,6 +45,8 @@ import { Fx } from '../systems/Fx';
 import { DiamondBrain, type BossHost } from '../systems/DiamondBrain';
 import type { BossBrain } from '../systems/BossBrain';
 import { PatientZeroBrain } from '../systems/PatientZeroBrain';
+import { FaxMachineBrain } from '../systems/FaxMachineBrain';
+import { MiracleCure } from '../systems/MiracleCure';
 import { PatientDirector } from '../systems/PatientDirector';
 import { Scribes } from '../systems/Scribes';
 import { scribeById } from '../data/scribes';
@@ -176,6 +179,8 @@ export class GameScene extends Phaser.Scene {
   /** CONSTRUCTION: the room closed this round (its doors block only the doctor) and what was drawn for it. */
   private closed?: { roomId: string; objects: Phaser.GameObjects.GameObject[] };
   private constructionWalls!: Phaser.Physics.Arcade.StaticGroup;
+  /** The Miracle Cure: the secret quest's progress this shift (systems/MiracleCure.ts). */
+  private cure!: MiracleCure;
 
   constructor() {
     super('Game');
@@ -244,7 +249,9 @@ export class GameScene extends Phaser.Scene {
     this.fx = new Fx(this);
     this.flow = new FlowField(room.width, room.height, this.blockingObstacles());
     this.character = characterById(DEBUG.doctor ?? settings.character);
-    this.player = new Player(this, room.playerSpawn.x, room.playerSpawn.y, this.character.id);
+    // The Miracle Cure's reward: Eugene wears his scrub cap from then on
+    const capped = this.character.id === 'eugene' && progress().owned.includes('scrubCap');
+    this.player = new Player(this, room.playerSpawn.x, room.playerSpawn.y, capped ? 'eugene-cap' : this.character.id);
     const passive = this.character.passive;
     if (passive.maxHp) this.player.maxHp = this.player.hp = this.player.maxHp + passive.maxHp;
     if (passive.moveSpeed) this.player.setSpeedMod('character', passive.moveSpeed);
@@ -293,6 +300,7 @@ export class GameScene extends Phaser.Scene {
       fireGlob: (g, angle) => this.fireGlob(g, angle),
     };
     this.loadout = [this.makeTool(STARTING_EQUIPMENT)];
+    this.cure = new MiracleCure(this.cureHost(), DEBUG.secret);
     this.stations = this.buildStations();
     this.runStats = newRunStats(this.time.now);
     this.bossesDefeated = 0;
@@ -404,11 +412,13 @@ export class GameScene extends Phaser.Scene {
       if (p.round >= 10 && this.shift.difficulty === 'trauma') this.achieve('traumaTen');
       if (p.round >= 8 && this.hasMod('powerOutage')) this.achieve('darkShift');
       if (this.hasMod('construction')) this.closeForConstruction(p.round);
+      this.cure.onRoundStarted();
     };
     const onEscaped = () => this.achieve('ama');
     const onSnack = (p: { id: string }) => this.buySnack(p.id);
     const onWalkAway = () => { this.vendingOffer = undefined; };
     const onRoundDone = (p: RoundPayload) => {
+      this.cure.onRoundCompleted(this.waves.isBossRound);
       this.reopenConstruction();
       this.onRoundCompleted(p.round);
     };
@@ -432,6 +442,7 @@ export class GameScene extends Phaser.Scene {
       for (const [name, fn] of sounds) events.off(name, fn);
       this.boss?.destroy();
       this.boss = undefined;
+      this.cure.destroy();
       stopMusic(0.3);
     });
 
@@ -576,7 +587,10 @@ export class GameScene extends Phaser.Scene {
     const b = WAVES.breather;
     const alive = this.germs.countActive(true);
     this.waves.pacing = this.player.hp / this.player.maxHp < b.lowHp && alive >= WAVES.maxAlive(Math.max(1, this.waves.round)) * b.crowd ? b.spawnSlow : 1;
+    // The Records Room is fought between rounds: the break waits while the doctor is in there
+    if (this.cure.inRecords) this.waves.holdBreak(delta);
     this.waves.update(time, alive, (id, scaling) => this.spawnGerm(id, scaling), (id) => this.aliveOf(id));
+    this.cure.update(time);
     this.updateMusic(alive);
     // Globs that fly their full range splat where they stop; puddles slow Eugene
     for (const gl of this.globs.getChildren() as Glob[]) if (gl.active && time >= gl.expiresAt) this.globLands(gl);
@@ -867,6 +881,7 @@ export class GameScene extends Phaser.Scene {
       if (germ.def.brain === 'diamond') this.achieve('meetingAdjourned');
       if (germ.def.brain === 'diamond' && this.character.id === 'ken') this.achieve('exitInterview');
       if (germ.def.brain === 'patientZero') this.achieve('discharged');
+      if (germ.def.brain === 'faxMachine') this.cure.onFaxDefeated();
       if ((this.runStats.kills.sneezer ?? 0) >= 10) this.achieve('gesundheit');
       const el = BALANCE.elites;
       const eliteMult = germ.elite ? el.copaysMult : 1;
@@ -1234,7 +1249,7 @@ export class GameScene extends Phaser.Scene {
         o, use: () => this.openVending(),
         info: () => {
           const left = BALANCE.vending.maxPerRun - this.snacks.length;
-          return left <= 0 ? { verb: 'SOLD OUT', cost: 0, note: "That's enough snacks for one shift", blocked: true }
+          return left <= 0 && !this.cure.keyForSale ? { verb: 'SOLD OUT', cost: 0, note: "That's enough snacks for one shift", blocked: true }
             : { verb: 'SNACKS', cost: 0, note: `${left} snack${left === 1 ? '' : 's'} left this shift` };
         },
       });
@@ -1247,6 +1262,8 @@ export class GameScene extends Phaser.Scene {
           : { verb: 'REST', cost: eco.restCost, note: `Lie down: +${eco.restHeal} health` },
       });
     }
+    // The Miracle Cure's stations (each hidden until the step before it is done)
+    list.push(...this.cure.stations());
     // Everything but doors belongs to the room it stands in
     for (const st of list) {
       if (st.gone) continue;
@@ -1500,13 +1517,15 @@ export class GameScene extends Phaser.Scene {
     }
     this.fx.number(x, y - 60, zapped ? `IMAGING COMPLETE ×${zapped}` : 'IMAGING COMPLETE', '#b2ff59', 26);
     this.achieve('radiology');
+    this.cure.onXray();
   }
 
   /** VENDING MACHINE: three snacks you haven't had this shift; the game waits while you choose. */
   private openVending(): void {
-    if (this.snacks.length >= BALANCE.vending.maxPerRun) return;
+    const soldOut = this.snacks.length >= BALANCE.vending.maxPerRun;
+    if (soldOut && !this.cure.keyForSale) return;
     const left = SNACKS.filter((s) => !this.snacks.includes(s.id));
-    this.vendingOffer = runRng.loot.sample(left, BALANCE.vending.choices).map((s) => s.id);
+    this.vendingOffer = soldOut ? [] : runRng.loot.sample(left, BALANCE.vending.choices).map((s) => s.id);
     this.showVending('');
   }
 
@@ -1516,14 +1535,28 @@ export class GameScene extends Phaser.Scene {
     const left = BALANCE.vending.maxPerRun - this.snacks.length;
     events.emit(GameEvents.VendingOpened, {
       note: note || `Exact change only. ${left} snack${left === 1 ? '' : 's'} left this shift.`,
-      options: offer.map((id) => {
-        const s = SNACKS.find((x) => x.id === id)!;
-        return { id, name: `${s.name}  $${s.price}`, blurb: s.blurb, color: s.color };
-      }),
+      options: [
+        ...offer.map((id) => {
+          const s = SNACKS.find((x) => x.id === id)!;
+          return { id, name: `${s.name}  $${s.price}`, blurb: s.blurb, color: s.color };
+        }),
+        // The Miracle Cure: slot B4, once the X-ray has shown what's in it
+        ...(this.cure.keyForSale ? [this.cure.keyOption()] : []),
+      ],
     });
   }
 
   private buySnack(id: string): void {
+    if (id === KEY.id && this.vendingOffer) {
+      // B4 doesn't count as a snack
+      if (this.cure.buyKey()) {
+        this.vendingOffer = undefined;
+        events.emit(GameEvents.VendingDone);
+      } else {
+        this.showVending(`INSUFFICIENT FUNDS. You have $${this.copays}.`);
+      }
+      return;
+    }
     const s = SNACKS.find((x) => x.id === id);
     if (!s || !this.vendingOffer?.includes(id)) return;
     if (this.copays < s.price) {
@@ -1885,6 +1918,56 @@ export class GameScene extends Phaser.Scene {
   }
 
   /** What a boss brain is allowed to touch. */
+  /** What the Miracle Cure needs from the scene. */
+  private cureHost(): ConstructorParameters<typeof MiracleCure>[0] {
+    return {
+      scene: this,
+      player: this.player,
+      obstacles: this.room.obstacles,
+      say: (x, y, text, color, size) => this.fx.number(x, y, text, color, size),
+      banner: (title, line) => events.emit(GameEvents.SecretFound, { title, line }),
+      pay: (cost) => {
+        if (!this.canAfford(cost)) return false;
+        this.addCopays(-cost);
+        return true;
+      },
+      roundActive: () => this.waves.roundActive,
+      bossRound: () => this.waves.isBossRound,
+      teleport: (x, y) => {
+        (this.player.body as Phaser.Physics.Arcade.Body).reset(x, y);
+        this.stairsReadyAt = this.time.now + 600;
+        this.fitCameraToFloor(true);
+        this.flow.update(x, y);
+        sfx.refill();
+      },
+      spawnFax: () => this.spawnFax(),
+      clearRecords: () => {
+        const f = this.floorOf(RECORDS_ROOM.arrive.x, RECORDS_ROOM.arrive.y);
+        for (const g of this.livingGerms()) if (this.floorOf(g.x, g.y) === f) g.kill();
+      },
+      giveIonizer: () => {
+        const { x, y } = this.player;
+        this.giveTool('ionizer9000', { kind: 'crate', x: x - 12, y: y - 12, w: 24, h: 24 }, this.time.now);
+      },
+      clockOut: () => this.endRun(true),
+      achieve: (id) => this.achieve(id),
+    };
+  }
+
+  /** THE LAST FAX MACHINE wakes up in the Records Room (as tough as this round's boss would be). */
+  private spawnFax(): void {
+    const def = GERMS.faxMachine;
+    const germ = this.germs.get() as Germ | null;
+    if (!germ || this.runOver) return;
+    const r = Math.max(1, this.waves.round);
+    const home = RECORDS_ROOM.faxHome;
+    germ.spawn(def, home.x, home.y, this.scaled({ hpMult: Math.min(WAVES.hpMult(r), WAVES.bossHpMultMax), speedMult: 1 }));
+    this.boss?.destroy();
+    this.boss = new FaxMachineBrain({ ...this.bossHost(), damagePlayer: (amount) => this.hurtPlayer(amount, 'faxMachine') }, germ, home);
+    sfx.bossArrives();
+    events.emit(GameEvents.BossSpawned, { name: def.name, hp: germ.hp, maxHp: germ.maxHp });
+  }
+
   private bossHost(): BossHost {
     return {
       scene: this,
@@ -2030,15 +2113,26 @@ export class GameScene extends Phaser.Scene {
     setMusicMix(boss ? 'boss' : 'clinic', level);
   }
 
-  /** Eugene is down: freeze the room, save the high score, show the game over screen. */
-  private endRun(): void {
+  /**
+   * Eugene is down (or, with `clockedOut`, the Miracle Cure's alternate ending: he clocks out): freeze the room,
+   * save the high score, show the game over screen.
+   */
+  private endRun(clockedOut = false): void {
     this.runOver = true;
     inputState.firing = false;
-    this.player.collapse();
-    this.boss?.onPlayerDown();
+    if (clockedOut) {
+      this.achieve('shiftComplete');
+      grant('scrubCap');
+      this.player.setVelocity(0, 0);
+      this.tweens.add({ targets: this.player, alpha: 0, duration: 900 });
+      sfx.spotless();
+    } else {
+      this.player.collapse();
+      this.boss?.onPlayerDown();
+      sfx.gameOver();
+    }
     for (const g of this.germs.getChildren() as Germ[]) if (g.active) g.freeze();
     for (const gl of this.globs.getChildren() as Glob[]) if (gl.active) gl.retire();
-    sfx.gameOver();
     stopMusic();
     events.emit(GameEvents.PlayerDied);
 
@@ -2058,11 +2152,11 @@ export class GameScene extends Phaser.Scene {
       score: this.score, round, kills: this.kills,
       bestScore: record.next.bestScore, bestRound: record.next.bestRound,
       newBestScore: record.newBestScore, newBestRound: record.newBestRound,
-      causeOfDeath: killer?.deathNote ?? 'Exhaustion. Nobody covered your shift.',
+      causeOfDeath: clockedOut ? 'None. Clocked out on time. Went home. Slept.' : killer?.deathNote ?? 'Exhaustion. Nobody covered your shift.',
       secondsSurvived: Math.round((this.time.now - st.startedAt) / 1000),
       bestStreak: st.bestStreak, newBestStreak: record.newBestStreak, recordStreak: record.next.bestStreak,
       copaysEarned: st.copaysEarned, roomsOpened: st.roomsOpened,
-      roomsTotal: new Set(this.room.rooms.filter((r) => !r.start).map((r) => r.id)).size,
+      roomsTotal: new Set(this.room.rooms.filter((r) => !r.start && !r.secret).map((r) => r.id)).size,
       upgrades: st.upgrades, crits: st.crits, perfectPours: st.perfectPours,
       favoriteVictim: favId ? { name: GERMS[favId]?.name ?? favId, count: favCount ?? 0 } : undefined,
       totalKills: record.save.totalKills, runs: record.save.runs,
@@ -2074,6 +2168,7 @@ export class GameScene extends Phaser.Scene {
       modifiers: sh.mods.map((id) => modifierById(id)?.name ?? id),
       daily: sh.daily,
       dailyBonus,
+      clockedOut,
     };
     this.time.delayedCall(1600, () => {
       this.scene.stop('Hud');
@@ -2164,7 +2259,7 @@ export class GameScene extends Phaser.Scene {
     }
     for (const r of [...this.room.rooms].sort((a, b) => b.w * b.h - a.w * a.h)) {
       if (r.tint !== undefined) this.floorArt(r.x + r.w / 2, r.y + r.h / 2, 0.5).fillStyle(r.tint, 0.16).fillRect(r.x, r.y, r.w, r.h);
-      if (this.unlocked.has(r.id)) continue;
+      if (this.unlocked.has(r.id) || r.secret) continue;
       const cheapest = Math.min(...this.room.obstacles.filter((o) => o.opens === r.id).map((o) => o.cost ?? 0));
       const veil = this.add.rectangle(r.x, r.y, r.w, r.h, 0x0d1b1e, 0.55).setOrigin(0).setDepth(9);
       const parts: Phaser.GameObjects.GameObject[] = [veil];
@@ -2256,6 +2351,27 @@ export class GameScene extends Phaser.Scene {
         g.fillStyle(0xffffff).fillEllipse(o.x + o.w / 2, o.y + 50, 54, 66); // toilet
         g.lineStyle(2, outline).strokeEllipse(o.x + o.w / 2, o.y + 50, 54, 66);
         g.fillStyle(0x90a4ae).fillRect(o.x + 16, o.y + o.h - 10, o.w - 32, 8); // stall door
+        if (o.label) this.trapLabel(o, o.label);
+        break;
+      case 'magTable':
+        // A low table and a fan of very old magazines
+        g.fillStyle(0x8d6e63).fillRoundedRect(o.x, o.y, o.w, o.h, 6);
+        g.lineStyle(3, outline).strokeRoundedRect(o.x, o.y, o.w, o.h, 6);
+        for (const [dx, c] of [[0.12, 0xef9a9a], [0.38, 0xfff59d], [0.62, 0x90caf9]] as [number, number][]) {
+          g.fillStyle(c).fillRect(o.x + o.w * dx, o.y + 8, o.w * 0.24, o.h - 16);
+          g.lineStyle(1.5, outline).strokeRect(o.x + o.w * dx, o.y + 8, o.w * 0.24, o.h - 16);
+        }
+        break;
+      case 'microwave':
+        g.fillStyle(0xeceff1).fillRoundedRect(o.x, o.y, o.w, o.h, 4);
+        g.lineStyle(3, outline).strokeRoundedRect(o.x, o.y, o.w, o.h, 4);
+        g.fillStyle(0x37474f).fillRect(o.x + 6, o.y + 6, o.w * 0.6, o.h - 12); // the window
+        g.fillStyle(0x90a4ae).fillRect(o.x + o.w * 0.75, o.y + 6, o.w * 0.18, o.h - 12); // buttons
+        break;
+      case 'recordsDoor':
+        g.fillStyle(0x6d4c41).fillRect(o.x, o.y, o.w, o.h);
+        g.lineStyle(3, 0xffd166).strokeRect(o.x + 3, o.y + 3, o.w - 6, o.h - 6);
+        this.trapLabel(o, o.label ?? '');
         break;
       case 'sink':
         g.fillStyle(0xeceff1).fillRect(o.x, o.y, o.w, o.h);

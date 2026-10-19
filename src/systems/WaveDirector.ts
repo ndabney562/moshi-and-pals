@@ -46,6 +46,11 @@ export class WaveDirector {
     return this.round > 0 && this.round % WAVES.bossEvery === 0;
   }
 
+  /** Pushes the next round back by `ms` while in a break (the Miracle Cure's Records Room is fought between rounds). */
+  holdBreak(ms: number): void {
+    if (this.phase === 'intermission') this.nextRoundAt += ms;
+  }
+
   /** Germs left to spawn plus those alive: what the player still has to clear. */
   remaining(alive: number): number {
     return this.queue.length + alive;

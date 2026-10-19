@@ -1633,6 +1633,121 @@ try {
     check(scribeErrors2.length === 0, `no errors with Omar${scribeErrors2.length ? ': ' + scribeErrors2.join(' | ') : ''}`);
     await sc2.close();
   }
+
+  // THE MIRACLE CURE: every step of the secret quest, driven through its stations, then the Records Room,
+  // the Last Fax Machine, the Ionizer 9000 and the alternate ending
+  {
+    const mc = await browser.newContext({ viewport: { width: 852, height: 393 }, deviceScaleFactor: 1, isMobile: true, hasTouch: true });
+    await mc.addInitScript(() => localStorage.setItem('moshi.settings.v1', JSON.stringify({ learned: { move: true, spray: true, pour: true, purge: true, buy: true } })));
+    const mp = await mc.newPage();
+    labelWaits(mp);
+    const cureErrors = [];
+    mp.on('pageerror', (e) => cureErrors.push(where(e)));
+    await mp.goto(url + '?god&copays=500', { timeout: 90000 });
+    await mp.waitForFunction(() => window.game?.scene.isActive('Title'));
+    await mp.touchscreen.tap(426, 120);
+    await mp.waitForFunction(() => window.game.scene.isActive('Hud'), null, { timeout: 15000 });
+    const clues = await mp.evaluate(() => {
+      const sc = window.game.scene.getScene('Game');
+      const cure = sc.cure;
+      const st = (fn) => sc.stations.find((s) => fn(s.o));
+      const w = sc.waves;
+      // A break: the magazine's ad
+      w.queue.length = 0;
+      w.phase = 'intermission';
+      w.nextRoundAt = Number.MAX_SAFE_INTEGER;
+      const phoneHiddenBefore = !!st((o) => o.label === 'RECEPTION').gone?.();
+      st((o) => o.kind === 'magTable').use(sc.time.now);
+      const read = cure.magazineRead;
+      // A live round (one frozen germ keeps it going): call from the front desk
+      w.phase = 'active';
+      sc.spawnGermAt('basic', sc.room.playerSpawn.x - 200, sc.room.playerSpawn.y + 400, true);
+      for (const g of sc.germs.getChildren()) if (g.active) { g.maxHp = g.hp = 1e6; g.freezeFor(sc.time.now, 1e9); }
+      const desk = st((o) => o.label === 'RECEPTION' && o.kind === 'desk');
+      sc.player.body.reset(desk.o.x + desk.o.w + 40, desk.o.y + desk.o.h / 2);
+      desk.use(sc.time.now);
+      return { phoneHiddenBefore, read, onHold: cure.onHold, holdLabel: desk.info().verb };
+    });
+    check(clues.phoneHiddenBefore && clues.read && clues.onHold && clues.holdLabel === 'ON HOLD',
+      `Miracle Cure: the magazine's ad, then the front-desk phone puts the doctor on hold (${JSON.stringify(clues)})`);
+    // Skip most of the hold music; the operator answers if the doctor stays by the desk
+    await mp.evaluate(() => {
+      const sc = window.game.scene.getScene('Game');
+      sc.cure.holdSince = sc.time.now - 19950;
+    });
+    const operator = await mp.waitForFunction(() => window.game.scene.getScene('Game').cure.codeA, null, { timeout: 20000 }).then(() => true, () => false);
+    const banner = await mp.evaluate(() => window.game.scene.getScene('Hud').banner.text);
+    check(operator && banner === 'CUSTOMER CARE', `staying on hold by the desk gets code half A (${banner})`);
+    const rest = await mp.evaluate(() => {
+      const sc = window.game.scene.getScene('Game');
+      const cure = sc.cure;
+      const st = (fn) => sc.stations.find((s) => fn(s.o));
+      const copays = sc.copays;
+      st((o) => o.kind === 'microwave').use(sc.time.now);
+      const fishPaid = copays - sc.copays;
+      st((o) => o.kind === 'fridge').use(sc.time.now);
+      const codeB = cure.codeB;
+      sc.xrayPulse();
+      const keySeen = cure.keySeen;
+      sc.openVending();
+      const hasKeyOffer = sc.vendingOffer !== undefined && cure.keyForSale;
+      sc.buySnack('mysteryKey');
+      // A boss round: three flushes of Stall 3
+      const w = sc.waves;
+      w.round = 5;
+      w.phase = 'active';
+      const stall = st((o) => o.kind === 'stall' && o.label === 'STALL 3');
+      for (let i = 0; i < 3; i++) stall.use(sc.time.now);
+      return { fishPaid, stench: cure.stench, codeB, keySeen, hasKeyOffer, hasKey: cure.hasKey, panel: cure.panelOpen, verb: stall.info().verb, code: cure.code };
+    });
+    check(rest.fishPaid === 5 && rest.stench && rest.codeB && rest.keySeen && rest.hasKeyOffer && rest.hasKey && rest.panel && rest.verb === 'RECORDS',
+      `fish + fridge note, X-ray, key from B4, then three flushes in a boss round open the RECORDS panel (${JSON.stringify(rest)})`);
+    // Between rounds: into the Records Room, and the Last Fax Machine wakes up
+    const inside = await mp.evaluate(() => {
+      const sc = window.game.scene.getScene('Game');
+      const w = sc.waves;
+      for (const g of sc.germs.getChildren()) if (g.active) g.kill();
+      w.phase = 'intermission';
+      w.nextRoundAt = sc.time.now + 3000;
+      sc.stations.find((s) => s.o.kind === 'stall' && s.o.label === 'STALL 3').use(sc.time.now);
+      return { inRecords: sc.cure.inRecords, floor: sc.floorOf(sc.player.x, sc.player.y)?.id, breakAt: w.nextRoundAt - sc.time.now };
+    });
+    const faxUp = await mp.waitForFunction(() => window.game.scene.getScene('Game').boss?.germ.def.id === 'faxMachine' && window.game.scene.getScene('Game').boss.germ.active, null, { timeout: 20000 }).then(() => true, () => false);
+    const pages = await mp.waitForFunction(() => window.game.scene.getScene('Game').germs.getChildren().some((g) => g.active && g.def.id === 'faxPage'), null, { timeout: 30000 }).then(() => true, () => false);
+    await mp.screenshot({ path: 'smoke-records.png' });
+    const held = await mp.evaluate(() => {
+      const sc = window.game.scene.getScene('Game');
+      return { phase: sc.waves.phase, round: sc.waves.round, left: sc.waves.nextRoundAt - sc.time.now };
+    });
+    check(inside.inRecords && inside.floor === 'records' && faxUp && pages && held.phase === 'intermission' && held.left > 1000,
+      `the Records Room: the Last Fax Machine faxes pages, and the break waits (${JSON.stringify({ inside, faxUp, pages, held })})`);
+    const won = await mp.evaluate(() => {
+      const sc = window.game.scene.getScene('Game');
+      const st = (fn) => sc.stations.find((s) => fn(s.o));
+      const door = st((o) => o.kind === 'recordsDoor');
+      const lockedWhileFax = door.info().blocked;
+      sc.damageGerm(sc.boss.germ, 1e7, 0, 0);
+      const tool = sc.sprayer.def.id;
+      door.use(sc.time.now);
+      const back = sc.floorOf(sc.player.x, sc.player.y)?.id;
+      const leftovers = sc.germs.getChildren().filter((g) => g.active && sc.floorOf(g.x, g.y)?.id === 'records').length;
+      sc.cure.onRoundCompleted(true);
+      const exit = st((o) => o.label?.startsWith('EXIT'));
+      const canClock = !exit.gone();
+      exit.use(sc.time.now);
+      return { lockedWhileFax, tool, back, leftovers, canClock, cureAch: sc.runStats.achievements };
+    });
+    const ended = await mp.waitForFunction(() => window.game.scene.isActive('GameOver'), null, { timeout: 20000 }).then(() => true, () => false);
+    await mp.waitForTimeout(800);
+    await mp.touchscreen.tap(426, 200); // skip the credits
+    const title = await mp.waitForFunction(() => window.game.scene.getScene('GameOver').children.list.some((c) => c.text === 'SHIFT COMPLETE'), null, { timeout: 15000 }).then(() => true, () => false);
+    const capped = await mp.evaluate(() => JSON.parse(localStorage.getItem('moshi.progress.v1') ?? '{}').owned ?? []);
+    check(won.lockedWhileFax && won.tool === 'ionizer9000' && won.back === 'up' && won.leftovers === 0 && won.canClock && ended && title,
+      `the Ionizer 9000, back to Stall 3, then CLOCK OUT: SHIFT COMPLETE (${JSON.stringify({ won, ended, title, capped })})`);
+    check(capped.includes('scrubCap'), `clocking out unlocks Eugene's scrub cap (${capped.join(', ')})`);
+    check(cureErrors.length === 0, `no errors in the Miracle Cure${cureErrors.length ? ': ' + cureErrors.join(' | ') : ''}`);
+    await mc.close();
+  }
 } catch (e) {
   check(false, String(e) + (errors.length ? " | errors: " + errors.join(" | ") : ""));
 } finally {

@@ -180,8 +180,9 @@ export class HudScene extends Phaser.Scene {
 
     this.banner = this.add.text(0, 0, '', { ...style, fontSize: '72px', fontStyle: '900' })
       .setOrigin(0.5).setShadow(0, 6, '#000', 10).setAlpha(0);
-    this.bannerSub = this.add.text(0, 0, '', { ...style, fontSize: '26px', fontStyle: 'italic', color: COLORS.uiAccent })
-      .setOrigin(0.5).setShadow(0, 3, '#000', 6).setAlpha(0);
+    // Long lines (the Miracle Cure's clues) wrap downwards
+    this.bannerSub = this.add.text(0, 0, '', { ...style, fontSize: '26px', fontStyle: 'italic', color: COLORS.uiAccent, align: 'center' })
+      .setOrigin(0.5, 0).setShadow(0, 3, '#000', 6).setAlpha(0);
 
     // Pause: top-right corner, away from both thumbs. Settings live in the pause menu.
     this.pauseButton = new HudButton(this, CONTROLS.buttons.pauseRadius, 'II', 0xe8fff9, () => this.pause());
@@ -305,6 +306,8 @@ export class HudScene extends Phaser.Scene {
     const onDenied = (p: { title: string; line: string }) => {
       this.showBanner(p.title, p.line, 2600, '#ff6b6b');
     };
+    // The Miracle Cure: clues stay up long enough to read
+    const onSecret = (p: { title: string; line: string }) => this.showBanner(p.title, p.line, 5200, '#ffd166');
     const onTool = (p: { name: string }) => this.showBanner(p.name.toUpperCase(), 'New tool! Tap SWAP to switch back to the bottle.', 2000);
     const onRoomUnlocked = (p: RoomPayload) => this.showBanner(`${p.name.toUpperCase()} OPEN`, 'More room to run. More places for germs, too.', 1800);
     const onBossDown = () => this.time.delayedCall(600, () => this.bossBar.setVisible(false));
@@ -340,6 +343,7 @@ export class HudScene extends Phaser.Scene {
       [GameEvents.ToolUnlocked, onTool],
       [GameEvents.RequisitionOpened, onRequisition],
       [GameEvents.ClaimDenied, onDenied],
+      [GameEvents.SecretFound, onSecret],
       [GameEvents.VendingOpened, onVending],
       [GameEvents.VendingDone, onVendingDone],
       [GameEvents.AchievementUnlocked, onAchievement],
@@ -616,7 +620,7 @@ export class HudScene extends Phaser.Scene {
     this.streakText.setPosition(width / 2, this.safe.top + m + 94);
     this.bossBar.setPosition(width / 2 - this.bossBar.barWidth / 2, this.safe.top + m + 132);
     this.banner.setPosition(width / 2, height * 0.38);
-    this.bannerSub.setPosition(width / 2, height * 0.38 + 60);
+    this.bannerSub.setPosition(width / 2, height * 0.38 + 45).setWordWrapWidth(Math.min(1100, width * 0.8));
     this.health.setPosition(this.safe.left + m, this.safe.top + m);
     const pr = CONTROLS.buttons.pauseRadius;
     this.pauseButton.setPosition(width - this.safe.right - m - pr, this.safe.top + m + pr);

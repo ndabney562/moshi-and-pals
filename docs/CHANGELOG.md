@@ -1,5 +1,11 @@
 # Changelog
 
+## v0.23.0: The Miracle Cure (a secret)
+- **There's a secret in the clinic.** No spoilers here. A hint: the 2009 magazines on the waiting-room table are worth a read between rounds. The full walkthrough is in the roadmap, for anyone who gives up.
+- Finishing it unlocks a new boss, a new tool, a new ending and something for Eugene to wear.
+- The stalls are numbered now, and every toilet in the clinic flushes. Nobody asked for this.
+- Two new achievements with deliberately vague hints.
+
 ## v0.22.0: Music
 - **The clinic has a soundtrack**, and it follows the fight:
   - Between rounds you get the waiting room's on-hold music, *Please Continue to Hold*: a lazy bossa nova with a vibraphone tune.
