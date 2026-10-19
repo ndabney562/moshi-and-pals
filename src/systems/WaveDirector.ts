@@ -1,5 +1,5 @@
-import Phaser from 'phaser';
 import { events, GameEvents } from '../core/events';
+import { runRng } from '../core/rng';
 import { GERMS } from '../data/germs';
 import { SPECIAL_ROUNDS, WAVES, type SpecialRound } from '../data/waves';
 import type { GermScaling } from '../entities/Germ';
@@ -21,6 +21,10 @@ export class WaveDirector {
   pacing = 1;
   /** This round's special rules, if it's a special round. */
   special?: SpecialRound;
+  /** Spawn-interval multiplier for the whole shift (difficulty). */
+  intervalMult = 1;
+  /** Reweights a round's germ mix (modifiers like Flu Season). */
+  adjustMix?: (mix: Record<string, number>, round: number) => Record<string, number>;
 
   /** `firstRound` > 1 skips ahead (debug/stress testing). */
   constructor(startTime: number, firstRound = 1) {
@@ -66,7 +70,7 @@ export class WaveDirector {
       }
       if (!atLimit(this.queue[0]) && spawn(this.queue[0], this.scaling)) {
         this.queue.shift();
-        this.nextSpawnAt = time + WAVES.spawnIntervalMs(r) * this.pacing * (this.special?.spawnMult ?? 1) * Phaser.Math.FloatBetween(0.7, 1.3);
+        this.nextSpawnAt = time + WAVES.spawnIntervalMs(r) * this.pacing * this.intervalMult * (this.special?.spawnMult ?? 1) * runRng.wave.float(0.7, 1.3);
       }
     }
     if (this.queue.length === 0 && alive === 0) {
@@ -91,10 +95,11 @@ export class WaveDirector {
       count = Math.round(count * WAVES.bossEscortFraction);
     }
     // Weighted random mix of normal germs
-    const weights = Object.entries(sp?.mix ?? WAVES.composition(r)).filter(([id]) => GERMS[id]);
+    const base = sp?.mix ?? WAVES.composition(r);
+    const weights = Object.entries(this.adjustMix ? this.adjustMix({ ...base }, r) : base).filter(([id]) => GERMS[id]);
     const total = weights.reduce((sum, [, w]) => sum + w, 0);
     for (let i = 0; i < count; i++) {
-      let pick = Math.random() * total;
+      let pick = runRng.wave.next() * total;
       const entry = weights.find(([, w]) => (pick -= w) <= 0) ?? weights[0];
       this.queue.push(entry[0]);
     }

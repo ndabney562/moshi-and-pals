@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 import { BALANCE } from '../config/balance';
+import { runRng } from '../core/rng';
 import { events, GameEvents } from '../core/events';
 import { POWERUPS, type PowerupDef, type PowerupId } from '../data/powerups';
 
@@ -32,7 +33,7 @@ export class Powerups {
   /** Drops a pill (a random one unless `id` is given). */
   drop(x: number, y: number, time: number, id?: PowerupId): void {
     const ids = (Object.keys(POWERUPS) as PowerupId[]).filter((k) => this.canDrop(POWERUPS[k]));
-    const pick = id ?? Phaser.Utils.Array.GetRandom(ids);
+    const pick = id ?? runRng.loot.pick(ids);
     const p = this.pills[this.next];
     this.next = (this.next + 1) % MAX_PILLS;
     p.id = pick;

@@ -1070,8 +1070,8 @@ try {
   await page.waitForFunction(() => window.game.scene.isActive('GameOver'), null, { timeout: 60000 });
   await page.waitForTimeout(1200);
   await page.screenshot({ path: 'smoke-gameover.png' });
-  const saved2 = await page.evaluate(() => JSON.parse(localStorage.getItem('moshi.save.v2') ?? '{}'));
-  check(saved2.bestScore > 0, `high score saved (${JSON.stringify(saved2)})`);
+  const saved2 = await page.evaluate(() => JSON.parse(localStorage.getItem('moshi.save.v3') ?? '{}'));
+  check(saved2.records?.urgent?.bestScore > 0 && saved2.records?.walkIn?.bestScore === 0, `high score saved under Urgent (${JSON.stringify(saved2.records)})`);
   const achLine = await page.evaluate(() => window.game.scene.getScene('GameOver').children.list.find((c) => typeof c.text === 'string' && c.text.includes('NEW:'))?.text ?? '');
   check(achLine.includes('Hand Hygiene Compliant'), `the Discharge Summary names the achievements unlocked this shift ("${achLine}")`);
   const cme = await page.evaluate(() => ({
@@ -1197,6 +1197,134 @@ try {
   check(/p95/.test(dbgState.overlay) && /germs \d+/.test(dbgState.overlay), `debug overlay shows frame times and counts (${dbgState.overlay.split('\n')[0]})`);
   check(dbgErrors.length === 0, `no errors in debug mode${dbgErrors.length ? ': ' + dbgErrors.join(' | ') : ''}`);
   await dbg.close();
+
+  // TODAY'S SHIFT, MODIFIERS, DIFFICULTY (M17)
+  const fresh17 = async (query = '', init) => {
+    const c = await browser.newContext({ viewport: { width: 852, height: 393 }, deviceScaleFactor: 1, isMobile: true, hasTouch: true });
+    await c.addInitScript((extra) => localStorage.setItem('moshi.settings.v1', JSON.stringify({ learned: { move: true, spray: true, pour: true, purge: true, buy: true }, ...extra })), init ?? {});
+    const p = await c.newPage();
+    labelWaits(p);
+    const errs = [];
+    p.on('pageerror', (e) => errs.push(where(e)));
+    p.on('console', (m) => m.type() === 'error' && errs.push(m.text()));
+    await p.goto(url + query);
+    await p.waitForFunction(() => window.game?.scene.isActive('Title'));
+    return { c, p, errs };
+  };
+  /** Taps a Title-scene object (by property name) or a text containing `match`. */
+  const tapIn = async (p, scene, prop, match) => {
+    const at = await p.evaluate(([key, pr, m]) => {
+      const sc = window.game.scene.getScene(key);
+      const all = sc.children.list.flatMap((c) => (c.list ? [c, ...c.list] : [c]));
+      const t = pr ? sc[pr] : all.find((c) => typeof c.text === 'string' && c.text === m && c.visible);
+      if (!t) return null;
+      const b = t.getBounds();
+      const canvas = window.game.canvas.getBoundingClientRect();
+      const k = canvas.width / window.game.scale.width;
+      return { x: canvas.left + b.centerX * k, y: canvas.top + b.centerY * k };
+    }, [scene, prop, match]);
+    if (at) await p.touchscreen.tap(at.x, at.y);
+    return !!at;
+  };
+  {
+    const { c, p, errs } = await fresh17();
+    const days = await p.evaluate(() => {
+      const t = window.game.scene.getScene('Title');
+      return { a: t.dailyFor('2026-10-18'), b: t.dailyFor('2026-10-18'), other: t.dailyFor('2026-10-19') };
+    });
+    check(days.a.length === 2 && days.a[0] !== days.a[1] && JSON.stringify(days.a) === JSON.stringify(days.b),
+      `a fixed date gives the same 2 modifiers every time (${JSON.stringify(days)})`);
+    await tapIn(p, 'Title', 'dailyButton');
+    await p.waitForTimeout(300);
+    const panel = await p.evaluate(() => {
+      const t = window.game.scene.getScene('Title');
+      return { open: t.dailyPanel.visible, started: window.game.scene.isActive('Game'), lines: t.panelTexts.map((x) => x.text) };
+    });
+    check(panel.open && !panel.started && panel.lines.join(' ').includes('URGENT'), `TODAY'S SHIFT opens the pre-shift panel with today's modifiers (${panel.lines.slice(2, 5).join(' / ')})`);
+    await tapIn(p, 'Title', null, 'CLOCK IN');
+    await p.waitForFunction(() => window.game.scene.isActive('Hud'), null, { timeout: 30000 });
+    await p.waitForTimeout(3000);
+    const daily = await p.evaluate(() => {
+      const sc = window.game.scene.getScene('Game');
+      return { daily: sc.shift.daily, mods: sc.shift.mods, difficulty: sc.shift.difficulty, seed: sc.shift.seed, tag: window.game.scene.getScene('Hud').shiftText.text };
+    });
+    check(!!daily.daily && daily.mods.length === 2 && daily.difficulty === 'urgent' && daily.tag.includes("TODAY'S SHIFT"),
+      `Today's Shift starts with the date's seed and modifiers, on Urgent (${JSON.stringify(daily)})`);
+    // Finish it: the day's best, the first-of-the-day CME bonus, and the achievement
+    await p.evaluate(() => {
+      const sc = window.game.scene.getScene('Game');
+      sc.player.invulnerableUntil = 0;
+      sc.hurtPlayer(9999, 'basic');
+    });
+    await p.waitForFunction(() => window.game.scene.isActive('GameOver'), null, { timeout: 90000 });
+    await p.waitForTimeout(800);
+    const done = await p.evaluate(() => {
+      const texts = window.game.scene.getScene('GameOver').children.list.flatMap((c) => (c.list ? [c, ...c.list] : [c])).map((c) => c.text).filter((t) => typeof t === 'string');
+      return {
+        save: JSON.parse(localStorage.getItem('moshi.save.v3') ?? '{}').daily,
+        ach: JSON.parse(localStorage.getItem('moshi.achievements.v1') ?? '[]').includes('clockedIn'),
+        best: texts.find((t) => t.startsWith("TODAY'S BEST")) ?? '',
+        mods: texts.find((t) => t.includes("TODAY'S SHIFT")) ?? '',
+        cme: texts.find((t) => t.includes('CME CREDITS')) ?? '',
+      };
+    });
+    check(done.save?.finished === 1 && done.ach && done.best && done.mods && done.cme.includes('FIRST SHIFT TODAY'),
+      `finishing Today's Shift saves the day's best, names the modifiers, and pays the first-shift CME bonus (${JSON.stringify(done)})`);
+    check(errs.length === 0, `no errors in Today's Shift${errs.length ? ': ' + errs.join(' | ') : ''}`);
+    await c.close();
+  }
+  for (const mod of ['fluSeason', 'powerOutage', 'inspectionDay', 'shortStaffed', 'construction', 'fullMoon']) {
+    const { c, p, errs } = await fresh17(`?mods=${mod}&god&copays=500`);
+    await p.touchscreen.tap(426, 120);
+    await p.waitForFunction(() => window.game.scene.isActive('Hud'), null, { timeout: 30000 });
+    const st = await p.evaluate((m) => {
+      const sc = window.game.scene.getScene('Game');
+      sc.waves.nextRoundAt = 0;
+      const out = { on: sc.hasMod(m), detail: '' };
+      if (m === 'powerOutage') out.detail = String(!!sc.dark?.visible);
+      if (m === 'shortStaffed') out.detail = String(sc.restockCost);
+      if (m === 'inspectionDay' || m === 'fluSeason') out.detail = 'ok';
+      if (m === 'fullMoon') out.detail = String(sc.patients.host.backwards);
+      if (m === 'construction') {
+        sc.unlockRoom('halls');
+        sc.unlockRoom('exam1');
+        sc.closeForConstruction(2);
+        out.detail = sc.closed?.roomId ?? 'none';
+      }
+      return out;
+    }, mod);
+    await p.waitForTimeout(4000);
+    const later = await p.evaluate(() => {
+      const sc = window.game.scene.getScene('Game');
+      return { round: sc.waves.round, germs: sc.germs.countActive(true) };
+    });
+    const ok = { powerOutage: st.detail === 'true', shortStaffed: st.detail === '120', fullMoon: st.detail === 'true', construction: st.detail !== 'none' }[mod] ?? true;
+    check(st.on && ok && later.round >= 1, `?mods=${mod} runs (${st.detail}, round ${later.round}, ${later.germs} germs)`);
+    check(errs.length === 0, `no errors with ${mod}${errs.length ? ': ' + errs.join(' | ') : ''}`);
+    await c.close();
+  }
+  {
+    const { c, p, errs } = await fresh17();
+    await tapIn(p, 'Title', 'difficultyButton');
+    await p.waitForTimeout(200);
+    const picked = await p.evaluate(() => ({
+      saved: JSON.parse(localStorage.getItem('moshi.settings.v1') ?? '{}').difficulty,
+      label: window.game.scene.getScene('Title').difficultyButton.text,
+      game: window.game.scene.isActive('Game'),
+    }));
+    await p.touchscreen.tap(426, 120);
+    await p.waitForFunction(() => window.game.scene.isActive('Hud'), null, { timeout: 30000 });
+    const hard = await p.evaluate(() => {
+      const sc = window.game.scene.getScene('Game');
+      sc.spawnGermAt('basic', sc.player.x + 300, sc.player.y, true);
+      const g = sc.germs.getChildren().find((x) => x.active && x.def.id === 'basic');
+      return { difficulty: sc.shift.difficulty, germHp: sc.diff.germHp, hpRatio: g.maxHp / g.def.hp };
+    });
+    check(picked.saved === 'trauma' && picked.label.includes('TRAUMA') && !picked.game && hard.difficulty === 'trauma' && hard.germHp > 1 && Math.abs(hard.hpRatio - hard.germHp) < 0.01,
+      `the difficulty switch picks Trauma Center, saves it, and toughens germs (${JSON.stringify({ ...picked, ...hard })})`);
+    check(errs.length === 0, `no errors on Trauma Center${errs.length ? ': ' + errs.join(' | ') : ''}`);
+    await c.close();
+  }
 
   // Phone held upright: the game still plays in landscape, turned sideways, and touches land where they look
   const tall = await browser.newContext({ viewport: { width: 393, height: 852 }, deviceScaleFactor: 3, isMobile: true, hasTouch: true });

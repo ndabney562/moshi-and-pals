@@ -10,6 +10,10 @@ import { events, GameEvents, type RequisitionPayload, type RoomPayload, type Rou
 import { inputState } from '../core/inputState';
 import { settings } from '../core/settings';
 import { recordRun } from '../core/save';
+import { runRng, seedRun } from '../core/rng';
+import { nextShift, type ShiftSetup } from '../core/shift';
+import { CONSTRUCTION_LINES, CONSTRUCTION_SIGN, modifierById, type ModifierId } from '../data/modifiers';
+import { difficultyById } from '../data/difficulties';
 import { unlockAchievement } from '../core/achievements';
 import { activeSpecialty, creditsFor, progress, recordShift, scribeUnlocked } from '../core/progress';
 import type { SpecialtyMods } from '../data/residency';
@@ -161,6 +165,15 @@ export class GameScene extends Phaser.Scene {
   /** Auto-aim's current target; kept unless another visible germ is clearly closer (no flip-flopping). */
   private aimLock?: Germ;
   private readonly nozzle = new Phaser.Math.Vector2();
+  /** M17: this shift's kind (normal or Today's Shift), difficulty, modifiers and seed. */
+  shift: ShiftSetup = nextShift();
+  /** The difficulty's multipliers (BALANCE.difficulty). */
+  diff: (typeof BALANCE.difficulty)['urgent'] = BALANCE.difficulty.urgent;
+  /** POWER OUTAGE: the dark, with a hole of light that follows the doctor. */
+  private dark?: Phaser.GameObjects.Image;
+  /** CONSTRUCTION: the room closed this round (its doors block only the doctor) and what was drawn for it. */
+  private closed?: { roomId: string; objects: Phaser.GameObjects.GameObject[] };
+  private constructionWalls!: Phaser.Physics.Arcade.StaticGroup;
 
   constructor() {
     super('Game');
@@ -169,6 +182,11 @@ export class GameScene extends Phaser.Scene {
   create(): void {
     // time.now stops while paused, so cooldowns and timers don't run out in the background
     useGameTime(this);
+    // Today's Shift or a normal one: the seed drives this run's rolls (core/rng)
+    this.shift = nextShift();
+    seedRun(this.shift.seed);
+    this.diff = BALANCE.difficulty[this.shift.difficulty];
+    this.closed = undefined;
     // Reduced motion (pause menu): every screen shake goes through here and is skipped
     const mainCam = this.cameras.main as Phaser.Cameras.Scene2D.Camera & { calmed?: boolean };
     if (!mainCam.calmed) {
@@ -203,7 +221,9 @@ export class GameScene extends Phaser.Scene {
     inputState.firing = false;
     inputState.refillRequested = false;
     this.physics.world.setBounds(0, 0, room.width, room.height);
-    this.add.tileSprite(0, 0, room.width, room.height, 'floor').setOrigin(0);
+    const floor = this.add.tileSprite(0, 0, room.width, room.height, 'floor').setOrigin(0);
+    // FULL MOON: the floor is moonlit
+    if (this.hasMod('fullMoon')) floor.setTint(BALANCE.modifiers.fullMoon.floorTint);
 
     // Everything drawn from here to the end of the map is static scenery, sorted by floor afterwards
     this.floorGraphics = new Map();
@@ -277,6 +297,15 @@ export class GameScene extends Phaser.Scene {
     this.applyResidency();
     this.slot = 0;
     this.waves = new WaveDirector(this.time.now, DEBUG.startRound);
+    this.waves.intervalMult = this.diff.spawnInterval;
+    if (this.hasMod('fluSeason')) {
+      // FLU SEASON: Viral Sprinters twice as often, and from round 1
+      const flu = BALANCE.modifiers.fluSeason;
+      this.waves.adjustMix = (mix) => {
+        if (mix.basic !== undefined || mix.sprinter !== undefined) mix.sprinter = (mix.sprinter ?? flu.earlyWeight) * flu.sprinterMult;
+        return mix;
+      };
+    }
     this.patients = new PatientDirector({
       scene: this,
       player: this.player,
@@ -286,7 +315,11 @@ export class GameScene extends Phaser.Scene {
       spawnGermAt: (id, x, y) => this.spawnGermAt(id, x, y),
       onCleaned: (p) => this.onPatientCleaned(p),
       doctor: this.character.id,
+      backwards: this.hasMod('fullMoon'),
     });
+    this.constructionWalls = this.physics.add.staticGroup();
+    this.physics.add.collider(this.player, this.constructionWalls);
+    this.dark = this.hasMod('powerOutage') ? this.buildDarkness() : undefined;
     this.scribeCleans = 0;
     this.scribes = new Scribes({
       scene: this,
@@ -365,11 +398,17 @@ export class GameScene extends Phaser.Scene {
       if (p.special) sfx.specialRound();
       if (p.round >= 10) this.achieve('doubleShift');
       if (p.round >= 20) this.achieve('attending');
+      if (p.round >= 10 && this.shift.difficulty === 'trauma') this.achieve('traumaTen');
+      if (p.round >= 8 && this.hasMod('powerOutage')) this.achieve('darkShift');
+      if (this.hasMod('construction')) this.closeForConstruction(p.round);
     };
     const onEscaped = () => this.achieve('ama');
     const onSnack = (p: { id: string }) => this.buySnack(p.id);
     const onWalkAway = () => { this.vendingOffer = undefined; };
-    const onRoundDone = (p: RoundPayload) => this.onRoundCompleted(p.round);
+    const onRoundDone = (p: RoundPayload) => {
+      this.reopenConstruction();
+      this.onRoundCompleted(p.round);
+    };
     const onPicked = (p: { id: string }) => this.pickRequisition(p.id);
     const onAppealed = () => this.appealRequisition();
     events.on(GameEvents.RoundStarted, onRoundStart);
@@ -427,6 +466,7 @@ export class GameScene extends Phaser.Scene {
         ?? this.patients.nearestViolator(x, y, CONTROLS.autoAimRange, (p) => this.flow.lineClear(x, y, p.x, p.y));
     }
     this.player.drive(inputState, delta, aimTarget);
+    this.updateDarkness();
     // Camera follow eases per frame in Phaser; keep it the same at any frame rate
     const follow = damp(BALANCE.camera.followLerp, delta);
     this.cameras.main.setLerp(follow, follow);
@@ -517,7 +557,7 @@ export class GameScene extends Phaser.Scene {
         const sp = g.def.spawner;
         if (time >= g.nextSpawnAt && time >= g.frozenUntil && this.aliveOf(sp.id) < sp.max * Math.max(1, this.aliveOf(g.def.id))) {
           g.nextSpawnAt = time + sp.everyMs;
-          const a = Math.random() * Math.PI * 2;
+          const a = runRng.spawn.float(0, Math.PI * 2);
           this.spawnGermAt(sp.id, g.x + Math.cos(a) * (g.def.radius + 16), g.y + Math.sin(a) * (g.def.radius + 16), true);
           this.fx.germSplat(g.x, g.y, g.def.color);
         }
@@ -634,7 +674,8 @@ export class GameScene extends Phaser.Scene {
   /** SPOTLESS: a round finished without a scratch pays a bonus. */
   private onRoundCompleted(round: number): void {
     if (this.hurtThisRound || this.runOver) return;
-    const bonus = BALANCE.economy.spotlessPerRound * round * (this.waves.special?.spotlessMult ?? 1);
+    const inspection = this.hasMod('inspectionDay') ? BALANCE.modifiers.inspectionDay.spotlessMult : 1;
+    const bonus = BALANCE.economy.spotlessPerRound * round * (this.waves.special?.spotlessMult ?? 1) * inspection;
     this.addCopays(bonus);
     this.score += BALANCE.economy.spotlessScorePerRound * round;
     events.emit(GameEvents.ScoreChanged, { score: this.score });
@@ -753,7 +794,7 @@ export class GameScene extends Phaser.Scene {
     const mult = (def.effectiveness[germ.def.tag] ?? 1) * (this.mods.toolDamage ?? 1) * (vs && vs.tag === germ.def.tag ? vs.mult : 1);
     // STAT! critical hit
     const fb = BALANCE.feedback;
-    const crit = this.powerups.isActive('triage', this.time.now) || Math.random() < fb.critChance * this.perks.crit;
+    const crit = this.powerups.isActive('triage', this.time.now) || runRng.loot.chance(fb.critChance * this.perks.crit);
     if (crit) {
       germ.pendingCrit = true;
       this.runStats.crits++;
@@ -820,20 +861,20 @@ export class GameScene extends Phaser.Scene {
       const eliteMult = germ.elite ? el.copaysMult : 1;
       const doubled = this.powerups.isActive('doubleCopay', time) ? 2 : 1;
       const special = this.waves.special?.copayMult ?? 1;
-      this.addCopays(Math.round(germ.def.copays * this.streakMult * eliteMult * doubled * special));
+      this.addCopays(Math.round(germ.def.copays * this.streakMult * eliteMult * doubled * special * this.diff.copays));
       if (germ.elite) this.score += germ.def.points * (el.pointsMult - 1);
       // Power-ups: elites always drop one; any other germ now and then
-      if (germ.elite || (!germ.def.boss && Math.random() < BALANCE.powerups.dropChance)) this.powerups.drop(germ.x, germ.y, time);
+      if (germ.elite || (!germ.def.boss && runRng.loot.chance(BALANCE.powerups.dropChance))) this.powerups.drop(germ.x, germ.y, time);
       if (germ.def.splitInto) {
         const s = germ.def.splitInto;
         for (let i = 0; i < s.count; i++) {
-          const a = (i / s.count) * Math.PI * 2 + Math.random();
+          const a = (i / s.count) * Math.PI * 2 + runRng.spawn.next();
           this.spawnGermAt(s.id, germ.x + Math.cos(a) * germ.def.radius, germ.y + Math.sin(a) * germ.def.radius, true);
         }
       }
       if (germ.elite === 'splitting') {
         for (let i = 0; i < el.splitInto; i++) {
-          const a = Math.random() * Math.PI * 2;
+          const a = runRng.spawn.float(0, Math.PI * 2);
           this.spawnGermAt('basic', germ.x + Math.cos(a) * 30, germ.y + Math.sin(a) * 30, true);
         }
       }
@@ -1134,7 +1175,7 @@ export class GameScene extends Phaser.Scene {
   private buildStations(): Station[] {
     const eco = BALANCE.economy;
     const list: Station[] = [];
-    for (const o of this.carts) list.push({ o, info: () => ({ verb: 'RESTOCK', cost: eco.restockCost }), use: (t) => this.restock(t) });
+    for (const o of this.carts) list.push({ o, info: () => ({ verb: 'RESTOCK', cost: this.restockCost }), use: (t) => this.restock(t) });
     for (const door of this.lockedDoors) {
       list.push({
         o: door.o, info: () => ({ verb: 'OPEN', cost: door.o.cost ?? 0 }), use: () => this.buyDoor(door),
@@ -1211,7 +1252,7 @@ export class GameScene extends Phaser.Scene {
     let best = BALANCE.economy.interactRange;
     if (!this.player.dead) {
       for (const st of this.stations) {
-        if (st.gone?.() || (st.roomId && !this.unlocked.has(st.roomId))) continue;
+        if (st.gone?.() || (st.roomId && (!this.unlocked.has(st.roomId) || st.roomId === this.closed?.roomId))) continue;
         const d = rectDistance(st.o, x, y);
         if (d < best) { best = d; target = st; }
       }
@@ -1283,8 +1324,13 @@ export class GameScene extends Phaser.Scene {
     events.emit(GameEvents.PlayerHealthChanged, { hp: this.player.hp, maxHp: this.player.maxHp });
   }
 
+  /** A cart restock's price (Short-Staffed: overtime rates). */
+  private get restockCost(): number {
+    return BALANCE.economy.restockCost * (this.hasMod('shortStaffed') ? BALANCE.modifiers.shortStaffed.restockCostMult : 1);
+  }
+
   private restock(time: number): void {
-    const cost = BALANCE.economy.restockCost;
+    const cost = this.restockCost;
     if (this.sprayer.reserveFull) {
       this.fx.number(this.player.x, this.player.y - 60, 'JUG ALREADY FULL', '#e8fff9', 20);
       return;
@@ -1341,9 +1387,9 @@ export class GameScene extends Phaser.Scene {
     }
   }
 
-  /** Germ toughness for a spawn, with the Specialty's catch (Emergency Medicine: faster germs). */
+  /** Germ toughness for a spawn: the difficulty, and the Specialty's catch (Emergency Medicine: faster germs). */
   private scaled(s: GermScaling): GermScaling {
-    return this.mods.germSpeed ? { ...s, speedMult: s.speedMult * this.mods.germSpeed } : s;
+    return { hpMult: s.hpMult * this.diff.germHp, speedMult: s.speedMult * (this.mods.germSpeed ?? 1) };
   }
 
   /** A Compounding Station price, after Pharmacology. */
@@ -1449,7 +1495,7 @@ export class GameScene extends Phaser.Scene {
   private openVending(): void {
     if (this.snacks.length >= BALANCE.vending.maxPerRun) return;
     const left = SNACKS.filter((s) => !this.snacks.includes(s.id));
-    this.vendingOffer = Phaser.Utils.Array.Shuffle([...left]).slice(0, BALANCE.vending.choices).map((s) => s.id);
+    this.vendingOffer = runRng.loot.sample(left, BALANCE.vending.choices).map((s) => s.id);
     this.showVending('');
   }
 
@@ -1516,7 +1562,7 @@ export class GameScene extends Phaser.Scene {
     const eco = BALANCE.economy;
     if (!this.canAfford(eco.crateCost)) return;
     this.addCopays(-eco.crateCost);
-    if (Math.random() < this.claimDeniedChance) {
+    if (runRng.loot.chance(this.claimDeniedChance)) {
       this.denyClaim(o.x + o.w / 2, o.y + o.h / 2, eco.crateCost);
       return;
     }
@@ -1530,7 +1576,7 @@ export class GameScene extends Phaser.Scene {
     const held = this.loadout.map((t) => t.def.id);
     let pool = CRATE_POOL.filter((id) => !held.includes(id) && !turnedDown.includes(id));
     if (pool.length < 2) pool = CRATE_POOL.filter((id) => !held.includes(id));
-    return Phaser.Utils.Array.Shuffle([...pool]).slice(0, 2);
+    return runRng.loot.sample(pool, 2);
   }
 
   private get appealCost(): number {
@@ -1562,7 +1608,7 @@ export class GameScene extends Phaser.Scene {
     this.addCopays(-cost);
     r.appeals++;
     this.achieve('secondOpinion');
-    if (Math.random() < this.claimDeniedChance) {
+    if (runRng.loot.chance(this.claimDeniedChance)) {
       const refund = Math.round(cost * BALANCE.economy.deniedRefund);
       this.addCopays(refund);
       sfx.stamp();
@@ -1589,7 +1635,7 @@ export class GameScene extends Phaser.Scene {
     this.cameras.main.shake(120, 0.004);
     this.achieve('claimDenied');
     this.fx.number(x, y - 50, 'CLAIM DENIED', '#ff6b6b', 30);
-    events.emit(GameEvents.ClaimDenied, { title: 'CLAIM DENIED', line: `Enclosed: ${Phaser.Utils.Array.GetRandom(DENIED_ITEMS)}. $${refund} refunded.` });
+    events.emit(GameEvents.ClaimDenied, { title: 'CLAIM DENIED', line: `Enclosed: ${runRng.loot.pick(DENIED_ITEMS)}. $${refund} refunded.` });
   }
 
   /** Hands Eugene a crate tool (it replaces the one he had) and puts it in his hands. */
@@ -1666,7 +1712,7 @@ export class GameScene extends Phaser.Scene {
   /** Every way Eugene gets hurt goes through here: sound, shake, HUD, and death. */
   private hurtPlayer(amount: number, source: string): void {
     if (DEBUG.god) return;
-    if (this.runOver || !this.player.takeDamage(amount, this.time.now)) return;
+    if (this.runOver || !this.player.takeDamage(amount * this.diff.germDamage, this.time.now)) return;
     this.hurtThisRound = true;
     this.runStats.killer = source;
     sfx.hurt();
@@ -1686,13 +1732,14 @@ export class GameScene extends Phaser.Scene {
     const { minSpawnDistance, maxSpawnDistance } = BALANCE.spawning;
     // Waiting Room Rush: everyone comes in through the front
     const fromStart = !!this.waves.special?.fromStart;
-    const spots = this.room.rooms.filter((r) => this.unlocked.has(r.id) && (!fromStart || r.start)).flatMap((r) => r.germSpawns);
+    // (not in a room Construction has closed: germs fit under the door, but they don't start there)
+    const spots = this.room.rooms.filter((r) => this.unlocked.has(r.id) && r.id !== this.closed?.roomId && (!fromStart || r.start)).flatMap((r) => r.germSpawns);
     const dist = (p: { x: number; y: number }) => Phaser.Math.Distance.Between(p.x, p.y, this.player.x, this.player.y);
     const far = spots.filter((p) => dist(p) >= minSpawnDistance);
     const ideal = far.filter((p) => dist(p) <= maxSpawnDistance);
     // Mold grows where Eugene isn't: the farthest open spawn point
     const spot = def.spawner ? spots.reduce((a, b) => (dist(b) > dist(a) ? b : a))
-      : Phaser.Utils.Array.GetRandom(ideal.length ? ideal : far.length ? far : spots);
+      : runRng.spawn.pick(ideal.length ? ideal : far.length ? far : spots);
     if (def.spawnAs) {
       // COLONY: a flock of specks instead of one germ
       const s = def.spawnAs;
@@ -1702,12 +1749,14 @@ export class GameScene extends Phaser.Scene {
         const a = (i / s.count) * Math.PI * 2;
         speck.spawn(GERMS[s.id], spot.x + Math.cos(a) * 26, spot.y + Math.sin(a) * 26, this.scaled(scaling));
         this.applyOngoingPowerups(speck);
+        this.moonSize(speck);
       }
       return true;
     }
     germ.spawn(def, spot.x, spot.y, this.scaled(scaling));
     this.maybeElite(germ);
     this.applyOngoingPowerups(germ);
+    this.moonSize(germ);
     if (def.brain === 'diamond') {
       this.boss?.destroy();
       this.boss = new DiamondBrain(this.bossHost(), germ);
@@ -1750,6 +1799,14 @@ export class GameScene extends Phaser.Scene {
     if (!def || !germ) return;
     germ.spawn(def, x, y, this.scaled({ hpMult: WAVES.hpMult(r), speedMult: WAVES.speedMult(r) }));
     this.applyOngoingPowerups(germ);
+    this.moonSize(germ);
+  }
+
+  /** FULL MOON: germs come in odd sizes (looks only; bosses stay boss-sized). */
+  private moonSize(germ: Germ): void {
+    if (!this.hasMod('fullMoon') || germ.def.boss) return;
+    const fm = BALANCE.modifiers.fullMoon;
+    germ.setMoonSize(runRng.spawn.float(fm.sizeMin, fm.sizeMax));
   }
 
   /** RESISTANT: from round 8 some germs arrive as elites with a trait. */
@@ -1757,8 +1814,8 @@ export class GameScene extends Phaser.Scene {
     const el = BALANCE.elites;
     if (germ.def.boss) return;
     const boost = this.waves.special?.eliteBoost ?? 1;
-    if (!force && Math.random() >= Math.min(0.6, el.chance(this.waves.round) * boost)) return;
-    const affix = force ?? Phaser.Utils.Array.GetRandom(Object.keys(ELITE_AFFIXES) as EliteAffix[]);
+    if (!force && runRng.spawn.next() >= Math.min(0.6, el.chance(this.waves.round) * boost)) return;
+    const affix = force ?? runRng.spawn.pick(Object.keys(ELITE_AFFIXES) as EliteAffix[]);
     germ.makeElite(affix, el.hpMult, { shield: el.shield, speed: el.hastySpeed });
   }
 
@@ -1836,6 +1893,118 @@ export class GameScene extends Phaser.Scene {
     };
   }
 
+  /** Whether a modifier is in play this shift. */
+  hasMod(id: ModifierId): boolean {
+    return this.shift.mods.includes(id);
+  }
+
+  /**
+   * POWER OUTAGE: one pre-drawn dark texture with a soft hole of light in the middle, drawn at a fraction
+   * of its size and scaled up (the blur doesn't matter in the dark). It's twice the widest screen in each
+   * direction, so moving it to the doctor's screen position always covers the view. No per-frame drawing.
+   */
+  private buildDarkness(): Phaser.GameObjects.Image {
+    const cfg = BALANCE.modifiers.powerOutage;
+    const key = 'power-outage-dark';
+    const k = cfg.texScale;
+    if (!this.textures.exists(key)) {
+      const w = Math.ceil((2 * 2400) / k);
+      const h = Math.ceil((2 * 720) / k);
+      const tex = this.textures.createCanvas(key, w, h)!;
+      const ctx = tex.getContext();
+      ctx.fillStyle = '#05080f';
+      ctx.fillRect(0, 0, w, h);
+      // Cut the light out: fully clear in the middle, fading back to dark at the edge
+      const r = cfg.lightRadius / k;
+      const glow = ctx.createRadialGradient(w / 2, h / 2, r * (1 - cfg.softEdge), w / 2, h / 2, r);
+      glow.addColorStop(0, 'rgba(0,0,0,1)');
+      glow.addColorStop(1, 'rgba(0,0,0,0)');
+      ctx.globalCompositeOperation = 'destination-out';
+      ctx.fillStyle = glow;
+      ctx.fillRect(0, 0, w, h);
+      tex.refresh();
+    }
+    // Above the room, germs and effects; below floating numbers (20) and speech bubbles (30)
+    return this.add.image(0, 0, key).setScrollFactor(0).setScale(k).setAlpha(cfg.darkness).setDepth(14);
+  }
+
+  /** Keeps the light on the doctor (screen position: the camera follows him, but not always centred). */
+  private updateDarkness(): void {
+    if (!this.dark) return;
+    const cam = this.cameras.main;
+    this.dark.setPosition(this.player.x - cam.scrollX, this.player.y - cam.scrollY);
+  }
+
+  /** Whether (x, y) is inside room `id` (any of its boxes). */
+  private inRoom(id: string, x: number, y: number): boolean {
+    return this.room.rooms.some((r) => r.id === id && x >= r.x && x < r.x + r.w && y >= r.y && y < r.y + r.h);
+  }
+
+  /** Could the doctor still walk back to the waiting room with `extra` in the way? (Coarse, so it errs on "no".) */
+  private canWalkHome(extra: Obstacle[]): boolean {
+    const field = new FlowField(this.room.width, this.room.height, [...this.blockingObstacles(), ...extra]);
+    field.setPortals(this.stairLinks());
+    const home = this.room.playerSpawn;
+    field.update(home.x, home.y);
+    const { x, y } = this.player;
+    // His own cell can read as blocked when he hugs furniture: any open cell next to him will do
+    for (const [dx, dy] of [[0, 0], [40, 0], [-40, 0], [0, 40], [0, -40]]) if (field.reaches(x + dx, y + dy)) return true;
+    return false;
+  }
+
+  /**
+   * CONSTRUCTION: at the start of a round, one room that's been opened closes to the doctor for the round
+   * (germs fit under the door). Never the waiting room, never the room he's in or a door near him, and only
+   * if he can still walk back to the waiting room. If no room qualifies, nothing closes this round.
+   */
+  private closeForConstruction(round: number): void {
+    const cfg = BALANCE.modifiers.construction;
+    if (round < cfg.fromRound || this.closed || this.runOver) return;
+    const { x, y } = this.player;
+    const doorsOf = (id: string) => this.room.obstacles.filter((o) => o.opens === id);
+    const start = new Set(this.room.rooms.filter((r) => r.start).map((r) => r.id));
+    const candidates = [...this.unlocked].filter((id) => !start.has(id) && !this.inRoom(id, x, y)
+      && doorsOf(id).length > 0 && doorsOf(id).every((o) => rectDistance(o, x, y) > cfg.clearance)).sort();
+    for (const id of runRng.world.shuffle(candidates)) {
+      const doors = doorsOf(id);
+      if (!this.canWalkHome(doors)) continue;
+      const objects: Phaser.GameObjects.GameObject[] = [];
+      for (const o of doors) {
+        const zone = this.add.zone(o.x + o.w / 2, o.y + o.h / 2, o.w, o.h);
+        this.constructionWalls.add(zone);
+        const art = this.add.graphics().setDepth(5);
+        art.fillStyle(0x263238).fillRect(o.x, o.y, o.w, o.h);
+        // Hazard stripes
+        art.fillStyle(0xffb300);
+        const across = o.w >= o.h;
+        const len = across ? o.w : o.h;
+        for (let i = 0; i < len; i += 24) {
+          if (across) art.fillRect(o.x + i, o.y, 12, o.h);
+          else art.fillRect(o.x, o.y + i, o.w, 12);
+        }
+        art.lineStyle(3, 0x1b2b30).strokeRect(o.x, o.y, o.w, o.h);
+        objects.push(zone, art, this.doorLabel(o, CONSTRUCTION_SIGN).setColor('#ffffff').setBackgroundColor('#1b2b30cc'));
+      }
+      this.closed = { roomId: id, objects };
+      const area = this.room.rooms.find((r) => r.id === id);
+      sfx.stamp();
+      this.fx.number(x, y - 80, `${area?.name.toUpperCase() ?? id}: ${CONSTRUCTION_LINES.closed}`, '#ffb300', 22);
+      return;
+    }
+  }
+
+  /** CONSTRUCTION: the round's over, the renovations are (somehow) done. */
+  private reopenConstruction(): void {
+    if (!this.closed) return;
+    for (const obj of this.closed.objects) {
+      if (obj instanceof Phaser.GameObjects.Zone) this.constructionWalls.remove(obj, true, true);
+      else obj.destroy();
+    }
+    const area = this.room.rooms.find((r) => r.id === this.closed?.roomId);
+    this.closed = undefined;
+    if (!this.runOver) this.fx.number(this.player.x, this.player.y - 80, `${area?.name.toUpperCase() ?? ''} ${CONSTRUCTION_LINES.reopened}`, '#7fffd4', 20);
+  }
+
   /** Eugene is down: freeze the room, save the high score, show the game over screen. */
   private endRun(): void {
     this.runOver = true;
@@ -1849,9 +2018,13 @@ export class GameScene extends Phaser.Scene {
 
     const round = this.waves.round;
     const st = this.runStats;
-    const record = recordRun(this.score, round, st.bestStreak, this.kills);
-    // CME Credits for the Residency Board (and lifetime kills for the Atlas)
-    const cme = creditsFor(round, st.achievements.length, this.bossesDefeated);
+    const sh = this.shift;
+    if (sh.daily) this.achieve('clockedIn');
+    // Records per difficulty; Today's Shift keeps the day's best instead (core/save.ts)
+    const record = recordRun(this.score, round, st.bestStreak, this.kills, sh.difficulty, sh.daily);
+    // CME Credits for the Residency Board (and lifetime kills for the Atlas); the day's first Today's Shift earns a bonus
+    const dailyBonus = sh.daily && record.firstDailyToday ? BALANCE.daily.firstFinishCme : 0;
+    const cme = creditsFor(round, st.achievements.length, this.bossesDefeated) + dailyBonus;
     recordShift(cme, st.kills);
     const [favId, favCount] = Object.entries(st.kills).sort((a, b) => b[1] - a[1])[0] ?? [];
     const killer = st.killer ? GERMS[st.killer] : undefined;
@@ -1866,11 +2039,15 @@ export class GameScene extends Phaser.Scene {
       roomsTotal: new Set(this.room.rooms.filter((r) => !r.start).map((r) => r.id)).size,
       upgrades: st.upgrades, crits: st.crits, perfectPours: st.perfectPours,
       favoriteVictim: favId ? { name: GERMS[favId]?.name ?? favId, count: favCount ?? 0 } : undefined,
-      totalKills: record.next.totalKills, runs: record.next.runs,
+      totalKills: record.save.totalKills, runs: record.save.runs,
       newAchievements: [...st.achievements],
       chart: this.character.chart,
       cme,
       specialty: this.specialtyName,
+      difficulty: difficultyById(sh.difficulty).name,
+      modifiers: sh.mods.map((id) => modifierById(id)?.name ?? id),
+      daily: sh.daily,
+      dailyBonus,
     };
     this.time.delayedCall(1600, () => {
       this.scene.stop('Hud');
@@ -2041,7 +2218,7 @@ export class GameScene extends Phaser.Scene {
           g.fillStyle(0x7fd3ff).fillRoundedRect(o.x + 8 + i * 27, o.y + 8, 20, o.h - 16, 4);
           g.fillStyle(0x1565c0).fillRect(o.x + 13 + i * 27, o.y + 4, 10, 6);
         }
-        this.add.text(o.x + o.w / 2, o.y - 6, `🧴 ${o.label ?? ''} $${BALANCE.economy.restockCost}`, {
+        this.add.text(o.x + o.w / 2, o.y - 6, `🧴 ${o.label ?? ''} $${this.restockCost}`, {
           fontFamily: 'system-ui, sans-serif', fontSize: '14px', fontStyle: 'bold', color: '#ffffff',
           backgroundColor: '#0d2b2ecc', padding: { x: 6, y: 2 },
         }).setOrigin(0.5, 1).setDepth(6);
