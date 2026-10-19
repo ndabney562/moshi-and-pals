@@ -2042,6 +2042,7 @@ try {
         pt.setPosition(line[Math.min(i + 1, line.length - 1)].x - 30, line[0].y + 20);
         pt.leaveAt = Number.MAX_SAFE_INTEGER;
       }
+      selina.nextCheckInAt = 0; // game time crawls on slow runners: don't wait out the 2.5 s between check-ins
       sc.summonHelper('omar', sc.time.now, 1000);
       const omar = sc.scribes.get('omar');
       return {
