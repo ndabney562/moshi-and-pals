@@ -28,6 +28,7 @@ Values live in `src/config/balance.ts` and `src/config/controls.ts`.
 | UV Wand | 1 × 6 dmg every 60 ms, 280 px, pierces 3 | 100% charge, 2/shot, recharges 22%/s after 0.4 s; spores ×1.5 |
 | Peroxide Foamer | 3 × 4 dmg every 110 ms, 24° cone, 220 px | Slows to 45% for 1.6 s (not bosses); 150 mL, jug 450 |
 | Basic Germ HP / speed | 40 / 95 px/s | Was 75; Noah: round 1 too easy |
+| Germ crowd shove | 50% of the overlap per frame, position only | `BALANCE.germs.crowdPush`; velocities untouched so packs keep moving |
 | Eugene HP / invulnerability | 100 / 0.7 s | |
 | Regen | 6 HP/s after 6 s unhurt | Was 12/s after 4.5 s; Noah never lost health |
 | Contact damage | Basic 15, Sprinter 8, Write-Up 6, Diamond 30 | |
