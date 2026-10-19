@@ -93,6 +93,8 @@ try {
     await page.waitForTimeout(16);
   }
   await page.waitForTimeout(800);
+  // The MOVE hint counts game time, which crawls below 5 fps; keep walking until it's learned so SPRAY comes up next
+  await page.waitForFunction(() => JSON.parse(localStorage.getItem('moshi.settings.v1') ?? '{}').learned?.move, null, { timeout: 15000 }).catch(() => {});
   await page.screenshot({ path: 'smoke-game.png' });
   const end = await pos();
   await touch('touchEnd', []);
@@ -147,6 +149,8 @@ try {
     }
   }
   check(aimSamples > 0 && aimHits / aimSamples >= 0.6, `auto-aim faces its target germ (${aimHits}/${aimSamples} samples)`);
+  // On a slow runner the SPRAY hint can come up late (germs die and respawn); keep holding until it's learned
+  await page.waitForFunction(() => JSON.parse(localStorage.getItem('moshi.settings.v1') ?? '{}').learned?.spray, null, { timeout: 20000 }).catch(() => {});
   await touch('touchEnd', []);
   const after = await game();
   check(after.ammo < before.ammo, `spraying used alcohol (${before.ammo} -> ${after.ammo} mL)`);
@@ -1368,7 +1372,7 @@ try {
   const swErrors = [];
   sw.on('pageerror', (e) => swErrors.push(where(e)));
   await sw.route('**/version.json*', (r) => r.fulfill({ contentType: 'application/json', body: JSON.stringify({ version: 'v99.0.0 (newer)' }) }));
-  await sw.goto(url + '?sw');
+  await sw.goto(url + '?sw', { timeout: 90000 });
   await sw.waitForFunction(() => window.game?.scene.isActive('Title'));
   const pill = await sw.waitForFunction(() => window.game.scene.getScene('Title').updatePill?.visible, null, { timeout: 10000 }).then(() => true, () => false);
   check(pill, 'a newer build on the server shows UPDATE READY on the title screen');
@@ -1395,7 +1399,7 @@ try {
     labelWaits(pp2);
     const palErrors = [];
     pp2.on('pageerror', (e) => palErrors.push(where(e)));
-    await pp2.goto(url + '?god');
+    await pp2.goto(url + '?god', { timeout: 90000 });
     await pp2.waitForFunction(() => window.game?.scene.isActive('Title'));
     await pp2.touchscreen.tap(426, 120);
     await pp2.waitForFunction(() => window.game.scene.isActive('Hud'), null, { timeout: 15000 });
