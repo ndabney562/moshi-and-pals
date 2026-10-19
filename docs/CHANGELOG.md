@@ -1,5 +1,10 @@
 # Changelog
 
+## v0.27.1: Unlimited snacks
+- **No more snack limit.** The vending machine never sells out: buy as many snacks as you can pay for, and the same snack again as often as you like.
+- **Snacks stack.** A second Energy Drink makes you faster again, a second Fortune Cookie doubles your STAT! chance again, and so on, up to a cap (walk ×1.5, pours and signature recharge down to 40% of normal, STAT! chance ×6).
+- **Seconds cost more:** each one you've already had adds half the snack's price (a $100 Fortune Cookie is $150, then $200...).
+
 ## v0.27.0: Donald, the X-ray tech
 - **Donald joins the helpers.** Walk into the X-ray room during a shift and he unlocks for good: he comes out right then and helps you for 20 s, like Omar and Alan.
 - After that, he comes out to help the first time you visit X-ray on every shift, and his pill (**X-RAY TECH: DONALD**) can drop from germs too.

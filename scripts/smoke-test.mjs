@@ -742,12 +742,26 @@ try {
     const hud = window.game.scene.getScene('Hud');
     return { open: hud.choosing === 'vending', note: hud.choicePanel.note.text };
   });
-  check(poor.open && poor.note.startsWith('INSUFFICIENT FUNDS') && !broke.offered.includes(bought.snacks[0]), `with no Copays the machine says so and stays open (${JSON.stringify(poor)})`);
+  check(poor.open && poor.note.startsWith('INSUFFICIENT FUNDS') && broke.offered.length === 3, `with no Copays the machine says so and stays open (${JSON.stringify(poor)})`);
   const awayAt = await panelAt('cancel');
   await page.touchscreen.tap(awayAt.x, awayAt.y);
   await page.waitForFunction(() => !window.game.scene.getScene('Hud').choosing && !window.game.scene.isPaused('Game'), null, { timeout: 10000 }).catch(() => {});
   const away = await page.evaluate(() => !window.game.scene.getScene('Hud').choosing && !window.game.scene.isPaused('Game'));
   check(away, 'WALK AWAY closes the machine and play resumes');
+  // No limit: the same snack again stacks and costs more each time
+  const seconds = await page.evaluate(() => {
+    const scene = window.game.scene.getScene('Game');
+    const prices = [];
+    for (let i = 0; i < 5; i++) {
+      scene.addCopays(5000 - scene.copays);
+      scene.vendingOffer = ['fortuneCookie'];
+      scene.buySnack('fortuneCookie');
+      prices.push(5000 - scene.copays);
+    }
+    return { prices, crit: scene.perks.crit, count: scene.snacks.length };
+  });
+  check(seconds.count === 6 && seconds.prices.every((p, i) => i === 0 || p > seconds.prices[i - 1]) && seconds.crit > 2,
+    `snacks have no limit: repeats stack and cost more each time (${JSON.stringify(seconds)})`);
   await page.evaluate(() => {
     // Back to a plain Eugene for the rest of the test
     const scene = window.game.scene.getScene('Game');
@@ -757,6 +771,7 @@ try {
     scene.player.maxHp = 100;
     scene.player.hp = Math.min(scene.player.hp, 100);
     scene.player.setSpeedMod('snack', null);
+    scene.snackSpeed = 1;
   });
   await page.evaluate(() => {
     const scene = window.game.scene.getScene('Game');
