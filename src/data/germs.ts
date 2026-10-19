@@ -30,9 +30,13 @@ export interface GermDef {
   /** Bosses get a health bar and their own round. */
   boss?: boolean;
   /** Extra costume drawn on top of the body. */
-  look?: 'manager' | 'patient';
+  look?: 'manager' | 'patient' | 'staph' | 'flu';
   /** Special behavior controller. Germs without one simply chase Eugene. */
-  brain?: 'diamond' | 'patientZero';
+  brain?: 'diamond' | 'patientZero' | 'methicillin' | 'influenza';
+  /** A boss that arrives with a second germ (the Influenza Twins): spawned right beside it. */
+  partner?: string;
+  /** What the boss round's banner and health bar call it, if not `name` (the twins as a pair). */
+  bossTitle?: string;
   /**
    * Armored shell (Spore Pod): hits on the front arc are mostly blocked, hits from behind hurt extra.
    * It turns slowly (`turnDegPerSec`), so circling it works. Piercing tools (UV) ignore the shell;
@@ -255,6 +259,79 @@ export const GERMS: Record<string, GermDef> = {
     boss: true,
     look: 'patient',
     brain: 'patientZero',
+  },
+  /**
+   * BOSS #3: METHICILLIN THE UNKILLABLE. A bunch of armored grapes (that's what staph looks like under a
+   * microscope) in three layers. He adapts to whatever hurts him most: switch tools.
+   * Moves in systems/MethicillinBrain.ts, lines in data/methicillin.ts, numbers in BALANCE.methicillin.
+   */
+  methicillin: {
+    id: 'methicillin',
+    deathNote: 'Methicillin rolled over you. He was resistant to that too.',
+    name: 'Methicillin the Unkillable',
+    tag: 'bacteria',
+    hp: 1300,
+    speed: 48,
+    radius: 60,
+    color: 0xe8c547,
+    outline: 0x6b4e0e,
+    contactBounce: 140,
+    contactDamage: 20,
+    points: 450,
+    copays: 175,
+    shape: 'blob',
+    knockbackResist: 0.94,
+    boss: true,
+    look: 'staph',
+    brain: 'methicillin',
+  },
+  /**
+   * BOSS #4: THE INFLUENZA TWINS, H & N. Two balloon-like flu virions tied together by a strand that
+   * hurts to cross. Kill both close together or the survivor revives the other.
+   * Moves in systems/InfluenzaBrain.ts, lines in data/influenza.ts, numbers in BALANCE.influenza.
+   */
+  fluH: {
+    id: 'fluH',
+    deathNote: 'Caught between the Influenza Twins.',
+    name: 'H',
+    bossTitle: 'The Influenza Twins, H & N',
+    tag: 'virus',
+    hp: 520,
+    speed: 70,
+    radius: 44,
+    color: 0xf48fb1,
+    outline: 0x7b1f45,
+    contactBounce: 160,
+    contactDamage: 16,
+    points: 250,
+    copays: 90,
+    shape: 'spiky',
+    knockbackResist: 0.85,
+    boss: true,
+    look: 'flu',
+    brain: 'influenza',
+    partner: 'fluN',
+  },
+  fluN: {
+    id: 'fluN',
+    deathNote: 'Caught between the Influenza Twins.',
+    name: 'N',
+    bossTitle: 'The Influenza Twins, H & N',
+    tag: 'virus',
+    hp: 520,
+    speed: 70,
+    radius: 44,
+    color: 0x9fa8f5,
+    outline: 0x2a2f7a,
+    contactBounce: 160,
+    contactDamage: 16,
+    points: 250,
+    copays: 90,
+    shape: 'spiky',
+    knockbackResist: 0.85,
+    boss: true,
+    look: 'flu',
+    brain: 'influenza',
   },
   /** Diamond's write-ups: angry pink slips she flings when she gets hurt. Tiny, quick, fragile. */
   writeUp: {

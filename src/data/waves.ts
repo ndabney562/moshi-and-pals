@@ -90,8 +90,9 @@ export const WAVES = {
   /** Every Nth round is a boss round: the boss plus a lighter escort of normal germs. */
   bossEvery: 5,
   bossId: 'diamond',
-  /** Bosses take turns: Diamond on rounds 5, 15, 25...; Patient Zero on 10, 20, 30... */
-  bossFor: (r: number): string => (Math.round(r / 5) % 2 === 1 ? 'diamond' : 'patientZero'),
+  /** Bosses take turns: Diamond (round 5), Patient Zero (10), Methicillin (15), the Influenza Twins (20), then again. */
+  bossOrder: ['diamond', 'patientZero', 'methicillin', 'fluH'],
+  bossFor: (r: number): string => WAVES.bossOrder[(Math.max(1, Math.round(r / 5)) - 1) % WAVES.bossOrder.length],
   bossEscortFraction: 0.5,
 
   /** Shown under the ROUND banner. Noah: add your own! Index = round - 1; the last one repeats. */

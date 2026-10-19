@@ -40,7 +40,9 @@ import { Powerups } from '../systems/Powerups';
 import { ELITE_AFFIXES, type EliteAffix, type PowerupDef } from '../data/powerups';
 import { Fx } from '../systems/Fx';
 import { DiamondBrain, type BossHost } from '../systems/DiamondBrain';
-import type { BossBrain } from '../systems/BossBrain';
+import { bossOwns, type BossBrain } from '../systems/BossBrain';
+import { InfluenzaBrain } from '../systems/InfluenzaBrain';
+import { MethicillinBrain } from '../systems/MethicillinBrain';
 import { PatientZeroBrain } from '../systems/PatientZeroBrain';
 import { PatientDirector } from '../systems/PatientDirector';
 import { Scribes } from '../systems/Scribes';
@@ -328,7 +330,7 @@ export class GameScene extends Phaser.Scene {
       fx: this.fx,
       patients: this.patients,
       germs: () => this.livingGerms(),
-      hit: (g, damage, angle, knockback) => this.damageGerm(g, damage, angle, knockback),
+      hit: (g, damage, angle, knockback) => this.damageGerm(g, damage, angle, knockback, 'scribe'),
       sameFloor: (x0, y0, x1, y1) => this.floorOf(x0, y0) === this.floorOf(x1, y1),
       sameRoom: (x0, y0, x1, y1) => {
         const id = (x: number, y: number) => this.room.rooms.find((r) => x >= r.x && x < r.x + r.w && y >= r.y && y < r.y + r.h)?.id;
@@ -533,7 +535,7 @@ export class GameScene extends Phaser.Scene {
         const f = this.gel.slowAt(g.x, g.y);
         if (f < 1) g.slow(time, f, 250);
       }
-      const override = this.boss?.germ === g ? this.boss.movement() : undefined;
+      const override = bossOwns(this.boss, g) ? this.boss.movement(g) : undefined;
       if (override) {
         g.chase(override.target, time, delta, override.speed);
         continue;
@@ -810,19 +812,22 @@ export class GameScene extends Phaser.Scene {
       sfx.tink();
       this.fx.number(germ.x, germ.y - germ.def.radius - 10, 'TINK! GET BEHIND IT', '#c8d6e5', 15);
     }
-    this.damageGerm(germ, damage * mult * armor * (crit ? fb.critMult : 1), angle, knockback * (armor < 1 ? 0.3 : 1));
+    this.damageGerm(germ, damage * mult * armor * (crit ? fb.critMult : 1), angle, knockback * (armor < 1 ? 0.3 : 1), def.id);
   }
 
   /** Every way a germ gets hurt goes through here: numbers, boss bar, kills, score and Copays. */
-  private damageGerm(germ: Germ, damage: number, fromAngle: number, knockback: number): void {
+  private damageGerm(germ: Germ, damage: number, fromAngle: number, knockback: number, source?: string): void {
     const time = this.time.now;
-    if (this.boss?.germ === germ) damage *= this.boss.damageTaken ?? 1;
+    const boss = bossOwns(this.boss, germ) ? this.boss : undefined;
+    if (boss) damage *= (boss.damageTaken ?? 1) * (boss.damageFactor?.(germ, source, time) ?? 1);
     // Ken's passive: everything he does hits Diamond harder
     const vsDiamond = germ.def.brain === 'diamond' && !!this.character.passive.diamondDamage;
     if (vsDiamond) damage *= this.character.passive.diamondDamage!;
     if (germ.chargeState === 'dazed' && germ.def.charge) damage *= germ.def.charge.stunnedDamageTaken;
-    const killed = germ.hurt(damage, fromAngle, knockback, time);
-    if (this.boss?.germ === germ) this.boss.onHurt(damage, time);
+    let killed = germ.hurt(damage, fromAngle, knockback, time);
+    boss?.onHurt(damage, time, germ, source);
+    // A twin knocked out goes down instead of dying (InfluenzaBrain)
+    if (killed && boss?.interceptKill?.(germ, time)) killed = false;
 
     // Batch damage into one number every ~180 ms per germ so the screen stays readable
     if (killed || time - germ.lastNumberAt > 180) {
@@ -836,7 +841,7 @@ export class GameScene extends Phaser.Scene {
     }
 
     if (germ.def.boss) {
-      events.emit(GameEvents.BossHealth, { name: germ.def.name, hp: Math.max(0, germ.hp), maxHp: germ.maxHp });
+      events.emit(GameEvents.BossHealth, boss?.bar?.() ?? { name: germ.def.name, hp: Math.max(0, germ.hp), maxHp: germ.maxHp });
     }
 
     if (killed) {
@@ -856,6 +861,8 @@ export class GameScene extends Phaser.Scene {
       if (germ.def.brain === 'diamond') this.achieve('meetingAdjourned');
       if (germ.def.brain === 'diamond' && this.character.id === 'ken') this.achieve('exitInterview');
       if (germ.def.brain === 'patientZero') this.achieve('discharged');
+      if (germ.def.brain === 'methicillin') this.achieve('sensitivityReport');
+      if (germ.def.brain === 'influenza') this.achieve('herdImmunity');
       if ((this.runStats.kills.sneezer ?? 0) >= 10) this.achieve('gesundheit');
       const el = BALANCE.elites;
       const eliteMult = germ.elite ? el.copaysMult : 1;
@@ -889,9 +896,12 @@ export class GameScene extends Phaser.Scene {
         }
         this.cameras.main.shake(300, 0.01);
         this.fx.number(germ.x, germ.y + germ.def.radius, `+$${germ.def.copays} COPAYS`, '#7fffd4', 28);
-        if (this.boss?.germ === germ) this.boss.onDefeated();
+        const bar = boss?.bar?.();
+        boss?.onDefeated();
         this.bossesDefeated++;
-        events.emit(GameEvents.BossDefeated, { name: germ.def.name, hp: 0, maxHp: germ.maxHp });
+        // The twins always leave a pill behind
+        if (germ.def.brain === 'influenza') this.powerups.drop(germ.x, germ.y, time);
+        events.emit(GameEvents.BossDefeated, { name: bar?.name ?? germ.def.name, hp: 0, maxHp: bar?.maxHp ?? germ.maxHp });
       }
       events.emit(GameEvents.GermKilled, { germId: germ.def.id, x: germ.x, y: germ.y, totalKills: this.kills });
       events.emit(GameEvents.ScoreChanged, { score: this.score });
@@ -949,7 +959,7 @@ export class GameScene extends Phaser.Scene {
     for (const g of this.livingGerms()) {
       if (Phaser.Math.Distance.Between(x, y, g.x, g.y) > cfg.radius + g.def.radius) continue;
       hit++;
-      this.damageGerm(g, cfg.damage, Phaser.Math.Angle.Between(x, y, g.x, g.y), cfg.knockback);
+      this.damageGerm(g, cfg.damage, Phaser.Math.Angle.Between(x, y, g.x, g.y), cfg.knockback, 'signature');
       if (g.active) g.stun(time, cfg.stunMs);
     }
     const boss = this.boss;
@@ -1006,7 +1016,7 @@ export class GameScene extends Phaser.Scene {
       // Shoved off to the side of the lane
       const away = Phaser.Math.Angle.Between(sx, sy, g.x, g.y);
       bowled++;
-      this.damageGerm(g, cfg.damage, Number.isFinite(away) ? away : a + Math.PI / 2, cfg.knockback);
+      this.damageGerm(g, cfg.damage, Number.isFinite(away) ? away : a + Math.PI / 2, cfg.knockback, 'signature');
       if (g.active) g.stun(time, cfg.stunMs);
     }
     if (bowled >= 5) this.achieve('honk');
@@ -1047,7 +1057,7 @@ export class GameScene extends Phaser.Scene {
     for (const g of this.livingGerms()) {
       if ((g.x - f.x) ** 2 + (g.y - f.y) ** 2 > (cfg.radius + g.def.radius) ** 2) continue;
       if (!g.def.boss) g.slow(time, cfg.slow, 250);
-      this.damageGerm(g, cfg.dps * (dtMs / 1000), 0, 0);
+      this.damageGerm(g, cfg.dps * (dtMs / 1000), 0, 0, 'signature');
     }
   }
 
@@ -1078,7 +1088,7 @@ export class GameScene extends Phaser.Scene {
       if (d > radius + g.def.radius) continue;
       const angle = Phaser.Math.Angle.Between(x, y, g.x, g.y);
       purged++;
-      this.damageGerm(g, cfg.damage, angle, cfg.knockback);
+      this.damageGerm(g, cfg.damage, angle, cfg.knockback, 'signature');
       if (g.active) g.stun(time, cfg.stunMs);
       // Spore Pods get knocked onto their backs: no armor, no moving
       if (g.active && g.def.armor) {
@@ -1436,7 +1446,7 @@ export class GameScene extends Phaser.Scene {
     for (const g of this.livingGerms()) {
       if (Phaser.Math.Distance.Between(x, y, g.x, g.y) > cfg.radius + g.def.radius || !this.flow.lineClear(x, y, g.x, g.y)) continue;
       blown++;
-      this.damageGerm(g, cfg.damage, Phaser.Math.Angle.Between(x, y, g.x, g.y), cfg.knockback);
+      this.damageGerm(g, cfg.damage, Phaser.Math.Angle.Between(x, y, g.x, g.y), cfg.knockback, 'dryer');
       if (g.active) g.stun(time, cfg.stunMs);
     }
     if (blown > 0) this.achieve('airDried');
@@ -1461,7 +1471,7 @@ export class GameScene extends Phaser.Scene {
       for (const g of this.livingGerms()) {
         if (Phaser.Math.Distance.Between(x, y, g.x, g.y) > cfg.radius + g.def.radius || !this.flow.lineClear(x, y, g.x, g.y)) continue;
         cooked++;
-        this.damageGerm(g, cfg.damage, Phaser.Math.Angle.Between(x, y, g.x, g.y), 200);
+        this.damageGerm(g, cfg.damage, Phaser.Math.Angle.Between(x, y, g.x, g.y), 200, 'autoclave');
       }
       this.fx.number(x, y - 40, cooked ? `STERILIZED! ×${cooked}` : 'STERILIZED! (the air)', '#ffe66d', 26);
       if (cooked > 0) this.achieve('sterilized');
@@ -1485,7 +1495,7 @@ export class GameScene extends Phaser.Scene {
     for (const g of this.livingGerms()) {
       if (Phaser.Math.Distance.Between(x, y, g.x, g.y) > cfg.radius + g.def.radius) continue;
       zapped++;
-      this.damageGerm(g, cfg.damage, Phaser.Math.Angle.Between(x, y, g.x, g.y), 120);
+      this.damageGerm(g, cfg.damage, Phaser.Math.Angle.Between(x, y, g.x, g.y), 120, 'xray');
     }
     this.fx.number(x, y - 60, zapped ? `IMAGING COMPLETE ×${zapped}` : 'IMAGING COMPLETE', '#b2ff59', 26);
     this.achieve('radiology');
@@ -1694,7 +1704,10 @@ export class GameScene extends Phaser.Scene {
   private onGermBump(germ: Germ): void {
     if (this.runOver) return;
     const time = this.time.now;
-    if (this.boss?.germ === germ && this.boss.ignoresContact) return;
+    const boss = bossOwns(this.boss, germ) ? this.boss : undefined;
+    if (boss?.ignoresContact) return;
+    const bossContact = boss?.contactDamage?.(germ);
+    if (bossContact === 0) return;
     if (germ.chargeState === 'charging' && germ.def.charge) {
       // Run over by a Bulldozer: a big hit and a shove along its path
       const c = germ.def.charge;
@@ -1706,7 +1719,7 @@ export class GameScene extends Phaser.Scene {
       return;
     }
     germ.bounceFrom(this.player.x, this.player.y, time);
-    this.hurtPlayer(germ.def.contactDamage, germ.def.id);
+    this.hurtPlayer(bossContact ?? germ.def.contactDamage, germ.def.id);
   }
 
   /** Every way Eugene gets hurt goes through here: sound, shake, HUD, and death. */
@@ -1763,7 +1776,7 @@ export class GameScene extends Phaser.Scene {
     } else if (def.brain === 'patientZero') {
       this.boss?.destroy();
       this.boss = new PatientZeroBrain({
-        ...this.bossHost(),
+        ...this.bossHost('patientZero'),
         // COUGH: a spray of Viral Sprinters out of his cone
         cough: (x, y, angle) => {
           const n = BALANCE.patientZero.coughGerms;
@@ -1781,10 +1794,30 @@ export class GameScene extends Phaser.Scene {
           }
         },
       }, germ);
+    } else if (def.brain === 'methicillin') {
+      this.boss?.destroy();
+      this.boss = new MethicillinBrain(this.bossHost(def.id), germ);
+    } else if (def.brain === 'influenza' && def.partner) {
+      // THE INFLUENZA TWINS: H comes in with N right beside it
+      const partner = this.germs.get() as Germ | null;
+      if (partner) {
+        partner.spawn(GERMS[def.partner], spot.x + 90, spot.y, this.scaled(scaling));
+        this.boss?.destroy();
+        this.boss = new InfluenzaBrain({
+          ...this.bossHost(def.id),
+          spit: (x, y, angle) => {
+            const s = GERMS.sneezer.spit!;
+            this.launchGlob(x, y, angle, s.globSpeed, s.globRange, s);
+          },
+          lineClear: (ax, ay, bx, by) => this.flow.lineClear(ax, ay, bx, by),
+          finish: (g) => this.finishGerm(g),
+          emitBar: (bar) => events.emit(GameEvents.BossHealth, bar),
+        }, germ, partner);
+      }
     }
     if (def.boss) {
       sfx.bossArrives();
-      events.emit(GameEvents.BossSpawned, { name: def.name, hp: germ.hp, maxHp: germ.maxHp });
+      events.emit(GameEvents.BossSpawned, this.boss?.bar?.() ?? { name: def.name, hp: germ.hp, maxHp: germ.maxHp });
     }
     return true;
   }
@@ -1852,7 +1885,7 @@ export class GameScene extends Phaser.Scene {
         for (const g of living) {
           if (Phaser.Math.Distance.Between(x, y, g.x, g.y) > cfg.statCleanRadius) continue;
           const angle = Phaser.Math.Angle.Between(x, y, g.x, g.y);
-          this.damageGerm(g, g.def.boss ? g.maxHp * cfg.statCleanBoss : g.hp + g.shield + 1, angle, 300);
+          this.damageGerm(g, g.def.boss ? g.maxHp * cfg.statCleanBoss : g.hp + g.shield + 1, angle, 300, 'powerup');
         }
         break;
       }
@@ -1873,8 +1906,18 @@ export class GameScene extends Phaser.Scene {
     events.emit(GameEvents.ScoreChanged, { score: this.score });
   }
 
-  /** What a boss brain is allowed to touch. */
-  private bossHost(): BossHost {
+  /** The twin already down when the other fell: counts as a kill, splats, and is gone. */
+  private finishGerm(g: Germ): void {
+    this.kills++;
+    this.runStats.kills[g.def.id] = (this.runStats.kills[g.def.id] ?? 0) + 1;
+    this.fx.germSplat(g.x, g.y, g.def.color);
+    this.fx.germPop(g.texture.key, g.x, g.y, g.rotation, g.scaleX, g.y - g.def.radius - 8, true);
+    events.emit(GameEvents.GermKilled, { germId: g.def.id, x: g.x, y: g.y, totalKills: this.kills });
+    g.kill();
+  }
+
+  /** What a boss brain is allowed to touch. `killer` is who gets the blame on the Discharge Summary. */
+  private bossHost(killer = 'diamond'): BossHost {
     return {
       scene: this,
       player: this.player,
@@ -1886,7 +1929,7 @@ export class GameScene extends Phaser.Scene {
         germ.spawn(def, x, y);
         germ.setVelocity(vx, vy);
       },
-      damagePlayer: (amount) => this.hurtPlayer(amount, 'diamond'),
+      damagePlayer: (amount) => this.hurtPlayer(amount, killer),
       surname: this.character.surname,
       doctor: this.character.id,
       canMeet: () => !!this.currentRoom?.start,
