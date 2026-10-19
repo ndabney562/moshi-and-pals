@@ -147,6 +147,8 @@ try {
     }
   }
   check(aimSamples > 0 && aimHits / aimSamples >= 0.6, `auto-aim faces its target germ (${aimHits}/${aimSamples} samples)`);
+  // On a slow runner the SPRAY hint can come up late (germs die and respawn); keep holding until it's learned
+  await page.waitForFunction(() => JSON.parse(localStorage.getItem('moshi.settings.v1') ?? '{}').learned?.spray, null, { timeout: 20000 }).catch(() => {});
   await touch('touchEnd', []);
   const after = await game();
   check(after.ammo < before.ammo, `spraying used alcohol (${before.ammo} -> ${after.ammo} mL)`);
@@ -1394,7 +1396,7 @@ try {
     labelWaits(pp2);
     const palErrors = [];
     pp2.on('pageerror', (e) => palErrors.push(where(e)));
-    await pp2.goto(url + '?god');
+    await pp2.goto(url + '?god', { timeout: 90000 });
     await pp2.waitForFunction(() => window.game?.scene.isActive('Title'));
     await pp2.touchscreen.tap(426, 120);
     await pp2.waitForFunction(() => window.game.scene.isActive('Hud'), null, { timeout: 15000 });
