@@ -2229,6 +2229,7 @@ try {
     await sp.touchscreen.tap(saveAt.x, saveAt.y);
     await sp.waitForFunction(() => window.game.scene.isActive('Title') && window.game.scene.getScene('Title').continueButton?.visible, null, { timeout: 30000 });
     const label = await sp.evaluate(() => window.game.scene.getScene('Title').continueButton.text);
+    const savedCopays = await sp.evaluate(() => JSON.parse(localStorage.getItem('moshi.shift.v1')).copays);
     const contAt = await buttonAtIn(sp, 'Title', 'continueButton');
     await sp.touchscreen.tap(contAt.x, contAt.y);
     await sp.waitForFunction(() => window.game.scene.isActive('Hud'), null, { timeout: 60000 });
@@ -2239,10 +2240,11 @@ try {
         snacks: sc.snacks, omarOut: !!sc.scribes.get('omar'), saveLeft: localStorage.getItem('moshi.shift.v1'),
       };
     });
-    check(label.includes('ROUND 1') && back.copays === roundStart && roundStart <= built.copays && back.score === 1234 && back.round === 0
+    // (Omar is out again on the continued shift and may already have taped off a vent or two with your Copays)
+    check(label.includes('ROUND 1') && savedCopays === roundStart && roundStart <= built.copays && back.copays <= savedCopays && back.copays >= savedCopays - 100 && back.score === 1234 && back.round === 0
       && JSON.stringify(back.rooms) === JSON.stringify(built.rooms) && back.tier === 1 && back.maxHp === built.maxHp
       && back.snacks.join() === 'proteinBar' && back.omarOut && back.saveLeft === null,
-      `SAVE & QUIT mid-round, then CONTINUE SHIFT picks up at the start of that round (${JSON.stringify({ label, built, back })})`);
+      `SAVE & QUIT mid-round, then CONTINUE SHIFT picks up at the start of that round (${JSON.stringify({ label, built, roundStart, savedCopays, back })})`);
     check(saveErrors.length === 0, `no errors saving and continuing a shift${saveErrors.length ? ': ' + saveErrors.join(' | ') : ''}`);
     await sv.close();
   }
