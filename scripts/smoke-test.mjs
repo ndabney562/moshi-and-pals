@@ -44,6 +44,14 @@ const where = (e) => `${e.message} @ ${(e.stack ?? '').split('\n')[1]?.trim() ??
 page.on('pageerror', (e) => errors.push(where(e)));
 page.on('console', (m) => m.type() === 'error' && errors.push(m.text()));
 
+/** Screen position (page pixels) of a named game object on a scene, for tapping it. */
+const buttonAtIn = (pg, sceneKey, name) => pg.evaluate(([k, n]) => {
+  const b = window.game.scene.getScene(k)[n];
+  const canvas = window.game.canvas.getBoundingClientRect();
+  const s = canvas.width / window.game.scale.width;
+  return { x: canvas.left + b.x * s, y: canvas.top + b.y * s };
+}, [sceneKey, name]);
+
 let failed = false;
 const check = (ok, msg) => {
   console.log(`${ok ? 'PASS' : 'FAIL'} ${msg}`);
@@ -140,6 +148,16 @@ try {
   let aimHits = 0;
   for (let i = 0; i < 70; i++) {
     await page.waitForTimeout(100);
+    // On a slow runner a germ that came close can be knocked back (or wander) out of range and not come back in time:
+    // keep the nearest one in front of Eugene, so auto-aim and the spray get a fair go
+    await page.evaluate(() => {
+      const scene = window.game.scene.getScene('Game');
+      const e = scene.player;
+      const live = scene.germs.getChildren().filter((g) => g.active);
+      if (live.length === 0 || live.some((g) => Math.hypot(g.x - e.x, g.y - e.y) < 170)) return;
+      live.sort((a, b) => Math.hypot(a.x - e.x, a.y - e.y) - Math.hypot(b.x - e.x, b.y - e.y));
+      live[0].setPosition(e.x + 130, e.y + 10);
+    });
     if (i === 8) await page.screenshot({ path: 'smoke-spray.png' });
     // Whenever a germ is clearly in range, Eugene should be facing it
     const { aim, dist, facing } = await game();
@@ -279,6 +297,12 @@ try {
   const purgeAt = await buttonAt('purgeButton');
   await page.touchscreen.tap(purgeAt.x, purgeAt.y);
   await page.waitForTimeout(300);
+  // On the slow CI runner the tap sometimes lands while the SPRAY ring covers the button: tap once more if nothing fired
+  if (!(await page.evaluate(() => { const sc = window.game.scene.getScene('Game'); return sc.purgeReadyAt > sc.time.now; }))) {
+    const again = await buttonAt('purgeButton');
+    await page.touchscreen.tap(again.x, again.y);
+    await page.waitForTimeout(300);
+  }
   const purged = await page.evaluate(() => {
     const scene = window.game.scene.getScene('Game');
     const g = window.__purgeTarget;
@@ -691,6 +715,13 @@ try {
     const scene = window.game.scene.getScene('Game');
     for (const g of scene.germs.getChildren()) if (g.active) g.kill();
     for (const id of ['bath2', 'lab', 'xray']) scene.unlockRoom(id);
+    // Opening X-ray lets Donald out, and he'd barricade vents and shame patients with your Copays: send him home so the
+    // checks below see only what they set up (his own checks come later)
+    const donald = scene.scribes.get('donald');
+    if (donald) {
+      donald.until = 1;
+      scene.scribes.update(scene.time.now, 0);
+    }
     scene.addCopays(500 - scene.copays);
     const st = (kind) => scene.stations.find((s) => s.o.kind === kind);
     const at = (x, y) => {
@@ -738,6 +769,9 @@ try {
     const before = where();
     v.shuffle();
     const moved = where() !== before && v.list.every(inside);
+    // (a helper standing near a vent may already have barricaded it on a slow runner: start from clear vents)
+    for (const x of v.list) if (x.block) x.block.until = 0;
+    v.update(scene.time.now);
     scene.addCopays(1000 - scene.copays);
     const first = v.list[0];
     const st = scene.stations.find((s) => s.o === first.o);
@@ -2001,7 +2035,7 @@ try {
     };
     await tapIn('Title', 'RESIDENCY BOARD');
     await sp1.waitForFunction(() => window.game.scene.isActive('Board'), null, { timeout: 10000 }).catch(() => {});
-    await tapIn('Board', 'SCRIBES');
+    await tapIn('Board', 'STAFF');
     const hired = await tapIn('Board', 'HIRE');
     const afterHire = await sp1.evaluate(() => JSON.parse(localStorage.getItem('moshi.progress.v1') ?? '{}'));
     check(hired && afterHire.owned.includes('scribe:omar') && afterHire.credits === 18,
@@ -2050,31 +2084,179 @@ try {
       for (const p of sc.powerups.pills) p.img.setVisible(false);
       return { pool: sc.powerups.dropPool, seen: [...seen] };
     });
-    const unhired = await sp2.evaluate(() => [...window.game.scene.getScene('Game').scribeRooms.values()]);
-    check(!drops.seen.some((id) => id.startsWith('scribe')) && unhired.length === 0,
-      `no scribe pills drop, and an unhired scribe isn't waiting in a room (${JSON.stringify({ seen: drops.seen, unhired })})`);
-    check(!drops.pool.includes('techDonald'), `Donald's pill doesn't drop before he's unlocked (${drops.pool.join(', ')})`);
-    // DONALD: walking into X-ray during the shift unlocks him for good and brings him out to help
-    const start = await sp2.evaluate(() => {
+    const waiting = await sp2.evaluate(() => Object.fromEntries(window.game.scene.getScene('Game').scribeRooms));
+    const unhired = Object.entries(waiting).filter(([room, id]) => !(room === 'xray' && id === 'donald'));
+    check(!drops.seen.some((id) => id.startsWith('scribe') || id === 'techDonald') && unhired.length === 0 && waiting.xray === 'donald',
+      `no scribe or Donald pills drop, an unhired scribe isn't waiting in a room, and Donald waits in X-ray (${JSON.stringify({ seen: drops.seen, waiting })})`);
+    // DONALD: opening X-ray during the shift unlocks him for good and lets him out to help for the rest of the shift
+    const donald = await sp2.evaluate(() => {
       const sc = window.game.scene.getScene('Game');
       const omar = sc.scribes.get('omar');
       if (omar) omar.until = 1; // out of the way, so the kill below is Donald's
-      const p = sc.player;
-      const at = { x: p.x, y: p.y };
-      const r = sc.room.rooms.find((rm) => rm.id === 'xray');
-      p.body.reset(r.x + r.w * 0.2, r.y + r.h * 0.85);
-      return at;
-    });
-    const donald = await sp2.waitForFunction(() => {
-      const sc = window.game.scene.getScene('Game');
+      const shadow = sc.scribeShadows.get('xray');
+      const silhouette = !!shadow?.visible && shadow.texture.key === 'scribe-donald';
+      sc.unlockRoom('xray');
       const owned = JSON.parse(localStorage.getItem('moshi.progress.v1') ?? '{}').owned ?? [];
-      return sc.scribes.get('donald') && owned.includes('scribe:donald') ? { pool: sc.powerups.dropPool } : null;
-    }, null, { timeout: 30000 }).then((h) => h.jsonValue(), () => null);
-    check(!!donald && donald.pool.includes('techDonald'), `walking into X-ray unlocks Donald, he comes out and his pill drops (${JSON.stringify(donald)})`);
-    await sp2.evaluate((at) => window.game.scene.getScene('Game').player.body.reset(at.x, at.y), start);
+      const s = sc.scribes.list.find((x) => x.def.id === 'donald');
+      return {
+        silhouette, out: !!sc.scribes.get('donald'), unlocked: owned.includes('scribe:donald'), allShift: s.until === Infinity,
+        still: sc.scribeRooms.has('xray') || sc.scribeShadows.has('xray') || !!shadow?.scene,
+      };
+    });
+    check(donald.silhouette && donald.out && donald.unlocked && donald.allShift && !donald.still,
+      `Donald's silhouette waits in X-ray; opening it unlocks him and he stays for the rest of the shift (${JSON.stringify(donald)})`);
     await scribeWorks(sp2, 'donald');
     check(scribeErrors2.length === 0, `no errors with Omar and Donald${scribeErrors2.length ? ': ' + scribeErrors2.join(' | ') : ''}`);
     await sc2.close();
+  }
+
+  // THE FRONT DESK (Selina and Elaine) and STAFF UPGRADES: buy Omar's first upgrade on the Locker's STAFF shelf, then a
+  // shift with Selina at the desk: patients line up there, she checks them in for Copays, and the upgrades apply.
+  {
+    const fd = await browser.newContext({ viewport: { width: 852, height: 393 }, deviceScaleFactor: 1, isMobile: true, hasTouch: true });
+    await fd.addInitScript(() => {
+      if (!localStorage.getItem('moshi.progress.v1')) {
+        localStorage.setItem('moshi.progress.v1', JSON.stringify({
+          credits: 0, earned: 0, owned: ['scribe:omar', 'scribe:selina'], specialty: '', startTool: '', kills: {}, bank: 600, locker: {}, staff: { selina: 2 },
+        }));
+      }
+      localStorage.setItem('moshi.settings.v1', JSON.stringify({ learned: { move: true, spray: true, pour: true, purge: true, buy: true } }));
+    });
+    const fp = await fd.newPage();
+    labelWaits(fp);
+    const deskErrors = [];
+    fp.on('pageerror', (e) => deskErrors.push(where(e)));
+    await fp.goto(url + '?god&scribe=selina', { timeout: 90000 });
+    await fp.waitForFunction(() => window.game?.scene.isActive('Title'));
+    const tapIn = async (key, match) => {
+      const at = await fp.evaluate(([k, m]) => {
+        const list = window.game.scene.getScene(k).children.list;
+        const t = list.concat(...list.filter((c) => c.list).map((c) => c.list)).find((c) => typeof c.text === 'string' && c.text.includes(m) && c.visible);
+        if (!t) return null;
+        const b = t.getBounds();
+        const canvas = window.game.canvas.getBoundingClientRect();
+        const k2 = canvas.width / window.game.scale.width;
+        return { x: canvas.left + b.centerX * k2, y: canvas.top + b.centerY * k2 };
+      }, [key, match]);
+      if (at) await fp.touchscreen.tap(at.x, at.y);
+      await fp.waitForTimeout(300);
+      return !!at;
+    };
+    await tapIn('Title', 'EQUIPMENT LOCKER');
+    await fp.waitForFunction(() => window.game.scene.isActive('Locker'), null, { timeout: 10000 }).catch(() => {});
+    await tapIn('Locker', 'STAFF');
+    await tapIn('Locker', 'UPGRADE');
+    const staff = await fp.evaluate(() => JSON.parse(localStorage.getItem('moshi.progress.v1')));
+    check(staff.staff?.omar === 1 && staff.bank === 100 && !staff.staff?.alan,
+      `the Locker's STAFF shelf sells Omar's first upgrade for $500, and locked helpers can't be upgraded (${JSON.stringify({ staff: staff.staff, bank: staff.bank })})`);
+    // Omar stays all shift once he's out of his exam room, so his shelf skips Overtime: next up is Employee of the Month
+    const omarNext = await fp.evaluate(() => {
+      const shelf = window.game.scene.getScene('Locker').body.list;
+      return shelf.filter((c) => typeof c.text === 'string' && c.text.startsWith('Next:')).map((c) => c.text);
+    });
+    check(omarNext[0]?.includes('Employee of the Month'), `Omar skips Overtime on the STAFF shelf (${JSON.stringify(omarNext)})`);
+    await tapIn('Locker', 'BACK');
+    await fp.waitForFunction(() => window.game.scene.isActive('Title'), null, { timeout: 10000 }).catch(() => {});
+    await fp.touchscreen.tap(426, 120);
+    await fp.waitForFunction(() => window.game.scene.isActive('Hud'), null, { timeout: 60000 });
+    const setup = await fp.evaluate(() => {
+      const sc = window.game.scene.getScene('Game');
+      sc.waves.queue.length = 0;
+      sc.waves.phase = 'intermission';
+      sc.waves.nextRoundAt = Number.MAX_SAFE_INTEGER;
+      for (const g of sc.germs.getChildren()) if (g.active) g.kill();
+      const selina = sc.frontDesk.get('selina');
+      const line = sc.frontDesk.line;
+      for (const other of sc.patients.group.getChildren()) if (other.active) other.retire();
+      for (let i = 0; i < 2; i++) {
+        sc.patients.spawn(sc.time.now);
+        const pt = sc.patients.group.getChildren().filter((c) => c.active)[i];
+        pt.setPosition(line[Math.min(i + 1, line.length - 1)].x - 30, line[0].y + 20);
+        pt.leaveAt = Number.MAX_SAFE_INTEGER;
+      }
+      selina.nextCheckInAt = 0; // game time crawls on slow runners: don't wait out the 2.5 s between check-ins
+      sc.summonHelper('omar', sc.time.now, 1000);
+      const omar = sc.scribes.get('omar');
+      return {
+        here: !!selina, duration: selina?.boost.duration, omarPower: omar?.boost.power, spots: line.length,
+        pool: sc.powerups.dropPool, copays: sc.copays,
+      };
+    });
+    check(setup.here && setup.duration === 1.5 && Math.abs(setup.omarPower - 1.2) < 1e-9 && setup.spots >= 3,
+      `Selina works the front desk, and staff upgrades apply to her and Omar (${JSON.stringify(setup)})`);
+    check(setup.pool.includes('psrSelina') && !setup.pool.includes('psrElaine'), `a hired PSR's pill drops, a locked one's doesn't (${setup.pool.join(', ')})`);
+    const lined = await fp.waitForFunction(() => {
+      const sc = window.game.scene.getScene('Game');
+      // (Only patients in line get checked in)
+      return sc.frontDesk.checkedIn >= 1
+        ? { queue: sc.patients.queue.length, checkedIn: sc.frontDesk.checkedIn, copays: sc.copays } : null;
+    }, null, { timeout: 90000 }).then((h) => h.jsonValue(), () => null);
+    check(!!lined && lined.copays > setup.copays,
+      `patients line up at the front desk and Selina checks them in for Copays (${JSON.stringify(lined)})`);
+    check(deskErrors.length === 0, `no errors at the front desk${deskErrors.length ? ': ' + deskErrors.join(' | ') : ''}`);
+    await fd.close();
+  }
+
+  // SAVE & QUIT: build up a shift, start round 1, earn more mid-round, save from the pause menu, then CONTINUE SHIFT
+  // from the title: it picks up at the start of round 1 with what the shift had when that round began
+  {
+    const sv = await browser.newContext({ viewport: { width: 852, height: 393 }, deviceScaleFactor: 1, isMobile: true, hasTouch: true });
+    await sv.addInitScript(() => {
+      if (!localStorage.getItem('moshi.progress.v1')) localStorage.setItem('moshi.progress.v1', JSON.stringify({ credits: 0, earned: 0, owned: ['scribe:omar'], specialty: '', startTool: '', kills: {}, bank: 0, locker: {}, staff: {} }));
+      localStorage.setItem('moshi.settings.v1', JSON.stringify({ learned: { move: true, spray: true, pour: true, purge: true, buy: true } }));
+    });
+    const sp = await sv.newPage();
+    labelWaits(sp);
+    const saveErrors = [];
+    sp.on('pageerror', (e) => saveErrors.push(where(e)));
+    await sp.goto(url + '?god', { timeout: 90000 });
+    await sp.waitForFunction(() => window.game?.scene.isActive('Title'), null, { timeout: 90000 });
+    await sp.touchscreen.tap(426, 120);
+    await sp.waitForFunction(() => window.game.scene.isActive('Hud'), null, { timeout: 60000 });
+    const built = await sp.evaluate(() => {
+      const sc = window.game.scene.getScene('Game');
+      sc.addCopays(3000);
+      sc.unlockRoom('halls');
+      const omarRoom = [...sc.scribeRooms].find(([, id]) => id === 'omar')?.[0];
+      if (omarRoom) sc.unlockRoom(omarRoom);
+      sc.sprayer.upgrade(sc.time.now);
+      sc.vendingOffer = ['proteinBar'];
+      sc.buySnack('proteinBar');
+      sc.score = 1234;
+      sc.waves.nextRoundAt = 0;
+      return { copays: sc.copays, rooms: [...sc.unlocked].sort(), maxHp: sc.player.maxHp, omarRoom };
+    });
+    await sp.waitForFunction(() => window.game.scene.getScene('Game').waves.roundActive, null, { timeout: 30000 });
+    // (Omar may tape off a vent with your Copays before the round starts, so compare with what the round began with)
+    const roundStart = await sp.evaluate(() => {
+      const sc = window.game.scene.getScene('Game');
+      const atStart = sc.roundStartSave.copays;
+      sc.addCopays(999); // mid-round: a save doesn't keep this
+      window.game.scene.getScene('Hud').pause();
+      return atStart;
+    });
+    const saveAt = await buttonAtIn(sp, 'Hud', 'saveQuitItem');
+    await sp.touchscreen.tap(saveAt.x, saveAt.y);
+    await sp.waitForFunction(() => window.game.scene.isActive('Title') && window.game.scene.getScene('Title').continueButton?.visible, null, { timeout: 30000 });
+    const label = await sp.evaluate(() => window.game.scene.getScene('Title').continueButton.text);
+    const savedCopays = await sp.evaluate(() => JSON.parse(localStorage.getItem('moshi.shift.v1')).copays);
+    const contAt = await buttonAtIn(sp, 'Title', 'continueButton');
+    await sp.touchscreen.tap(contAt.x, contAt.y);
+    await sp.waitForFunction(() => window.game.scene.isActive('Hud'), null, { timeout: 60000 });
+    const back = await sp.evaluate(() => {
+      const sc = window.game.scene.getScene('Game');
+      return {
+        copays: sc.copays, score: sc.score, round: sc.waves.round, rooms: [...sc.unlocked].sort(), tier: sc.sprayer.tier, maxHp: sc.player.maxHp,
+        snacks: sc.snacks, omarOut: !!sc.scribes.get('omar'), saveLeft: localStorage.getItem('moshi.shift.v1'),
+      };
+    });
+    // (Omar is out again on the continued shift and may already have taped off a vent or two with your Copays)
+    check(label.includes('ROUND 1') && savedCopays === roundStart && roundStart <= built.copays && back.copays <= savedCopays && back.copays >= savedCopays - 100 && back.score === 1234 && back.round === 0
+      && JSON.stringify(back.rooms) === JSON.stringify(built.rooms) && back.tier === 1 && back.maxHp === built.maxHp
+      && back.snacks.join() === 'proteinBar' && back.omarOut && back.saveLeft === null,
+      `SAVE & QUIT mid-round, then CONTINUE SHIFT picks up at the start of that round (${JSON.stringify({ label, built, roundStart, savedCopays, back })})`);
+    check(saveErrors.length === 0, `no errors saving and continuing a shift${saveErrors.length ? ': ' + saveErrors.join(' | ') : ''}`);
+    await sv.close();
   }
 
   // THE MIRACLE CURE: every step of the secret quest, driven through its stations, then the Records Room,

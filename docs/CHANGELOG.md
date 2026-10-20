@@ -1,5 +1,20 @@
 # Changelog
 
+## v0.31.0: Save & Quit
+- **Save your shift and come back later.** The pause menu has **SAVE & QUIT** next to QUIT. The title screen then shows **▶ CONTINUE SHIFT** with the round it'll pick up at.
+- **It picks up at the start of a round.** Your Copays, score, health, open rooms, tools and their upgrades, snacks, the helpers you've let out and the Miracle Cure's progress all come back. Germs on the floor, pills and timers start fresh.
+- Saved in the middle of a round, it's the shift as it was when that round began, so anything since then is lost (the pause screen says which round you'd pick up at). Saved in a break, it's the shift as it is, starting the next round.
+- One saved shift at a time: saving again replaces it, and continuing uses it up. Starting a new shift doesn't touch it. Plain QUIT still throws the shift away (two taps).
+
+## v0.30.0: Selina and Elaine at the front desk, and staff upgrades
+- **Two new helpers: Selina and Elaine, the front desk PSRs.** Hire them on the Residency Board (15 CME each, under the new **STAFF** tab) and their pills join the power-up drops.
+- **Grab one and she opens the front desk.** Every patient lines up in front of RECEPTION and complains about the wait ("I've been here since NINE.") instead of committing health code violations, and she checks them in and sends them home one at a time. Each check-in counts as cleaning up the patient, with the usual reward.
+- **Selina** checks people in fast (every 2.5 s, +$5). **Elaine** is slower (every 4 s) but collects the copay at check-in (+$25).
+- **Staff upgrades.** The Equipment Locker has a new **STAFF** shelf: Omar, Alan, Donald, Selina and Elaine each get three upgrades you keep for good, paid with banked Copays once they're on staff: **Coffee Run** ($500, +20% damage; the PSRs bring in 20% more Copays per check-in), **Overtime** ($1,200, they stay 50% longer) and **Employee of the Month** ($2,500, +15% damage and they work 20% faster). Overtime is only for the front desk: Omar, Alan and Donald already stay all shift once they're out, so they skip it.
+- **Donald waits in X-ray now, like the scribes in their exam rooms.** Open the X-ray room and he comes out and helps for the rest of the shift (the first time also unlocks him for good). No more Donald pill, and walking into X-ray no longer calls him for 20 s.
+- **You can see who's waiting.** A dark silhouette of Omar, Alan or Donald stands in the locked room they're waiting in, so you know which door to open.
+- **Once they're out, they're there for good.** Omar, Alan and Donald can't be hurt and stay on shift until it ends.
+
 ## v0.29.0: Germ vents and Prior Auth barricades
 - **Germs come in through vents** now: green, bubbling floor grates at random spots in every open room. At the start of every round the vents move somewhere new, so the same corner is never safe twice.
 - **BLOCK a vent for $50.** Stand by one and press USE: a PRIOR AUTH barricade goes up and germs have to wait for approval. They come in through another vent instead, but every germ that tries this one pushes on it (BANG!), and after 8 pushes or 30 seconds it gives way. A bar under it shows how much it has left. If every vent is blocked, germs pile up behind the barricades until one breaks.

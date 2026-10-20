@@ -251,7 +251,7 @@ export class Vents {
       this.host.pay(cost);
       this.barricade(best, time);
       const def = SCRIBES.find((s) => s.id === h.id);
-      if (def) h.say(def.lines.block);
+      if (def?.lines.block) h.say(def.lines.block);
     }
   }
 }

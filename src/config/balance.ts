@@ -378,6 +378,8 @@ export const BALANCE = {
    */
   scribes: {
     ms: 20000,
+    /** A helper waiting in a locked room: a dark silhouette there, `atY` of the way down the room, gently pulsing. */
+    silhouette: { color: 0x050c0e, alpha: 0.75, atY: 0.7, pulseMs: 1400 },
     speed: 300,
     /** Where they stand: this far behind Eugene, off to one side. */
     followDistance: 85,
@@ -395,6 +397,21 @@ export const BALANCE = {
      * its line and stuns them. He comes out to help for `ms` on the first visit to X-ray each shift.
      */
     donald: { everyMs: 1300, damage: 30, knockback: 90, range: 420, width: 26, stunMs: 250 },
+  },
+  /**
+   * THE FRONT DESK (Selina and Elaine, systems/FrontDesk.ts). While one is at the desk, patients line up `spacing`
+   * apart in front of it and commit no violations; every `checkInMs` the PSR checks in the patient nearest the head of
+   * the line (within `reach` of the desk) and sends them home: the usual clean-up reward plus `copays`.
+   * In line, someone complains about the wait every `complainEveryMs`.
+   */
+  frontDesk: {
+    spacing: 52,
+    reach: 320,
+    complainEveryMs: [1800, 3200] as [number, number],
+    selina: { checkInMs: 2500, copays: 5 },
+    elaine: { checkInMs: 4000, copays: 25 },
+    /** After the line breaks up, how long before the patients start misbehaving again. */
+    graceMs: 3000,
   },
   /**
    * NPS SCORES: the saved currency that hires the Pals. Eugene is free; everyone else is bought once with NPS

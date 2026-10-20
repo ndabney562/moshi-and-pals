@@ -1,7 +1,7 @@
 import Phaser from 'phaser';
 import { BALANCE } from '../config/balance';
 import { runRng } from '../core/rng';
-import { CLEANED_LINES, VIOLATIONS } from '../data/patients';
+import { CHECKED_IN_LINES, CLEANED_LINES, VIOLATIONS, WAIT_COMPLAINTS } from '../data/patients';
 import type { RoomArea, RoomLayout } from '../data/rooms';
 import type { CharacterId } from '../data/characters';
 import { Patient } from '../entities/Patient';
@@ -35,6 +35,11 @@ export class PatientDirector {
   private readonly eugeneBubble: SpeechBubble;
   private nextSpawnAt: number;
   private leftAt = new Map<Patient, number>();
+  /** The front desk line (Selina and Elaine): spots from the head of the line back, while a PSR is at the desk. */
+  private line?: { x: number; y: number }[];
+  /** Who's in line, first come first served. */
+  private inLine: Patient[] = [];
+  private nextComplaintAt = 0;
 
   constructor(private readonly host: PatientHost) {
     this.group = host.scene.physics.add.group({ classType: Patient, maxSize: 3 });
@@ -58,7 +63,25 @@ export class PatientDirector {
     if (bossRound) for (const p of active) if (p.state === 'wander') this.sendHome(p, time);
 
     const spot = (out: Phaser.Math.Vector2) => this.openSpot(out);
+    const line = this.line;
+    if (line) {
+      this.inLine = this.inLine.filter((p) => p.active && p.state === 'wander');
+      for (const p of active) if (p.state === 'wander' && !this.inLine.includes(p)) { this.inLine.push(p); p.repick(); }
+      if (this.inLine.length && time >= this.nextComplaintAt) {
+        this.nextComplaintAt = time + runRng.patients.between(BALANCE.frontDesk.complainEveryMs);
+        const p = runRng.patients.pick(this.inLine);
+        p.bubble.say(runRng.patients.pick(WAIT_COMPLAINTS), p, 34, 1700);
+      }
+    }
     for (const p of active) {
+      const place = line ? this.inLine.indexOf(p) : -1;
+      if (line && place >= 0) {
+        // In line: walk to their place and wait (complaining). Nobody leaves the line, nobody misbehaves.
+        const at = line[Math.min(place, line.length - 1)];
+        p.walk(time, dtMs, (out) => out.set(at.x, at.y), !!this.host.backwards);
+        p.leaveAt = Math.max(p.leaveAt, time + 1000);
+        continue;
+      }
       p.walk(time, dtMs, spot, !!this.host.backwards);
       if (p.state === 'wander') {
         if (time >= p.leaveAt) this.sendHome(p, time);
@@ -85,6 +108,43 @@ export class PatientDirector {
       return true;
     }
     return false;
+  }
+
+  /** The front desk opens: everyone lines up at these spots (head of the line first) until `closeLine`. */
+  openLine(spots: { x: number; y: number }[], time: number): void {
+    if (this.line || !spots.length) return;
+    this.line = spots;
+    this.inLine = [];
+    this.nextComplaintAt = time + 600;
+  }
+
+  /** The front desk closes: the line breaks up and, after a short grace, patients go back to misbehaving. */
+  closeLine(time: number): void {
+    if (!this.line) return;
+    this.line = undefined;
+    for (const p of this.inLine) {
+      if (!p.active || p.state !== 'wander') continue;
+      p.repick();
+      p.nextViolationAt = Math.max(p.nextViolationAt, time + BALANCE.frontDesk.graceMs);
+    }
+    this.inLine = [];
+  }
+
+  /** Patients in line, first come first served (the front desk checks them in in this order). */
+  get queue(): readonly Patient[] {
+    return this.line ? this.inLine : [];
+  }
+
+  /** The front desk checks a patient in: they go home and it counts as cleaned up. */
+  checkIn(p: Patient): boolean {
+    if (!p.active || p.state !== 'wander') return false;
+    p.bubble.say(Phaser.Utils.Array.GetRandom(CHECKED_IN_LINES), p, 34, 1800);
+    p.setTint(0xffd6e7);
+    this.inLine = this.inLine.filter((q) => q !== p);
+    for (const q of this.inLine) q.repick(); // everyone shuffles up
+    this.sendHome(p, p.scene.time.now);
+    this.host.onCleaned(p);
+    return true;
   }
 
   /** The closest wandering patient within `range`, for auto-aim when no germ is near. */

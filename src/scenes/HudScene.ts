@@ -77,6 +77,8 @@ export class HudScene extends Phaser.Scene {
   private pourHintsShown = 0;
   private wasRefilling = false;
   private quitItem!: Phaser.GameObjects.Text;
+  /** SAVE & QUIT, beside QUIT: keeps the shift to continue from the title screen (core/shiftSave). */
+  private saveQuitItem!: Phaser.GameObjects.Text;
   private quitArmedUntil = 0;
   private paused = false;
   /** The Supply Requisition form is up (the game waits for a pick). */
@@ -731,18 +733,30 @@ export class HudScene extends Phaser.Scene {
       items.push(this.autoAimToggle);
     }
     items.push(this.achievementsItem);
-    // Quitting throws the run away, so it takes a second tap
-    this.quitItem = item('QUIT TO MENU', () => {
-      if (this.time.now > this.quitArmedUntil) {
-        this.quitArmedUntil = this.time.now + 2500;
-        this.quitItem.setText('TAP AGAIN TO QUIT').setColor('#ffb3b3');
+    // SAVE & QUIT keeps the shift for CONTINUE SHIFT on the title screen; plain QUIT throws it away, so it takes a second tap
+    this.saveQuitItem = item('SAVE & QUIT', () => {
+      const game = this.scene.get('Game') as GameScene;
+      if (!game.saveAndQuit()) {
+        this.saveQuitItem.setText("CAN'T SAVE HERE").setColor('#ffb3b3');
         return;
       }
       this.paused = false;
       this.scene.stop('Game');
       this.scene.start('Title');
     });
-    items.push(this.quitItem);
+    this.quitItem = item('QUIT', () => {
+      if (this.time.now > this.quitArmedUntil) {
+        this.quitArmedUntil = this.time.now + 2500;
+        this.quitItem.setText('NO SAVE? TAP AGAIN').setColor('#ffb3b3');
+        return;
+      }
+      this.paused = false;
+      this.scene.stop('Game');
+      this.scene.start('Title');
+    });
+    // They share a row, like SOUND and MUSIC
+    for (const t of [this.saveQuitItem, this.quitItem]) t.setFixedSize(166, 0).setFontSize(18);
+    items.push(this.saveQuitItem, this.quitItem);
     this.pauseMenu = this.add.container(0, 0, [this.pauseDim, this.pauseTitle, this.pauseTip, this.pauseVersion, ...items]).setDepth(100).setVisible(false);
     this.refreshSoundToggle();
     this.refreshAutoAimToggle();
@@ -764,12 +778,14 @@ export class HudScene extends Phaser.Scene {
     this.pauseTitle.setPosition(width / 2, height * 0.15);
     this.pauseTip.setPosition(width / 2, height * 0.15 + 58);
     this.pauseVersion.setPosition(width / 2, height - this.safe.bottom - 10);
-    const items = [this.resumeItem, this.soundToggle, this.autoRefillToggle, this.motionToggle, this.autoAimToggle, this.achievementsItem, this.quitItem].filter((t): t is Phaser.GameObjects.Text => !!t);
+    const items = [this.resumeItem, this.soundToggle, this.autoRefillToggle, this.motionToggle, this.autoAimToggle, this.achievementsItem, this.saveQuitItem].filter((t): t is Phaser.GameObjects.Text => !!t);
     const top = height * 0.3;
     const gap = Math.min(66, (height * 0.62) / items.length);
     items.forEach((t, i) => t.setPosition(width / 2, top + i * gap));
     this.soundToggle.x = width / 2 - 87;
     this.musicToggle.setPosition(width / 2 + 87, this.soundToggle.y);
+    this.saveQuitItem.x = width / 2 - 87;
+    this.quitItem.setPosition(width / 2 + 87, this.saveQuitItem.y);
   }
 
   /** Freezes the game and shows the pause menu. Safe to call any time (ignored if already paused or the run is over). */
@@ -780,8 +796,10 @@ export class HudScene extends Phaser.Scene {
     this.releaseInputs();
     this.scene.pause('Game');
     this.quitArmedUntil = 0;
-    this.quitItem.setText('QUIT TO MENU').setColor(COLORS.uiText);
-    this.pauseTip.setText(isUpdateReady() ? 'A new version is ready. Quit to the menu to get it.' : `Tip: ${Phaser.Utils.Array.GetRandom(TIPS)}`);
+    this.quitItem.setText('QUIT').setColor(COLORS.uiText);
+    this.saveQuitItem.setText('SAVE & QUIT').setColor(COLORS.uiAccent);
+    const tip = isUpdateReady() ? 'A new version is ready. Quit to the menu to get it.' : `Tip: ${Phaser.Utils.Array.GetRandom(TIPS)}`;
+    this.pauseTip.setText(`${tip}\nSAVE & QUIT picks up at the start of round ${game.saveRound}.`);
     this.refreshSoundToggle();
     this.refreshAutoAimToggle();
     const list = achievementList();

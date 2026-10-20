@@ -6,6 +6,7 @@ import { CRATE_POOL, EQUIPMENT } from '../data/equipment';
 import { GERMS } from '../data/germs';
 import { SPECIALTIES, STARTER_KIT_COST } from '../data/residency';
 import { SCRIBES, scribeUnlockId } from '../data/scribes';
+import { BALANCE } from '../config/balance';
 
 type Tab = 'specialties' | 'kit' | 'scribes' | 'atlas';
 const font = 'system-ui, -apple-system, sans-serif';
@@ -28,7 +29,7 @@ export class BoardScene extends Phaser.Scene {
     const { width, height } = this.scale;
     this.add.rectangle(0, 0, width, height, 0x0d2b2e).setOrigin(0);
     this.header = this.add.text(width / 2, 40, '', { fontFamily: font, fontSize: '38px', fontStyle: '900', color: COLORS.uiText }).setOrigin(0.5).setShadow(0, 4, '#000', 8);
-    const labels: [Tab, string][] = [['specialties', 'SPECIALTIES'], ['kit', 'STARTER KIT'], ['scribes', 'SCRIBES'], ['atlas', 'MICROBIOLOGY ATLAS']];
+    const labels: [Tab, string][] = [['specialties', 'SPECIALTIES'], ['kit', 'STARTER KIT'], ['scribes', 'STAFF'], ['atlas', 'MICROBIOLOGY ATLAS']];
     this.tabs = labels.map(([id, label], i) => {
       const text = this.add.text(width / 2 + (i - (labels.length - 1) / 2) * 270, 96, label, {
         fontFamily: font, fontSize: '20px', fontStyle: 'bold', color: COLORS.uiText, backgroundColor: '#1f4f55', padding: { x: 18, y: 10 },
@@ -119,25 +120,36 @@ export class BoardScene extends Phaser.Scene {
     });
   }
 
-  /** Omar and Alan: hire one and every shift they wait in a random first-floor exam room. Donald unlocks in X-ray. */
+  /**
+   * Omar and Alan: hire one and every shift they wait in a random first-floor exam room. Donald waits in X-ray (and
+   * unlocks the first time it's opened).
+   * Selina and Elaine (the front desk) drop as pills once hired. Their upgrades are in the Equipment Locker's STAFF shelf.
+   */
   private drawScribes(): void {
-    const { width } = this.scale;
+    const { width, height } = this.scale;
     const p = progress();
     const left = width / 2 - 520;
     const right = width / 2 + 520;
-    this.txt(left, 140, 'Hired, each one waits in a random exam room on the first floor. Open it and they help you for the rest of the shift.', 17, COLORS.uiAccent, 'italic');
+    this.txt(left, 140, `Omar and Alan wait in an exam room, Donald in X-ray: open it and they help all shift. Front desk pills drop, ${BALANCE.scribes.ms / 1000} s a visit.`, 17, COLORS.uiAccent, 'italic');
+    const top = 176;
+    const rowH = Math.min(120, (height - top - 84) / SCRIBES.length);
+    const small = rowH < 110;
     SCRIBES.forEach((sc, i) => {
-      const y = 190 + i * 120;
+      const y = top + i * rowH;
       const id = scribeUnlockId(sc.id);
       const hired = p.owned.includes(id);
-      const portrait = this.add.image(left + 44, y + 34, `scribe-${sc.id}`).setAngle(-90).setAlpha(hired ? 1 : 0.6);
+      const portrait = this.add.image(left + 44, y + (small ? 30 : 34), `scribe-${sc.id}`).setAngle(-90).setAlpha(hired ? 1 : 0.6).setScale(small ? 0.8 : 1);
       this.body.add(portrait);
-      this.txt(left + 110, y, `${sc.name.toUpperCase()}, ${sc.role}`, 24, hired ? COLORS.uiText : '#9fb8b3', '900');
-      this.txt(left + 110, y + 34, sc.blurb, 16, hired ? '#cfe9e4' : '#6f8f8a');
-      this.txt(left + 110, y + 58, 'Also shames patients with health code violations into cleaning up.', 15, hired ? '#cfe9e4' : '#6f8f8a', 'italic');
-      if (hired) this.pill(right, y + 30, 'ON CALL', () => undefined, true, false).setAlpha(1);
-      else if (sc.cost === undefined) this.pill(right, y + 30, (sc.unlockHint ?? 'LOCKED').toUpperCase(), () => undefined, false, false);
-      else this.pill(right, y + 30, `HIRE  ${sc.cost} CME`, () => { buy(id); this.show('scribes'); }, false, p.credits >= sc.cost);
+      const k = small ? 0.8 : 1;
+      this.txt(left + 110, y, `${sc.name.toUpperCase()}, ${sc.role}`, Math.round(24 * k), hired ? COLORS.uiText : '#9fb8b3', '900');
+      this.txt(left + 110, y + 34 * k, sc.blurb, Math.round(16 * k + 1), hired ? '#cfe9e4' : '#6f8f8a');
+      const extra = sc.desk ? 'Patients line up at the desk and complain about the wait instead of misbehaving.'
+        : 'Also shames patients with health code violations into cleaning up.';
+      this.txt(left + 110, y + 58 * k, extra, Math.round(15 * k + 1), hired ? '#cfe9e4' : '#6f8f8a', 'italic');
+      const mid = y + 30 * k;
+      if (hired) this.pill(right, mid, 'ON CALL', () => undefined, true, false).setAlpha(1);
+      else if (sc.cost === undefined) this.pill(right, mid, (sc.unlockHint ?? 'LOCKED').toUpperCase(), () => undefined, false, false);
+      else this.pill(right, mid, `HIRE  ${sc.cost} CME`, () => { buy(id); this.show('scribes'); }, false, p.credits >= sc.cost);
     });
   }
 

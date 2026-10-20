@@ -2,7 +2,7 @@ import { CME, SPECIALTIES, STARTER_KIT_COST, type SpecialtyDef } from '../data/r
 import { SCRIBES, scribeUnlockId, type ScribeId } from '../data/scribes';
 import { BALANCE } from '../config/balance';
 import { characterById } from '../data/characters';
-import { LOCKER } from '../config/locker';
+import { LOCKER, STAFF } from '../config/locker';
 
 /**
  * Between-run progress on this device: CME Credits, NPS Scores (which hire the Pals), what's been bought on the Residency Board, what's
@@ -27,6 +27,8 @@ export interface Progress {
   /** Copays banked for the Equipment Locker (a share of every shift's), and Locker levels bought per tool id. */
   bank: number;
   locker: Record<string, number>;
+  /** Staff upgrade levels bought per helper id (also paid from the bank). */
+  staff: Record<string, number>;
 }
 
 const KEY = 'moshi.progress.v1';
@@ -34,7 +36,7 @@ const KEY = 'moshi.progress.v1';
 const whole = (v: unknown): number => (typeof v === 'number' && Number.isFinite(v) && v >= 0 ? Math.floor(v) : 0);
 
 function load(): Progress {
-  const fresh: Progress = { credits: 0, earned: 0, nps: 0, npsEarned: 0, owned: [], specialty: '', startTool: '', kills: {}, bank: 0, locker: {} };
+  const fresh: Progress = { credits: 0, earned: 0, nps: 0, npsEarned: 0, owned: [], specialty: '', startTool: '', kills: {}, bank: 0, locker: {}, staff: {} };
   try {
     const raw: unknown = JSON.parse(localStorage.getItem(KEY) ?? 'null');
     if (!raw || typeof raw !== 'object') return fresh;
@@ -46,9 +48,13 @@ function load(): Progress {
     if (r.locker && typeof r.locker === 'object') {
       for (const [k, v] of Object.entries(r.locker as Record<string, unknown>)) locker[k] = Math.min(LOCKER.levels.length, whole(v));
     }
+    const staff: Record<string, number> = {};
+    if (r.staff && typeof r.staff === 'object') {
+      for (const [k, v] of Object.entries(r.staff as Record<string, unknown>)) staff[k] = Math.min(STAFF.levels.length, whole(v));
+    }
     const specialty = typeof r.specialty === 'string' && owned.includes(r.specialty) ? r.specialty : '';
     const startTool = typeof r.startTool === 'string' && owned.includes('starterKit') ? r.startTool : '';
-    return { credits: whole(r.credits), earned: whole(r.earned), nps: whole(r.nps), npsEarned: whole(r.npsEarned), owned, specialty, startTool, kills, bank: whole(r.bank), locker };
+    return { credits: whole(r.credits), earned: whole(r.earned), nps: whole(r.nps), npsEarned: whole(r.npsEarned), owned, specialty, startTool, kills, bank: whole(r.bank), locker, staff };
   } catch {
     return fresh;
   }
@@ -170,6 +176,42 @@ export function buyLockerLevel(toolId: string): boolean {
   const next = LOCKER.levels[level];
   if (!next || state.bank < next.cost) return false;
   state = { ...state, bank: state.bank - next.cost, locker: { ...state.locker, [toolId]: level + 1 } };
+  save();
+  return true;
+}
+
+/** Staff upgrade levels bought for a helper (0 = none). */
+export function staffLevel(id: ScribeId): number {
+  return state.staff[id] ?? 0;
+}
+
+/**
+ * The staff upgrades a helper can get, as indexes into STAFF.levels, in order. Overtime (a `duration` level) is left
+ * out for helpers who stay the whole shift once they're let out of their room (Omar, Alan, Donald).
+ */
+export function staffTiers(id: ScribeId): number[] {
+  const allShift = !!SCRIBES.find((s) => s.id === id)?.waitsIn;
+  return STAFF.levels.map((_, i) => i).filter((i) => !(allShift && STAFF.levels[i].duration));
+}
+
+/** A helper's upgrades multiplied together: × damage (or check-in Copays), × time between attacks, × time on the floor. */
+export function staffBoost(id: ScribeId): { power: number; speed: number; duration: number } {
+  const b = { power: 1, speed: 1, duration: 1 };
+  for (const l of staffTiers(id).slice(0, staffLevel(id)).map((i) => STAFF.levels[i])) {
+    b.power *= l.power ?? 1;
+    b.speed *= l.speed ?? 1;
+    b.duration *= l.duration ?? 1;
+  }
+  return b;
+}
+
+/** Buys a helper's next staff upgrade with banked Copays. Returns false if they're locked, maxed or it's too expensive. */
+export function buyStaffLevel(id: ScribeId): boolean {
+  const level = staffLevel(id);
+  const tier = staffTiers(id)[level];
+  const next = tier === undefined ? undefined : STAFF.levels[tier];
+  if (!next || !scribeUnlocked(id) || state.bank < next.cost) return false;
+  state = { ...state, bank: state.bank - next.cost, staff: { ...state.staff, [id]: level + 1 } };
   save();
   return true;
 }
