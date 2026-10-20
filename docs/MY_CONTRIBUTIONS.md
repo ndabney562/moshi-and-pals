@@ -17,6 +17,8 @@
 - Asked for Donald, the X-ray tech, with a reference photo: he unlocks in the X-ray room and helps the doctor (v0.27.0).
 - Asked for Selina and Elaine, the front desk PSRs, with reference photos (patients line up and complain about the wait), and for upgradable helpers (v0.30.0).
 - Decided Donald works like the scribes: he waits in X-ray and comes out for the whole shift when it's opened; Overtime is hidden for helpers who already stay all shift (v0.30.0).
+- Asked for helper silhouettes in their waiting rooms, and for released helpers to stay all shift (v0.30.0).
+- Asked to save progress when quitting mid-game; picked "start of that round" for where a saved shift picks up (v0.31.0).
 - Made the title poster (title screen since v0.5.2; redone as Moshi and Pals in v0.5.6; all four doctors in v0.18.0).
 - Decided Ken shows as just "Ken" and Diamond loses her flag pin.
 

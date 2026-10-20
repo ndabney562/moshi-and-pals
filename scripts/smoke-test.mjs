@@ -44,6 +44,14 @@ const where = (e) => `${e.message} @ ${(e.stack ?? '').split('\n')[1]?.trim() ??
 page.on('pageerror', (e) => errors.push(where(e)));
 page.on('console', (m) => m.type() === 'error' && errors.push(m.text()));
 
+/** Screen position (page pixels) of a named game object on a scene, for tapping it. */
+const buttonAtIn = (pg, sceneKey, name) => pg.evaluate(([k, n]) => {
+  const b = window.game.scene.getScene(k)[n];
+  const canvas = window.game.canvas.getBoundingClientRect();
+  const s = canvas.width / window.game.scale.width;
+  return { x: canvas.left + b.x * s, y: canvas.top + b.y * s };
+}, [sceneKey, name]);
+
 let failed = false;
 const check = (ok, msg) => {
   console.log(`${ok ? 'PASS' : 'FAIL'} ${msg}`);
@@ -2177,6 +2185,66 @@ try {
       `patients line up at the front desk and Selina checks them in for Copays (${JSON.stringify(lined)})`);
     check(deskErrors.length === 0, `no errors at the front desk${deskErrors.length ? ': ' + deskErrors.join(' | ') : ''}`);
     await fd.close();
+  }
+
+  // SAVE & QUIT: build up a shift, start round 1, earn more mid-round, save from the pause menu, then CONTINUE SHIFT
+  // from the title: it picks up at the start of round 1 with what the shift had when that round began
+  {
+    const sv = await browser.newContext({ viewport: { width: 852, height: 393 }, deviceScaleFactor: 1, isMobile: true, hasTouch: true });
+    await sv.addInitScript(() => {
+      if (!localStorage.getItem('moshi.progress.v1')) localStorage.setItem('moshi.progress.v1', JSON.stringify({ credits: 0, earned: 0, owned: ['scribe:omar'], specialty: '', startTool: '', kills: {}, bank: 0, locker: {}, staff: {} }));
+      localStorage.setItem('moshi.settings.v1', JSON.stringify({ learned: { move: true, spray: true, pour: true, purge: true, buy: true } }));
+    });
+    const sp = await sv.newPage();
+    labelWaits(sp);
+    const saveErrors = [];
+    sp.on('pageerror', (e) => saveErrors.push(where(e)));
+    await sp.goto(url + '?god', { timeout: 90000 });
+    await sp.waitForFunction(() => window.game?.scene.isActive('Title'), null, { timeout: 90000 });
+    await sp.touchscreen.tap(426, 120);
+    await sp.waitForFunction(() => window.game.scene.isActive('Hud'), null, { timeout: 60000 });
+    const built = await sp.evaluate(() => {
+      const sc = window.game.scene.getScene('Game');
+      sc.addCopays(3000);
+      sc.unlockRoom('halls');
+      const omarRoom = [...sc.scribeRooms].find(([, id]) => id === 'omar')?.[0];
+      if (omarRoom) sc.unlockRoom(omarRoom);
+      sc.sprayer.upgrade(sc.time.now);
+      sc.vendingOffer = ['proteinBar'];
+      sc.buySnack('proteinBar');
+      sc.score = 1234;
+      sc.waves.nextRoundAt = 0;
+      return { copays: sc.copays, rooms: [...sc.unlocked].sort(), maxHp: sc.player.maxHp, omarRoom };
+    });
+    await sp.waitForFunction(() => window.game.scene.getScene('Game').waves.roundActive, null, { timeout: 30000 });
+    // (Omar may tape off a vent with your Copays before the round starts, so compare with what the round began with)
+    const roundStart = await sp.evaluate(() => {
+      const sc = window.game.scene.getScene('Game');
+      const atStart = sc.roundStartSave.copays;
+      sc.addCopays(999); // mid-round: a save doesn't keep this
+      window.game.scene.getScene('Hud').pause();
+      return atStart;
+    });
+    const saveAt = await buttonAtIn(sp, 'Hud', 'saveQuitItem');
+    await sp.touchscreen.tap(saveAt.x, saveAt.y);
+    await sp.waitForFunction(() => window.game.scene.isActive('Title') && window.game.scene.getScene('Title').continueButton?.visible, null, { timeout: 30000 });
+    const label = await sp.evaluate(() => window.game.scene.getScene('Title').continueButton.text);
+    const contAt = await buttonAtIn(sp, 'Title', 'continueButton');
+    await sp.touchscreen.tap(contAt.x, contAt.y);
+    await sp.waitForFunction(() => window.game.scene.isActive('Hud'), null, { timeout: 60000 });
+    const back = await sp.evaluate(() => {
+      const sc = window.game.scene.getScene('Game');
+      return {
+        copays: sc.copays, score: sc.score, round: sc.waves.round, rooms: [...sc.unlocked].sort(), tier: sc.sprayer.tier, maxHp: sc.player.maxHp,
+        snacks: sc.snacks, omarOut: !!sc.scribes.get('omar'), saveLeft: localStorage.getItem('moshi.shift.v1'),
+      };
+    });
+    check(label.includes('ROUND 1') && back.copays === roundStart && roundStart <= built.copays && back.score === 1234 && back.round === 0
+      && JSON.stringify(back.rooms) === JSON.stringify(built.rooms) && back.tier === 1 && back.maxHp === built.maxHp
+      && back.snacks.join() === 'proteinBar' && back.omarOut && back.saveLeft === null,
+      `SAVE & QUIT mid-round, then CONTINUE SHIFT picks up at the start of that round (${JSON.stringify({ label, built, back })})`);
+    check(saveErrors.length === 0, `no errors saving and continuing a shift${saveErrors.length ? ': ' + saveErrors.join(' | ') : ''}`);
+    await sv.close();
   }
 
   // THE MIRACLE CURE: every step of the secret quest, driven through its stations, then the Records Room,

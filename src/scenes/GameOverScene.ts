@@ -140,12 +140,12 @@ export class GameOverScene extends Phaser.Scene {
 
     // One big PLAY AGAIN (plus the menu), ready the moment the summary lands
     const by = Math.min(height - 56, cy + ch + 70);
-    this.makeButton(width / 2 - 130, by, 360, 'PLAY AGAIN', 0x2a9d8f, () => this.scene.start('Game'));
+    this.makeButton(width / 2 - 130, by, 360, 'PLAY AGAIN', 0x2a9d8f, () => this.scene.start('Game', { resume: false }));
     this.makeButton(width / 2 + 200, by, 220, 'MAIN MENU', 0x3f5f66, () => {
       this.scene.stop('Game');
       this.scene.start('Title');
     });
-    this.input.keyboard?.once('keydown-ENTER', () => this.scene.start('Game'));
+    this.input.keyboard?.once('keydown-ENTER', () => this.scene.start('Game', { resume: false }));
   }
 
   private makeButton(x: number, y: number, w: number, text: string, color: number, onTap: () => void): void {
