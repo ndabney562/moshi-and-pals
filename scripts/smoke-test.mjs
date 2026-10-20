@@ -287,6 +287,12 @@ try {
   const purgeAt = await buttonAt('purgeButton');
   await page.touchscreen.tap(purgeAt.x, purgeAt.y);
   await page.waitForTimeout(300);
+  // On the slow CI runner the tap sometimes lands while the SPRAY ring covers the button: tap once more if nothing fired
+  if (!(await page.evaluate(() => { const sc = window.game.scene.getScene('Game'); return sc.purgeReadyAt > sc.time.now; }))) {
+    const again = await buttonAt('purgeButton');
+    await page.touchscreen.tap(again.x, again.y);
+    await page.waitForTimeout(300);
+  }
   const purged = await page.evaluate(() => {
     const scene = window.game.scene.getScene('Game');
     const g = window.__purgeTarget;
@@ -699,6 +705,13 @@ try {
     const scene = window.game.scene.getScene('Game');
     for (const g of scene.germs.getChildren()) if (g.active) g.kill();
     for (const id of ['bath2', 'lab', 'xray']) scene.unlockRoom(id);
+    // Opening X-ray lets Donald out, and he'd barricade vents and shame patients with your Copays: send him home so the
+    // checks below see only what they set up (his own checks come later)
+    const donald = scene.scribes.get('donald');
+    if (donald) {
+      donald.until = 1;
+      scene.scribes.update(scene.time.now, 0);
+    }
     scene.addCopays(500 - scene.copays);
     const st = (kind) => scene.stations.find((s) => s.o.kind === kind);
     const at = (x, y) => {
@@ -746,6 +759,9 @@ try {
     const before = where();
     v.shuffle();
     const moved = where() !== before && v.list.every(inside);
+    // (a helper standing near a vent may already have barricaded it on a slow runner: start from clear vents)
+    for (const x of v.list) if (x.block) x.block.until = 0;
+    v.update(scene.time.now);
     scene.addCopays(1000 - scene.copays);
     const first = v.list[0];
     const st = scene.stations.find((s) => s.o === first.o);
