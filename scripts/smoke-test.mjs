@@ -744,6 +744,9 @@ try {
     const before = where();
     v.shuffle();
     const moved = where() !== before && v.list.every(inside);
+    // (a helper standing near a vent may already have barricaded it on a slow runner: start from clear vents)
+    for (const x of v.list) if (x.block) x.block.until = 0;
+    v.update(scene.time.now);
     scene.addCopays(1000 - scene.copays);
     const first = v.list[0];
     const st = scene.stations.find((s) => s.o === first.o);
