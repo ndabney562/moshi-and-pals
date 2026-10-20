@@ -697,6 +697,13 @@ try {
     const scene = window.game.scene.getScene('Game');
     for (const g of scene.germs.getChildren()) if (g.active) g.kill();
     for (const id of ['bath2', 'lab', 'xray']) scene.unlockRoom(id);
+    // Opening X-ray lets Donald out, and he'd barricade vents and shame patients with your Copays: send him home so the
+    // checks below see only what they set up (his own checks come later)
+    const donald = scene.scribes.get('donald');
+    if (donald) {
+      donald.until = 1;
+      scene.scribes.update(scene.time.now, 0);
+    }
     scene.addCopays(500 - scene.copays);
     const st = (kind) => scene.stations.find((s) => s.o.kind === kind);
     const at = (x, y) => {
