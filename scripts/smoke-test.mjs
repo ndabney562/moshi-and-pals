@@ -148,6 +148,16 @@ try {
   let aimHits = 0;
   for (let i = 0; i < 70; i++) {
     await page.waitForTimeout(100);
+    // On a slow runner a germ that came close can be knocked back (or wander) out of range and not come back in time:
+    // keep the nearest one in front of Eugene, so auto-aim and the spray get a fair go
+    await page.evaluate(() => {
+      const scene = window.game.scene.getScene('Game');
+      const e = scene.player;
+      const live = scene.germs.getChildren().filter((g) => g.active);
+      if (live.length === 0 || live.some((g) => Math.hypot(g.x - e.x, g.y - e.y) < 170)) return;
+      live.sort((a, b) => Math.hypot(a.x - e.x, a.y - e.y) - Math.hypot(b.x - e.x, b.y - e.y));
+      live[0].setPosition(e.x + 130, e.y + 10);
+    });
     if (i === 8) await page.screenshot({ path: 'smoke-spray.png' });
     // Whenever a germ is clearly in range, Eugene should be facing it
     const { aim, dist, facing } = await game();
