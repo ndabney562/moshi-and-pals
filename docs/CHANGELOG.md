@@ -1,5 +1,11 @@
 # Changelog
 
+## v0.32.0: The iPhone app
+- **Moshi and Pals is a native iPhone app now** (`ios/`, SwiftUI, iOS 17+). The game itself is the same one, bundled into the app so it works offline. The menus are native: pick your Pal and difficulty, Today's Shift, Continue Shift, records, achievements, the Microbiology Atlas and settings. The Residency Board and Equipment Locker open in the game.
+- **Haptics** when you're hit, use a Sinus Purge, meet or beat a boss, finish a round, unlock something or go down. You can turn them off in Settings.
+- Dark mode, Dynamic Type and VoiceOver in the menus. Portrait menus, landscape game.
+- On the web nothing changes. The game only talks to the app when it's opened with `?native`.
+
 ## v0.31.0: Save & Quit
 - **Save your shift and come back later.** The pause menu has **SAVE & QUIT** next to QUIT. The title screen then shows **▶ CONTINUE SHIFT** with the round it'll pick up at.
 - **It picks up at the start of a round.** Your Copays, score, health, open rooms, tools and their upgrades, snacks, the helpers you've let out and the Miracle Cure's progress all come back. Germs on the floor, pills and timers start fresh.

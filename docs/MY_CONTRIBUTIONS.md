@@ -21,8 +21,10 @@
 - Asked to save progress when quitting mid-game; picked "start of that round" for where a saved shift picks up (v0.31.0).
 - Made the title poster (title screen since v0.5.2; redone as Moshi and Pals in v0.5.6; all four doctors in v0.18.0).
 - Decided Ken shows as just "Ken" and Diamond loses her flag pin.
+- Asked for a native iPhone app (SwiftUI, buildable from GitHub) and picked the native shell with the game bundled inside (v0.32.0).
 
 ## Requested now
+- v0.32.0 iPhone app: open `ios/MoshiAndPals.xcodeproj`, set your Team under Signing & Capabilities, and run it on your phone. Do the haptics feel right? Too many, too few? A 1024 px version of the app icon would make it sharper.
 - Playtest v0.26.0: how many shifts did it take to hire Dr. Kaya (30 NPS)? Are Lucien (45) and Ken (60) worth the wait, and do they feel stronger than Eugene?
 - Playtest v0.19.0 **Today's Shift** (📋 on the title screen) for a few days, and try Walk-In and Trauma Center. Rename any modifier, rewrite their jokes (`src/data/modifiers.ts`), or pitch new ones. Testers can force any: `?mods=powerOutage,fullMoon`.
 - Playtest v0.18.0: play as Ken against Diamond (`?round=5&doctor=ken`), and hire the scribes on the Residency Board (or try `?scribe=omar` / `?scribe=alan`). Too strong, too weak, funny enough?
