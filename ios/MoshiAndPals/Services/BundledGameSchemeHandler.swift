@@ -17,7 +17,7 @@ final class BundledGameSchemeHandler: NSObject, WKURLSchemeHandler {
     }
 
     /// The bundled game folder, or nil if the build didn't include it (see scripts/ios-bundle-web.sh).
-    static func bundledRoot(in bundle: Bundle = .main) -> URL? {
+    nonisolated static func bundledRoot(in bundle: Bundle = .main) -> URL? {
         guard let url = bundle.resourceURL?.appendingPathComponent("Game", isDirectory: true),
               FileManager.default.fileExists(atPath: url.appendingPathComponent("index.html").path) else { return nil }
         return url

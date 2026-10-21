@@ -21,7 +21,7 @@ iPhone app (on a Mac with Xcode 16 and Node 22):
 
 ```
 swift test --package-path ios/MoshiKit
-xcodebuild test -project ios/MoshiAndPals.xcodeproj -scheme MoshiAndPals -destination 'platform=iOS Simulator,name=iPhone 16'
+xcodebuild test -project ios/MoshiAndPals.xcodeproj -scheme MoshiAndPals -destination 'platform=iOS Simulator,name=iPhone 16'   # UI tests
 ```
 
 GitHub Actions runs both on every pull request (`ci.yml` and `ios.yml`).

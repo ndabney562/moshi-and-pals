@@ -33,16 +33,6 @@
             skipped = "NO">
             <BuildableReference
                BuildableIdentifier = "primary"
-               BlueprintIdentifier = "MoshiKitTests"
-               BuildableName = "MoshiKitTests"
-               BlueprintName = "MoshiKitTests"
-               ReferencedContainer = "container:MoshiKit">
-            </BuildableReference>
-         </TestableReference>
-         <TestableReference
-            skipped = "NO">
-            <BuildableReference
-               BuildableIdentifier = "primary"
                BlueprintIdentifier = "D7AC39FF0ECE2CE34B20E66D"
                BuildableName = "MoshiAndPalsUITests.xctest"
                BlueprintName = "MoshiAndPalsUITests"

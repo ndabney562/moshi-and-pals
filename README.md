@@ -48,7 +48,7 @@ The **Bundle the game** build phase runs `scripts/ios-bundle-web.sh`. That scrip
 1. Select the **MoshiAndPals** target, open **Signing & Capabilities**, and pick your **Team**.
 2. If Xcode says the bundle ID is taken, change `com.ndabney562.moshiandpals` to one you own.
 
-**Tests:** press ⌘U in Xcode to run the unit tests and the UI tests. You can also run them from the command line:
+**Tests:** in Xcode, ⌘U on the MoshiAndPals scheme runs the UI tests. For the logic unit tests, pick the **MoshiKit** scheme and press ⌘U. From the command line:
 
 ```
 swift test --package-path ios/MoshiKit          # logic unit tests, no simulator needed
