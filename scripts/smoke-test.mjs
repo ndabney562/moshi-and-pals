@@ -957,6 +957,10 @@ try {
     scene.unlockRoom('lab');
     if (scene.slot !== 0) scene.swapTool(scene.time.now);
     scene.addCopays(1000 - scene.copays);
+    // Count what's spent, not the balance: on a slow runner a germ can spawn and die during the hold and pay out
+    const add = scene.addCopays.bind(scene);
+    scene.smokeSpent = 0;
+    scene.addCopays = (n) => { if (n < 0) scene.smokeSpent -= n; return add(n); };
     const o = scene.room.obstacles.find((ob) => ob.kind === 'compounder');
     scene.player.setPosition(o.x + o.w / 2, o.y + o.h + 40);
   });
@@ -965,9 +969,10 @@ try {
   await holdAt(upAt, () => window.game.scene.getScene('Game').sprayer.tier === 1);
   const upgraded = await page.evaluate(() => {
     const scene = window.game.scene.getScene('Game');
-    return { tier: scene.sprayer.tier, range: scene.sprayer.def.range, copays: scene.copays, note: window.game.scene.getScene('Hud').interactNote.text };
+    delete scene.addCopays;
+    return { tier: scene.sprayer.tier, range: scene.sprayer.def.range, spent: scene.smokeSpent, copays: scene.copays, note: window.game.scene.getScene('Hud').interactNote.text };
   });
-  check(upgraded.tier === 1 && upgraded.range === 280 && upgraded.copays === 700, `Compounding Station upgrades the bottle (${JSON.stringify(upgraded)})`);
+  check(upgraded.tier === 1 && upgraded.range === 280 && upgraded.spent === 300, `Compounding Station upgrades the bottle (${JSON.stringify(upgraded)})`);
 
   // EXAM TABLE: rest for $40 to heal 50, once per table per round
   const rest = await page.evaluate(() => {
