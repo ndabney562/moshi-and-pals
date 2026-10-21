@@ -37,7 +37,7 @@ final class MoshiAndPalsUITests: XCTestCase {
         XCTAssertTrue(kaya.waitForExistence(timeout: 10))
         XCTAssertEqual(kaya.value as? String, "Ready")
         kaya.tap()
-        XCTAssertEqual(kaya.value as? String, "On shift")
+        XCTAssertTrue(waitForValue(kaya, "On shift"))
         XCTAssertEqual(app.buttons["palCard-eugene"].value as? String, "Ready")
     }
 
@@ -50,7 +50,7 @@ final class MoshiAndPalsUITests: XCTestCase {
         let hire = app.buttons["Hire for 45 NPS"]
         XCTAssertTrue(hire.waitForExistence(timeout: 5))
         hire.tap()
-        XCTAssertEqual(lucien.value as? String, "On shift")
+        XCTAssertTrue(waitForValue(lucien, "On shift"), "value is \(String(describing: lucien.value))")
     }
 
     @MainActor
@@ -118,6 +118,13 @@ final class MoshiAndPalsUITests: XCTestCase {
         attachment.name = name
         attachment.lifetime = .keepAlways
         add(attachment)
+    }
+
+    /// Waits for an element's accessibility value (the dialog's dismissal and the store update aren't instant).
+    @MainActor
+    private func waitForValue(_ element: XCUIElement, _ value: String, timeout: TimeInterval = 5) -> Bool {
+        let predicate = NSPredicate(format: "value == %@", value)
+        return XCTWaiter().wait(for: [XCTNSPredicateExpectation(predicate: predicate, object: element)], timeout: timeout) == .completed
     }
 
     /// Swipes up until `element` is on screen (or gives up).
