@@ -2395,9 +2395,9 @@ try {
     await np.waitForFunction(() => window.__native.some((m) => m.type === 'ready'));
     const snap = await np.evaluate(() => {
       const s = window.__native.find((m) => m.type === 'snapshot');
-      return { pals: s.pals.length, achievements: s.achievements.length, atlas: s.atlas.length, art: (s.art['eugene-held'] ?? '').slice(0, 15), title: window.game.scene.isActive('Title') };
+      return { pals: s.pals.length, achievements: s.achievements.length, atlas: s.atlas.length, art: (s.art['eugene-held'] ?? '').startsWith('data:image/png'), title: window.game.scene.isActive('Title') };
     });
-    check(snap.pals === 4 && snap.achievements > 20 && snap.atlas > 10 && snap.art === 'data:image/png' && !snap.title,
+    check(snap.pals === 4 && snap.achievements > 20 && snap.atlas > 10 && snap.art && !snap.title,
       `native: boots to the app's menu with a snapshot (${JSON.stringify(snap)})`);
     await np.evaluate(() => window.moshiNative.open('board'));
     await np.waitForFunction(() => window.game.scene.isActive('Board'));
