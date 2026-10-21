@@ -2379,6 +2379,38 @@ try {
     check(cureErrors.length === 0, `no errors in the Miracle Cure${cureErrors.length ? ': ' + cureErrors.join(' | ') : ''}`);
     await mc.close();
   }
+  // The iPhone app (ios/): ?native boots into the empty Native scene instead of the title, sends the app a snapshot
+  // (with the Pals' and germs' pictures), opens the board and comes back, then starts a shift when asked
+  {
+    const nc = await browser.newContext({ viewport: { width: 852, height: 393 }, deviceScaleFactor: 1, isMobile: true, hasTouch: true });
+    await nc.addInitScript(() => {
+      window.__native = [];
+      window.webkit = { messageHandlers: { moshi: { postMessage: (m) => window.__native.push(m) } } };
+    });
+    const np = await nc.newPage();
+    labelWaits(np);
+    const nativeErrors = [];
+    np.on('pageerror', (e) => nativeErrors.push(where(e)));
+    await np.goto(url + '?native', { timeout: 90000 });
+    await np.waitForFunction(() => window.__native.some((m) => m.type === 'ready'));
+    const snap = await np.evaluate(() => {
+      const s = window.__native.find((m) => m.type === 'snapshot');
+      return { pals: s.pals.length, achievements: s.achievements.length, atlas: s.atlas.length, art: (s.art['eugene-held'] ?? '').slice(0, 15), title: window.game.scene.isActive('Title') };
+    });
+    check(snap.pals === 4 && snap.achievements > 20 && snap.atlas > 10 && snap.art === 'data:image/png' && !snap.title,
+      `native: boots to the app's menu with a snapshot (${JSON.stringify(snap)})`);
+    await np.evaluate(() => window.moshiNative.open('board'));
+    await np.waitForFunction(() => window.game.scene.isActive('Board'));
+    await np.evaluate(() => window.game.scene.getScene('Board').children.list.find((c) => c.text === 'BACK').emit('pointerup'));
+    await np.waitForFunction(() => window.game.scene.isActive('Native') && window.__native.some((m) => m.type === 'exit'));
+    await np.evaluate(() => window.moshiNative.setSettings({ difficulty: 'walkIn', sound: 'loud' }));
+    const set = await np.evaluate(() => JSON.parse(localStorage.getItem('moshi.settings.v1')));
+    check(set.difficulty === 'walkIn' && set.sound === true, `native: settings from the app are saved, bad ones ignored (${set.difficulty}, ${set.sound})`);
+    await np.evaluate(() => window.moshiNative.start({ kind: 'daily' }));
+    await np.waitForFunction(() => window.game.scene.isActive('Hud'), null, { timeout: 60000 });
+    check(nativeErrors.length === 0, `native: no errors${nativeErrors.length ? ': ' + nativeErrors.join(' | ') : ''}`);
+    await nc.close();
+  }
 } catch (e) {
   check(false, String(e) + (errors.length ? " | errors: " + errors.join(" | ") : ""));
 } finally {

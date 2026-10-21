@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import { NATIVE } from '../core/native';
 import { COLORS } from '../config/theme';
 import { GERMS, type GermDef } from '../data/germs';
 import { VIOLATIONS, type ViolationDef } from '../data/patients';
@@ -44,7 +45,7 @@ export class BootScene extends Phaser.Scene {
     this.makeVent();
     this.makeEliteRing();
     this.makePill();
-    this.scene.start('Title');
+    this.scene.start(NATIVE ? 'Native' : 'Title');
   }
 
   /**

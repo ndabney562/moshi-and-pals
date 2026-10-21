@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import { DISPLAY } from './config/display';
 import { DEBUG } from './core/debug';
+import { installNativeBridge, NATIVE, NativeScene } from './core/native';
 import { resumeAudio } from './core/sfx';
 import { registerOffline, watchForUpdates } from './core/updates';
 import { applyOrientation, isPortrait, patchForPortrait } from './core/orientation';
@@ -39,7 +40,7 @@ const game = new Phaser.Game({
   physics: { default: 'arcade', arcade: { debug: false } },
   input: { activePointers: 3 },
   render: { antialias: true, powerPreference: 'high-performance' },
-  scene: [BootScene, TitleScene, GameScene, HudScene, GameOverScene, BoardScene, LockerScene],
+  scene: [BootScene, TitleScene, GameScene, HudScene, GameOverScene, BoardScene, LockerScene, NativeScene],
 });
 
 patchForPortrait(game);
@@ -65,8 +66,12 @@ document.addEventListener('gesturestart', (e) => e.preventDefault());
 document.addEventListener('dblclick', (e) => e.preventDefault());
 
 // Works offline from the Home Screen, and notices when a newer build is live
-registerOffline();
-watchForUpdates();
+// (the iPhone app ships its own copy of the game, so it needs neither)
+if (NATIVE) installNativeBridge(game);
+else {
+  registerOffline();
+  watchForUpdates();
+}
 
 // Handy for debugging in the browser console.
 (window as unknown as { game: Phaser.Game }).game = game;
