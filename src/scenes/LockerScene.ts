@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import { toTitle } from '../core/native';
 import { COLORS } from '../config/theme';
 import { LOCKER, STAFF } from '../config/locker';
 import { sfx } from '../core/sfx';
@@ -40,8 +41,8 @@ export class LockerScene extends Phaser.Scene {
     this.body = this.add.container(0, 0);
     this.add.text(width / 2, height - 40, 'BACK', {
       fontFamily: font, fontSize: '26px', fontStyle: 'bold', color: COLORS.uiText, backgroundColor: '#3f5f66', padding: { x: 44, y: 12 },
-    }).setOrigin(0.5).setInteractive({ useHandCursor: true }).on('pointerup', () => this.scene.start('Title'));
-    this.input.keyboard?.on('keydown-ESC', () => this.scene.start('Title'));
+    }).setOrigin(0.5).setInteractive({ useHandCursor: true }).on('pointerup', () => toTitle(this));
+    this.input.keyboard?.on('keydown-ESC', () => toTitle(this));
     this.draw();
   }
 

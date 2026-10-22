@@ -1,0 +1,460 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 77;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		0D1F70F9EB9960877E06A16B /* MoshiKit in Frameworks */ = {isa = PBXBuildFile; productRef = 1179FDF2F0ACDCD6987BA1F9 /* MoshiKit */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		E0511810F7D19861CCF3FA10 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 46F86FAA6BBF9AC94A7E4595 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 3CF92D32E5C5A22CDC3CB9A1;
+			remoteInfo = MoshiAndPals;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXFileReference section */
+		267DC943979B98CA02F3AF3A /* MoshiAndPals.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = MoshiAndPals.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		9D6CE00A3435837AA95F2D60 /* MoshiAndPalsUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = MoshiAndPalsUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		AABBFEDE4AEBF7E947C5EEFF /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		5DA5F7026B06B25B3E3FAFB8 /* ios-bundle-web.sh */ = {isa = PBXFileReference; lastKnownFileType = text.script.sh; name = "ios-bundle-web.sh"; path = "../scripts/ios-bundle-web.sh"; sourceTree = SOURCE_ROOT; };
+/* End PBXFileReference section */
+
+/* Begin PBXFileSystemSynchronizedRootGroup section */
+		837BBFD642D4C53E856CEBE4 /* MoshiAndPals */ = {isa = PBXFileSystemSynchronizedRootGroup; path = MoshiAndPals; sourceTree = "<group>"; };
+		242D230D32C2ACB9DCCF7630 /* MoshiAndPalsUITests */ = {isa = PBXFileSystemSynchronizedRootGroup; path = MoshiAndPalsUITests; sourceTree = "<group>"; };
+/* End PBXFileSystemSynchronizedRootGroup section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		E503B88588DB8CA2F5F9AD82 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				0D1F70F9EB9960877E06A16B /* MoshiKit in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		43EF6742D8363566CA13E2B2 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		956934E60556FDCE0710C957 = {
+			isa = PBXGroup;
+			children = (
+				837BBFD642D4C53E856CEBE4 /* MoshiAndPals */,
+				242D230D32C2ACB9DCCF7630 /* MoshiAndPalsUITests */,
+				6EDE00FA7A261151470098F6 /* Config */,
+				CC0F68FE2D81F9614883F277 /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		6EDE00FA7A261151470098F6 /* Config */ = {
+			isa = PBXGroup;
+			children = (
+				AABBFEDE4AEBF7E947C5EEFF /* Info.plist */,
+				5DA5F7026B06B25B3E3FAFB8 /* ios-bundle-web.sh */,
+			);
+			path = Config;
+			sourceTree = "<group>";
+		};
+		CC0F68FE2D81F9614883F277 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				267DC943979B98CA02F3AF3A /* MoshiAndPals.app */,
+				9D6CE00A3435837AA95F2D60 /* MoshiAndPalsUITests.xctest */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		3CF92D32E5C5A22CDC3CB9A1 /* MoshiAndPals */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 4BD0BFBDE0D101169D09F7D3 /* Build configuration list for PBXNativeTarget "MoshiAndPals" */;
+			buildPhases = (
+				CED1D8C2A711E64B3FA38062 /* Sources */,
+				E503B88588DB8CA2F5F9AD82 /* Frameworks */,
+				B90248296684F4B9D9A7FA70 /* Resources */,
+				60514BBC297F18C431A6827C /* Bundle the game */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			fileSystemSynchronizedGroups = (
+				837BBFD642D4C53E856CEBE4 /* MoshiAndPals */,
+			);
+			name = MoshiAndPals;
+			packageProductDependencies = (
+				1179FDF2F0ACDCD6987BA1F9 /* MoshiKit */,
+			);
+			productName = MoshiAndPals;
+			productReference = 267DC943979B98CA02F3AF3A /* MoshiAndPals.app */;
+			productType = "com.apple.product-type.application";
+		};
+		D7AC39FF0ECE2CE34B20E66D /* MoshiAndPalsUITests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = C9CCC9149847A9EB87C3A3B9 /* Build configuration list for PBXNativeTarget "MoshiAndPalsUITests" */;
+			buildPhases = (
+				92C0AD79E1B98499B9216273 /* Sources */,
+				43EF6742D8363566CA13E2B2 /* Frameworks */,
+				BB5CA3C7B681CAFB54359BD4 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				8A28EDF97A3AF28065BC1172 /* PBXTargetDependency */,
+			);
+			fileSystemSynchronizedGroups = (
+				242D230D32C2ACB9DCCF7630 /* MoshiAndPalsUITests */,
+			);
+			name = MoshiAndPalsUITests;
+			productName = MoshiAndPalsUITests;
+			productReference = 9D6CE00A3435837AA95F2D60 /* MoshiAndPalsUITests.xctest */;
+			productType = "com.apple.product-type.bundle.ui-testing";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		46F86FAA6BBF9AC94A7E4595 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = 1;
+				LastSwiftUpdateCheck = 1600;
+				LastUpgradeCheck = 1600;
+				TargetAttributes = {
+					3CF92D32E5C5A22CDC3CB9A1 = {
+						CreatedOnToolsVersion = 16.0;
+					};
+					D7AC39FF0ECE2CE34B20E66D = {
+						CreatedOnToolsVersion = 16.0;
+						TestTargetID = 3CF92D32E5C5A22CDC3CB9A1;
+					};
+				};
+			};
+			buildConfigurationList = 24DF83E70DFC898B71CD8E2E /* Build configuration list for PBXProject "MoshiAndPals" */;
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				en,
+				Base,
+			);
+			mainGroup = 956934E60556FDCE0710C957;
+			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				C1D16E1424E5338A79E9F7C8 /* XCLocalSwiftPackageReference "MoshiKit" */,
+			);
+			preferredProjectObjectVersion = 77;
+			productRefGroup = CC0F68FE2D81F9614883F277 /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				3CF92D32E5C5A22CDC3CB9A1 /* MoshiAndPals */,
+				D7AC39FF0ECE2CE34B20E66D /* MoshiAndPalsUITests */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		B90248296684F4B9D9A7FA70 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		BB5CA3C7B681CAFB54359BD4 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXShellScriptBuildPhase section */
+		60514BBC297F18C431A6827C /* Bundle the game */ = {
+			isa = PBXShellScriptBuildPhase;
+			alwaysOutOfDate = 1;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+			);
+			name = "Bundle the game";
+			outputFileListPaths = (
+			);
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "\"${SRCROOT}/../scripts/ios-bundle-web.sh\"\n";
+			showEnvVarsInLog = 0;
+		};
+/* End PBXShellScriptBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		CED1D8C2A711E64B3FA38062 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		92C0AD79E1B98499B9216273 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		8A28EDF97A3AF28065BC1172 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 3CF92D32E5C5A22CDC3CB9A1 /* MoshiAndPals */;
+			targetProxy = E0511810F7D19861CCF3FA10 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
+/* Begin XCBuildConfiguration section */
+		E59047DDF7144BA57DB5F654 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				COPY_PHASE_STRIP = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
+				SDKROOT = iphoneos;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_TESTABILITY = YES;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"DEBUG=1",
+					"$(inherited)",
+				);
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				ONLY_ACTIVE_ARCH = YES;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG $(inherited)";
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+			};
+			name = Debug;
+		};
+		E35F8313DC47B3F7EA4D9B5A /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				COPY_PHASE_STRIP = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
+				SDKROOT = iphoneos;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_NS_ASSERTIONS = NO;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				VALIDATE_PRODUCT = YES;
+			};
+			name = Release;
+		};
+		9EBE43D74F0F67CF014F5AFB /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = "";
+				ENABLE_PREVIEWS = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = NO;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = Config/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = "Moshi & Pals";
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.action-games";
+				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
+				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 0.32.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.ndabney562.moshiandpals;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = NO;
+				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 1;
+			};
+			name = Debug;
+		};
+		407960AF7377278B24F54182 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = "";
+				ENABLE_PREVIEWS = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = NO;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = Config/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = "Moshi & Pals";
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.action-games";
+				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
+				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 0.32.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.ndabney562.moshiandpals;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = NO;
+				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 1;
+			};
+			name = Release;
+		};
+		009CF3D38F4E28A51A5CB1EF /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = "";
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				MARKETING_VERSION = 0.32.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.ndabney562.moshiandpals.uitests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 1;
+				TEST_TARGET_NAME = MoshiAndPals;
+			};
+			name = Debug;
+		};
+		7F36ADF29256DB98A552D17A /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = "";
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				MARKETING_VERSION = 0.32.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.ndabney562.moshiandpals.uitests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 1;
+				TEST_TARGET_NAME = MoshiAndPals;
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		24DF83E70DFC898B71CD8E2E /* Build configuration list for PBXProject "MoshiAndPals" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				E59047DDF7144BA57DB5F654 /* Debug */,
+				E35F8313DC47B3F7EA4D9B5A /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		4BD0BFBDE0D101169D09F7D3 /* Build configuration list for PBXNativeTarget "MoshiAndPals" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				9EBE43D74F0F67CF014F5AFB /* Debug */,
+				407960AF7377278B24F54182 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		C9CCC9149847A9EB87C3A3B9 /* Build configuration list for PBXNativeTarget "MoshiAndPalsUITests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				009CF3D38F4E28A51A5CB1EF /* Debug */,
+				7F36ADF29256DB98A552D17A /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+/* End XCConfigurationList section */
+
+/* Begin XCLocalSwiftPackageReference section */
+		C1D16E1424E5338A79E9F7C8 /* XCLocalSwiftPackageReference "MoshiKit" */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = MoshiKit;
+		};
+/* End XCLocalSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		1179FDF2F0ACDCD6987BA1F9 /* MoshiKit */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = MoshiKit;
+		};
+/* End XCSwiftPackageProductDependency section */
+	};
+	rootObject = 46F86FAA6BBF9AC94A7E4595 /* Project object */;
+}

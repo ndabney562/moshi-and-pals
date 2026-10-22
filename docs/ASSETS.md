@@ -8,7 +8,7 @@
 | Scribes Omar and Alan | Drawn in code (`BootScene`, `scribe-omar`, `scribe-alan`) from Noah's reference photos, which are not in the repo. No logos or printed text |
 | Floor tile, furniture | Placeholder, drawn in code |
 | Title screen art | Noah's Moshi and Pals poster (`public/assets/title.jpg`) |
-| App icons | Noah's icon (`public/icons/`, cropped full-bleed; iOS rounds the corners) |
+| App icons | Noah's icon (`public/icons/`, cropped full-bleed; iOS rounds the corners). The iPhone app's 1024 px icon and launch image (`ios/MoshiAndPals/Resources/Assets.xcassets`) are upscaled from the 512 px one: a 1024 px original from Noah would look sharper |
 | Basic Germ | Placeholder, drawn in code |
 | Spray, splat, stain FX | Placeholder particles |
 | Sounds: spray, hit, pop, bump, empty, refill | Synthesized placeholders (`src/core/sfx.ts`) |

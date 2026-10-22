@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import { toTitle } from '../core/native';
 import { CONTROLS } from '../config/controls';
 import { DISPLAY } from '../config/display';
 import { COLORS } from '../config/theme';
@@ -742,7 +743,7 @@ export class HudScene extends Phaser.Scene {
       }
       this.paused = false;
       this.scene.stop('Game');
-      this.scene.start('Title');
+      toTitle(this);
     });
     this.quitItem = item('QUIT', () => {
       if (this.time.now > this.quitArmedUntil) {
@@ -752,7 +753,7 @@ export class HudScene extends Phaser.Scene {
       }
       this.paused = false;
       this.scene.stop('Game');
-      this.scene.start('Title');
+      toTitle(this);
     });
     // They share a row, like SOUND and MUSIC
     for (const t of [this.saveQuitItem, this.quitItem]) t.setFixedSize(166, 0).setFontSize(18);

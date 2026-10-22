@@ -2,3 +2,11 @@ node_modules/
 dist/
 .DS_Store
 smoke-*.png
+
+# iOS
+ios/build/
+xcuserdata/
+*.xcuserstate
+DerivedData/
+.build/
+.swiftpm/

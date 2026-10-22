@@ -1,0 +1,95 @@
+name: iOS
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      screenshots:
+        description: Retake the README screenshots and commit them to this branch
+        type: boolean
+        default: false
+
+concurrency:
+  group: ios-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-and-test:
+    runs-on: macos-15
+    timeout-minutes: 45
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+
+      - name: Xcode version
+        run: xcodebuild -version
+
+      - name: Unit tests (MoshiKit, on macOS)
+        run: swift test --package-path ios/MoshiKit
+
+      - name: Pick an iPhone simulator
+        id: sim
+        run: |
+          UDID=$(xcrun simctl list devices available -j | python3 -c '
+          import json, sys
+          runtimes = json.load(sys.stdin)["devices"]
+          ios = sorted((r for r in runtimes if "iOS" in r), key=lambda r: [int(x) for x in r.rsplit("iOS-", 1)[1].split("-")], reverse=True)
+          phones = [d for r in ios for d in runtimes[r] if d["name"].startswith("iPhone") and d["isAvailable"]]
+          print(phones[0]["udid"])')
+          echo "udid=$UDID" >> "$GITHUB_OUTPUT"
+          xcrun simctl boot "$UDID" || true
+          xcrun simctl status_bar "$UDID" override --time 9:41 --batteryState charged --batteryLevel 100 --cellularBars 4 || true
+
+      - name: Build the app and run the UI tests on the simulator
+        run: |
+          xcodebuild test \
+            -project ios/MoshiAndPals.xcodeproj \
+            -scheme MoshiAndPals \
+            -destination "id=${{ steps.sim.outputs.udid }}" \
+            -resultBundlePath build/Tests.xcresult \
+            CODE_SIGNING_ALLOWED=NO
+        env:
+          TEST_RUNNER_SCREENSHOTS: ${{ inputs.screenshots && '1' || '0' }}
+
+      - name: Check the game was bundled into the app
+        run: |
+          APP=$(find ~/Library/Developer/Xcode/DerivedData -path '*Debug-iphonesimulator/MoshiAndPals.app' -maxdepth 5 | head -1)
+          test -f "$APP/Game/index.html"
+          ls "$APP/Game/assets"
+
+      - name: Export screenshots
+        if: inputs.screenshots
+        run: |
+          xcrun xcresulttool export attachments --path build/Tests.xcresult --output-path build/shots
+          python3 - <<'EOF'
+          import json, os, re, shutil
+          os.makedirs("docs/screenshots", exist_ok=True)
+          for test in json.load(open("build/shots/manifest.json")):
+              for a in test.get("attachments", []):
+                  name = re.match(r"[a-z]+-(light|dark)", a.get("suggestedHumanReadableName", ""))
+                  if name:
+                      shutil.copy(f"build/shots/{a['exportedFileName']}", f"docs/screenshots/{name.group(0)}.png")
+          print(sorted(os.listdir("docs/screenshots")))
+          EOF
+
+      - name: Commit screenshots
+        if: inputs.screenshots
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add docs/screenshots
+          git diff --cached --quiet || (git commit -m "README screenshots from the iOS simulator" && git push)
+
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: test-results
+          path: build/Tests.xcresult

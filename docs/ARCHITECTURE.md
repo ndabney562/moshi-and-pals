@@ -2,6 +2,11 @@
 
 **Stack:** TypeScript + Phaser 3.90 + Vite. Deployed to GitHub Pages by `.github/workflows/deploy.yml` on every push to `main`. Later wrapped with Capacitor for TestFlight.
 
+## iPhone app (`ios/`, v0.32)
+A SwiftUI app (iOS 17+, MVVM, no dependencies) around the same web build. `scripts/ios-bundle-web.sh` (an Xcode build phase) builds the game with `MOSHI_BASE=./` and copies it into the app as `Game/`. `WebGameHost` keeps one `WKWebView` alive for the app's life, serving those files at `moshi://app/` (`BundledGameSchemeHandler`). The custom scheme gives localStorage a stable origin.
+- **Game side:** `src/core/native.ts`, active only with `?native`. Boot goes to the empty `Native` scene instead of Title, and its loop sleeps there. `toTitle()` (used by every way back to the menu) returns there and posts `exit`. `window.moshiNative` takes `start({kind})`, `open('board'|'locker')`, `hire(id)`, `setSettings(patch)` and `refresh()`. The game posts `snapshot` (saves, records, achievements, Atlas, today's modifiers, saved shift, and the Pals' and germs' textures once), `ready`, `exit` and `haptic` (from the event bus).
+- **App side:** `ios/MoshiKit` (Swift package, unit-tested) holds the Codable snapshot models, `BridgeMessage`/`BridgeCommand`, `GameStore` (the single source of truth: it queues commands until `ready`, caches the last snapshot to disk and throttles haptics) and the Play/Progress/Settings view models. `ios/MoshiAndPals` holds the views and `DesignSystem/Theme.swift` (all colors, type, spacing, motion). UI tests launch with `-ui-testing`, which swaps the web view for a stand-in and loads sample data.
+
 ## Display
 Fixed logical height of 720 px; width follows the screen's aspect ratio (`src/config/display.ts`), scaled to fill. HUD reads iPhone safe-area insets via a CSS probe (`src/core/safeArea.ts`).
 

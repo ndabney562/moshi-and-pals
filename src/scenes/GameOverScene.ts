@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import { toTitle } from '../core/native';
 import { COLORS } from '../config/theme';
 import type { RunResult } from '../core/events';
 import { CREDITS } from '../data/miracleCure';
@@ -143,7 +144,7 @@ export class GameOverScene extends Phaser.Scene {
     this.makeButton(width / 2 - 130, by, 360, 'PLAY AGAIN', 0x2a9d8f, () => this.scene.start('Game', { resume: false }));
     this.makeButton(width / 2 + 200, by, 220, 'MAIN MENU', 0x3f5f66, () => {
       this.scene.stop('Game');
-      this.scene.start('Title');
+      toTitle(this);
     });
     this.input.keyboard?.once('keydown-ENTER', () => this.scene.start('Game', { resume: false }));
   }
