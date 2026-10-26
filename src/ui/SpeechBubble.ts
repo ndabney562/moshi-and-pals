@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import { settings } from '../core/settings';
 
 /** A comic speech bubble in the game world that follows whoever is talking. */
 export class SpeechBubble extends Phaser.GameObjects.Container {
@@ -12,8 +13,8 @@ export class SpeechBubble extends Phaser.GameObjects.Container {
     super(scene, 0, 0);
     this.bg = scene.add.graphics();
     this.label = scene.add.text(0, 0, '', {
-      fontFamily: 'system-ui, sans-serif', fontSize: '18px', fontStyle: 'bold', color: '#3a1030',
-      align: 'center', wordWrap: { width: 240 },
+      fontFamily: 'system-ui, sans-serif', fontSize: '20px', fontStyle: 'bold', color: '#3a1030',
+      align: 'center', wordWrap: { width: 260 }, lineSpacing: 3,
     }).setOrigin(0.5, 1);
     this.add([this.bg, this.label]);
     this.setDepth(30).setVisible(false);
@@ -35,8 +36,9 @@ export class SpeechBubble extends Phaser.GameObjects.Container {
       .lineStyle(3, 0x3a1030).strokeRoundedRect(-w / 2, -14 - h, w, h, 12)
       .fillStyle(0xfff6e8).fillTriangle(-10, -15, 10, -15, 0, 0)
       .lineStyle(3, 0x3a1030).lineBetween(-10, -14, 0, 0).lineBetween(10, -14, 0, 0);
-    this.setVisible(true).setScale(0.6);
-    this.scene.tweens.add({ targets: this, scale: 1, duration: 160, ease: 'Back.out' });
+    this.scene.tweens.killTweensOf(this);
+    this.setVisible(true).setScale(settings.reducedMotion ? 1 : 0.92);
+    if (!settings.reducedMotion) this.scene.tweens.add({ targets: this, scale: 1, duration: 140, ease: 'Cubic.out' });
     this.follow();
   }
 

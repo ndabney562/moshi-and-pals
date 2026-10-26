@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import { viewportSize } from './core/viewport';
 import { DISPLAY } from './config/display';
 import { DEBUG } from './core/debug';
 import { installNativeBridge, NATIVE, NativeScene } from './core/native';
@@ -15,9 +16,10 @@ import { TitleScene } from './scenes/TitleScene';
 
 /** Logical width that matches the screen's shape at our fixed logical height. */
 function logicalWidth(): number {
-  const long = Math.max(window.innerWidth, window.innerHeight);
-  const short = Math.min(window.innerWidth, window.innerHeight);
-  const aspect = Phaser.Math.Clamp((isPortrait() ? long / short : window.innerWidth / window.innerHeight), DISPLAY.minAspect, DISPLAY.maxAspect);
+  const { width, height } = viewportSize();
+  const long = Math.max(width, height);
+  const short = Math.min(width, height);
+  const aspect = Phaser.Math.Clamp((isPortrait() ? long / short : width / height), DISPLAY.minAspect, DISPLAY.maxAspect);
   return Math.round(DISPLAY.logicalHeight * aspect);
 }
 
@@ -47,12 +49,29 @@ patchForPortrait(game);
 
 // Keep the game's shape matched to the screen when the phone rotates
 // or Safari's toolbars appear/disappear.
+let appliedWidth = 0;
+let appliedHeight = 0;
 const resize = () => {
+  const size = viewportSize();
+  appliedWidth = size.width;
+  appliedHeight = size.height;
   applyOrientation();
   game.scale.setGameSize(logicalWidth(), DISPLAY.logicalHeight);
   game.scale.refresh();
 };
-window.addEventListener('resize', resize);
+let resizeFrame = 0;
+const scheduleResize = () => {
+  cancelAnimationFrame(resizeFrame);
+  resizeFrame = requestAnimationFrame(resize);
+};
+window.addEventListener('resize', scheduleResize);
+window.visualViewport?.addEventListener('resize', scheduleResize);
+// WKWebView can wake after native rotation without delivering a resize callback.
+// Compare cheap viewport numbers before each frame; only relayout when they changed.
+game.events.on(Phaser.Core.Events.PRE_STEP, () => {
+  const size = viewportSize();
+  if (size.width !== appliedWidth || size.height !== appliedHeight) resize();
+});
 // Phaser may have measured the page before the portrait patch was in place
 resize();
 window.addEventListener('orientationchange', () => setTimeout(resize, 300));
@@ -60,6 +79,9 @@ window.addEventListener('orientationchange', () => setTimeout(resize, 300));
 // iOS silences audio after calls, Siri or app switches; any touch brings it back.
 document.addEventListener('touchend', resumeAudio, { passive: true });
 document.addEventListener('pointerdown', resumeAudio, { passive: true });
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible') resumeAudio();
+});
 
 // Stop iOS pinch-zoom and double-tap gestures from hijacking the game.
 document.addEventListener('gesturestart', (e) => e.preventDefault());

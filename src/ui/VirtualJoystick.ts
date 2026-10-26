@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import { joystickAmount } from '../core/mechanics';
 import { CONTROLS } from '../config/controls';
 
 /**
@@ -18,8 +19,8 @@ export class VirtualJoystick {
 
   constructor(scene: Phaser.Scene, color: number) {
     const { radius, baseAlpha, thumbAlpha } = CONTROLS.joystick;
-    this.base = scene.add.circle(0, 0, radius, color, 0.12).setStrokeStyle(4, color, baseAlpha);
-    this.thumb = scene.add.circle(0, 0, radius * 0.45, color, thumbAlpha);
+    this.base = scene.add.circle(0, 0, radius, 0x0d2b2e, 0.4).setStrokeStyle(4, color, baseAlpha);
+    this.thumb = scene.add.circle(0, 0, radius * 0.45, color, thumbAlpha).setStrokeStyle(2, 0xffffff, 0.65);
     this.setIdle();
   }
 
@@ -52,7 +53,7 @@ export class VirtualJoystick {
     this.thumb.setPosition(this.center.x + nx * clamped, this.center.y + ny * clamped);
 
     // Rescale so output starts at 0 just outside the dead zone and reaches 1 at the rim
-    const amount = Phaser.Math.Clamp((clamped / radius - deadZone) / (1 - deadZone), 0, 1);
+    const amount = joystickAmount(dist, radius, deadZone);
     this.value.set(nx * amount, ny * amount);
   }
 

@@ -15,6 +15,10 @@ public final class GameStore {
     public private(set) var snapshot: GameSnapshot
     /// The game has booted and takes commands. Commands sent before then wait.
     public private(set) var isGameReady = false
+    public private(set) var isShiftRunning = false
+    #if DEBUG
+    public var layoutDiagnostic = ""
+    #endif
     /// The game screen showing full screen, or nil for the native menus.
     public var presentedScreen: GameScreen?
     public var hapticsEnabled: Bool {
@@ -55,16 +59,20 @@ public final class GameStore {
     public func receive(_ message: BridgeMessage) {
         switch message {
         case .ready:
+            isShiftRunning = false
             isGameReady = true
             let pending = queued
             queued.removeAll()
             pending.forEach { sink?.send($0) }
+        case .playing:
+            isShiftRunning = true
         case .snapshot(var next):
             // Pictures come once per launch of the game; later snapshots keep them
             if next.art.isEmpty { next.art = snapshot.art }
             snapshot = next
             cache.save(next)
         case .exit:
+            isShiftRunning = false
             presentedScreen = nil
         case .haptic(let kind):
             guard hapticsEnabled, throttle.allow(kind, at: clock()) else { return }
@@ -77,6 +85,7 @@ public final class GameStore {
     /// The game's page went away (it crashed or is reloading): back to the menus until it reports in again.
     public func gameDidReset() {
         isGameReady = false
+        isShiftRunning = false
         presentedScreen = nil
     }
 

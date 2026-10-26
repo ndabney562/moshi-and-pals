@@ -10,3 +10,8 @@ xcuserdata/
 DerivedData/
 .build/
 .swiftpm/
+
+# Local test reports and browser traces
+test-results/
+playwright-report/
+coverage/

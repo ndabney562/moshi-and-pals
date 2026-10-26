@@ -90,6 +90,44 @@ final class MoshiAndPalsUITests: XCTestCase {
         XCTAssertEqual(game.label, "Game: board")
     }
 
+    @MainActor
+    func testRealBundledGameBootsReceivesStartAndRelaunches() throws {
+        let app = XCUIApplication()
+        app.launchArguments = ["-web-integration"]
+        app.launch()
+        let start = app.buttons["startShiftButton"]
+        XCTAssertTrue(start.waitForExistence(timeout: 45), "Real web snapshot must populate the native menu")
+        start.tap()
+        let status = app.staticTexts["realGameStatus"]
+        XCTAssertTrue(status.waitForExistence(timeout: 10))
+        let playing = NSPredicate(format: "label == %@", "Shift in progress")
+        XCTAssertEqual(XCTWaiter().wait(for: [XCTNSPredicateExpectation(predicate: playing, object: status)], timeout: 30), .completed)
+        let web = app.webViews.firstMatch
+        XCTAssertTrue(web.waitForExistence(timeout: 10))
+        XCTAssertGreaterThan(web.frame.width, web.frame.height, "Native game viewport must finish rotating to landscape")
+        let diagnostic = app.staticTexts["webLayoutDiagnostic"]
+        XCTAssertTrue(diagnostic.waitForExistence(timeout: 10))
+        let geometry = XCTAttachment(string: diagnostic.label)
+        geometry.name = "web-layout-geometry"
+        geometry.lifetime = .keepAlways
+        add(geometry)
+        let data = try XCTUnwrap(diagnostic.label.data(using: .utf8))
+        let layout = try XCTUnwrap(JSONSerialization.jsonObject(with: data) as? [String: Any])
+        let canvas = try XCTUnwrap(layout["canvas"] as? [String: Double])
+        let viewport = try XCTUnwrap(layout["inner"] as? [Double])
+        XCTAssertEqual(layout["portrait"] as? String, "", "Portrait CSS must clear after native rotation")
+        XCTAssertGreaterThan(try XCTUnwrap(canvas["width"]), try XCTUnwrap(canvas["height"]))
+        XCTAssertLessThanOrEqual(try XCTUnwrap(canvas["bottom"]), viewport[1] + 2)
+        XCTAssertLessThanOrEqual(try XCTUnwrap(canvas["right"]), viewport[0] + 2)
+        let attachment = XCTAttachment(screenshot: XCUIScreen.main.screenshot())
+        attachment.name = "remaster-native-game"
+        attachment.lifetime = .keepAlways
+        add(attachment)
+        app.terminate()
+        app.launch()
+        XCTAssertTrue(app.buttons["startShiftButton"].waitForExistence(timeout: 45))
+    }
+
     /// README screenshots (CI runs this with TEST_RUNNER_SCREENSHOTS=1 and commits them to docs/screenshots).
     @MainActor
     func testScreenshots() throws {

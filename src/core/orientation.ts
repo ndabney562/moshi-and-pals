@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import { viewportSize } from './viewport';
 
 /**
  * Keeps the game in landscape no matter how the phone is held. Safari can't
@@ -8,7 +9,8 @@ import Phaser from 'phaser';
 
 /** A phone (touch screen) currently taller than it is wide. */
 export function isPortrait(): boolean {
-  return window.matchMedia('(pointer: coarse)').matches && window.innerHeight > window.innerWidth;
+  const { width, height } = viewportSize();
+  return window.matchMedia('(pointer: coarse)').matches && height > width;
 }
 
 /** Sizes and rotates #game for the current orientation. */
@@ -16,11 +18,12 @@ export function applyOrientation(): void {
   const el = document.getElementById('game');
   if (!el) return;
   const portrait = isPortrait();
+  const { width, height } = viewportSize();
   document.body.classList.toggle('portrait', portrait);
   // Pixel sizes rather than vh/vw, which include Safari's toolbars
-  el.style.width = portrait ? `${window.innerHeight}px` : '';
-  el.style.height = portrait ? `${window.innerWidth}px` : '';
-  el.style.left = portrait ? `${window.innerWidth}px` : '';
+  el.style.width = portrait ? `${height}px` : '';
+  el.style.height = portrait ? `${width}px` : '';
+  el.style.left = portrait ? `${width}px` : '';
 }
 
 /**

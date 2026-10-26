@@ -8,6 +8,7 @@ final class BridgeMessageTests: XCTestCase {
 
     func testSimpleMessages() throws {
         XCTAssertEqual(try decode(#"{"type":"ready"}"#), .ready)
+        XCTAssertEqual(try decode(#"{"type":"playing"}"#), .playing)
         XCTAssertEqual(try decode(#"{"type":"exit"}"#), .exit)
         XCTAssertEqual(try decode(#"{"type":"haptic","kind":"purge"}"#), .haptic(.purge))
     }

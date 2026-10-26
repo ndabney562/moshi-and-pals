@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import { hasNativeHost, postNativeMessage } from './platform';
 import { BALANCE } from '../config/balance';
 import { ATLAS, ATLAS_UNLOCK_KILLS } from '../data/atlas';
 import { CHARACTERS } from '../data/characters';
@@ -21,21 +22,11 @@ import { savedShift } from './shiftSave';
  * and opens the board or locker through `window.moshiNative`, and the game reports back (a snapshot of saved
  * progress, leaving to the menu, haptics) through `webkit.messageHandlers.moshi`. In a browser none of this runs.
  */
-export const NATIVE = typeof window !== 'undefined' && new URLSearchParams(window.location.search).has('native');
+export const NATIVE = hasNativeHost();
 
 type NativeMessage = { type: string; [key: string]: unknown };
 
-interface WebkitWindow {
-  webkit?: { messageHandlers?: { moshi?: { postMessage(msg: unknown): void } } };
-}
-
-function post(msg: NativeMessage): void {
-  try {
-    (window as unknown as WebkitWindow).webkit?.messageHandlers?.moshi?.postMessage(msg);
-  } catch {
-    // No app listening (a browser testing ?native): nothing to tell
-  }
-}
+function post(msg: NativeMessage): void { postNativeMessage(msg); }
 
 /** Settings the app may change from its own Settings screen and shift picker. */
 const SETTABLE: (keyof Settings)[] = ['autoAim', 'sound', 'music', 'autoRefill', 'reducedMotion', 'character', 'difficulty'];
@@ -143,7 +134,7 @@ const haptic = (kind: string) => post({ type: 'haptic', kind });
 
 /** Game moments the app turns into taps of the Taptic Engine. */
 function watchForHaptics(): void {
-  events.on(GameEvents.RunStarted, () => (lastHp = -1));
+  events.on(GameEvents.RunStarted, () => { lastHp = -1; post({ type: 'playing' }); });
   events.on(GameEvents.PlayerHealthChanged, ({ hp }: HealthPayload) => {
     const now = performance.now();
     if (lastHp >= 0 && hp < lastHp && now - lastHitAt > 150) {

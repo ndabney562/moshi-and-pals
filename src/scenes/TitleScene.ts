@@ -26,6 +26,7 @@ export class TitleScene extends Phaser.Scene {
   }
 
   private art!: Phaser.GameObjects.Image;
+  private menuCards!: Phaser.GameObjects.Graphics;
   private tap!: Phaser.GameObjects.Text;
   private updatePill!: Phaser.GameObjects.Text;
   private boardButton!: Phaser.GameObjects.Text;
@@ -56,13 +57,14 @@ export class TitleScene extends Phaser.Scene {
     this.started = false;
     this.input.enabled = true;
     this.art = this.add.image(0, 0, 'title-art').setOrigin(0.5, 0);
-    this.tweens.add({ targets: this.art, alpha: { from: 0, to: 1 }, duration: 400 });
+    if (!settings.reducedMotion) this.tweens.add({ targets: this.art, alpha: { from: 0, to: 1 }, duration: 400 });
+    this.menuCards = this.add.graphics();
 
     this.tap = this.add.text(0, 0, 'TAP TO START', {
-      fontFamily: font, fontSize: '40px', fontStyle: '900', color: COLORS.uiText,
-      backgroundColor: '#0d2b2ecc', padding: { x: 22, y: 10 },
-    }).setOrigin(0.5).setShadow(0, 3, '#000', 6);
-    this.tweens.add({ targets: this.tap, alpha: 0.35, duration: 650, yoyo: true, repeat: -1 });
+      fontFamily: font, fontSize: '36px', fontStyle: '900',
+      backgroundColor: '#7fffd4', color: '#0d2b2e', padding: { x: 26, y: 14 },
+    }).setOrigin(0.5);
+    if (!settings.reducedMotion) this.tweens.add({ targets: this.tap, alpha: 0.82, duration: 1100, yoyo: true, repeat: -1 });
 
     // A newer build is live: offer it (tapping here reloads instead of starting)
     this.updatePill = this.add.text(0, 0, '✨ UPDATE READY · TAP HERE TO GET IT', {
@@ -177,26 +179,41 @@ export class TitleScene extends Phaser.Scene {
     const k = Math.max(width / art.width, height / art.height);
     const spare = art.height - height / k; // image rows that don't fit
     art.setScale(k).setPosition(width / 2, -Math.min(spare, 30) * k);
-    this.tap.setPosition(width / 2, height * 0.92);
-    this.continueButton.setPosition(width / 2, height * 0.8);
-    this.updatePill.setPosition(width / 2, this.continueButton.visible ? height * 0.68 : height * 0.8);
+    const safe = readSafeArea();
+    const bottom = Math.max(16, safe.bottom + 12);
+    const right = width - Math.max(16, safe.right + 12);
+    const rightWidth = Math.min(500, width * 0.46);
+    const leftWidth = Math.min(460, width * 0.4);
+    this.menuCards.clear().fillStyle(0x082225, 0.9).lineStyle(1, 0x7fffd4, 0.3);
+    this.menuCards.fillRoundedRect(Math.max(12, safe.left + 8), height - bottom - 254, leftWidth, 254, 18);
+    this.menuCards.strokeRoundedRect(Math.max(12, safe.left + 8), height - bottom - 254, leftWidth, 254, 18);
+    this.menuCards.fillRoundedRect(right - rightWidth, height - bottom - 228, rightWidth, 228, 18);
+    this.menuCards.strokeRoundedRect(right - rightWidth, height - bottom - 228, rightWidth, 228, 18);
+    this.tap.setPosition(width / 2, height * 0.51);
+    this.pickInfo.setWordWrapWidth(rightWidth - 32);
+    this.pickInfo.setFontSize(17);
+    for (const button of [this.boardButton, this.lockerButton, this.dailyButton, this.difficultyButton]) button.setFontSize(width < 1100 ? 20 : 22);
+    this.continueButton.setPosition(width / 2, height * 0.64);
+    this.updatePill.setPosition(width / 2, this.continueButton.visible ? height * 0.75 : height * 0.64);
     // The left-hand column: difficulty, Today's Shift, the board (clear of the notch)
     const left = Math.max(24, readSafeArea().left + 16);
-    this.boardButton.setPosition(left, height - 20);
-    this.lockerButton.setPosition(left, height - 194);
-    this.dailyButton.setPosition(left, height - 78);
-    this.dailyBestText.setPosition(left + this.dailyButton.width + 10, height - 78 - this.dailyButton.height / 2);
-    this.difficultyButton.setPosition(left, height - 136);
-    this.difficultyInfo.setPosition(left + this.difficultyButton.width + 10, height - 136 - this.difficultyButton.height / 2);
+    this.boardButton.setPosition(left, height - bottom - 8);
+    this.lockerButton.setPosition(left, height - bottom - 194);
+    this.dailyButton.setPosition(left, height - bottom - 70);
+    this.dailyBestText.setPosition(left + this.dailyButton.width + 10, height - bottom - 70 - this.dailyButton.height / 2);
+    this.difficultyButton.setPosition(left, height - bottom - 132);
+    this.difficultyInfo.setPosition(left + this.difficultyButton.width + 10, height - bottom - 132 - this.difficultyButton.height / 2);
+    this.dailyBestText.setVisible(width >= 1350);
+    this.difficultyInfo.setVisible(width >= 1350);
     this.layoutDailyPanel();
     this.picks.forEach((p, i) => {
-      const x = width - 70 - (this.picks.length - 1 - i) * 112;
-      const y = height - 92;
+      const x = right - rightWidth + rightWidth * (i + 0.5) / this.picks.length;
+      const y = height - bottom - 88;
       p.ring.setPosition(x, y);
       p.art.setPosition(x, y + 4);
       p.name.setPosition(x, y + 44);
     });
-    this.pickInfo.setPosition(width - 20, height - 150);
+    this.pickInfo.setPosition(right - 16, height - bottom - 154);
     this.placeNps();
   }
 

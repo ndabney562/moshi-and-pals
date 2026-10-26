@@ -1,4 +1,5 @@
 import { DISPLAY } from '../config/display';
+import { viewportSize } from './viewport';
 import { isPortrait, rotateInsets } from './orientation';
 
 export interface Insets { top: number; right: number; bottom: number; left: number; }
@@ -12,7 +13,10 @@ export function readSafeArea(): Insets {
   if (!probe) return { top: 0, right: 0, bottom: 0, left: 0 };
   const style = getComputedStyle(probe);
   // The game's height runs across the screen's width when it is turned sideways
-  const toGame = DISPLAY.logicalHeight / (isPortrait() ? window.innerWidth : window.innerHeight);
+  const { width, height } = viewportSize();
+  const canvas = document.querySelector('canvas')?.getBoundingClientRect();
+  const displayedHeight = isPortrait() ? canvas?.width : canvas?.height;
+  const toGame = DISPLAY.logicalHeight / (displayedHeight || (isPortrait() ? width : height));
   const px = (v: string) => (parseFloat(v) || 0) * toGame;
   return rotateInsets({
     top: px(style.paddingTop),

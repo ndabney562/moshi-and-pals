@@ -12,6 +12,17 @@
     <link rel="manifest" href="manifest.webmanifest" />
     <link rel="apple-touch-icon" href="icons/apple-touch-icon.png?v=2" />
     <link rel="icon" type="image/png" href="icons/icon-192.png?v=2" />
+    <meta name="description" content="Clock in, pick your Pal, and survive a clinic full of germs. Play Moshi and Pals free in your browser, online or offline." />
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Moshi and Pals" />
+    <meta property="og:description" content="Four Pals. One chaotic clinic. Clock in for a free, touch-first survival game." />
+    <meta property="og:url" content="https://ndabney562.github.io/moshi-and-pals/" />
+    <meta property="og:image" content="https://ndabney562.github.io/moshi-and-pals/social-card.png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content="Moshi and Pals clinic survival game, featuring the original game poster" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <link rel="canonical" href="https://ndabney562.github.io/moshi-and-pals/" />
     <title>Moshi and Pals</title>
     <style>
       html, body {
@@ -23,7 +34,13 @@
         -webkit-touch-callout: none;
         -webkit-tap-highlight-color: transparent;
       }
-      #game { position: fixed; inset: 0; }
+      body { height: 100dvh; }
+      #game { position: fixed; inset: 0; width: 100%; height: 100%; height: 100dvh; }
+      canvas { touch-action: none; display: block; }
+      #loading { position: fixed; inset: 0; display: grid; place-content: center; gap: 12px;
+        color: #e8fff9; font: 600 18px system-ui, sans-serif; text-align: center; pointer-events: none; }
+      #loading strong { color: #7fffd4; font-size: 26px; }
+      #loading[hidden] { display: none; }
       /* Invisible probe: lets the game read iPhone safe-area insets (notch / home bar). */
       #safe-area-probe {
         position: fixed; visibility: hidden; pointer-events: none;
@@ -34,7 +51,9 @@
     </style>
   </head>
   <body>
-    <div id="game"></div>
+    <div id="loading" role="status" aria-live="polite"><strong>Moshi and Pals</strong><span>Scrubbing in…</span></div>
+    <div id="game" role="application" aria-label="Moshi and Pals. Move with the left thumb, spray with the right. Arrow keys and Space also work."></div>
+    <noscript>This game needs JavaScript enabled in your browser.</noscript>
     <div id="safe-area-probe"></div>
     <script type="module" src="/src/main.ts"></script>
   </body>

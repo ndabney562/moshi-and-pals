@@ -36,6 +36,10 @@ struct AppEnvironment {
             store.receive(.ready)
             return AppEnvironment(store: store, game: .standIn, standIn: fake, colorScheme: arguments.contains("-ui-dark") ? .dark : nil)
         }
+        if arguments.contains("-web-integration") {
+            let store = GameStore(cache: MemorySnapshotCache())
+            return AppEnvironment(store: store, game: .web(WebGameHost(store: store, ephemeral: true)))
+        }
         let store = GameStore(cache: FileSnapshotCache.standard(), haptics: UIKitHaptics())
         return AppEnvironment(store: store, game: .web(WebGameHost(store: store)))
     }

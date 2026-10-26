@@ -28,6 +28,19 @@ func makeStore(
 
 @MainActor
 final class GameStoreTests: XCTestCase {
+    func testPlayingOnlyFollowsTheRealGameMessageAndClearsOnReset() {
+        let (store, _, _) = makeStore()
+        store.receive(.ready)
+        XCTAssertFalse(store.isShiftRunning)
+        store.receive(.playing)
+        XCTAssertTrue(store.isShiftRunning)
+        store.receive(.exit)
+        XCTAssertFalse(store.isShiftRunning)
+        store.receive(.playing)
+        store.gameDidReset()
+        XCTAssertFalse(store.isShiftRunning)
+    }
+
     func testStartsFromTheCachedSnapshot() {
         let (store, _, _) = makeStore()
         XCTAssertTrue(store.hasContent)

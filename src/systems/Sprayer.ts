@@ -1,33 +1,13 @@
 import Phaser from 'phaser';
 import { BALANCE } from '../config/balance';
-import { LOCKER } from '../config/locker';
+import { withLocker } from '../core/mechanics';
+export { withLocker } from '../core/mechanics';
 import type { EquipmentDef, ToolTier } from '../data/equipment';
 import { events, GameEvents } from '../core/events';
 import type { Droplet } from '../entities/Droplet';
 
 /** A non-spray tool's use (see systems/Arsenal.ts): `shot` counts uses, `damageMult` carries FRESH BOTTLE. */
 export type AttackHandler = (def: EquipmentDef, x: number, y: number, angle: number, time: number, shot: number, damageMult: number) => void;
-
-/** A tool's numbers after `level` Equipment Locker upgrades (they multiply whatever the tier sets). */
-export function withLocker(def: EquipmentDef, level: number): EquipmentDef {
-  let damage = 1;
-  let supply = 1;
-  let interval = 1;
-  for (const l of LOCKER.levels.slice(0, level)) {
-    damage *= l.damage ?? 1;
-    supply *= l.supply ?? 1;
-    interval *= l.interval ?? 1;
-  }
-  if (level <= 0) return def;
-  return {
-    ...def,
-    damage: def.damage * damage,
-    capacity: Math.round(def.capacity * supply),
-    reserve: Math.round(def.reserve * supply),
-    rechargePerSecond: def.rechargePerSecond ? def.rechargePerSecond * supply : def.rechargePerSecond,
-    fireIntervalMs: Math.round(def.fireIntervalMs * interval),
-  };
-}
 
 /**
  * Runs a spray-type piece of equipment: supply, fire rate, spread, refills.

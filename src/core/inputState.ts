@@ -27,9 +27,13 @@ export interface InputState {
   mouseActive: boolean;
 }
 
-export const inputState: InputState = {
+const idleInput = (): InputState => ({
   moveX: 0, moveY: 0,
   aimX: 1, aimY: 0, aiming: false,
   firing: false, refillRequested: false, purgeRequested: false, interactRequested: false, swapRequested: false,
   mouseX: 0, mouseY: 0, mouseActive: false,
-};
+});
+
+export const inputState: InputState = idleInput();
+
+export function resetInputState(): void { Object.assign(inputState, idleInput()); }

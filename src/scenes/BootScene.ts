@@ -21,6 +21,7 @@ export class BootScene extends Phaser.Scene {
   }
 
   create(): void {
+    document.getElementById('loading')?.setAttribute('hidden', '');
     this.makeEugene();
     this.makeEugene(true);
     this.makeKaya();
