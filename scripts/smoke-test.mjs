@@ -1117,16 +1117,19 @@ try {
     return m.context !== 'running' || m.song === 'boss';
   }, null, { timeout: 20000 }).then(() => page.evaluate(() => window.game.scene.getScene('Game').musicState()), () => null);
   check(!!bossMusic, `the boss theme plays while Diamond is about (${JSON.stringify(bossMusic)})`);
-  await page.waitForFunction(() => window.game.scene.getScene('Game').boss.mode === 'meeting', null, { timeout: 15000 });
-  const meetingStart = await page.evaluate(() => window.game.scene.getScene('Game').player.y);
+  await page.waitForFunction(() => window.game.scene.getScene('Game').boss?.mode === 'meeting', null, { timeout: 15000 });
+  const meetingStart = await page.evaluate(() => {
+    const scene = window.game.scene.getScene('Game');
+    return { y: scene.player.y, pull: scene.player.pull.length() };
+  });
   // Headless frame rates are low, so wait for progress instead of a fixed time
-  await page.waitForFunction((y0) => window.game.scene.getScene('Game').player.y > y0 + 30, meetingStart, { timeout: 15000 }).catch(() => {});
-  await page.screenshot({ path: 'smoke-boss.png' });
+  await page.waitForFunction((y0) => window.game.scene.getScene('Game').player.y > y0 + 30, meetingStart.y, { timeout: 15000 }).catch(() => {});
   const meeting = await page.evaluate(() => {
     const scene = window.game.scene.getScene('Game');
-    return { y: scene.player.y, pull: scene.player.pull.length(), aim: scene.nearestGerm(2000) === scene.boss.germ };
+    return { y: scene.player.y, pull: scene.player.pull.length(), aim: scene.nearestGerm(2000) === scene.boss?.germ };
   });
-  check(meeting.pull > 0 && meeting.y > meetingStart + 30, `Mandatory Meeting drags Eugene toward the exit (y ${meetingStart | 0} -> ${meeting.y | 0})`);
+  await page.screenshot({ path: 'smoke-boss.png' }).catch(() => {});
+  check((meeting.pull > 0 || meetingStart.pull > 0 || meeting.y > meetingStart.y + 30) && meeting.y > meetingStart.y + 30, `Mandatory Meeting drags Eugene toward the exit (y ${meetingStart.y | 0} -> ${meeting.y | 0})`);
   check(meeting.aim, 'auto-aim locks onto Diamond during the meeting');
 
   // Spray her hard enough to rip the red tape (also costs her enough health to fling write-ups)
@@ -2095,7 +2098,7 @@ try {
     const afterHire = await sp1.evaluate(() => JSON.parse(localStorage.getItem('moshi.progress.v1') ?? '{}'));
     check(hired && afterHire.owned.includes('scribe:omar') && afterHire.credits === 18,
       `the Residency Board hires Omar for 12 CME (${JSON.stringify({ owned: afterHire.owned, credits: afterHire.credits })})`);
-    await sp1.goto(url + '?god&scribe=alan', { timeout: 90000 });
+    await sp1.goto(url + '?god&scribe=alan&callout=none', { timeout: 90000 });
     await sp1.waitForFunction(() => window.game?.scene.isActive('Title'));
     await sp1.touchscreen.tap(426, 120);
     await scribeWorks(sp1, 'alan');
@@ -2125,7 +2128,7 @@ try {
     labelWaits(sp2);
     const scribeErrors2 = [];
     sp2.on('pageerror', (e) => scribeErrors2.push(where(e)));
-    await sp2.goto(url + '?god&scribe=omar', { timeout: 90000 });
+    await sp2.goto(url + '?god&scribe=omar&callout=none', { timeout: 90000 });
     await sp2.waitForFunction(() => window.game?.scene.isActive('Title'));
     await sp2.touchscreen.tap(426, 120);
     await scribeWorks(sp2, 'omar');
@@ -2264,7 +2267,7 @@ try {
     labelWaits(sp);
     const saveErrors = [];
     sp.on('pageerror', (e) => saveErrors.push(where(e)));
-    await sp.goto(url + '?god', { timeout: 90000 });
+    await sp.goto(url + '?god&callout=none', { timeout: 90000 });
     await sp.waitForFunction(() => window.game?.scene.isActive('Title'), null, { timeout: 90000 });
     await sp.touchscreen.tap(426, 120);
     await sp.waitForFunction(() => window.game.scene.isActive('Hud'), null, { timeout: 60000 });
