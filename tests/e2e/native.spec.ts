@@ -13,11 +13,13 @@ test('native host receives boot snapshot, validates settings, starts and exits',
   expect(await page.evaluate(() => window.game.scene.isActive('Title'))).toBe(false);
   await page.evaluate(() => window.moshiNative.setSettings({ difficulty: 'walkIn', sound: 'invalid', character: 'missing' }));
   expect(await page.evaluate(() => JSON.parse(localStorage.getItem('moshi.settings.v1')!))).toMatchObject({ difficulty: 'walkIn', sound: true, character: 'eugene' });
+  await page.waitForFunction(() => !window.game.loop.running);
   await page.evaluate(() => window.moshiNative.open('board'));
   await active(page, 'Board');
   await page.evaluate(() => window.game.scene.getScene('Board').children.list.find((c: any) => c.text === 'BACK').emit('pointerup'));
   await active(page, 'Native');
   expect(await page.evaluate(() => window.__native.some((m) => m.type === 'exit'))).toBe(true);
+  await page.waitForFunction(() => !window.game.loop.running);
   await page.evaluate(() => window.moshiNative.start({ kind: 'daily' }));
   await active(page, 'Hud');
   expect(await page.evaluate(() => window.game.scene.getScene('Game').shift.difficulty)).toBe('urgent');

@@ -34,6 +34,7 @@ const SETTABLE: (keyof Settings)[] = ['autoAim', 'sound', 'music', 'autoRefill',
 let game: Phaser.Game | undefined;
 /** A start or open asked for before Boot finished; the Native scene runs it once it's up. */
 let pending: (() => void) | undefined;
+let idleTimer: ReturnType<typeof setTimeout> | undefined;
 let artSent = false;
 
 /** Everything the app's screens show, read fresh from the saves. `withArt` adds the Pals' and germs' pictures. */
@@ -112,20 +113,26 @@ export class NativeScene extends Phaser.Scene {
 
 /** Nothing to draw behind the app's menus: let the game loop sleep (a start or open wakes it). */
 function idle(): void {
-  setTimeout(() => {
+  clearTimeout(idleTimer);
+  idleTimer = setTimeout(() => {
+    idleTimer = undefined;
     if (game?.scene.isActive('Native') && !pending) game.loop.sleep();
   }, 250);
 }
 
 /** Runs `fn` on the Native scene (now if it's up, otherwise as soon as it is). */
 function fromNative(fn: (scene: Phaser.Scene) => void): void {
+  // An older menu sleep must not strand a queued scene transition on a slow frame.
+  clearTimeout(idleTimer);
+  idleTimer = undefined;
   const run = () => {
     const scene = game?.scene.getScene('Native');
     if (scene) fn(scene);
   };
-  game?.loop.wake();
   if (game?.scene.isActive('Native')) run();
   else pending = run;
+  // wake() ticks synchronously: make the command available before that first tick.
+  game?.loop.wake();
 }
 
 let lastHp = -1;

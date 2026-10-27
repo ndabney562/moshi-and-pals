@@ -72,3 +72,26 @@ it('queues start until the native scene is ready and then starts a normal shift'
   new native.NativeScene().create();
   expect(start).toHaveBeenCalledWith('Game', { resume: false });
 });
+
+it('cancels menu sleep and queues the scene change before waking a sleeping loop', async () => {
+  vi.useFakeTimers();
+  try {
+    window.history.replaceState({}, '', '?native');
+    (window as any).webkit = { messageHandlers: { moshi: { postMessage: vi.fn() } } };
+    const native = await import('../../src/core/native');
+    const game = fakeGame();
+    const start = vi.fn();
+    game.scene.getScene.mockReturnValue({ scene: { start } });
+    native.installNativeBridge(game as any);
+    new native.NativeScene().create();
+    await vi.advanceTimersByTimeAsync(200);
+    game.loop.wake.mockImplementation(() => {
+      expect(start).toHaveBeenCalledWith('Game', { resume: false });
+    });
+    (window as any).moshiNative.start();
+    await vi.advanceTimersByTimeAsync(100);
+    expect(game.loop.sleep).not.toHaveBeenCalled();
+  } finally {
+    vi.useRealTimers();
+  }
+});
