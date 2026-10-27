@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 import { BALANCE } from '../config/balance';
+import { events, GameEvents } from '../core/events';
 import { staffBoost } from '../core/progress';
 import { sfx } from '../core/sfx';
 import { SCRIBES, type ScribeDef, type ScribeId } from '../data/scribes';
@@ -52,6 +53,8 @@ class Scribe {
   distracted = false;
   kills = 0;
   cleaned = 0;
+  /** Trainee orientation countdown in game time (ms). */
+  traineeUntil = 0;
   /** Their staff upgrades (read when they're summoned). */
   boost = { power: 1, speed: 1, duration: 1 };
 
@@ -63,6 +66,14 @@ class Scribe {
 
   get here(): boolean {
     return this.img.visible;
+  }
+
+  hasTrainee(time: number): boolean {
+    return this.traineeUntil > time;
+  }
+
+  traineeRemainingMs(time: number): number {
+    return Math.max(0, this.traineeUntil - time);
   }
 }
 
@@ -120,10 +131,44 @@ export class Scribes {
     return this.list.find((s) => s.def.id === id && s.here);
   }
 
+  /**
+   * Assigns a temporary trainee to an eligible helper.
+   * Returns false if the helper isn't on shift or isn't trainee-eligible.
+   */
+  assignTrainee(id: ScribeId, time: number, ms: number): boolean {
+    const s = this.list.find((x) => x.def.id === id);
+    if (!s || !s.def.traineeEligible || !s.here) return false;
+    s.traineeUntil = Math.max(s.traineeUntil, time + ms);
+    s.img.setTint(0xffd54f);
+    s.bubble.say(pick(s.def.lines.traineeStart ?? s.def.lines.attack), s.img, 44, 2500);
+    const emitAssigned = () => events.emit(GameEvents.TraineeAssigned, { id: s.def.id, name: s.def.name, durationMs: ms });
+    if (this.host.scene.scene.isActive('Hud')) emitAssigned();
+    else this.host.scene.time.delayedCall(200, emitAssigned);
+    return true;
+  }
+
+  /** Whether this helper currently has an active trainee slowing them down. */
+  hasTrainee(id: ScribeId, time: number): boolean {
+    const s = this.list.find((x) => x.def.id === id);
+    return !!s && s.here && !!s.hasTrainee?.(time);
+  }
+
+  /** Remaining trainee time in ms (0 if none active). */
+  traineeRemainingMs(id: ScribeId, time: number): number {
+    const s = this.list.find((x) => x.def.id === id);
+    return s && s.here ? (s.traineeRemainingMs?.(time) ?? 0) : 0;
+  }
+
   update(time: number, dtMs: number): void {
     for (const s of this.list) {
       s.bubble.follow();
       if (!s.here) continue;
+      if (s.traineeUntil > 0 && time >= s.traineeUntil) {
+        s.traineeUntil = 0;
+        s.img.clearTint();
+        s.bubble.say(pick(s.def.lines.traineeEnd ?? s.def.lines.clean), s.img, 44, 2500);
+        events.emit(GameEvents.TraineeCompleted, { id: s.def.id, name: s.def.name });
+      }
       if (time >= s.until) {
         this.dismiss(s);
         continue;
@@ -198,7 +243,8 @@ export class Scribes {
         }
       }
       const a = Phaser.Math.Angle.Between(img.x, img.y, gx, gy);
-      const speed = cfg.speed * (time < s.rallyUntil ? s.rallySpeed : 1) * (d > 220 ? 1.5 : 1) * (dtMs / 1000);
+      const traineeSpeedMult = s.hasTrainee?.(time) ? BALANCE.trainees.statMult : 1;
+      const speed = cfg.speed * (time < s.rallyUntil ? s.rallySpeed : 1) * traineeSpeedMult * (d > 220 ? 1.5 : 1) * (dtMs / 1000);
       const stepLen = Math.min(speed, d);
       this.place(s, img.x + Math.cos(a) * stepLen, img.y + Math.sin(a) * stepLen);
       if (!germ && !patient) img.rotation = Phaser.Math.Angle.RotateTo(img.rotation, a, 0.15);
@@ -233,10 +279,11 @@ export class Scribes {
     const a = Phaser.Math.Angle.Between(img.x, img.y, germ.x, germ.y);
     if (s.def.id === 'omar') {
       const c = this.cfg.omar;
-      s.nextAttackAt = time + c.everyMs * s.boost.speed / (time < s.rallyUntil ? s.rallySpeed : 1);
+      const traineeRateMult = s.hasTrainee?.(time) ? BALANCE.trainees.statMult : 1;
+      s.nextAttackAt = time + (c.everyMs * s.boost.speed) / ((time < s.rallyUntil ? s.rallySpeed : 1) * traineeRateMult);
       fx.nozzleMist(img.x + Math.cos(a) * 26, img.y + Math.sin(a) * 26, a, 18, s.def.color, 4);
       sfx.spray();
-      this.strike(s, germ, c.damage, a, c.knockback);
+      this.strike(s, germ, c.damage, a, c.knockback, time);
     } else if (s.def.id === 'donald') {
       const c = this.cfg.donald;
       s.nextAttackAt = time + c.everyMs * s.boost.speed / (time < s.rallyUntil ? s.rallySpeed : 1);
@@ -249,7 +296,7 @@ export class Scribes {
         const along = (g.x - img.x) * ux + (g.y - img.y) * uy;
         const off = Math.abs((g.x - img.x) * uy - (g.y - img.y) * ux);
         if (along < 0 || along > c.range || off > c.width + g.displayWidth / 2) continue;
-        this.strike(s, g, c.damage, a, c.knockback);
+        this.strike(s, g, c.damage, a, c.knockback, time);
         if (g.active) g.stun(time, c.stunMs);
       }
     } else {
@@ -276,7 +323,7 @@ export class Scribes {
         const ga = Phaser.Math.Angle.Between(px, py, g.x, g.y);
         px = g.x;
         py = g.y;
-        this.strike(s, g, c.damage, ga, c.knockback);
+        this.strike(s, g, c.damage, ga, c.knockback, time);
         if (g.active) g.stun(time, c.stunMs);
       }
     }
@@ -286,9 +333,11 @@ export class Scribes {
     }
   }
 
-  private strike(s: Scribe, g: Germ, damage: number, angle: number, knockback: number): void {
+  private strike(s: Scribe, g: Germ, damage: number, angle: number, knockback: number, time?: number): void {
     if (!g.active) return;
-    this.host.hit(g, damage * s.boost.power * (this.host.helperDamage ?? 1), angle, knockback);
+    const now = time ?? this.host.scene?.time?.now ?? 0;
+    const traineeDmgMult = s.hasTrainee?.(now) ? BALANCE.trainees.statMult : 1;
+    this.host.hit(g, damage * s.boost.power * (this.host.helperDamage ?? 1) * traineeDmgMult, angle, knockback);
     if (!g.active) s.kills++;
   }
 
@@ -323,7 +372,8 @@ export class Scribes {
 
   /** The same thing Eugene's droplets do to a patient: one "spray" of shame. */
   private clean(s: Scribe, p: Patient, time: number): void {
-    s.nextCleanAt = time + this.cfg.cleanEveryMs;
+    const traineeRateMult = s.hasTrainee?.(time) ? BALANCE.trainees.statMult : 1;
+    s.nextCleanAt = time + this.cfg.cleanEveryMs / traineeRateMult;
     const a = Phaser.Math.Angle.Between(s.img.x, s.img.y, p.x, p.y);
     this.host.fx.nozzleMist(s.img.x + Math.cos(a) * 24, s.img.y + Math.sin(a) * 24, a, 14, s.def.color, 2);
     if (this.host.patients.sprayed(p)) {
@@ -351,7 +401,8 @@ export class Scribes {
     s.bubble.say(pick(s.def.lines.leave), { x: s.img.x, y: s.img.y }, 44, 1800);
     s.shadow.setVisible(false);
     s.until = 0;
-    s.img.setVisible(false);
+    s.traineeUntil = 0;
+    s.img.clearTint().setVisible(false);
     this.host.fx.nozzleMist(s.img.x, s.img.y, 0, 360, 0xffffff, 6);
   }
 

@@ -37,6 +37,8 @@ export interface ShiftSave {
   helpers: string[];
   /** Helpers whose call-out was already revealed this shift (their silhouette doesn't come back). */
   absent?: string[];
+  /** Helpers currently training a new hire, with their remaining duration in ms. */
+  trainees?: Record<string, number>;
   provider?: { pantry: number[]; ingredient: number };
   claimDeniedChance: number;
   /** Game time played so far (the Discharge Summary's time survived). */
@@ -90,6 +92,13 @@ export function savedShift(): ShiftSave | undefined {
       snacks: strings(r.snacks),
       helpers: strings(r.helpers),
       absent: strings(r.absent),
+      trainees: r.trainees && typeof r.trainees === 'object'
+        ? Object.fromEntries(
+            Object.entries(r.trainees as Record<string, unknown>)
+              .filter(([k, v]) => typeof k === 'string' && typeof v === 'number' && Number.isFinite(v) && v > 0)
+              .map(([k, v]) => [k, Math.floor(v as number)]),
+          )
+        : undefined,
       claimDeniedChance: num(r.claimDeniedChance),
       playedMs: num(r.playedMs),
       stats: { ...stats, kills: { ...(stats.kills ?? {}) }, achievements: strings(stats.achievements) },

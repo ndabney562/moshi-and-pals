@@ -542,6 +542,7 @@ export class GameScene extends Phaser.Scene {
       if (this.hasMod('construction')) this.closeForConstruction(p.round);
       this.vents.shuffle();
       this.cure.onRoundStarted();
+      this.rollTrainees(this.time.now);
       this.roundStartSave = this.snapshot(p.round);
     };
     const onEscaped = () => this.achieve('ama');
@@ -1434,6 +1435,7 @@ export class GameScene extends Phaser.Scene {
         } else {
           this.released.add(def.id);
           this.scribes.summon(def.id, this.time.now, Infinity);
+          if (DEBUG.trainee?.includes(def.id)) this.scribes.assignTrainee(def.id, this.time.now, BALANCE.trainees.durationMs);
         }
       }
     }
@@ -1485,6 +1487,9 @@ export class GameScene extends Phaser.Scene {
     // Out for good: they stay on shift (and can't be hurt) until the shift ends
     this.released.add(id);
     this.scribes.summon(id, this.time.now, Infinity, from);
+    if (DEBUG.trainee?.includes(id)) {
+      this.scribes.assignTrainee(id, this.time.now, BALANCE.trainees.durationMs);
+    }
   }
 
   /**
@@ -1498,6 +1503,39 @@ export class GameScene extends Phaser.Scene {
     if (long > ms && def.powerup) this.powerups.start(def.powerup, time, long);
     if (def.desk) this.frontDesk.summon(id, time, long);
     else this.scribes.summon(id, time, long);
+    if (DEBUG.trainee?.includes(id)) {
+      if (def.desk) this.frontDesk.assignTrainee(id, time, BALANCE.trainees.durationMs);
+      else this.scribes.assignTrainee(id, time, BALANCE.trainees.durationMs);
+    }
+  }
+
+  /**
+   * Random mid-shift trainee assignments: rolls for active eligible helpers at round start,
+   * or applies debug overrides (?trainee=).
+   */
+  private rollTrainees(time: number): void {
+    if (DEBUG.trainee) {
+      if (DEBUG.trainee.includes('none')) return;
+      for (const id of DEBUG.trainee) {
+        if (this.scribes.get(id as ScribeId) && !this.scribes.hasTrainee(id as ScribeId, time)) {
+          this.scribes.assignTrainee(id as ScribeId, time, BALANCE.trainees.durationMs);
+        }
+        if (this.frontDesk.get(id as ScribeId) && !this.frontDesk.hasTrainee(id as ScribeId, time)) {
+          this.frontDesk.assignTrainee(id as ScribeId, time, BALANCE.trainees.durationMs);
+        }
+      }
+      return;
+    }
+    for (const id of BALANCE.trainees.eligible) {
+      const isScribe = this.scribes.get(id as ScribeId);
+      const isDesk = this.frontDesk.get(id as ScribeId);
+      if (!isScribe && !isDesk) continue;
+      if (this.scribes.hasTrainee(id as ScribeId, time) || this.frontDesk.hasTrainee(id as ScribeId, time)) continue;
+      if (runRng.helpers.chance(BALANCE.trainees.chancePerRound)) {
+        if (isScribe) this.scribes.assignTrainee(id as ScribeId, time, BALANCE.trainees.durationMs);
+        else if (isDesk) this.frontDesk.assignTrainee(id as ScribeId, time, BALANCE.trainees.durationMs);
+      }
+    }
   }
 
   /** The Miracle Cure flags a save keeps (a Fax Machine fight in progress starts over). */
@@ -1507,6 +1545,14 @@ export class GameScene extends Phaser.Scene {
   private snapshot(round: number): ShiftSave {
     const { startedAt, ...stats } = this.runStats;
     const cure = this.cure as unknown as Record<string, boolean>;
+    const trainees: Record<string, number> = {};
+    for (const id of BALANCE.trainees.eligible) {
+      const rem = Math.max(
+        this.scribes.traineeRemainingMs(id as ScribeId, this.time.now),
+        this.frontDesk.traineeRemainingMs(id as ScribeId, this.time.now),
+      );
+      if (rem > 0) trainees[id] = rem;
+    }
     return {
       version: 1,
       savedAt: Date.now(),
@@ -1527,6 +1573,7 @@ export class GameScene extends Phaser.Scene {
       snacks: [...this.snacks],
       helpers: [...this.released],
       absent: [...this.absent],
+      trainees: Object.keys(trainees).length > 0 ? trainees : undefined,
       provider: this.abilities.save(),
       claimDeniedChance: this.claimDeniedChance,
       playedMs: Math.max(0, this.time.now - startedAt),
@@ -1593,14 +1640,26 @@ export class GameScene extends Phaser.Scene {
     if (save.cure.faxDefeated) cure.faxSpawned = true;
     // Helpers who were out stay out
     for (const id of save.helpers) {
-      if (!scribeById(id)) continue;
+      const def = scribeById(id);
+      if (!def) continue;
       this.released.add(id as ScribeId);
-      this.scribes.summon(id as ScribeId, now, Infinity);
+      if (def.desk) this.frontDesk.summon(id as ScribeId, now, Infinity);
+      else this.scribes.summon(id as ScribeId, now, Infinity);
     }
     // Helpers whose call-out was already revealed stay absent
     for (const id of save.absent ?? []) {
       if (!scribeById(id)) continue;
       this.absent.add(id as ScribeId);
+    }
+    // Trainees currently assigned with remaining game time
+    if (save.trainees) {
+      for (const [id, remainingMs] of Object.entries(save.trainees)) {
+        if (remainingMs > 0) {
+          const def = scribeById(id);
+          if (def?.desk) this.frontDesk.assignTrainee(id as ScribeId, now, remainingMs);
+          else this.scribes.assignTrainee(id as ScribeId, now, remainingMs);
+        }
+      }
     }
   }
 

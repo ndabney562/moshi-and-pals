@@ -35,6 +35,8 @@ export interface ScribeDef {
   unlockBanner?: { title: string; line: string };
   /** A front desk PSR: works the RECEPTION desk instead of following the doctor (systems/FrontDesk.ts). */
   desk?: boolean;
+  /** Whether this helper is eligible to receive random mid-shift trainees (Omar, Selina, Elaine). */
+  traineeEligible?: boolean;
   /** How they fight, one line for the board. */
   blurb: string;
   /** Their attack's color (mist or zap). */
@@ -48,6 +50,10 @@ export interface ScribeDef {
     /** When they barricade a germ vent (with your Copays). The front desk PSRs stay at the desk, so they never do. */
     block?: string[];
     leave: string[];
+    /** When a trainee is assigned to shadow them. */
+    traineeStart?: string[];
+    /** When the trainee completes orientation. */
+    traineeEnd?: string[];
   };
 }
 
@@ -57,6 +63,7 @@ const EXAM_ROOMS_FIRST_FLOOR = ['exam1', 'exam2', 'exam3', 'exam4', 'exam5', 'ex
 export const SCRIBES: ScribeDef[] = [
   {
     id: 'omar', name: 'Omar', role: 'SCRIBE', waitsIn: EXAM_ROOMS_FIRST_FLOOR, cost: 12, color: 0xbfe9ff,
+    traineeEligible: true,
     blurb: 'Sprays the nearest germ, fast and light. Never stops smiling.',
     lines: {
       arrive: ['Omar here! Charting that!', "Don't worry, I'm charting everything!"],
@@ -64,10 +71,13 @@ export const SCRIBES: ScribeDef[] = [
       clean: ['Documented!', 'Added to your chart, sir!'],
       block: ['Prior auth pending!', "I'll put that on your tab, sir!"],
       leave: ['Signing off! Notes are in!'],
+      traineeStart: ['Shadow me! Rule one: keep charting!', 'First day? Don’t touch the laptop!'],
+      traineeEnd: ['Trainee signed off! Back to full speed!', 'They passed! Solo charting time!'],
     },
   },
   {
     id: 'alan', name: 'Alan', role: 'SCRIBE', waitsIn: EXAM_ROOMS_FIRST_FLOOR, cost: 12, color: 0x9be7ff,
+    traineeEligible: false,
     blurb: 'Zaps a germ and the two next to it. Slower, harder, stuns.',
     lines: {
       arrive: ['Alan. Scribe. Let’s go.', 'Laptop charged. Germs not.'],
@@ -79,6 +89,7 @@ export const SCRIBES: ScribeDef[] = [
   },
   {
     id: 'donald', name: 'Donald', role: 'X-RAY TECH', waitsIn: ['xray'], color: 0xc8ffe6,
+    traineeEligible: false,
     unlockHint: 'Open X-ray during a shift', unlockRoom: 'xray',
     unlockBanner: { title: 'DONALD UNLOCKED', line: 'The X-ray tech has your back. Open X-ray and he helps all shift.' },
     blurb: 'Shoots an X-ray beam through walls and every germ in its line.',
@@ -92,22 +103,28 @@ export const SCRIBES: ScribeDef[] = [
   },
   {
     id: 'selina', name: 'Selina', role: 'FRONT DESK', powerup: 'psrSelina', cost: 15, color: 0xffb3c7, desk: true,
+    traineeEligible: true,
     blurb: 'Lines every patient up at the front desk and checks them in fast.',
     lines: {
       arrive: ['Selina, front desk. Everyone, line up please!', 'Okay! Who was here first?'],
       attack: ['Next!', 'Insurance card, please.', 'Have a seat, they’ll call you.', 'Sign here, here and here.'],
       clean: ['Line’s clear. I’m a legend.'],
       leave: ['On break. Don’t touch my desk.'],
+      traineeStart: ['Watch how I handle the line. Don’t talk.', 'New PSR shadowing me. Line will be slow.'],
+      traineeEnd: ['Orientation over. Back to my desk.', 'Trainee can do their own intake now.'],
     },
   },
   {
     id: 'elaine', name: 'Elaine', role: 'FRONT DESK', powerup: 'psrElaine', cost: 15, color: 0xf8c8dc, desk: true,
+    traineeEligible: true,
     blurb: 'Lines every patient up at the front desk and collects their copay. Slower, pays more.',
     lines: {
       arrive: ['Elaine, front desk. Form a line!', 'Hi! Copays are due at check-in.'],
       attack: ['That’ll be your copay.', 'Card or cash?', 'Is this address still current?', 'Next, please!'],
       clean: ['Nobody waiting. Peace and quiet.'],
       leave: ['Lunch. Put a sign up.'],
+      traineeStart: ['Copay orientation begins now. Take notes.', 'Shadowing me? Watch how I collect every cent.'],
+      traineeEnd: ['Trainee certified. Check-ins back to normal.', 'Done shadowing. Next patient, please!'],
     },
   },
 ];

@@ -12,6 +12,7 @@
  *   ?doctor=ken       play this shift as eugene, kaya, lucien or ken (not saved, hired or not)
  *   ?scribe=omar      a helper (omar, alan, donald, selina or elaine) works the whole shift, and their pill drops even if locked
  *   ?callout=omar     that helper calls out this shift (comma-separated ids; `none`: nobody calls out)
+ *   ?trainee=omar     that helper has a trainee this shift (comma-separated ids; `none`: nobody gets a trainee)
  *   ?secret=records   the Miracle Cure, every clue found and Stall 3's panel open (`clockout`: ready to clock out)
  *
  * Combine them: .../moshi-and-pals/?round=15&god&debug
@@ -38,11 +39,12 @@ const doctor = params.get('doctor') ?? undefined;
 const scribe = params.get('scribe') ?? undefined;
 const secret = params.get('secret') ?? undefined;
 const callout = params.has('callout') ? (params.get('callout') ?? '').split(',').map((m) => m.trim()).filter(Boolean) : undefined;
+const trainee = params.has('trainee') ? (params.get('trainee') ?? '').split(',').map((m) => m.trim()).filter(Boolean) : undefined;
 
 export const DEBUG = {
   /** Show the perf overlay. On whenever any debug switch is used, so testers always see they're in a test build. */
   overlay: params.has('debug') || startRound !== undefined || copays !== undefined || fpsLimit !== undefined || god
-    || mods.length > 0 || seed !== undefined || doctor !== undefined || scribe !== undefined || secret !== undefined || callout !== undefined,
+    || mods.length > 0 || seed !== undefined || doctor !== undefined || scribe !== undefined || secret !== undefined || callout !== undefined || trainee !== undefined,
   /** First round to play (1 = normal). */
   startRound: startRound !== undefined ? Math.max(1, Math.floor(startRound)) : 1,
   copays: copays !== undefined ? Math.max(0, Math.floor(copays)) : 0,
@@ -60,4 +62,6 @@ export const DEBUG = {
   secret,
   /** Helpers forced to call out this shift (`['none']`: nobody does); undefined = roll normally. */
   callout,
+  /** Helpers forced to have a trainee this shift (`['none']`: nobody gets one); undefined = roll normally. */
+  trainee,
 };

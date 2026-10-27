@@ -128,6 +128,21 @@ Values live in `src/config/balance.ts` and `src/config/controls.ts`.
 
 Each waiting helper rolls independently per shift using a seeded generator (`${seed}:attendance:${doctor}:${id}`). Silhouettes still render in locked rooms; opening reveals absence and doctor-specific humorous reason banner. Absence state is preserved in shift saves (`absent`).
 
+## Random Timed Trainees (`BALANCE.trainees`, `docs/PROVIDER-EXPANSION-SPEC.md`)
+
+| Setting | Value | Notes |
+|---|---|---|
+| Trainee slowdown (`statMult`) | 0.33 | 67% reduction in movement speed, action/attack rate, and raw damage/copays output |
+| Rate scaling rule | Interval ÷ 0.33 (~3.03×) | Rate scales by division of cooldown/attack/check-in intervals, not interval × 0.33 |
+| Compounding DPS / Output | ~10.89% | Dual scaling (0.33 output × 0.33 cadence = 0.1089) |
+| Assignment duration (`durationMs`) | 40,000 ms (40 s) | Orientation duration in game time before sign-off |
+| Event roll chance (`chancePerRound`) | 0.20 (20%) | Rolled independently per active eligible helper at round start |
+| Trainee-eligible helpers | Omar, Selina, Elaine | In-world scribes and PSRs with training responsibilities |
+| Ineligible helpers | Alan, Donald | Alan refuses; Donald is technical X-ray specialist |
+| Visual feedback | Amber tint `0xffd54f` | Applied to sprite while trainee is active; cleared upon completion |
+| Persistence | `ShiftSave.trainees` | Remaining duration in ms survives save & quit / continue shift cycles |
+| Debug override | `?trainee=omar` (`?trainee=none`) | Forces immediate trainee assignment or disables rolls |
+
 ## Music (`src/config/music.ts`, songs in `src/data/music.ts`)
 | Value | Current | Notes |
 |---|---|---|
