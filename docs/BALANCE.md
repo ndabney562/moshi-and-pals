@@ -128,6 +128,21 @@ Values live in `src/config/balance.ts` and `src/config/controls.ts`.
 
 Each waiting helper rolls independently per shift using a seeded generator (`${seed}:attendance:${doctor}:${id}`). Silhouettes still render in locked rooms; opening reveals absence and doctor-specific humorous reason banner. Absence state is preserved in shift saves (`absent`).
 
+## Distractions & Patient Imaging (`BALANCE.distractions`, `docs/PROVIDER-EXPANSION-SPEC.md`)
+
+| Setting | Value | Notes |
+|---|---|---|
+| Distraction roll chance (`chancePerRound`) | 0.18 (18%) | Rolled independently per active combat helper at round start |
+| Distraction duration (`durationMs`) | 30,000 ms (30 s) | Max distraction duration before auto-resolution |
+| Patient imaging roll chance (`xrayChancePerRound`) | 0.20 (20%) | Rolled independently for Donald at round start |
+| Patient imaging duration (`xrayImagingMs`) | 20,000 ms (20 s) | Donald's imaging assignment duration in the X-ray room |
+| Intervention proximity range (`interventionRange`) | 75 px | Provider proximity threshold to reactivate a distracted helper |
+| Eligible combat helpers | Omar, Alan, Donald | Combat helpers drawn to in-world clinic markers |
+| Combat & cleaning suppression | Full (0 output) | Helpers do not attack germs or shame patients while distracted or imaging |
+| Visual feedback | Glowing marker & label | In-world world marker with pulsing aura and label |
+| Persistence | `ShiftSave.distractions` | Active distraction/imaging kind, target coords, and remaining ms persist |
+| Debug overrides | `?distract=omar`, `?imaging=donald` | Deterministically force distraction or Donald patient imaging |
+
 ## Random Timed Trainees (`BALANCE.trainees`, `docs/PROVIDER-EXPANSION-SPEC.md`)
 
 | Setting | Value | Notes |

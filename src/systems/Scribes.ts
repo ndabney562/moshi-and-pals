@@ -34,6 +34,17 @@ export interface ScribeHost {
 
 const pick = (lines: string[]): string => Phaser.Utils.Array.GetRandom(lines);
 
+export interface ScribeDistraction {
+  kind: 'distraction' | 'imaging';
+  label: string;
+  x: number;
+  y: number;
+  assignedAt: number;
+  until: number;
+  marker?: Phaser.GameObjects.Graphics;
+  markerText?: Phaser.GameObjects.Text;
+}
+
 /** One scribe on the floor. No physics body: they walk around (or through) everything and never block Eugene. */
 class Scribe {
   readonly img: Phaser.GameObjects.Image;
@@ -51,6 +62,7 @@ class Scribe {
   rallyPower = 1;
   rallySpeed = 1;
   distracted = false;
+  distraction?: ScribeDistraction;
   kills = 0;
   cleaned = 0;
   /** Trainee orientation countdown in game time (ms). */
@@ -74,6 +86,14 @@ class Scribe {
 
   traineeRemainingMs(time: number): number {
     return Math.max(0, this.traineeUntil - time);
+  }
+
+  hasDistraction(time: number): boolean {
+    return !!this.distraction && this.distraction.until > time;
+  }
+
+  distractionRemainingMs(time: number): number {
+    return this.distraction ? Math.max(0, this.distraction.until - time) : 0;
   }
 }
 
@@ -159,6 +179,151 @@ export class Scribes {
     return s && s.here ? (s.traineeRemainingMs?.(time) ?? 0) : 0;
   }
 
+  /**
+   * Assigns an in-world distraction to a scribe (or Donald).
+   * Returns false if the helper isn't on shift or is already distracted.
+   */
+  assignDistraction(id: ScribeId, target: { x: number; y: number; label: string }, time: number, ms: number): boolean {
+    const s = this.list.find((x) => x.def.id === id);
+    if (!s || !s.here || s.distraction) return false;
+    let marker: Phaser.GameObjects.Graphics | undefined;
+    let markerText: Phaser.GameObjects.Text | undefined;
+    if (this.host.scene.add?.graphics) {
+      marker = this.host.scene.add.graphics().setDepth(9.5);
+      marker.lineStyle(2, 0xffb703, 0.85);
+      marker.fillStyle(0xffb703, 0.25);
+      marker.strokeCircle(target.x, target.y, 22);
+      marker.fillCircle(target.x, target.y, 22);
+      this.host.scene.tweens?.add?.({
+        targets: marker,
+        alpha: 0.35,
+        yoyo: true,
+        repeat: -1,
+        duration: 600,
+      });
+    }
+    if (this.host.scene.add?.text) {
+      markerText = this.host.scene.add.text(target.x, target.y - 28, target.label, {
+        fontSize: '11px',
+        color: '#ffd166',
+        stroke: '#000000',
+        strokeThickness: 3,
+      }).setOrigin(0.5).setDepth(9.6);
+    }
+    s.distraction = {
+      kind: 'distraction',
+      label: target.label,
+      x: target.x,
+      y: target.y,
+      assignedAt: time,
+      until: time + ms,
+      marker,
+      markerText,
+    };
+    s.bubble.say(pick(s.def.lines.distracted ?? s.def.lines.leave), s.img, 44, 2500);
+    const emitDistracted = () => events.emit(GameEvents.HelperDistracted, { id: s.def.id, name: s.def.name, label: target.label, x: target.x, y: target.y });
+    if (this.host.scene.scene?.isActive?.('Hud')) emitDistracted();
+    else this.host.scene.time?.delayedCall?.(200, emitDistracted) ?? emitDistracted();
+    return true;
+  }
+
+  /**
+   * Assigns patient imaging in the X-ray room to Donald.
+   * Halts his combat beam until finished or interrupted.
+   */
+  assignImaging(time: number, ms: number, target = { x: 940, y: 1400 }): boolean {
+    const s = this.list.find((x) => x.def.id === 'donald');
+    if (!s || !s.here || s.distraction) return false;
+    let marker: Phaser.GameObjects.Graphics | undefined;
+    let markerText: Phaser.GameObjects.Text | undefined;
+    if (this.host.scene.add?.graphics) {
+      marker = this.host.scene.add.graphics().setDepth(9.5);
+      marker.lineStyle(2, 0x546e7a, 0.85);
+      marker.fillStyle(0x546e7a, 0.25);
+      marker.strokeCircle(target.x, target.y, 24);
+      marker.fillCircle(target.x, target.y, 24);
+      this.host.scene.tweens?.add?.({
+        targets: marker,
+        alpha: 0.35,
+        yoyo: true,
+        repeat: -1,
+        duration: 600,
+      });
+    }
+    if (this.host.scene.add?.text) {
+      markerText = this.host.scene.add.text(target.x, target.y - 28, 'PATIENT IMAGING', {
+        fontSize: '11px',
+        color: '#c8ffe6',
+        stroke: '#000000',
+        strokeThickness: 3,
+      }).setOrigin(0.5).setDepth(9.6);
+    }
+    s.distraction = {
+      kind: 'imaging',
+      label: 'PATIENT IMAGING',
+      x: target.x,
+      y: target.y,
+      assignedAt: time,
+      until: time + ms,
+      marker,
+      markerText,
+    };
+    s.bubble.say(pick(s.def.lines.imaging ?? s.def.lines.leave), s.img, 44, 2500);
+    const emitImaging = () => events.emit(GameEvents.ImagingAssigned, { id: s.def.id, name: s.def.name, durationMs: ms });
+    if (this.host.scene.scene?.isActive?.('Hud')) emitImaging();
+    else this.host.scene.time?.delayedCall?.(200, emitImaging) ?? emitImaging();
+    return true;
+  }
+
+  /** Clears an active distraction or patient imaging assignment. */
+  clearDistraction(s: Scribe, time: number, _playerIntervention?: boolean): void {
+    if (!s.distraction) return;
+    const kind = s.distraction.kind;
+    if (s.distraction.marker) {
+      this.host.scene.tweens?.killTweensOf?.(s.distraction.marker);
+      s.distraction.marker.destroy();
+    }
+    if (s.distraction.markerText) {
+      s.distraction.markerText.destroy();
+    }
+    s.distraction = undefined;
+    s.bestDist = Infinity;
+    s.bestAt = time;
+    if (kind === 'imaging') {
+      s.bubble.say(pick(s.def.lines.imagingDone ?? s.def.lines.arrive), s.img, 44, 2500);
+      events.emit(GameEvents.ImagingCompleted, { id: s.def.id, name: s.def.name });
+    } else {
+      s.bubble.say(pick(s.def.lines.reactivated ?? s.def.lines.arrive), s.img, 44, 2500);
+      events.emit(GameEvents.HelperReactivated, { id: s.def.id, name: s.def.name });
+    }
+  }
+
+  /** Whether this helper currently has an active distraction or imaging assignment. */
+  hasDistraction(id: ScribeId, time: number): boolean {
+    const s = this.list.find((x) => x.def.id === id);
+    return !!s && s.here && !!s.hasDistraction?.(time);
+  }
+
+  /** Remaining distraction or imaging time in ms. */
+  distractionRemainingMs(id: ScribeId, time: number): number {
+    const s = this.list.find((x) => x.def.id === id);
+    return s && s.here ? (s.distractionRemainingMs?.(time) ?? 0) : 0;
+  }
+
+  /** Gets active distraction info for save/restore or inspection. */
+  getDistraction(id: ScribeId): { kind: 'distraction' | 'imaging'; label: string; x: number; y: number; remainingMs: number } | undefined {
+    const s = this.list.find((x) => x.def.id === id);
+    if (!s || !s.here || !s.distraction) return undefined;
+    const now = this.host.scene?.time?.now ?? 0;
+    return {
+      kind: s.distraction.kind,
+      label: s.distraction.label,
+      x: s.distraction.x,
+      y: s.distraction.y,
+      remainingMs: Math.max(0, s.distraction.until - now),
+    };
+  }
+
   update(time: number, dtMs: number): void {
     for (const s of this.list) {
       s.bubble.follow();
@@ -168,6 +333,9 @@ export class Scribes {
         s.img.clearTint();
         s.bubble.say(pick(s.def.lines.traineeEnd ?? s.def.lines.clean), s.img, 44, 2500);
         events.emit(GameEvents.TraineeCompleted, { id: s.def.id, name: s.def.name });
+      }
+      if (s.distraction && time >= s.distraction.until) {
+        this.clearDistraction(s, time, false);
       }
       if (time >= s.until) {
         this.dismiss(s);
@@ -182,7 +350,11 @@ export class Scribes {
   rally(time: number, ms: number, power: number, speed: number, recall: boolean): void {
     for (const s of this.list.filter(s => s.here)) {
       s.rallyUntil = time + ms; s.rallyPower = power; s.rallySpeed = speed;
-      if (recall) { s.distracted = false; this.teleport(s, time); }
+      if (recall) {
+        if (s.distraction) this.clearDistraction(s, time, true);
+        s.distracted = false;
+        this.teleport(s, time);
+      }
     }
   }
 
@@ -191,6 +363,39 @@ export class Scribes {
     const { player, flow } = this.host;
     const img = s.img;
     const cfg = this.cfg;
+
+    // Distracted or imaging: steer toward the in-world target, halt combat/cleaning, check intervention
+    if (s.distraction) {
+      const distToPlayer = Phaser.Math.Distance.Between(img.x, img.y, player.x, player.y);
+      if (s.distraction.kind === 'distraction' && (time >= s.distraction.assignedAt + 1200) && distToPlayer <= BALANCE.distractions.interventionRange) {
+        this.clearDistraction(s, time, true);
+        return;
+      }
+      const tx = s.distraction.x;
+      const ty = s.distraction.y;
+      const d = Phaser.Math.Distance.Between(img.x, img.y, tx, ty);
+      let moving = false;
+      if (d > 15) {
+        let gx = tx, gy = ty;
+        if (!flow.lineClear(img.x, img.y, tx, ty)) {
+          if (flow.nextStep(img.x, img.y, this.v)) {
+            gx = this.v.x;
+            gy = this.v.y;
+          }
+        }
+        const a = Phaser.Math.Angle.Between(img.x, img.y, gx, gy);
+        const traineeSpeedMult = s.hasTrainee?.(time) ? BALANCE.trainees.statMult : 1;
+        const speed = cfg.speed * traineeSpeedMult * 0.9 * (dtMs / 1000);
+        const stepLen = Math.min(speed, d);
+        this.place(s, img.x + Math.cos(a) * stepLen, img.y + Math.sin(a) * stepLen);
+        img.rotation = Phaser.Math.Angle.RotateTo(img.rotation, a, 0.15);
+        moving = true;
+      }
+      s.step += moving ? dtMs / 110 : 0;
+      const bob = moving ? Math.sin(s.step) * 0.05 : 0;
+      img.setScale(1 + bob, 1 - bob);
+      return;
+    }
 
     // Germs first; with none in reach, the nearest patient with a violation on record. In the same room
     // they step over the seats to get to one (furniture, no walls); otherwise they need a clear line.
@@ -398,6 +603,14 @@ export class Scribes {
   }
 
   private dismiss(s: Scribe): void {
+    if (s.distraction) {
+      if (s.distraction.marker) {
+        this.host.scene.tweens?.killTweensOf?.(s.distraction.marker);
+        s.distraction.marker.destroy();
+      }
+      if (s.distraction.markerText) s.distraction.markerText.destroy();
+      s.distraction = undefined;
+    }
     s.bubble.say(pick(s.def.lines.leave), { x: s.img.x, y: s.img.y }, 44, 1800);
     s.shadow.setVisible(false);
     s.until = 0;

@@ -78,6 +78,14 @@ export const GameEvents = {
   TraineeAssigned: 'trainee.assigned',
   /** { id, name } helper trainee completed orientation (restores normal stats) */
   TraineeCompleted: 'trainee.completed',
+  /** { id, name, label, x, y } helper drawn to an in-world distraction */
+  HelperDistracted: 'helper.distracted',
+  /** { id, name } helper reactivated via player intervention or timeout */
+  HelperReactivated: 'helper.reactivated',
+  /** { id, name, durationMs } Donald called to X-ray room for patient imaging */
+  ImagingAssigned: 'imaging.assigned',
+  /** { id, name } Donald patient imaging completed, returning to shift */
+  ImagingCompleted: 'imaging.completed',
 } as const;
 
 export interface RequisitionOption { id: string; name: string; blurb: string; color: number; }

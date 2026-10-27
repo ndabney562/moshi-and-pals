@@ -321,6 +321,14 @@ export class HudScene extends Phaser.Scene {
       this.showBanner(`${p.name.toUpperCase()} HAS A TRAINEE`, 'Explaining the job slows them down (33% speed & output).', 3200, '#ffd166');
     const onTraineeCompleted = (p: { id: string; name: string }) =>
       this.showBanner(`${p.name.toUpperCase()}'S TRAINEE SIGNED OFF`, 'Back up to full speed and output.', 2400, '#70d6ff');
+    const onHelperDistracted = (p: { id: string; name: string; label: string }) =>
+      this.showBanner(`${p.name.toUpperCase()} DISTRACTED`, `${p.label} — Cross near them to get them back!`, 3200, '#ff9999');
+    const onHelperReactivated = (p: { id: string; name: string }) =>
+      this.showBanner(`${p.name.toUpperCase()} BACK ON TASK`, 'Reactivated! Back to following and charting.', 2400, '#70d6ff');
+    const onImagingAssigned = (p: { id: string; name: string }) =>
+      this.showBanner(`${p.name.toUpperCase()} TO X-RAY`, 'Called to image a patient. Beam paused.', 3000, '#ffd166');
+    const onImagingCompleted = (p: { id: string; name: string }) =>
+      this.showBanner(`${p.name.toUpperCase()} FILMS FILED`, 'Patient imaging complete! Returning to shift.', 2400, '#70d6ff');
     const onTool = (p: { name: string }) => this.showBanner(p.name.toUpperCase(), 'New tool! Tap SWAP to switch back to the bottle.', 2000);
     const onRoomUnlocked = (p: RoomPayload) => this.showBanner(`${p.name.toUpperCase()} OPEN`, 'More room to run. More places for germs, too.', 1800);
     const onBossDown = () => this.time.delayedCall(600, () => this.bossBar.setVisible(false));
@@ -362,6 +370,10 @@ export class HudScene extends Phaser.Scene {
       [GameEvents.HelperCalledOut, onHelperCalledOut],
       [GameEvents.TraineeAssigned, onTraineeAssigned],
       [GameEvents.TraineeCompleted, onTraineeCompleted],
+      [GameEvents.HelperDistracted, onHelperDistracted],
+      [GameEvents.HelperReactivated, onHelperReactivated],
+      [GameEvents.ImagingAssigned, onImagingAssigned],
+      [GameEvents.ImagingCompleted, onImagingCompleted],
       [GameEvents.VendingOpened, onVending],
       [GameEvents.VendingDone, onVendingDone],
       [GameEvents.AchievementUnlocked, onAchievement],

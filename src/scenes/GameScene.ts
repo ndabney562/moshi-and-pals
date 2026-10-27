@@ -20,7 +20,7 @@ import { difficultyById } from '../data/difficulties';
 import { unlockAchievement } from '../core/achievements';
 import { activeSpecialty, bankFor, creditsFor, doctorUnlocked, grant, lockerLevel, npsFor, progress, recordShift, secondUnlocked, scribeUnlocked, staffBoost, unlockScribe } from '../core/progress';
 import { SPECIALTIES, type SpecialtyMods } from '../data/residency';
-import { clearSavedShift, saveShift, savedShift, type ShiftSave } from '../core/shiftSave';
+import { clearSavedShift, saveShift, savedShift, type ShiftSave, type SavedDistraction } from '../core/shiftSave';
 import { newRunStats, type RunStats } from '../core/runStats';
 import { initSfx, sfx } from '../core/sfx';
 import { initMusic, musicState, setMusicMix, startMusic, stopMusic } from '../core/music';
@@ -543,6 +543,7 @@ export class GameScene extends Phaser.Scene {
       this.vents.shuffle();
       this.cure.onRoundStarted();
       this.rollTrainees(this.time.now);
+      this.rollDistractions(this.time.now);
       this.roundStartSave = this.snapshot(p.round);
     };
     const onEscaped = () => this.achieve('ama');
@@ -1436,6 +1437,15 @@ export class GameScene extends Phaser.Scene {
           this.released.add(def.id);
           this.scribes.summon(def.id, this.time.now, Infinity);
           if (DEBUG.trainee?.includes(def.id)) this.scribes.assignTrainee(def.id, this.time.now, BALANCE.trainees.durationMs);
+          if (DEBUG.distract?.includes(def.id)) {
+            const target = this.pickDistractionTarget(def.id);
+            this.scribes.assignDistraction(def.id, target, this.time.now, BALANCE.distractions.durationMs);
+          }
+          if (DEBUG.imaging && def.id === 'donald') {
+            const xrayOb = this.room.obstacles.find((ob) => ob.kind === 'xray');
+            const target = xrayOb ? { x: xrayOb.x + xrayOb.w / 2, y: xrayOb.y + xrayOb.h / 2 } : { x: 940, y: 1400 };
+            this.scribes.assignImaging(this.time.now, BALANCE.distractions.xrayImagingMs, target);
+          }
         }
       }
     }
@@ -1490,6 +1500,15 @@ export class GameScene extends Phaser.Scene {
     if (DEBUG.trainee?.includes(id)) {
       this.scribes.assignTrainee(id, this.time.now, BALANCE.trainees.durationMs);
     }
+    if (DEBUG.distract?.includes(id)) {
+      const target = this.pickDistractionTarget(id);
+      this.scribes.assignDistraction(id, target, this.time.now, BALANCE.distractions.durationMs);
+    }
+    if (DEBUG.imaging && id === 'donald') {
+      const xrayOb = this.room.obstacles.find((ob) => ob.kind === 'xray');
+      const target = xrayOb ? { x: xrayOb.x + xrayOb.w / 2, y: xrayOb.y + xrayOb.h / 2 } : { x: 940, y: 1400 };
+      this.scribes.assignImaging(this.time.now, BALANCE.distractions.xrayImagingMs, target);
+    }
   }
 
   /**
@@ -1506,6 +1525,15 @@ export class GameScene extends Phaser.Scene {
     if (DEBUG.trainee?.includes(id)) {
       if (def.desk) this.frontDesk.assignTrainee(id, time, BALANCE.trainees.durationMs);
       else this.scribes.assignTrainee(id, time, BALANCE.trainees.durationMs);
+    }
+    if (DEBUG.distract?.includes(id) && !def.desk) {
+      const target = this.pickDistractionTarget(id);
+      this.scribes.assignDistraction(id, target, time, BALANCE.distractions.durationMs);
+    }
+    if (DEBUG.imaging && id === 'donald') {
+      const xrayOb = this.room.obstacles.find((ob) => ob.kind === 'xray');
+      const target = xrayOb ? { x: xrayOb.x + xrayOb.w / 2, y: xrayOb.y + xrayOb.h / 2 } : { x: 940, y: 1400 };
+      this.scribes.assignImaging(time, BALANCE.distractions.xrayImagingMs, target);
     }
   }
 
@@ -1538,6 +1566,71 @@ export class GameScene extends Phaser.Scene {
     }
   }
 
+  /**
+   * Random mid-shift in-world distractions & patient imaging assignments (Milestone 3):
+   * Rolls for active combat helpers (Omar, Alan, Donald) at round start,
+   * or applies debug overrides (?distract=, ?imaging=donald).
+   */
+  private rollDistractions(time: number): void {
+    // 1. Donald Patient Imaging debug override or roll
+    if (DEBUG.imaging && this.scribes.get('donald') && !this.scribes.hasDistraction('donald', time)) {
+      const xrayOb = this.room.obstacles.find((ob) => ob.kind === 'xray');
+      const target = xrayOb ? { x: xrayOb.x + xrayOb.w / 2, y: xrayOb.y + xrayOb.h / 2 } : { x: 940, y: 1400 };
+      this.scribes.assignImaging(time, BALANCE.distractions.xrayImagingMs, target);
+    } else if (!DEBUG.imaging && this.scribes.get('donald') && !this.scribes.hasDistraction('donald', time)) {
+      if (runRng.helpers.chance(BALANCE.distractions.xrayChancePerRound)) {
+        const xrayOb = this.room.obstacles.find((ob) => ob.kind === 'xray');
+        const target = xrayOb ? { x: xrayOb.x + xrayOb.w / 2, y: xrayOb.y + xrayOb.h / 2 } : { x: 940, y: 1400 };
+        this.scribes.assignImaging(time, BALANCE.distractions.xrayImagingMs, target);
+      }
+    }
+
+    // 2. In-world distractions (Omar, Alan, Donald if not imaging)
+    if (DEBUG.distract) {
+      if (DEBUG.distract.includes('none')) return;
+      for (const id of DEBUG.distract) {
+        if (this.scribes.get(id as ScribeId) && !this.scribes.hasDistraction(id as ScribeId, time)) {
+          const target = this.pickDistractionTarget(id as ScribeId);
+          this.scribes.assignDistraction(id as ScribeId, target, time, BALANCE.distractions.durationMs);
+        }
+      }
+      return;
+    }
+
+    for (const id of BALANCE.distractions.eligible) {
+      if (!this.scribes.get(id as ScribeId) || this.scribes.hasDistraction(id as ScribeId, time)) continue;
+      if (runRng.helpers.chance(BALANCE.distractions.chancePerRound)) {
+        const target = this.pickDistractionTarget(id as ScribeId);
+        this.scribes.assignDistraction(id as ScribeId, target, time, BALANCE.distractions.durationMs);
+      }
+    }
+  }
+
+  private pickDistractionTarget(id: ScribeId): { x: number; y: number; label: string } {
+    const THEMES: Record<string, { label: string; preferredRoom: string }[]> = {
+      omar: [
+        { label: 'FRESH COFFEE', preferredRoom: 'break' },
+        { label: 'UNSORTED CHARTS', preferredRoom: 'exam' },
+      ],
+      alan: [
+        { label: 'UNION HANDBOOK', preferredRoom: 'break' },
+        { label: 'SYSTEM UPDATE TERMINAL', preferredRoom: 'lab' },
+      ],
+      donald: [
+        { label: 'LEAD APRON RACK', preferredRoom: 'xray' },
+        { label: 'TRANSFER LOG', preferredRoom: 'waiting' },
+      ],
+    };
+    const options = THEMES[id] ?? [{ label: 'LOST CLIPBOARD', preferredRoom: 'waiting' }];
+    const choice = Phaser.Utils.Array.GetRandom(options);
+    const room = this.room.rooms.find((r) => r.id === choice.preferredRoom && this.unlocked.has(r.id))
+      ?? this.room.rooms.find((r) => this.unlocked.has(r.id))
+      ?? this.room.rooms[0];
+    const x = room ? (room.id === 'waiting' ? room.x + 260 : room.x + room.w * 0.5) : 800;
+    const y = room ? (room.id === 'waiting' ? room.y + 240 : room.y + room.h * 0.5) : 600;
+    return { x, y, label: choice.label };
+  }
+
   /** The Miracle Cure flags a save keeps (a Fax Machine fight in progress starts over). */
   private static readonly CURE_FLAGS = ['magazineRead', 'codeA', 'codeB', 'keySeen', 'hasKey', 'panelOpen', 'faxDefeated', 'ionizer', 'canClockOut'] as const;
 
@@ -1552,6 +1645,19 @@ export class GameScene extends Phaser.Scene {
         this.frontDesk.traineeRemainingMs(id as ScribeId, this.time.now),
       );
       if (rem > 0) trainees[id] = rem;
+    }
+    const distractions: Record<string, SavedDistraction> = {};
+    for (const id of BALANCE.distractions.eligible) {
+      const d = this.scribes.getDistraction(id as ScribeId);
+      if (d && d.remainingMs > 0) {
+        distractions[id] = {
+          kind: d.kind,
+          label: d.label,
+          x: d.x,
+          y: d.y,
+          remainingMs: d.remainingMs,
+        };
+      }
     }
     return {
       version: 1,
@@ -1574,6 +1680,7 @@ export class GameScene extends Phaser.Scene {
       helpers: [...this.released],
       absent: [...this.absent],
       trainees: Object.keys(trainees).length > 0 ? trainees : undefined,
+      distractions: Object.keys(distractions).length > 0 ? distractions : undefined,
       provider: this.abilities.save(),
       claimDeniedChance: this.claimDeniedChance,
       playedMs: Math.max(0, this.time.now - startedAt),
@@ -1658,6 +1765,18 @@ export class GameScene extends Phaser.Scene {
           const def = scribeById(id);
           if (def?.desk) this.frontDesk.assignTrainee(id as ScribeId, now, remainingMs);
           else this.scribes.assignTrainee(id as ScribeId, now, remainingMs);
+        }
+      }
+    }
+    // Distractions or patient imaging assignments currently active with remaining game time
+    if (save.distractions) {
+      for (const [id, d] of Object.entries(save.distractions)) {
+        if (d.remainingMs > 0) {
+          if (d.kind === 'imaging') {
+            this.scribes.assignImaging(now, d.remainingMs, { x: d.x, y: d.y });
+          } else {
+            this.scribes.assignDistraction(id as ScribeId, { x: d.x, y: d.y, label: d.label }, now, d.remainingMs);
+          }
         }
       }
     }

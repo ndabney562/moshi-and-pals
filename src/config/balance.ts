@@ -458,6 +458,20 @@ export const BALANCE = {
     chancePerRound: 0.20,
     eligible: ['omar', 'selina', 'elaine'] as const,
   },
+  /**
+   * DISTRACTIONS & IMAGING (Milestone 3; docs/PROVIDER-EXPANSION-SPEC.md):
+   * Combat helpers (Omar, Alan, Donald) can be drawn toward in-world distractions.
+   * The provider intervenes by crossing near them to reactivate them. Donald can also
+   * be temporarily called to X-ray to image a patient, pausing his beam until finished.
+   */
+  distractions: {
+    chancePerRound: 0.18,
+    durationMs: 30000,
+    xrayChancePerRound: 0.20,
+    xrayImagingMs: 20000,
+    interventionRange: 75,
+    eligible: ['omar', 'alan', 'donald'] as const,
+  },
   /** What a hired Pal has over Eugene (on top of their signature move). toolDamage = damage × with every tool. */
   doctors: {
     kaya: { moveSpeed: 1.12, toolDamage: 1.1 },

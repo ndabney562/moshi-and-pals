@@ -1,5 +1,15 @@
 # Changelog
 
+## In-World Distractions & Patient Imaging (Milestone 3)
+
+- **Random mid-shift in-world distractions**: Combat helpers (Omar, Alan, Donald) can be drawn to clinic distraction points (coffee maker, charts, union handbook, etc.) at round start (`BALANCE.distractions.chancePerRound = 0.18`).
+- **Player intervention & reactivation**: Stepping within 75 px (`interventionRange`) of a distracted helper reactivates them, returning them to following the provider with in-character reactivation dialogue.
+- **Donald patient imaging**: Donald can be called to the X-ray room for a 20-second patient imaging assignment (`xrayImagingMs = 20000`), pausing his combat beam until completed.
+- **Combat & cleaning suppression**: While distracted or imaging, helpers do not attack germs or shame violators, and steer toward their assignment marker.
+- **Visual markers & HUD banners**: Spawned markers pulse with depth and labels; HUD banners notify the provider (`[NAME] DISTRACTED`, `[NAME] BACK ON TASK`, `DONALD TO X-RAY`, `DONALD FILMS FILED`).
+- **ShiftSave persistence**: Active distractions and imaging assignments serialize remaining ms and coordinates in `ShiftSave.distractions`, restoring cleanly without timer loss.
+- **Testing & debug overrides**: Added `?distract=` and `?imaging=donald` query switches, unit coverage in `tests/unit/distraction.test.ts`, and Playwright E2E coverage in `tests/e2e/distraction.spec.ts`.
+
 ## Random Timed Trainees (Milestone 2)
 
 - **Random mid-shift trainee assignments**: Omar, Selina, and Elaine can receive trainees during shifts (`BALANCE.trainees`). Alan and Donald are technical/noncompliant specialists and reject trainee assignments.
