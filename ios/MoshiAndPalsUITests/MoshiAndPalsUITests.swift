@@ -31,26 +31,16 @@ final class MoshiAndPalsUITests: XCTestCase {
     }
 
     @MainActor
-    func testPickingAPalPutsThemOnShift() {
+    func testProvidersOpensTheSharedRosterAndReturns() {
         let app = launch()
-        let kaya = app.buttons["palCard-kaya"]
-        XCTAssertTrue(kaya.waitForExistence(timeout: 10))
-        XCTAssertEqual(kaya.value as? String, "Ready")
-        kaya.tap()
-        XCTAssertTrue(waitForValue(kaya, "On shift"))
-        XCTAssertEqual(app.buttons["palCard-eugene"].value as? String, "Ready")
-    }
-
-    @MainActor
-    func testHiringAPalAsksFirst() {
-        let app = launch()
-        let lucien = app.buttons["palCard-lucien"]
-        XCTAssertTrue(lucien.waitForExistence(timeout: 10))
-        lucien.tap()
-        let hire = app.buttons["Hire for 45 NPS"]
-        XCTAssertTrue(hire.waitForExistence(timeout: 5))
-        hire.tap()
-        XCTAssertTrue(waitForValue(lucien, "On shift"), "value is \(String(describing: lucien.value))")
+        let providers = app.buttons["providersButton"]
+        XCTAssertTrue(providers.waitForExistence(timeout: 10))
+        providers.tap()
+        let game = app.staticTexts["gameScreen"]
+        XCTAssertTrue(game.waitForExistence(timeout: 5))
+        XCTAssertEqual(game.label, "Game: providers")
+        app.buttons["endShiftButton"].tap()
+        XCTAssertTrue(providers.waitForExistence(timeout: 5))
     }
 
     @MainActor

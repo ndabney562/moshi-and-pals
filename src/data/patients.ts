@@ -20,6 +20,7 @@ export interface ViolationDef {
   kaya: string[];
   lucien: string[];
   ken: string[];
+  jason?: string[]; dhiwya?: string[]; raj?: string[]; lidiya?: string[]; dharma?: string[]; amanda?: string[]; janeen?: string[];
   /** Germs let loose by each violation. */
   germId: string;
   germs: number;

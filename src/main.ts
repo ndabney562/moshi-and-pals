@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import { ProvidersScene } from './scenes/ProvidersScene';
 import { viewportSize } from './core/viewport';
 import { DISPLAY } from './config/display';
 import { DEBUG } from './core/debug';
@@ -42,7 +43,7 @@ const game = new Phaser.Game({
   physics: { default: 'arcade', arcade: { debug: false } },
   input: { activePointers: 3 },
   render: { antialias: true, powerPreference: 'high-performance' },
-  scene: [BootScene, TitleScene, GameScene, HudScene, GameOverScene, BoardScene, LockerScene, NativeScene],
+  scene: [BootScene, ProvidersScene, TitleScene, GameScene, HudScene, GameOverScene, BoardScene, LockerScene, NativeScene],
 });
 
 patchForPortrait(game);

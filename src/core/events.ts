@@ -35,6 +35,7 @@ export const GameEvents = {
   /** { progress } 0..1 while recharging, 1 when ready */
   PurgeChanged: 'purge.changed',
   PurgeUsed: 'purge.used',
+  SecondChanged: 'second.changed',
   /** { near, label, affordable } whether Eugene is at something he can use (supply cart, locked door) */
   StationNearby: 'station.nearby',
   /** { id, name } Eugene walked into a different room */

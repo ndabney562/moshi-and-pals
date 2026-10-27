@@ -2,9 +2,9 @@ import Phaser from 'phaser';
 import { DISPLAY } from '../config/display';
 import { COLORS } from '../config/theme';
 import { applyUpdate, offerFilesToCache, onUpdateReady } from '../core/updates';
-import { doctorUnlocked, hireDoctor, progress } from '../core/progress';
+import { doctorUnlocked, progress } from '../core/progress';
 import { saveSettings, settings } from '../core/settings';
-import { CHARACTERS, characterById } from '../data/characters';
+import { characterById } from '../data/characters';
 import { readSafeArea } from '../core/safeArea';
 import { chooseShift, dailyShift, localDate, savedDifficulty } from '../core/shift';
 import { savedShift } from '../core/shiftSave';
@@ -31,12 +31,9 @@ export class TitleScene extends Phaser.Scene {
   private updatePill!: Phaser.GameObjects.Text;
   private boardButton!: Phaser.GameObjects.Text;
   private lockerButton!: Phaser.GameObjects.Text;
-  /** WHO'S ON SHIFT: a portrait per doctor, and a line about the chosen one. */
-  private picks: { id: string; ring: Phaser.GameObjects.Arc; art: Phaser.GameObjects.Image; name: Phaser.GameObjects.Text }[] = [];
   private pickInfo!: Phaser.GameObjects.Text;
-  /** NPS Scores to spend, and the locked Pal tapped once (a second tap hires them). */
   private npsText!: Phaser.GameObjects.Text;
-  private hiring = '';
+  private providersButton!: Phaser.GameObjects.Text;
   /** M17: TODAY'S SHIFT (opens the pre-shift panel), today's best beside it, and the difficulty switch. */
   private dailyButton!: Phaser.GameObjects.Text;
   private dailyBestText!: Phaser.GameObjects.Text;
@@ -111,27 +108,17 @@ export class TitleScene extends Phaser.Scene {
       this.scene.start('Locker');
     });
 
-    // Who's on shift
-    this.picks = CHARACTERS.map((c) => {
-      const ring = this.add.circle(0, 0, 40, 0x0d2b2e, 0.85).setStrokeStyle(4, 0xe8fff9, 0.5).setInteractive({ useHandCursor: true });
-      const art = this.add.image(0, 0, `${c.id}-held`).setAngle(-90).setScale(0.85);
-      const name = this.add.text(0, 0, '', {
-        fontFamily: font, fontSize: '14px', fontStyle: '900', color: COLORS.uiText, backgroundColor: '#0d2b2ecc', padding: { x: 6, y: 2 },
-      }).setOrigin(0.5, 0);
-      ring.on('pointerdown', (_p: Phaser.Input.Pointer, _x: number, _y: number, e: Phaser.Types.Input.EventData) => {
-        e.stopPropagation();
-        this.pick(c.id);
-      });
-      return { id: c.id, ring, art, name };
-    });
     this.pickInfo = this.add.text(0, 0, '', {
       fontFamily: font, fontSize: '15px', fontStyle: 'bold', color: '#ffe66d', backgroundColor: '#0d2b2ecc', padding: { x: 8, y: 4 },
     }).setOrigin(1, 1);
     this.npsText = this.add.text(0, 0, '', {
       fontFamily: font, fontSize: '15px', fontStyle: '900', color: COLORS.uiText, backgroundColor: '#0d2b2ecc', padding: { x: 8, y: 4 },
     }).setOrigin(1, 1);
-    this.hiring = '';
-    this.pick(doctorUnlocked(settings.character) ? settings.character : 'eugene');
+    this.providersButton=this.add.text(0,0,'PROVIDERS · SELECT / UNLOCK',{fontFamily:font,fontSize:'22px',fontStyle:'bold',color:'#e8fff9',backgroundColor:'#315d64',padding:{x:18,y:14}}).setOrigin(1,1).setInteractive({useHandCursor:true}).on('pointerdown',(_p:Phaser.Input.Pointer,_x:number,_y:number,e:Phaser.Types.Input.EventData)=>{e.stopPropagation();this.scene.start('Providers');});
+    const selected=characterById(doctorUnlocked(settings.character)?settings.character:'eugene');
+    settings.character=selected.id;
+    this.pickInfo.setText(`${selected.name.toUpperCase()} · ${selected.blurb}`);
+    this.npsText.setText(`⭐ ${progress().nps} NPS SCORES`);
 
     // TODAY'S SHIFT: the daily challenge, with today's best beside it
     this.dailyButton = this.add.text(0, 0, "📋 TODAY'S SHIFT", {
@@ -167,8 +154,8 @@ export class TitleScene extends Phaser.Scene {
     this.input.keyboard?.once('keydown', () => (this.dailyPanel.visible ? this.begin(localDate()) : this.begin()));
     this.input.on('pointerdown', (_p: Phaser.Input.Pointer, over: Phaser.GameObjects.GameObject[]) => {
       if (this.dailyPanel.visible) return;
-      const buttons: Phaser.GameObjects.GameObject[] = [this.updatePill, this.continueButton, this.boardButton, this.lockerButton, this.dailyButton, this.difficultyButton];
-      if (!buttons.some((b) => over.includes(b)) && !this.picks.some((p) => over.includes(p.ring))) this.begin();
+      const buttons: Phaser.GameObjects.GameObject[] = [this.providersButton, this.updatePill, this.continueButton, this.boardButton, this.lockerButton, this.dailyButton, this.difficultyButton];
+      if (!buttons.some((b) => over.includes(b))) this.begin();
     });
   }
 
@@ -206,62 +193,14 @@ export class TitleScene extends Phaser.Scene {
     this.dailyBestText.setVisible(width >= 1350);
     this.difficultyInfo.setVisible(width >= 1350);
     this.layoutDailyPanel();
-    this.picks.forEach((p, i) => {
-      const x = right - rightWidth + rightWidth * (i + 0.5) / this.picks.length;
-      const y = height - bottom - 88;
-      p.ring.setPosition(x, y);
-      p.art.setPosition(x, y + 4);
-      p.name.setPosition(x, y + 44);
-    });
+    this.providersButton.setPosition(right-16,height-bottom-24);
     this.pickInfo.setPosition(right - 16, height - bottom - 154);
-    this.placeNps();
-  }
-
-  /**
-   * Chooses who's on shift (saved for next time). A Pal not yet hired shows their price instead; tapping
-   * them again hires them with NPS Scores if there's enough.
-   */
-  private pick(id: string): void {
-    const c = characterById(id);
-    if (!doctorUnlocked(c.id)) {
-      const nps = progress().nps;
-      if (this.hiring === c.id && hireDoctor(c.id)) {
-        // A little pop on the new hire's portrait
-        const art = this.picks.find((p) => p.id === c.id)?.art;
-        if (art) this.tweens.add({ targets: art, scale: { from: 1.25, to: 0.85 }, duration: 380, ease: 'Back.out' });
-      } else {
-        this.hiring = c.id;
-        const ask = nps >= c.price ? 'TAP AGAIN TO HIRE' : `NEED ${c.price - nps} MORE`;
-        this.pickInfo.setText(`🔒 ${c.name.toUpperCase()} · ${c.price} NPS · ${ask}\n${c.blurb}`);
-        this.showPicks(settings.character, c.id);
-        this.placeNps();
-        return;
-      }
-    }
-    this.hiring = '';
-    settings.character = c.id;
-    saveSettings();
-    this.showPicks(c.id);
-    this.pickInfo.setText(`${c.name.toUpperCase()} · ${c.blurb}`);
     this.placeNps();
   }
 
   /** The NPS counter sits just above the doctor's line (which is one or two lines tall). */
   private placeNps(): void {
     this.npsText.setPosition(this.pickInfo.x, this.pickInfo.y - this.pickInfo.height - 6);
-  }
-
-  /** Portrait rings: the doctor on shift in gold, a locked one being looked at in white, locked ones dimmed with a price. */
-  private showPicks(onShift: string, looking = ''): void {
-    for (const p of this.picks) {
-      const c = characterById(p.id);
-      const open = doctorUnlocked(p.id);
-      const on = p.id === onShift;
-      p.ring.setStrokeStyle(on || p.id === looking ? 5 : 3, on ? 0xffe66d : 0xe8fff9, on || p.id === looking ? 1 : 0.4);
-      p.art.setAlpha(on ? 1 : open ? 0.6 : 0.3);
-      p.name.setText(open ? c.short : `🔒 ${c.price} NPS`).setColor(on ? '#ffe66d' : COLORS.uiText);
-    }
-    this.npsText.setText(`⭐ ${progress().nps} NPS SCORES`);
   }
 
   /** The difficulty switch shows the saved one. */

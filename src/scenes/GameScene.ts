@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import { ProviderAbilities, PROVIDER_COOLDOWNS } from '../systems/ProviderAbilities';
 import { BALANCE } from '../config/balance';
 import { CONTROLS } from '../config/controls';
 import { DISPLAY } from '../config/display';
@@ -10,12 +11,12 @@ import { events, GameEvents, type RequisitionPayload, type RoomPayload, type Rou
 import { inputState } from '../core/inputState';
 import { settings } from '../core/settings';
 import { recordRun } from '../core/save';
-import { runRng, seedRun } from '../core/rng';
+import { runRng, seedRun, hashSeed, runSeed } from '../core/rng';
 import { nextShift, type ShiftSetup } from '../core/shift';
 import { CONSTRUCTION_LINES, CONSTRUCTION_SIGN, modifierById, type ModifierId } from '../data/modifiers';
 import { difficultyById } from '../data/difficulties';
 import { unlockAchievement } from '../core/achievements';
-import { activeSpecialty, bankFor, creditsFor, doctorUnlocked, grant, lockerLevel, npsFor, progress, recordShift, scribeUnlocked, staffBoost, unlockScribe } from '../core/progress';
+import { activeSpecialty, bankFor, creditsFor, doctorUnlocked, grant, lockerLevel, npsFor, progress, recordShift, secondUnlocked, scribeUnlocked, staffBoost, unlockScribe } from '../core/progress';
 import { SPECIALTIES, type SpecialtyMods } from '../data/residency';
 import { clearSavedShift, saveShift, savedShift, type ShiftSave } from '../core/shiftSave';
 import { newRunStats, type RunStats } from '../core/runStats';
@@ -29,8 +30,8 @@ import { WAVES } from '../data/waves';
 import { CLINIC, RECORDS_ROOM } from '../data/clinic';
 import { KEY } from '../data/miracleCure';
 import type { FloorArea, Obstacle, ObstacleKind, RoomArea, RoomLayout, Stairway } from '../data/rooms';
-import { SNACKS, type SnackDef } from '../data/vending';
-import { characterById, type CharacterDef } from '../data/characters';
+import { SNACKS, RAJ_SNACKS, type SnackDef } from '../data/vending';
+import { CHARACTERS, characterById, type CharacterDef } from '../data/characters';
 import { Droplet } from '../entities/Droplet';
 import { Glob } from '../entities/Glob';
 import { Germ, type GermScaling } from '../entities/Germ';
@@ -153,6 +154,12 @@ export class GameScene extends Phaser.Scene {
   /** Who's on shift (title screen): their art, passive and signature move. */
   character: CharacterDef = characterById('eugene');
   /** PA Lucien's CLEAN FIELD, while it's down. */
+  abilities!: ProviderAbilities;
+  private abilityGround!: Phaser.GameObjects.Graphics;
+  private secondReadyAt = 0;
+  private companionArt?: Phaser.GameObjects.Image;
+  private companionReadyAt = 0;
+  private companionId = '';
   private field?: { x: number; y: number; until: number; gfx: Phaser.GameObjects.Graphics };
   private slot = 0;
   private fx!: Fx;
@@ -287,11 +294,15 @@ export class GameScene extends Phaser.Scene {
     this.character = characterById(resume?.character ?? DEBUG.doctor ?? (doctorUnlocked(settings.character) ? settings.character : 'eugene'));
     // The Miracle Cure's reward: Eugene wears his scrub cap from then on
     const capped = this.character.id === 'eugene' && progress().owned.includes('scrubCap');
-    this.player = new Player(this, room.playerSpawn.x, room.playerSpawn.y, capped ? 'eugene-cap' : this.character.id);
+    this.player = new Player(this, room.playerSpawn.x, room.playerSpawn.y, capped ? 'eugene-cap' : this.character.id === 'dhiwya' ? `dhiwya-${hashSeed(String(runSeed())) % 3}` : this.character.id);
     const passive = this.character.passive;
     if (passive.maxHp) this.player.maxHp = this.player.hp = this.player.maxHp + passive.maxHp;
     if (passive.moveSpeed) this.player.setSpeedMod('character', passive.moveSpeed);
     this.field = undefined;
+    this.secondReadyAt = 0;
+    this.companionArt = undefined;
+    this.companionReadyAt = 0;
+    this.companionId = '';
 
     // Pools: created once, reused all game
     this.droplets = this.physics.add.group({ classType: Droplet, maxSize: 90, runChildUpdate: true, defaultKey: 'droplet' });
@@ -336,7 +347,7 @@ export class GameScene extends Phaser.Scene {
       },
       fireGlob: (g, angle) => this.fireGlob(g, angle),
     };
-    this.loadout = [this.makeTool(STARTING_EQUIPMENT)];
+    this.loadout = [this.makeTool(this.character.id === 'dharma' ? 'medication' : STARTING_EQUIPMENT)];
     this.curtains = (room.curtains ?? []).map((r) => {
       const c: Curtain = { o: { kind: 'curtain', ...r }, art: this.add.graphics().setDepth(5), closedUntil: 0 };
       this.drawCurtain(c);
@@ -375,6 +386,7 @@ export class GameScene extends Phaser.Scene {
     this.scribeCleans = 0;
     this.scribes = new Scribes({
       scene: this,
+      helperDamage: this.character.helperDamage,
       player: this.player,
       flow: this.flow,
       fx: this.fx,
@@ -394,6 +406,7 @@ export class GameScene extends Phaser.Scene {
     });
     this.frontDesk = new FrontDesk({
       scene: this,
+      helperPower: this.character.helperDamage,
       fx: this.fx,
       patients: this.patients,
       obstacles: room.obstacles,
@@ -405,6 +418,27 @@ export class GameScene extends Phaser.Scene {
         }
       },
     });
+    this.abilityGround=this.add.graphics().setDepth(1.7);
+    this.abilities = new ProviderAbilities({
+      id: this.character.id, player: this.player,
+      targets: () => this.livingGerms().filter(g => this.floorOf(g.x,g.y) === this.floorOf(this.player.x,this.player.y) && this.flow.lineClear(this.player.x,this.player.y,g.x,g.y)),
+      damage: (g, amount, knockback = 0) => this.damageGerm(g, amount, Math.atan2(g.y-this.player.y,g.x-this.player.x), knockback, 'signature'),
+      pulse: (x,y,radius,color,label) => this.abilityPulse(x,y,radius,color,label),
+      beam: (x,y,tx,ty,color) => {
+        const line=this.add.graphics().setDepth(12).lineStyle(5,color,0.85).lineBetween(x,y,tx,ty);
+        this.tweens.add({targets:line,alpha:0,duration:300,onComplete:()=>line.destroy()});
+      },
+      field: (x,y,radius,color) => { this.abilityGround.fillStyle(color,0.13).fillCircle(x,y,radius).lineStyle(3,color,0.5).strokeCircle(x,y,radius); },
+      heal: amount => { this.player.heal(amount); events.emit(GameEvents.PlayerHealthChanged,{hp:this.player.hp,maxHp:this.player.maxHp}); },
+      guard: ms => this.player.guard(ms),
+      rally: (time,ms,power,speed,recall) => { this.scribes.rally(time,ms,power,speed,recall); this.frontDesk.rally(time,ms,power); },
+      helpers: () => this.scribes.onShift().length + Number(!!this.frontDesk.get('selina')) + Number(!!this.frontDesk.get('elaine')),
+      companion: () => !!this.companionArt?.active,
+      joint: (time,damage) => this.companionAttack(time,damage),
+      refill: fraction => { this.sprayer.ammo=Math.min(this.sprayer.def.capacity,this.sprayer.ammo+this.sprayer.def.capacity*fraction); this.sprayer.emitChanged(this.time.now); },
+      recharge: ms => { this.purgeReadyAt=Math.max(this.time.now,this.purgeReadyAt-ms); },
+    }, hashSeed(String(runSeed())) % 3);
+
     this.vents = new Vents({
       scene: this,
       flow: this.flow,
@@ -555,6 +589,7 @@ export class GameScene extends Phaser.Scene {
       aimTarget = this.nearestGerm(CONTROLS.autoAimRange)
         ?? this.patients.nearestViolator(x, y, CONTROLS.autoAimRange, (p) => this.flow.lineClear(x, y, p.x, p.y));
     }
+    this.player.setSpeedMod('ability', this.abilities.movement(time));
     this.player.drive(inputState, delta, aimTarget);
     this.player.hold(this.sprayer.def.id);
     this.updateDarkness();
@@ -574,6 +609,8 @@ export class GameScene extends Phaser.Scene {
       inputState.purgeRequested = false;
       this.signature(time);
     }
+    if (inputState.secondRequested) { inputState.secondRequested = false; this.secondSignature(time); }
+    events.emit(GameEvents.SecondChanged, { progress: this.secondProgress(time) });
     this.updateStairs(time);
     this.fitCameraToFloor();
     this.updateRoom();
@@ -592,12 +629,13 @@ export class GameScene extends Phaser.Scene {
       inputState.swapRequested = false;
       this.swapTool(time);
     }
-    for (const tool of this.loadout) tool.update(time);
+    for (const tool of this.loadout) { tool.fireRate=this.abilities.rate(time,tool.def.id === 'medication'); tool.update(time); }
     if (inputState.firing) {
       this.player.nozzle(this.nozzle);
       // Spray where Eugene is actually facing, so the stream follows his turn
       const shot = this.sprayer.tryFire(this.nozzle.x, this.nozzle.y, this.player.rotation, time);
       if (shot === 'fired') {
+        if (this.sprayer.def.id === 'medication') this.abilities.medicationHit(time);
         const d = this.sprayer.def;
         if (!d.attack) {
           this.fx.nozzleMist(this.nozzle.x, this.nozzle.y, this.player.rotation, d.spreadDeg, d.color, d.mistPuffs);
@@ -686,6 +724,9 @@ export class GameScene extends Phaser.Scene {
     const slow = this.puddles.update(time, this.player.x, this.player.y);
     this.player.setSpeedMod('puddle', slow < 1 ? slow : null);
     this.patients.update(time, delta, this.waves.round, this.waves.spawning, this.waves.isBossRound);
+    this.updateCompanion(time);
+    this.abilityGround.clear();
+    this.abilities.update(time,delta);
     this.scribes.update(time, delta);
     this.frontDesk.update(time, this.player.dead);
     this.vents.update(time);
@@ -906,7 +947,7 @@ export class GameScene extends Phaser.Scene {
   private hitGerm(germ: Germ, def: EquipmentDef, damage: number, angle: number, knockback: number, pierces: boolean): void {
     if (!germ.active) return;
     const vs = this.mods.vs;
-    const mult = (def.effectiveness[germ.def.tag] ?? 1) * (this.mods.toolDamage ?? 1) * (this.character.passive.toolDamage ?? 1) * (vs && vs.tag === germ.def.tag ? vs.mult : 1);
+    const mult = (def.effectiveness[germ.def.tag] ?? 1) * (this.mods.toolDamage ?? 1) * (this.character.passive.toolDamage ?? 1) * this.abilities.toolPower(this.time.now, def.id === 'medication') * (vs && vs.tag === germ.def.tag ? vs.mult : 1);
     // STAT! critical hit
     const fb = BALANCE.feedback;
     const crit = this.powerups.isActive('triage', this.time.now) || runRng.loot.chance(fb.critChance * this.perks.crit);
@@ -934,7 +975,7 @@ export class GameScene extends Phaser.Scene {
     germ.nextBurnAt = time + tick;
     const def = EQUIPMENT.gelLauncher;
     const vs = this.mods.vs;
-    const mult = (def.effectiveness[germ.def.tag] ?? 1) * (this.mods.toolDamage ?? 1) * (this.character.passive.toolDamage ?? 1) * (vs && vs.tag === germ.def.tag ? vs.mult : 1);
+    const mult = (def.effectiveness[germ.def.tag] ?? 1) * (this.mods.toolDamage ?? 1) * (this.character.passive.toolDamage ?? 1) * this.abilities.toolPower(this.time.now, def.id === 'medication') * (vs && vs.tag === germ.def.tag ? vs.mult : 1);
     this.damageGerm(germ, germ.burnDps * (tick / 1000) * mult, 0, 0, def.id);
   }
 
@@ -945,6 +986,7 @@ export class GameScene extends Phaser.Scene {
     if (boss) damage *= (boss.damageTaken ?? 1) * (boss.damageFactor?.(germ, source, time) ?? 1);
     // Ken's passive: everything he does hits Diamond harder
     const vsDiamond = germ.def.brain === 'diamond' && !!this.character.passive.diamondDamage;
+    damage *= this.abilities?.incoming(germ,time) ?? 1;
     if (vsDiamond) damage *= this.character.passive.diamondDamage!;
     if (germ.chargeState === 'dazed' && germ.def.charge) damage *= germ.def.charge.stunnedDamageTaken;
     let killed = germ.hurt(damage, fromAngle, knockback, time);
@@ -1040,16 +1082,57 @@ export class GameScene extends Phaser.Scene {
     events.emit(GameEvents.CopaysChanged, { copays: this.copays });
   }
 
+  private abilityPulse(x: number, y: number, radius: number, color: number, label?: string): void {
+    const ring=this.add.circle(x,y,radius,color,0.1).setStrokeStyle(4,color,0.8).setDepth(10).setScale(0.15);
+    this.tweens.add({targets:ring,scale:1,alpha:0,duration:600,onComplete:()=>ring.destroy()});
+    if (label) this.fx.number(x,y-70,label,'#f5e5bd',22);
+  }
+  private secondProgress(time: number): number {
+    if (!secondUnlocked(this.character.id)) return 0;
+    return Math.max(0,Math.min(1,1-(this.secondReadyAt-time)/(this.character.second?.cooldownMs ?? 1)));
+  }
+  private secondSignature(time: number): void {
+    if (this.player.dead || !secondUnlocked(this.character.id) || time < this.secondReadyAt || !this.character.second) return;
+    this.secondReadyAt=time+this.character.second.cooldownMs;
+    this.abilities.second(time); events.emit(GameEvents.PurgeUsed);
+  }
+  private updateCompanion(time: number): void {
+    if (this.character.id !== 'lidiya' || !this.unlocked.has('upstairs')) return;
+    if (!this.companionArt) {
+      const pool=CHARACTERS.filter(c=>c.id !== 'lidiya');
+      this.companionId=pool[hashSeed(`${runSeed()}:companion`) % pool.length].id;
+      this.companionArt=this.add.image(this.player.x-70,this.player.y,`${this.companionId}-held`).setDepth(9.8).setScale(0.9);
+      this.abilityPulse(this.player.x,this.player.y,150,0xc9b4dc,`${this.companionId.toUpperCase()} JOINED · LIDIYA ×2`);
+    }
+    const a=this.player.rotation+Math.PI;
+    this.companionArt.setPosition(this.player.x+Math.cos(a)*80,this.player.y+Math.sin(a)*80).setRotation(this.player.rotation);
+    if (time >= this.companionReadyAt) this.companionAttack(time,18);
+  }
+  private companionAttack(time: number, damage: number): void {
+    const companion=this.companionArt;
+    if (!companion) return;
+    this.companionReadyAt=time+900;
+    const target=this.nearestGerm(320);
+    if (!target) return;
+    this.abilityPulse(target.x,target.y,35,0xc9b4dc);
+    this.damageGerm(target,damage,Math.atan2(target.y-companion.y,target.x-companion.x),30,'scribe');
+  }
+
   /** The signature move's recharge (Sinus Purge, Code Blue, Clean Field), after snacks. */
   private get signatureCooldown(): number {
     const sig = this.character.signature;
-    const base = sig === 'codeBlue' ? BALANCE.codeBlue.cooldownMs : sig === 'cleanField' ? BALANCE.cleanField.cooldownMs
-      : sig === 'grievance' ? BALANCE.grievance.cooldownMs : BALANCE.purge.cooldownMs;
+    const base = PROVIDER_COOLDOWNS[this.character.id] ?? (sig === 'codeBlue' ? BALANCE.codeBlue.cooldownMs : sig === 'cleanField' ? BALANCE.cleanField.cooldownMs
+      : sig === 'grievance' ? BALANCE.grievance.cooldownMs : BALANCE.purge.cooldownMs);
     return base * this.perks.purge;
   }
 
   /** The big green button: whoever is on shift does their move. */
   private signature(time: number): void {
+    if (PROVIDER_COOLDOWNS[this.character.id]) {
+      if (time < this.purgeReadyAt || this.player.dead) return;
+      this.purgeReadyAt = time + this.signatureCooldown; this.runStats.purges++;
+      this.abilities.first(time); events.emit(GameEvents.PurgeUsed); return;
+    }
     if (this.character.signature === 'codeBlue') this.codeBlue(time);
     else if (this.character.signature === 'cleanField') this.cleanField(time);
     else if (this.character.signature === 'grievance') this.fileGrievance(time);
@@ -1402,6 +1485,7 @@ export class GameScene extends Phaser.Scene {
       slot: this.slot,
       snacks: [...this.snacks],
       helpers: [...this.released],
+      provider: this.abilities.save(),
       claimDeniedChance: this.claimDeniedChance,
       playedMs: Math.max(0, this.time.now - startedAt),
       stats: JSON.parse(JSON.stringify(stats)) as ShiftSave['stats'],
@@ -1448,11 +1532,12 @@ export class GameScene extends Phaser.Scene {
     }
     // Snacks, replayed in order to rebuild their perks
     for (const id of save.snacks) {
-      const snack = SNACKS.find((x) => x.id === id);
+      const snack = [...SNACKS, ...RAJ_SNACKS].find((x) => x.id === id);
       if (!snack) continue;
       this.snacks.push(id);
       this.applySnack(snack);
     }
+    if (save.provider) this.abilities.restore(save.provider);
     this.player.maxHp = save.maxHp;
     this.player.hp = Math.min(save.hp, save.maxHp);
     // Rooms that were open
@@ -1842,7 +1927,7 @@ export class GameScene extends Phaser.Scene {
 
   /** VENDING MACHINE: three random snacks, as many times as you like; the game waits while you choose. */
   private openVending(): void {
-    this.vendingOffer = runRng.loot.sample(SNACKS, BALANCE.vending.choices).map((s) => s.id);
+    this.vendingOffer = runRng.loot.sample(this.character.id === 'raj' ? RAJ_SNACKS : SNACKS, BALANCE.vending.choices).map((s) => s.id);
     this.showVending('');
   }
 
@@ -1859,7 +1944,7 @@ export class GameScene extends Phaser.Scene {
       note: note || 'Exact change only. Snacks stack; seconds cost more.',
       options: [
         ...offer.map((id) => {
-          const s = SNACKS.find((x) => x.id === id)!;
+          const s = [...SNACKS, ...RAJ_SNACKS].find((x) => x.id === id)!;
           return { id, name: `${s.name}  $${this.snackPrice(s)}`, blurb: s.blurb, color: s.color };
         }),
         // The Miracle Cure: slot B4, once the X-ray has shown what's in it
@@ -1879,7 +1964,7 @@ export class GameScene extends Phaser.Scene {
       }
       return;
     }
-    const s = SNACKS.find((x) => x.id === id);
+    const s = [...SNACKS, ...RAJ_SNACKS].find((x) => x.id === id);
     if (!s || !this.vendingOffer?.includes(id)) return;
     const price = this.snackPrice(s);
     if (this.copays < price) {
@@ -1901,6 +1986,7 @@ export class GameScene extends Phaser.Scene {
   private applySnack(s: SnackDef): void {
     const caps = BALANCE.vending.caps;
     switch (s.effect) {
+      case 'ingredient': this.abilities.ingredientBought(s.id); break;
       case 'maxHp':
         this.player.maxHp += s.amount;
         this.player.heal(s.amount);

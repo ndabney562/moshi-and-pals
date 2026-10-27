@@ -99,6 +99,7 @@ public final class PlayViewModel {
     public func startShift() { store.startShift(.normal) }
     public func startToday() { store.startShift(.daily) }
     public func continueShift() { store.startShift(.resume) }
+    public func openProviders() { store.open(.providers) }
     public func openBoard() { store.open(.board) }
     public func openLocker() { store.open(.locker) }
 }

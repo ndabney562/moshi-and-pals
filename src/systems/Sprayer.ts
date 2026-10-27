@@ -18,6 +18,8 @@ export class Sprayer {
   /** Spare supply in the jug. */
   reserve: number;
   private nextShotAt = 0;
+  /** Transient provider action-rate multiplier; 1 preserves baseline timings. */
+  fireRate = 1;
   private refillStartedAt = -1;
   private lastFiredAt = -Infinity;
   private lastUpdateAt = -1;
@@ -66,7 +68,7 @@ export class Sprayer {
       return 'empty';
     }
     const d = this.def;
-    this.nextShotAt = time + d.fireIntervalMs;
+    this.nextShotAt = time + d.fireIntervalMs / this.fireRate;
     if (!free) this.ammo -= d.costPerShot;
     this.lastFiredAt = time;
     const freshMult = time < this.freshUntil ? BALANCE.pour.freshMult : 1;

@@ -14,6 +14,7 @@ export interface GermScaling { hpMult: number; speedMult: number; }
  */
 export class Germ extends Phaser.Physics.Arcade.Sprite {
   def!: GermDef;
+  spawnVersion = 0;
   hp = 0;
   maxHp = 0;
   private speed = 0;
@@ -66,6 +67,7 @@ export class Germ extends Phaser.Physics.Arcade.Sprite {
   private moonSize = 1;
 
   spawn(def: GermDef, x: number, y: number, scaling: GermScaling = { hpMult: 1, speedMult: 1 }): void {
+    this.spawnVersion++;
     this.def = def;
     this.maxHp = this.hp = def.hp * scaling.hpMult;
     this.speed = def.speed * scaling.speedMult;

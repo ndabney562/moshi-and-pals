@@ -8,7 +8,7 @@ test('native host receives boot snapshot, validates settings, starts and exits',
   await page.goto('./?native&god&seed=123');
   await page.waitForFunction(() => window.__native.some((m) => m.type === 'ready'));
   const snapshot = await page.evaluate(() => window.__native.find((m) => m.type === 'snapshot'));
-  expect(snapshot.pals).toHaveLength(4);
+  expect(snapshot.pals).toHaveLength(11);
   expect(snapshot.art['eugene-held']).toMatch(/^data:image\/png/);
   expect(await page.evaluate(() => window.game.scene.isActive('Title'))).toBe(false);
   await page.evaluate(() => window.moshiNative.setSettings({ difficulty: 'walkIn', sound: 'invalid', character: 'missing' }));

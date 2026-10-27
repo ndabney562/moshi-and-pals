@@ -14,6 +14,8 @@ export interface FrontDeskHost {
   readonly scene: Phaser.Scene;
   readonly fx: Fx;
   readonly patients: PatientDirector;
+  /** Provider affinity scales the PSR bonus copay, without adding combat or changing patient rewards. */
+  readonly helperPower?: number;
   readonly obstacles: readonly Obstacle[];
   /** Where to put the desk if the clinic has no RECEPTION desk (it always does; tests and odd layouts). */
   readonly fallback: { x: number; y: number };
@@ -48,6 +50,11 @@ class Psr {
  * health code violations, and the PSRs check them in (and send them home) one at a time.
  */
 export class FrontDesk {
+  private rallyUntil = 0;
+  private rallyPower = 1;
+  /** Team rallies improve PSR bonus output without adding combat or changing permanent upgrades. */
+  rally(time: number, ms: number, power: number): void { this.rallyUntil=time+ms; this.rallyPower=power; }
+
   private readonly psrs: Psr[];
   /** The line's spots, head first (in front of the desk, toward the waiting room). */
   readonly line: { x: number; y: number }[];
@@ -133,7 +140,7 @@ export class FrontDesk {
       if (!patients.checkIn(p)) continue;
       s.checkedIn++;
       sfx.cash();
-      const copays = Math.round(BALANCE.frontDesk[s.def.id as 'selina' | 'elaine'].copays * s.boost.power);
+      const copays = Math.round(BALANCE.frontDesk[s.def.id as 'selina' | 'elaine'].copays * s.boost.power * (this.host.helperPower ?? 1) * (time < this.rallyUntil ? this.rallyPower : 1));
       this.host.onCheckIn(p, copays);
       s.bubble.say(pick(patients.queue.length ? s.def.lines.attack : s.def.lines.clean), s.img, 44, 1600);
     }

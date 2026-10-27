@@ -35,6 +35,7 @@ export interface ShiftSave {
   snacks: string[];
   /** Helpers let out of their rooms this shift (they stay all shift). */
   helpers: string[];
+  provider?: { pantry: number[]; ingredient: number };
   claimDeniedChance: number;
   /** Game time played so far (the Discharge Summary's time survived). */
   playedMs: number;
@@ -62,6 +63,7 @@ export function savedShift(): ShiftSave | undefined {
     if (loadout.length === 0) return undefined;
     const stats = (r.stats ?? {}) as Omit<RunStats, 'startedAt'>;
     return {
+      provider: r.provider && typeof r.provider === 'object' && Array.isArray((r.provider as {pantry?:unknown}).pantry) ? { pantry: ((r.provider as {pantry:unknown[]}).pantry).slice(0,4).map(x=>Math.min(1000,Math.floor(num(x)))), ingredient: Math.min(3,Math.floor(num((r.provider as {ingredient?:unknown}).ingredient))) } : undefined,
       version: 1,
       savedAt: num(r.savedAt),
       shift: {

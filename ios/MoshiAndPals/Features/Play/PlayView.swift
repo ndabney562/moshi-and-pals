@@ -34,7 +34,9 @@ private struct PlayContent: View {
                     FirstLaunchCard()
                 } else {
                     shiftButtons
-                    PalPicker(model: model)
+                    Button("Providers · Select / Unlock Abilities") { model.openProviders() }
+                        .buttonStyle(.borderedProminent)
+                        .accessibilityIdentifier("providersButton")
                     DifficultyCard(model: model)
                     TodaysShiftCard(model: model)
                     BetweenShiftsCard(model: model)

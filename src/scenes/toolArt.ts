@@ -129,5 +129,9 @@ const DRAW: Record<string, (g: Phaser.GameObjects.Graphics) => void> = {
 
 /** Draws tool `id` into `g` (the squirt bottle if it has no art of its own). */
 export function drawTool(g: Phaser.GameObjects.Graphics, id: string): void {
+  if (id === 'medication') {
+    g.fillStyle(0xf9f1e8).lineStyle(2,O).fillRoundedRect(76,57,17,17,4).strokeRoundedRect(76,57,17,17,4);
+    g.fillStyle(0xc58ac9).fillRect(79,58,11,5); return;
+  }
   (DRAW[id] ?? DRAW.squirtBottle)(g);
 }

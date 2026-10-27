@@ -17,6 +17,7 @@ export interface InputState {
   refillRequested: boolean;
   /** Set by the PURGE button or Q key. */
   purgeRequested: boolean;
+  secondRequested: boolean;
   /** Set by the USE button or E key (shown at supply carts and locked doors). */
   interactRequested: boolean;
   /** Set by the SWAP button or X key (switch between the bottle and a crate tool). */
@@ -30,7 +31,7 @@ export interface InputState {
 const idleInput = (): InputState => ({
   moveX: 0, moveY: 0,
   aimX: 1, aimY: 0, aiming: false,
-  firing: false, refillRequested: false, purgeRequested: false, interactRequested: false, swapRequested: false,
+  firing: false, refillRequested: false, purgeRequested: false, secondRequested: false, interactRequested: false, swapRequested: false,
   mouseX: 0, mouseY: 0, mouseActive: false,
 });
 

@@ -410,7 +410,12 @@ try {
     `APPEAL THE DECISION ($100) swaps in two different tools (${JSON.stringify(appealed)})`);
   const pickAt = await panelAt(0);
   await page.touchscreen.tap(pickAt.x, pickAt.y);
-  await page.waitForFunction(() => window.game.scene.getScene('Game').loadout.length === 2, null, { timeout: 10000 }).catch(() => {});
+  // Equipping is synchronous, while Phaser queues scene resume for the next frame.
+  await page.waitForFunction(() => {
+    const scene = window.game.scene.getScene('Game');
+    return scene.loadout.length === 2 && !window.game.scene.isPaused('Game') &&
+      window.game.scene.getScene('Hud').swapButton.visible;
+  }, null, { timeout: 10000 });
   const crated = await page.evaluate(() => {
     const scene = window.game.scene.getScene('Game');
     return { tools: scene.loadout.map((t) => t.def.id), slot: scene.slot, running: !window.game.scene.isPaused('Game'), swap: window.game.scene.getScene('Hud').swapButton.visible };
@@ -1780,26 +1785,22 @@ try {
     hp.on('pageerror', (e) => hireErrors.push(where(e)));
     await hp.goto(url, { timeout: 90000 });
     await hp.waitForFunction(() => window.game?.scene.isActive('Title'), null, { timeout: 90000 });
+    const before = await hp.evaluate(() => window.game.scene.getScene('Title').pickInfo.text);
+    await hp.evaluate(() => window.game.scene.getScene('Title').scene.start('Providers'));
+    await hp.waitForFunction(() => window.game.scene.isActive('Providers'));
     const hire = await hp.evaluate(() => {
-      const t = window.game.scene.getScene('Title');
-      const label = (id) => t.picks.find((p) => p.id === id).name.text;
-      const before = { info: t.pickInfo.text, kaya: label('kaya') };
-      t.pick('lucien');
-      const tooPoor = { info: t.pickInfo.text, nps: JSON.parse(localStorage.getItem('moshi.progress.v1')).nps };
-      t.pick('lucien');
+      const t = window.game.scene.getScene('Providers');
+      t.index = 2; t.draw(); t.select(); t.select();
       const stillLocked = JSON.parse(localStorage.getItem('moshi.progress.v1')).owned.includes('doctor:lucien');
-      t.pick('kaya');
-      const asked = t.pickInfo.text;
-      t.pick('kaya');
+      t.index = 1; t.draw(); t.select();
+      const asked = t.confirming;
+      t.select();
       const saved = JSON.parse(localStorage.getItem('moshi.progress.v1'));
-      return { before, tooPoor, stillLocked, asked, owned: saved.owned, nps: saved.nps, kaya: label('kaya'), on: JSON.parse(localStorage.getItem('moshi.settings.v1')).character };
+      return { stillLocked, asked, owned: saved.owned, nps: saved.nps, on: JSON.parse(localStorage.getItem('moshi.settings.v1')).character };
     });
-    check(hire.before.info.startsWith('DR. MOSHKOVICH') && hire.before.kaya.includes('30 NPS'),
-      `a saved pick of an unhired Pal falls back to Dr. Moshkovich, and locked Pals show their NPS price (${JSON.stringify(hire.before)})`);
-    check(/NEED 10 MORE/.test(hire.tooPoor.info) && !hire.stillLocked && /TAP AGAIN/.test(hire.asked),
-      `a Pal you can't afford stays locked, one you can asks for a second tap (${JSON.stringify({ tooPoor: hire.tooPoor, asked: hire.asked })})`);
-    check(hire.owned.includes('doctor:kaya') && hire.nps === 5 && hire.kaya === 'KAYA' && hire.on === 'kaya',
-      `the second tap hires Dr. Kaya for 30 NPS and puts him on shift (${JSON.stringify({ owned: hire.owned, nps: hire.nps, on: hire.on })})`);
+    check(before.startsWith('DR. MOSHKOVICH'), `an unhired saved Pal falls back to Dr. Moshkovich (${before})`);
+    check(!hire.stillLocked && hire.asked === 'hire:kaya', `the Providers menu keeps unaffordable hires locked and asks for confirmation (${JSON.stringify(hire)})`);
+    check(hire.owned.includes('doctor:kaya') && hire.nps === 5 && hire.on === 'kaya', `confirming hires Kaya for 30 NPS and selects him (${JSON.stringify(hire)})`);
     check(hireErrors.length === 0, `no errors hiring a Pal${hireErrors.length ? ': ' + hireErrors.join(' | ') : ''}`);
     await hc.close();
   }
@@ -2429,7 +2430,7 @@ try {
       const s = window.__native.find((m) => m.type === 'snapshot');
       return { pals: s.pals.length, achievements: s.achievements.length, atlas: s.atlas.length, art: (s.art['eugene-held'] ?? '').startsWith('data:image/png'), title: window.game.scene.isActive('Title') };
     });
-    check(snap.pals === 4 && snap.achievements > 20 && snap.atlas > 10 && snap.art && !snap.title,
+    check(snap.pals === 11 && snap.achievements > 20 && snap.atlas > 10 && snap.art && !snap.title,
       `native: boots to the app's menu with a snapshot (${JSON.stringify(snap)})`);
     await np.evaluate(() => window.moshiNative.open('board'));
     await np.waitForFunction(() => window.game.scene.isActive('Board'));

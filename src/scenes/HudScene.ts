@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import { secondUnlocked } from '../core/progress';
 import { toTitle } from '../core/native';
 import { CONTROLS } from '../config/controls';
 import { DISPLAY } from '../config/display';
@@ -99,6 +100,7 @@ export class HudScene extends Phaser.Scene {
   private toastQueue: AchievementDef[] = [];
   private toastBusy = false;
   private refillButton!: HudButton;
+  private secondButton!: HudButton;
   private purgeButton!: HudButton;
   private interactButton!: HudButton;
   private swapButton!: HudButton;
@@ -225,6 +227,8 @@ export class HudScene extends Phaser.Scene {
     this.purgeButton = new HudButton(this, CONTROLS.buttons.purgeRadius, who.button, 0xc8ff6b, () => {
       inputState.purgeRequested = true;
     });
+    this.secondButton=new HudButton(this,42,who.second?.button ?? 'SECOND',0xd6a8ff,()=>{inputState.secondRequested=true;}).setVisible(secondUnlocked(who.id));
+    this.input.keyboard?.addKey('F').on('down',()=>{inputState.secondRequested=true;});
     // SWAP appears once a crate has given Eugene a second tool
     this.swapButton = new HudButton(this, CONTROLS.buttons.swapRadius, 'SWAP', 0xffe66d, () => {
       inputState.swapRequested = true;
@@ -320,6 +324,7 @@ export class HudScene extends Phaser.Scene {
     };
 
     const listeners: [string, (...args: never[]) => void][] = [
+      [GameEvents.SecondChanged, (p: {progress:number})=>this.secondButton.setProgress(p.progress>=1?-1:p.progress).setAlpha(p.progress>=1?1:.55)],
       [GameEvents.EquipmentChanged, onEquipment],
       [GameEvents.PlayerHealthChanged, onHealth],
       [GameEvents.PlayerBumped, onHurt],
@@ -333,6 +338,7 @@ export class HudScene extends Phaser.Scene {
       [GameEvents.PowerupPicked, onPicked],
       [GameEvents.RoomUnlocked, onBought],
       [GameEvents.ToolUnlocked, onBought],
+      [GameEvents.SecondChanged, (p: {progress:number})=>this.secondButton.setProgress(p.progress>=1?-1:p.progress).setAlpha(p.progress>=1?1:.55)],
       [GameEvents.EquipmentChanged, onPerfect],
       [GameEvents.BossSpawned, onBoss],
       [GameEvents.BossHealth, onBossHealth],
@@ -652,6 +658,7 @@ export class HudScene extends Phaser.Scene {
     const { sprayRadius, purgeRadius, interactRadius } = CONTROLS.buttons;
     const purgeX = rightX - sprayRadius - purgeRadius - 22;
     this.purgeButton.setPosition(purgeX, rightY + sprayRadius - purgeRadius);
+    this.secondButton.setPosition(purgeX-110,rightY+sprayRadius-purgeRadius);
     this.interactButton.setPosition(purgeX - 10, rightY - sprayRadius - interactRadius - 10);
     this.interactNote.setPosition(purgeX - 10, rightY - sprayRadius - interactRadius * 2 - 16);
   }
@@ -847,7 +854,7 @@ export class HudScene extends Phaser.Scene {
     this.moveStick.release();
     this.aimStick?.release();
     this.endSprayTouch();
-    for (const b of [this.sprayButton, this.refillButton, this.purgeButton, this.interactButton, this.swapButton]) b?.release();
+    for (const b of [this.sprayButton, this.refillButton, this.purgeButton, this.secondButton, this.interactButton, this.swapButton]) b?.release();
     this.mouseDown = false;
     this.spaceDown = false;
     resetInputState();

@@ -36,7 +36,7 @@ it('validates settings patches and emits a snapshot matching Swift field names',
   expect(saved).toMatchObject({ difficulty: 'walkIn', sound: true, character: 'eugene' });
   const message = postMessage.mock.calls.at(-1)![0];
   expect(message).toMatchObject({ type: 'snapshot', version: 'baseline-test', settings: { difficulty: 'walkIn' }, totals: { runs: 0, totalKills: 0 }, progress: { credits: 0, nps: 0, bank: 0 } });
-  expect(message.pals.map((p: any) => p.id)).toEqual(['eugene', 'kaya', 'lucien', 'ken']);
+  expect(message.pals.map((p: any) => p.id)).toEqual(['eugene', 'kaya', 'lucien', 'ken', 'jason', 'dhiwya', 'raj', 'lidiya', 'dharma', 'amanda', 'janeen']);
   expect(message.difficulties.map((d: any) => d.id)).toEqual(['walkIn', 'urgent', 'trauma']);
 });
 it('routes board and locker commands and returns native exits to the host', async () => {

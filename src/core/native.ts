@@ -169,8 +169,8 @@ const api = {
     });
   },
   /** Opens the Residency Board or the Equipment Locker (their BACK returns to the app). */
-  open(screen: 'board' | 'locker'): void {
-    fromNative((scene) => scene.scene.start(screen === 'board' ? 'Board' : 'Locker'));
+  open(screen: 'board' | 'locker' | 'providers'): void {
+    fromNative((scene) => scene.scene.start(screen === 'providers' ? 'Providers' : screen === 'board' ? 'Board' : 'Locker'));
   },
   /** Hires a Pal with NPS Scores. True if it worked; a fresh snapshot follows either way. */
   hire(id: string): boolean {
