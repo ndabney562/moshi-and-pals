@@ -315,6 +315,8 @@ export class HudScene extends Phaser.Scene {
     };
     // The Miracle Cure: clues stay up long enough to read
     const onSecret = (p: { title: string; line: string }) => this.showBanner(p.title, p.line, 5200, '#ffd166');
+    const onHelperCalledOut = (p: { id: string; name: string; reason: string }) =>
+      this.showBanner(`${p.name.toUpperCase()} CALLED OUT`, p.reason, 3600, '#ff9999');
     const onTool = (p: { name: string }) => this.showBanner(p.name.toUpperCase(), 'New tool! Tap SWAP to switch back to the bottle.', 2000);
     const onRoomUnlocked = (p: RoomPayload) => this.showBanner(`${p.name.toUpperCase()} OPEN`, 'More room to run. More places for germs, too.', 1800);
     const onBossDown = () => this.time.delayedCall(600, () => this.bossBar.setVisible(false));
@@ -353,6 +355,7 @@ export class HudScene extends Phaser.Scene {
       [GameEvents.RequisitionOpened, onRequisition],
       [GameEvents.ClaimDenied, onDenied],
       [GameEvents.SecretFound, onSecret],
+      [GameEvents.HelperCalledOut, onHelperCalledOut],
       [GameEvents.VendingOpened, onVending],
       [GameEvents.VendingDone, onVendingDone],
       [GameEvents.AchievementUnlocked, onAchievement],

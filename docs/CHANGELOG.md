@@ -1,5 +1,13 @@
 # Changelog
 
+## Helper Call-Outs & Attendance (Milestone 1)
+
+- **Independent helper attendance rolls per shift**: Each helper who waits in a room rolls once per shift independently, based on the shift seed and provider affinity (`BALANCE.attendance`).
+- **Doctor affinity odds**: Janeen/Dhiwya 3%, Lucien/Jason 6%, Ken 10%, Kaya/Raj/Lidiya 15%, Eugene/Dharma 22%, Amanda 40%.
+- **Silhouettes & banners**: Waiting silhouettes still appear inside locked rooms; opening the room reveals their absence and shows a doctor-specific humorous call-out reason banner (`data/callOuts.ts`).
+- **Save persistence**: Absence state is tracked in `ShiftSave.absent` so continued shifts never reroll or bring back silhouettes for helpers already revealed absent.
+- **Testing & debug overrides**: Added `?callout=` debug query parameter, unit tests (`tests/unit/attendance.test.ts`), and e2e integration coverage (`tests/e2e/callout.spec.ts`).
+
 ## v0.33.0: Remaster v2
 
 - Share one sealed, relative-URL web bundle between Pages and SwiftUI; verify source freshness and every file before copying it into iOS.

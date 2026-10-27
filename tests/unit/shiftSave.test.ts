@@ -5,7 +5,7 @@ const fixture = () => ({
   version: 1, savedAt: 1000, shift: { difficulty: 'urgent', seed: 123, mods: [] },
   character: 'kaya', specialty: '', round: 4, score: 1234, kills: 15, copays: 250,
   bossesDefeated: 1, scribeCleans: 2, hp: 70, maxHp: 100, rooms: ['lab'],
-  loadout: [{ id: 'squirtBottle', tier: 1 }], slot: 0, snacks: [], helpers: ['omar'],
+  loadout: [{ id: 'squirtBottle', tier: 1 }], slot: 0, snacks: [], helpers: ['omar'], absent: ['alan'],
   claimDeniedChance: 0, playedMs: 10000, stats: { kills: { basic: 15 }, achievements: [] }, cure: { phone: true },
 } as unknown as ShiftSave);
 

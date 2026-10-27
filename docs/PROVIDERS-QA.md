@@ -56,6 +56,15 @@ Local validation: both workflow YAML files and shell syntax parsed; the helper r
 
 Pages `40542701435` verified the Ubuntu mirror fix in CI (browser dependency installation and all 70 Chromium/WebKit regressions passed), then failed at the patient-violation check in `scripts/smoke-test.mjs` because the preceding exam-table check left `scene.waves.phase` in `'intermission'` with `nextRoundAt` 2 seconds ahead and Eugene in `exam1`; when that timer advanced the wave into round 5 (a boss round), `PatientDirector` immediately retired wandering patients. The patient-violation setup in `scripts/smoke-test.mjs` now explicitly holds an active non-boss round in the waiting room. Pages `40549976401` also showed that the 21-second (`70 × 300 ms` with `SLOW = 3`) opening spray hold can drain the 480 mL reserve jug via `autoRefill` and leave Eugene vulnerable before line 345's invulnerability guard; `scripts/smoke-test.mjs` now sets `invulnerableUntil` when the opening germs spawn and keeps the bottle/reserve ready for the explicit Refill button check.
 
+## Milestone 1: Helper Call-Outs & Attendance
+
+- Implemented independent attendance roll for room-waiting helpers (`Omar`, `Alan`, `Donald`) via `rollAttendance()` in `src/core/attendance.ts`.
+- Structured attendance odds based on provider affinity in `src/config/balance.ts`: Janeen/Dhiwya 3%, Lucien/Jason 6%, Ken 10%, Kaya/Raj/Lidiya 15%, Eugene/Dharma 22%, Amanda 40%.
+- Drafted 4 unique, doctor-specific humorous reasons for all 11 providers in `src/data/callOuts.ts`, plus fallback reasons.
+- Room silhouettes still appear in locked rooms; opening the room reveals absence and triggers `GameEvents.HelperCalledOut`, displaying a distinct HUD banner.
+- Absence state persists across shift save and restore cycles via `ShiftSave.absent`.
+- Added unit tests (`tests/unit/attendance.test.ts`), e2e Playwright tests (`tests/e2e/callout.spec.ts`), and `?callout=` query debugging support.
+
 ## Reviewable change list
 
 1. Added seven approved providers, shared procedural art, provider-specific dialogue and their first/second specials.
