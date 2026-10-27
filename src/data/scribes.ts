@@ -14,7 +14,7 @@
  */
 import type { PowerupId } from './powerups';
 
-export type ScribeId = 'omar' | 'alan' | 'donald' | 'selina' | 'elaine';
+export type ScribeId = 'omar' | 'alan' | 'donald' | 'selina' | 'elaine' | 'alexandra';
 
 export interface ScribeDef {
   id: ScribeId;
@@ -141,6 +141,20 @@ export const SCRIBES: ScribeDef[] = [
       leave: ['Lunch. Put a sign up.'],
       traineeStart: ['Copay orientation begins now. Take notes.', 'Shadowing me? Watch how I collect every cent.'],
       traineeEnd: ['Trainee certified. Check-ins back to normal.', 'Done shadowing. Next patient, please!'],
+    },
+  },
+  {
+    id: 'alexandra', name: 'Alexandra', role: 'ESSENCE SCRIBE', waitsIn: EXAM_ROOMS_FIRST_FLOOR, cost: 50, color: 0x80ed99,
+    traineeEligible: false,
+    blurb: 'Floating essence with a black mask. Exceeds all other scribes combined with multi-target ink and steam bursts.',
+    lines: {
+      arrive: ['Essence stabilized. Charting active.', 'The clinic hums. Disinfection initiated.'],
+      attack: ['Ink and vapor.', 'Dispersing pathogen clusters.', 'Vapor density maximum.'],
+      clean: ['Aura cleansed.', 'Sterile field established.'],
+      block: ['Vent sealed in dense mist.', 'Barrier holding.'],
+      leave: ['Vapor returning to ether. Shift logged.'],
+      distracted: ['Anomalous reading across the hall.', 'Essence drifting toward resonance.'],
+      reactivated: ['Doctor presence registered. Resuming combat.', 'Focus restored. Vapor dense.'],
     },
   },
 ];

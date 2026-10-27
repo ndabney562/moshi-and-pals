@@ -128,6 +128,21 @@ Values live in `src/config/balance.ts` and `src/config/controls.ts`.
 
 Each waiting helper rolls independently per shift using a seeded generator (`${seed}:attendance:${doctor}:${id}`). Silhouettes still render in locked rooms; opening reveals absence and doctor-specific humorous reason banner. Absence state is preserved in shift saves (`absent`).
 
+## Alexandra, Essence Scribe (`BALANCE.scribes.alexandra`, `docs/PROVIDER-EXPANSION-SPEC.md`)
+
+| Setting | Value | Notes |
+|---|---|---|
+| Attack cadence (`everyMs`) | 700 ms | Rapid ink and vapor dispersal |
+| Damage per hit (`damage`) | 45 | 64.3 DPS single-target (exceeds Omar's 31 base / 60 DPS) |
+| Simultaneous targets (`targets`) | 4 | Multi-target burst targeting up to 4 germs within range |
+| Attack range (`range`) | 360 px | Wide-area coverage around the essence |
+| Peak multi-target output | 257.1 DPS | Exceeds Omar + Alan + Donald combined output (~160-240 DPS) |
+| Knockback & Stun | 100 knockback, 250 ms stun | Consistent crowd control on hit |
+| Visuals & Animation | Masked cloud essence | Floating undulating hover scale with trailing mist particles |
+| Unlock cost | 50 CME | Premium unlock on the Residency Board |
+| Trainee eligibility | Ineligible (`traineeEligible: false`) | Alexandra does not take trainees |
+| Distraction framework | Eligible (`BALANCE.distractions.eligible`) | Subject to in-world clinic resonance distractions |
+
 ## Distractions & Patient Imaging (`BALANCE.distractions`, `docs/PROVIDER-EXPANSION-SPEC.md`)
 
 | Setting | Value | Notes |

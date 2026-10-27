@@ -25,7 +25,7 @@ describe('distractions and patient imaging (Milestone 3)', () => {
     expect(BALANCE.distractions.xrayChancePerRound).toBe(0.20);
     expect(BALANCE.distractions.xrayImagingMs).toBe(20000);
     expect(BALANCE.distractions.interventionRange).toBe(75);
-    expect(BALANCE.distractions.eligible).toEqual(['omar', 'alan', 'donald']);
+    expect(BALANCE.distractions.eligible).toEqual(['omar', 'alan', 'donald', 'alexandra']);
   });
 
   it('provides approved in-character distraction and reactivation dialogue for Omar, Alan, and Donald', () => {

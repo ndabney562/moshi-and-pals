@@ -397,6 +397,12 @@ export const BALANCE = {
      * its line and stuns them. He comes out to help for `ms` on the first visit to X-ray each shift.
      */
     donald: { everyMs: 1300, damage: 30, knockback: 90, range: 420, width: 26, stunMs: 250 },
+    /**
+     * Alexandra (Essence Scribe, Milestone 4):
+     * Premium masked-essence helper exceeding other scribes' combined output.
+     * Fires a multi-target ink/steam nova hitting up to `targets` germs simultaneously.
+     */
+    alexandra: { everyMs: 700, damage: 45, targets: 4, range: 360, knockback: 100, stunMs: 250 },
   },
   /**
    * THE FRONT DESK (Selina and Elaine, systems/FrontDesk.ts). While one is at the desk, patients line up `spacing`
@@ -470,7 +476,7 @@ export const BALANCE = {
     xrayChancePerRound: 0.20,
     xrayImagingMs: 20000,
     interventionRange: 75,
-    eligible: ['omar', 'alan', 'donald'] as const,
+    eligible: ['omar', 'alan', 'donald', 'alexandra'] as const,
   },
   /** What a hired Pal has over Eugene (on top of their signature move). toolDamage = damage × with every tool. */
   doctors: {

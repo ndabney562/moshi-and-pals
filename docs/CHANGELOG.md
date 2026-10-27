@@ -1,5 +1,13 @@
 # Changelog
 
+## Alexandra, Premium Masked-Essence Combat Helper (Milestone 4)
+
+- **Alexandra added to Scribe roster**: Original floating essence with a black medical mask, cyan aura, and undulating cloud hover animation (`scribe-alexandra`).
+- **Combat output exceeding combined scribes**: Fires multi-target ink/steam bursts (`everyMs: 700`, `damage: 45`, `targets: 4`, `range: 360`) delivering 64.3 single-target DPS and up to 257.1 multi-target DPS, exceeding Omar, Alan, and Donald combined.
+- **Residency Board integration**: Available as a premium 50 CME unlock (`cost: 50`), appearing on the Residency Board and waiting in first-floor exam rooms upon hire.
+- **Helper framework integration**: Inherits provider affinity damage scaling, in-character attendance reasons, and distraction/reactivation events; marked ineligible for trainees.
+- **Testing**: Added unit test coverage in `tests/unit/alexandra.test.ts` and Playwright E2E browser regression tests in `tests/e2e/alexandra.spec.ts`.
+
 ## In-World Distractions & Patient Imaging (Milestone 3)
 
 - **Random mid-shift in-world distractions**: Combat helpers (Omar, Alan, Donald) can be drawn to clinic distraction points (coffee maker, charts, union handbook, etc.) at round start (`BALANCE.distractions.chancePerRound = 0.18`).
