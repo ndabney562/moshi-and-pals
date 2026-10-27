@@ -1,5 +1,15 @@
 # Changelog
 
+## Shared Online Leaderboard Backend & Integration (Milestone 6)
+
+- **Cloudflare Worker & D1 backend**: Lightweight backend in `worker/index.ts` with strict $0 tier compliance (capped request sizes <= 2KB, parameterized SQL queries, edge response caching via `Cache-Control: public, max-age=15`, CORS headers, and `/api/health` probe).
+- **D1 database schema**: Indexed SQL schema (`worker/schema.sql`) tracking mode, difficulty, provider, score, round, streak, and kills.
+- **Client integration**: `src/core/leaderboard.ts` provides `submitOnlineScore()` and `fetchOnlineLeaderboard()`, with callsign storage in `localStorage` and Unicode grapheme cluster counting (1–10 player-visible characters).
+- **Interactive Leaderboard UI**: Added `LeaderboardScene` (`src/scenes/LeaderboardScene.ts`) displaying top scores filtered by Standard / Endless Flu Season and Walk-In / Urgent / Trauma difficulties, with real-time callsign renaming and refresh controls.
+- **Title Scene & GameOverScene entry points**: Added `🏆 LEADERBOARD` access from the Title Scene right menu card and the GameOverScene Discharge Summary form.
+- **Offline & unprovisioned safety**: Client functions safely handle unprovisioned or offline environments without crashing gameplay, throwing unhandled exceptions, or spamming console errors.
+- **Testing**: Added unit test coverage in `tests/unit/leaderboard-api.test.ts` (6 passed) and Playwright E2E browser tests in `tests/e2e/leaderboard.spec.ts` (4 passed across Chromium and WebKit).
+
 ## Endless Flu Season Mode (Milestone 5)
 
 - **Dedicated infinite shift mode**: Endless Flu Season (`mode: 'fluSeason'`) runs as an independent infinite mode, keeping mode-specific score records distinct from standard Walk-In, Urgent, and Trauma records.

@@ -34,6 +34,7 @@ export class TitleScene extends Phaser.Scene {
   private pickInfo!: Phaser.GameObjects.Text;
   private npsText!: Phaser.GameObjects.Text;
   private providersButton!: Phaser.GameObjects.Text;
+  private leaderboardButton!: Phaser.GameObjects.Text;
   /** M17: TODAY'S SHIFT (opens the pre-shift panel), today's best beside it, and the difficulty switch. */
   private dailyButton!: Phaser.GameObjects.Text;
   private dailyBestText!: Phaser.GameObjects.Text;
@@ -118,6 +119,14 @@ export class TitleScene extends Phaser.Scene {
       fontFamily: font, fontSize: '15px', fontStyle: '900', color: COLORS.uiText, backgroundColor: '#0d2b2ecc', padding: { x: 8, y: 4 },
     }).setOrigin(1, 1);
     this.providersButton=this.add.text(0,0,'PROVIDERS · SELECT / UNLOCK',{fontFamily:font,fontSize:'22px',fontStyle:'bold',color:'#e8fff9',backgroundColor:'#315d64',padding:{x:18,y:14}}).setOrigin(1,1).setInteractive({useHandCursor:true}).on('pointerdown',(_p:Phaser.Input.Pointer,_x:number,_y:number,e:Phaser.Types.Input.EventData)=>{e.stopPropagation();this.scene.start('Providers');});
+    this.leaderboardButton = this.add.text(0, 0, '🏆 LEADERBOARD', {
+      fontFamily: font, fontSize: '20px', fontStyle: '900', color: COLORS.uiText, backgroundColor: '#1f4f55', padding: { x: 16, y: 10 },
+    }).setOrigin(1, 1).setInteractive({ useHandCursor: true });
+    this.leaderboardButton.on('pointerdown', (_p: Phaser.Input.Pointer, _x: number, _y: number, e: Phaser.Types.Input.EventData) => {
+      e.stopPropagation();
+      this.started = true;
+      this.scene.start('Leaderboard', { returnTo: 'Title' });
+    });
     const selected=characterById(doctorUnlocked(settings.character)?settings.character:'eugene');
     settings.character=selected.id;
     this.pickInfo.setText(`${selected.name.toUpperCase()} · ${selected.blurb}`);
@@ -171,7 +180,7 @@ export class TitleScene extends Phaser.Scene {
     this.input.keyboard?.once('keydown', () => (this.dailyPanel.visible ? this.begin(localDate()) : this.begin()));
     this.input.on('pointerdown', (_p: Phaser.Input.Pointer, over: Phaser.GameObjects.GameObject[]) => {
       if (this.dailyPanel.visible) return;
-      const buttons: Phaser.GameObjects.GameObject[] = [this.providersButton, this.updatePill, this.continueButton, this.boardButton, this.lockerButton, this.dailyButton, this.difficultyButton, this.modeButton];
+      const buttons: Phaser.GameObjects.GameObject[] = [this.providersButton, this.leaderboardButton, this.updatePill, this.continueButton, this.boardButton, this.lockerButton, this.dailyButton, this.difficultyButton, this.modeButton];
       if (!buttons.some((b) => over.includes(b))) this.begin();
     });
   }
@@ -191,12 +200,12 @@ export class TitleScene extends Phaser.Scene {
     this.menuCards.clear().fillStyle(0x082225, 0.9).lineStyle(1, 0x7fffd4, 0.3);
     this.menuCards.fillRoundedRect(Math.max(12, safe.left + 8), height - bottom - 266, leftWidth, 266, 18);
     this.menuCards.strokeRoundedRect(Math.max(12, safe.left + 8), height - bottom - 266, leftWidth, 266, 18);
-    this.menuCards.fillRoundedRect(right - rightWidth, height - bottom - 228, rightWidth, 228, 18);
-    this.menuCards.strokeRoundedRect(right - rightWidth, height - bottom - 228, rightWidth, 228, 18);
+    this.menuCards.fillRoundedRect(right - rightWidth, height - bottom - 266, rightWidth, 266, 18);
+    this.menuCards.strokeRoundedRect(right - rightWidth, height - bottom - 266, rightWidth, 266, 18);
     this.tap.setPosition(width / 2, height * 0.51);
     this.pickInfo.setWordWrapWidth(rightWidth - 32);
     this.pickInfo.setFontSize(17);
-    for (const button of [this.boardButton, this.lockerButton, this.dailyButton, this.difficultyButton, this.modeButton]) button.setFontSize(width < 1100 ? 19 : 21);
+    for (const button of [this.boardButton, this.lockerButton, this.dailyButton, this.difficultyButton, this.modeButton, this.leaderboardButton]) button.setFontSize(width < 1100 ? 19 : 21);
     this.continueButton.setPosition(width / 2, height * 0.64);
     this.updatePill.setPosition(width / 2, this.continueButton.visible ? height * 0.75 : height * 0.64);
     // The left-hand column: difficulty, Today's Shift, the board (clear of the notch)
@@ -213,8 +222,9 @@ export class TitleScene extends Phaser.Scene {
     this.difficultyInfo.setVisible(width >= 1350);
     this.modeInfo.setVisible(width >= 1350);
     this.layoutDailyPanel();
-    this.providersButton.setPosition(right-16,height-bottom-24);
-    this.pickInfo.setPosition(right - 16, height - bottom - 154);
+    this.providersButton.setPosition(right - 16, height - bottom - 20);
+    this.leaderboardButton.setPosition(right - 16, height - bottom - 78);
+    this.pickInfo.setPosition(right - 16, height - bottom - 148);
     this.placeNps();
   }
 
