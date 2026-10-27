@@ -54,6 +54,14 @@ export interface ScribeDef {
     traineeStart?: string[];
     /** When the trainee completes orientation. */
     traineeEnd?: string[];
+    /** When pulled toward an in-world distraction. */
+    distracted?: string[];
+    /** When the doctor intervenes to reactivate them. */
+    reactivated?: string[];
+    /** When Donald is called to the X-ray room for patient imaging. */
+    imaging?: string[];
+    /** When patient imaging completes and Donald returns. */
+    imagingDone?: string[];
   };
 }
 
@@ -73,6 +81,8 @@ export const SCRIBES: ScribeDef[] = [
       leave: ['Signing off! Notes are in!'],
       traineeStart: ['Shadow me! Rule one: keep charting!', 'First day? Don’t touch the laptop!'],
       traineeEnd: ['Trainee signed off! Back to full speed!', 'They passed! Solo charting time!'],
+      distracted: ['Wait, whose chart is on this table?', 'Fresh coffee in the break room?'],
+      reactivated: ['Right! Doctor needs notes! Charting!', 'Intervention received! Back to work!'],
     },
   },
   {
@@ -85,6 +95,8 @@ export const SCRIBES: ScribeDef[] = [
       clean: ['Documented. Next.', 'Noncompliant. Now compliant.'],
       block: ['Denied. Pending review.', 'Filed. Germs can wait.'],
       leave: ['Shift over. Notes signed.'],
+      distracted: ['System update 1 of 47 running...', 'Reading the union handbook.'],
+      reactivated: ['Intervention noted. Resuming combat.', 'Update postponed. Let’s disinfect.'],
     },
   },
   {
@@ -99,6 +111,10 @@ export const SCRIBES: ScribeDef[] = [
       clean: ['Clean enough to image.', 'Read: no germs.'],
       block: ['Lead apron on the vent.', 'Restricted area. Germs out.'],
       leave: ['Back to X-ray. Films are piling up.'],
+      distracted: ['Transfer log pending review.', 'Lead aprons need organizing.'],
+      reactivated: ['Transfer logged. Lead apron back on!', 'Doctor’s orders. Beam ready.'],
+      imaging: ['Stat film requested in X-ray! Heading there.', 'Patient on the table. Running the scan!'],
+      imagingDone: ['Two views clear! Films filed.', 'Scan complete. Back with the doctor.'],
     },
   },
   {

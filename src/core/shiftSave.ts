@@ -3,6 +3,14 @@ import type { RunStats } from './runStats';
 import { DIFFICULTIES } from '../data/difficulties';
 import { MODIFIERS, type ModifierId } from '../data/modifiers';
 
+export interface SavedDistraction {
+  kind: 'distraction' | 'imaging';
+  label: string;
+  x: number;
+  y: number;
+  remainingMs: number;
+}
+
 /**
  * SAVE & QUIT (Noah, Oct 2026): one saved shift on this device. Quitting from the pause menu can save the shift,
  * and CONTINUE SHIFT on the title screen picks it up again at the start of the round it was saved in (germs on the
@@ -39,6 +47,8 @@ export interface ShiftSave {
   absent?: string[];
   /** Helpers currently training a new hire, with their remaining duration in ms. */
   trainees?: Record<string, number>;
+  /** Helpers currently distracted or imaging, with remaining ms and target coordinates. */
+  distractions?: Record<string, SavedDistraction>;
   provider?: { pantry: number[]; ingredient: number };
   claimDeniedChance: number;
   /** Game time played so far (the Discharge Summary's time survived). */
@@ -97,6 +107,26 @@ export function savedShift(): ShiftSave | undefined {
             Object.entries(r.trainees as Record<string, unknown>)
               .filter(([k, v]) => typeof k === 'string' && typeof v === 'number' && Number.isFinite(v) && v > 0)
               .map(([k, v]) => [k, Math.floor(v as number)]),
+          )
+        : undefined,
+      distractions: r.distractions && typeof r.distractions === 'object'
+        ? Object.fromEntries(
+            Object.entries(r.distractions as Record<string, unknown>)
+              .filter(([k, v]) => typeof k === 'string' && typeof v === 'object' && v !== null)
+              .map(([k, v]): [string, SavedDistraction] => {
+                const item = v as Record<string, unknown>;
+                return [
+                  k,
+                  {
+                    kind: item.kind === 'imaging' ? ('imaging' as const) : ('distraction' as const),
+                    label: typeof item.label === 'string' ? item.label : 'Distraction',
+                    x: num(item.x),
+                    y: num(item.y),
+                    remainingMs: Math.max(0, Math.floor(num(item.remainingMs))),
+                  },
+                ];
+              })
+              .filter(([, v]) => v.remainingMs > 0),
           )
         : undefined,
       claimDeniedChance: num(r.claimDeniedChance),

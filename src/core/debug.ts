@@ -13,6 +13,8 @@
  *   ?scribe=omar      a helper (omar, alan, donald, selina or elaine) works the whole shift, and their pill drops even if locked
  *   ?callout=omar     that helper calls out this shift (comma-separated ids; `none`: nobody calls out)
  *   ?trainee=omar     that helper has a trainee this shift (comma-separated ids; `none`: nobody gets a trainee)
+ *   ?distract=omar    that helper is drawn to an in-world distraction (comma-separated ids; `none`: no distractions)
+ *   ?imaging=donald   Donald is called to X-ray for patient imaging
  *   ?secret=records   the Miracle Cure, every clue found and Stall 3's panel open (`clockout`: ready to clock out)
  *
  * Combine them: .../moshi-and-pals/?round=15&god&debug
@@ -40,11 +42,13 @@ const scribe = params.get('scribe') ?? undefined;
 const secret = params.get('secret') ?? undefined;
 const callout = params.has('callout') ? (params.get('callout') ?? '').split(',').map((m) => m.trim()).filter(Boolean) : undefined;
 const trainee = params.has('trainee') ? (params.get('trainee') ?? '').split(',').map((m) => m.trim()).filter(Boolean) : undefined;
+const distract = params.has('distract') ? (params.get('distract') ?? '').split(',').map((m) => m.trim()).filter(Boolean) : undefined;
+const imaging = params.has('imaging');
 
 export const DEBUG = {
   /** Show the perf overlay. On whenever any debug switch is used, so testers always see they're in a test build. */
   overlay: params.has('debug') || startRound !== undefined || copays !== undefined || fpsLimit !== undefined || god
-    || mods.length > 0 || seed !== undefined || doctor !== undefined || scribe !== undefined || secret !== undefined || callout !== undefined || trainee !== undefined,
+    || mods.length > 0 || seed !== undefined || doctor !== undefined || scribe !== undefined || secret !== undefined || callout !== undefined || trainee !== undefined || distract !== undefined || imaging,
   /** First round to play (1 = normal). */
   startRound: startRound !== undefined ? Math.max(1, Math.floor(startRound)) : 1,
   copays: copays !== undefined ? Math.max(0, Math.floor(copays)) : 0,
@@ -64,4 +68,8 @@ export const DEBUG = {
   callout,
   /** Helpers forced to have a trainee this shift (`['none']`: nobody gets one); undefined = roll normally. */
   trainee,
+  /** Helpers forced to be drawn to an in-world distraction (`['none']`: nobody is distracted); undefined = roll normally. */
+  distract,
+  /** Force Donald to be called to X-ray for patient imaging. */
+  imaging,
 };

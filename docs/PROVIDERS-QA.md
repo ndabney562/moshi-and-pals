@@ -26,6 +26,20 @@ Commands use the locally installed Node 22 runtime, `npm run test:all`, `swift t
 
 One targeted WebKit menu test initially tapped a freshly redrawn interactive object before Phaser registered it. The test now waits for rendering frames, preserving the actual touch purchase assertions. Dhiwya marks are keyed to enemy spawn generations so pooled enemies cannot inherit a mark; locked second requests cannot bypass ownership checks. The first simulator run passed six tests but hit an Xcode app-launch background-assertion timeout in the achievements test; the full rerun against the final bundle passed all seven tests, including achievements and real WKWebView startup. No source-photo files, unrelated generated `output/` files or test traces are intended for the commit.
 
+## Milestone 3: In-World Distractions & Patient Imaging (QA report)
+
+- **Mechanics verified**: Combat helpers (Omar, Alan, Donald) become distracted at round start according to `BALANCE.distractions.chancePerRound = 0.18`. While distracted or imaging, helpers cease combat attacks and patient cleaning, and steer toward world markers.
+- **Player intervention verified**: Proximity intervention within 75 px (`interventionRange`) reactivates distracted helpers immediately after a brief grace window, restoring combat and follow behavior.
+- **Donald patient imaging verified**: Donald can be assigned to the X-ray room for 20 s (`xrayImagingMs = 20000`), during which his penetrating combat beam is held. Upon timeout or signature recall, Donald announces scan completion and returns to the provider.
+- **Visual feedback & dialogue verified**: Pulsing in-world markers and labels render at assignment points; in-character dialogue lines are delivered on arrival, reactivation, and scan completion; HUD banners notify the player.
+- **Persistence verified**: In-progress distractions and patient imaging assignments serialize kind, label, coordinates, and remaining ms in `ShiftSave.distractions`, verified across save & quit / continue shift cycles.
+- **Test execution summary**:
+  - TypeScript type check: Passed with 0 errors (`tsc --project tsconfig.tests.json`).
+  - Unit tests: 21 test files, 139 passed (`npm run test:unit`).
+  - Web bundle & worker checks: 6 passed (`npm run test:bundle`).
+  - Playwright browser regression: 90 passed across Chromium and WebKit (`npm run test:regression`).
+  - Legacy smoke test suite: 206 passed, 0 failed (`npm run smoke`).
+
 ## Milestone 2: Random Timed Trainees (QA report)
 
 - **Mechanics verified**: 67% slowdown (`statMult = 0.33`) applied across movement speed, action/attack cadence (interval ÷ 0.33, or ~3.03× duration), and raw output/damage. Compounding DPS and copays/sec tested and confirmed at ~10.89% of baseline.
