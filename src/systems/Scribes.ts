@@ -108,9 +108,9 @@ export class Scribes {
   private readonly v = new Phaser.Math.Vector2();
 
   constructor(private readonly host: ScribeHost) {
-    // Omar off one shoulder, Alan off the other, Donald right behind
+    // Omar off one shoulder, Alan off the other, Donald right behind, Alexandra hovering nearby
     // (The front desk PSRs work the desk instead: systems/FrontDesk.ts)
-    this.list = SCRIBES.filter((d) => !d.desk).map((def, i) => new Scribe(host.scene, def, [-1, 1, 0][i % 3]));
+    this.list = SCRIBES.filter((d) => !d.desk).map((def, i) => new Scribe(host.scene, def, [-1, 1, 0, -0.6][i % 4]));
   }
 
   /** Brings a scribe in for `ms` (or keeps one already here for longer), from `from` or just behind Eugene. */
@@ -457,10 +457,19 @@ export class Scribes {
     }
     if (germ) img.rotation = Phaser.Math.Angle.RotateTo(img.rotation, Phaser.Math.Angle.Between(img.x, img.y, germ.x, germ.y), 0.3);
     else if (patient) img.rotation = Phaser.Math.Angle.RotateTo(img.rotation, Phaser.Math.Angle.Between(img.x, img.y, patient.x, patient.y), 0.3);
-    // Little walk bob, like Eugene's
-    s.step += moving ? dtMs / 110 : 0;
-    const bob = moving ? Math.sin(s.step) * 0.05 : 0;
-    img.setScale(1 + bob, 1 - bob);
+    // Alexandra floats and undulates as an ethereal cloud essence; others walk bob
+    if (s.def.id === 'alexandra') {
+      s.step += dtMs / 180;
+      const hover = Math.sin(s.step) * 0.08;
+      img.setScale(1 + hover, 1 - hover);
+      if (moving && Math.random() < 0.25) {
+        this.host.fx.nozzleMist(img.x, img.y, 0, 360, s.def.color, 1);
+      }
+    } else {
+      s.step += moving ? dtMs / 110 : 0;
+      const bob = moving ? Math.sin(s.step) * 0.05 : 0;
+      img.setScale(1 + bob, 1 - bob);
+    }
   }
 
   /** The nearest germ in reach: in sight, or with `throughWalls` (X-rays) anywhere on the same floor. */
@@ -502,6 +511,25 @@ export class Scribes {
         const off = Math.abs((g.x - img.x) * uy - (g.y - img.y) * ux);
         if (along < 0 || along > c.range || off > c.width + g.displayWidth / 2) continue;
         this.strike(s, g, c.damage, a, c.knockback, time);
+        if (g.active) g.stun(time, c.stunMs);
+      }
+    } else if (s.def.id === 'alexandra') {
+      const c = this.cfg.alexandra;
+      s.nextAttackAt = time + c.everyMs * s.boost.speed / (time < s.rallyUntil ? s.rallySpeed : 1);
+      const targets: Germ[] = [germ];
+      for (const g of this.host.germs()) {
+        if (!g.active || targets.includes(g)) continue;
+        if (targets.length >= c.targets) break;
+        const d = (g.x - img.x) ** 2 + (g.y - img.y) ** 2;
+        if (d <= c.range * c.range && (this.host.sameFloor(img.x, img.y, g.x, g.y) || this.host.flow.lineClear(img.x, img.y, g.x, g.y))) {
+          targets.push(g);
+        }
+      }
+      this.essenceBurst(img.x, img.y, targets, s.def.color);
+      sfx.spray();
+      for (const g of targets) {
+        const ga = Phaser.Math.Angle.Between(img.x, img.y, g.x, g.y);
+        this.strike(s, g, c.damage, ga, c.knockback, time);
         if (g.active) g.stun(time, c.stunMs);
       }
     } else {
@@ -573,6 +601,23 @@ export class Scribes {
     }
     gfx.strokePath();
     this.host.scene.tweens.add({ targets: gfx, alpha: 0, duration: 180, onComplete: () => gfx.destroy() });
+  }
+
+  /** Alexandra's multi-target ink/steam burst: swirling tendrils of ink and steam connecting to targets. */
+  private essenceBurst(x: number, y: number, targets: Germ[], color: number): void {
+    if (!this.host.scene.add?.graphics) return;
+    const gfx = this.host.scene.add.graphics().setDepth(12);
+    gfx.lineStyle(3, color, 0.9);
+    for (const g of targets) {
+      gfx.beginPath().moveTo(x, y);
+      const mx = (x + g.x) / 2 + (Math.random() - 0.5) * 24;
+      const my = (y + g.y) / 2 + (Math.random() - 0.5) * 24;
+      gfx.lineTo(mx, my);
+      gfx.lineTo(g.x, g.y);
+      gfx.strokePath();
+      this.host.fx?.nozzleMist(g.x, g.y, 0, 360, color, 2);
+    }
+    this.host.scene.tweens?.add?.({ targets: gfx, alpha: 0, duration: 220, onComplete: () => gfx.destroy() });
   }
 
   /** The same thing Eugene's droplets do to a patient: one "spray" of shame. */

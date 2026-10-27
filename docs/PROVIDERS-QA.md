@@ -26,6 +26,19 @@ Commands use the locally installed Node 22 runtime, `npm run test:all`, `swift t
 
 One targeted WebKit menu test initially tapped a freshly redrawn interactive object before Phaser registered it. The test now waits for rendering frames, preserving the actual touch purchase assertions. Dhiwya marks are keyed to enemy spawn generations so pooled enemies cannot inherit a mark; locked second requests cannot bypass ownership checks. The first simulator run passed six tests but hit an Xcode app-launch background-assertion timeout in the achievements test; the full rerun against the final bundle passed all seven tests, including achievements and real WKWebView startup. No source-photo files, unrelated generated `output/` files or test traces are intended for the commit.
 
+## Milestone 4: Alexandra, Essence Scribe (QA report)
+
+- **Mechanics verified**: Alexandra fires multi-target ink and steam bursts hitting up to 4 targets for 45 damage every 700 ms, delivering 64.3 single-target DPS and up to 257.1 multi-target DPS, exceeding Omar, Alan, and Donald combined.
+- **Visuals & Animation verified**: Procedural texture `scribe-alexandra` renders floating ethereal cloud essence with black medical mask, mask pleats, and cyan eyes; hover scale undulation and mist particles render during gameplay.
+- **Roster & Board integration verified**: Alexandra is available on the Residency Board for 50 CME; waits in first-floor exam rooms when hired; correctly integrates with the equipment locker's staff upgrades and provider affinity multipliers.
+- **Framework integration verified**: Alexandra participates in attendance and distraction events with in-character dialogue; rejects trainee assignments as specified.
+- **Test execution summary**:
+  - TypeScript type check: Passed with 0 errors (`tsc --project tsconfig.tests.json`).
+  - Unit tests: 22 test files, 143 passed (`npm run test:unit`).
+  - Web bundle & worker checks: 6 passed (`npm run test:bundle`).
+  - Playwright browser regression: 98 passed across Chromium and WebKit (`npm run test:regression`).
+  - Legacy smoke test suite: 206 passed, 0 failed (`npm run smoke`).
+
 ## Milestone 3: In-World Distractions & Patient Imaging (QA report)
 
 - **Mechanics verified**: Combat helpers (Omar, Alan, Donald) become distracted at round start according to `BALANCE.distractions.chancePerRound = 0.18`. While distracted or imaging, helpers cease combat attacks and patient cleaning, and steer toward world markers.

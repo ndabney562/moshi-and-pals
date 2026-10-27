@@ -1620,6 +1620,10 @@ export class GameScene extends Phaser.Scene {
         { label: 'LEAD APRON RACK', preferredRoom: 'xray' },
         { label: 'TRANSFER LOG', preferredRoom: 'waiting' },
       ],
+      alexandra: [
+        { label: 'ANOMALOUS RESONANCE', preferredRoom: 'lab' },
+        { label: 'ETHER HARMONIC', preferredRoom: 'exam' },
+      ],
     };
     const options = THEMES[id] ?? [{ label: 'LOST CLIPBOARD', preferredRoom: 'waiting' }];
     const choice = Phaser.Utils.Array.GetRandom(options);

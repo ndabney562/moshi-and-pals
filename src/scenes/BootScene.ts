@@ -46,6 +46,7 @@ export class BootScene extends Phaser.Scene {
     this.makeDonald();
     this.makeSelina();
     this.makeElaine();
+    this.makeAlexandra();
     this.makeFloorTile();
     this.makeShadow();
     for (const def of Object.values(GERMS)) this.makeGerm(def);
@@ -436,6 +437,44 @@ export class BootScene extends Phaser.Scene {
     g.lineStyle(3, outline).strokeCircle(48, 46, 13);
     g.fillStyle(0xc28d6a).fillCircle(61, 46, 2.5);
     g.generateTexture('scribe-elaine', 96, 96);
+    g.destroy();
+  }
+
+  /**
+   * ALEXANDRA, Essence Scribe (Milestone 4):
+   * An ethereal animated cloud/essence with a black medical mask and glowing cyan aura.
+   */
+  private makeAlexandra(): void {
+    const g = this.add.graphics();
+    // Outer ethereal aura
+    g.fillStyle(0x80ed99, 0.25).fillCircle(48, 46, 32);
+    g.fillStyle(0x4a0e4e, 0.45).fillCircle(48, 46, 26);
+    // Cloud essence wisps
+    g.fillStyle(0x2e0854, 0.85);
+    g.fillCircle(40, 40, 16);
+    g.fillCircle(56, 40, 16);
+    g.fillCircle(40, 52, 15);
+    g.fillCircle(56, 52, 15);
+    g.fillCircle(48, 46, 18);
+    // Ethereal swirls
+    g.lineStyle(2, 0x80ed99, 0.75);
+    g.strokeCircle(48, 46, 22);
+    // Black medical mask over the lower center of the essence
+    g.fillStyle(0x111111, 0.95).fillRoundedRect(36, 46, 24, 16, 4);
+    g.lineStyle(1.5, 0x333333).strokeRoundedRect(36, 46, 24, 16, 4);
+    // Mask pleats
+    g.lineStyle(1, 0x444444);
+    g.lineBetween(38, 51, 58, 51);
+    g.lineBetween(38, 56, 58, 56);
+    // Ear loops on mask
+    g.lineStyle(1.5, 0x222222);
+    g.beginPath().arc(36, 54, 4, Math.PI / 2, -Math.PI / 2, false).strokePath();
+    g.beginPath().arc(60, 54, 4, -Math.PI / 2, Math.PI / 2, false).strokePath();
+    // Glowing cyan eyes above mask
+    g.fillStyle(0x80ed99, 0.95);
+    g.fillCircle(43, 40, 2.5);
+    g.fillCircle(53, 40, 2.5);
+    g.generateTexture('scribe-alexandra', 96, 96);
     g.destroy();
   }
 
