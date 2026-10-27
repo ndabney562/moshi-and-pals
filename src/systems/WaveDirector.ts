@@ -1,5 +1,7 @@
+import { BALANCE } from '../config/balance';
 import { events, GameEvents } from '../core/events';
 import { runRng } from '../core/rng';
+import type { ShiftMode } from '../core/shift';
 import { GERMS } from '../data/germs';
 import { SPECIAL_ROUNDS, WAVES, type SpecialRound } from '../data/waves';
 import type { GermScaling } from '../entities/Germ';
@@ -14,6 +16,7 @@ export class WaveDirector {
   private phase: 'intermission' | 'active' = 'intermission';
   private nextRoundAt: number;
   private nextSpawnAt = 0;
+  private emptyQueueAt = 0;
   /** Germ ids still to spawn this round, in order. */
   private queue: string[] = [];
   private scaling: GermScaling = { hpMult: 1, speedMult: 1 };
@@ -27,8 +30,9 @@ export class WaveDirector {
   adjustMix?: (mix: Record<string, number>, round: number) => Record<string, number>;
 
   /** `firstRound` > 1 skips ahead (debug/stress testing). */
-  constructor(startTime: number, firstRound = 1) {
-    this.nextRoundAt = startTime + WAVES.firstRoundDelayMs;
+  constructor(startTime: number, firstRound = 1, readonly mode: ShiftMode = 'standard') {
+    const delay = mode === 'fluSeason' ? BALANCE.fluSeasonMode.firstRoundDelayMs : WAVES.firstRoundDelayMs;
+    this.nextRoundAt = startTime + delay;
     this.round = Math.max(0, firstRound - 1);
   }
 
@@ -66,7 +70,10 @@ export class WaveDirector {
       return;
     }
     const r = this.round;
-    if (this.queue.length > 0 && time >= this.nextSpawnAt && alive < WAVES.maxAlive(r) + (this.special?.maxAliveAdd ?? 0)) {
+    const maxAliveLimit = this.mode === 'fluSeason'
+      ? BALANCE.fluSeasonMode.outbreakPressure.maxAlive(r)
+      : WAVES.maxAlive(r);
+    if (this.queue.length > 0 && time >= this.nextSpawnAt && alive < maxAliveLimit + (this.special?.maxAliveAdd ?? 0)) {
       // A type at its alive limit waits its turn: send in the next germ that isn't
       const atLimit = (id: string) => !!WAVES.aliveLimit[id] && aliveOf(id) >= WAVES.aliveLimit[id](r);
       if (atLimit(this.queue[0])) {
@@ -75,32 +82,69 @@ export class WaveDirector {
       }
       if (!atLimit(this.queue[0]) && spawn(this.queue[0], this.scaling)) {
         this.queue.shift();
-        this.nextSpawnAt = time + WAVES.spawnIntervalMs(r) * this.pacing * this.intervalMult * (this.special?.spawnMult ?? 1) * runRng.wave.float(0.7, 1.3);
+        const baseInterval = this.mode === 'fluSeason'
+          ? BALANCE.fluSeasonMode.outbreakPressure.spawnIntervalMs(r)
+          : WAVES.spawnIntervalMs(r);
+        this.nextSpawnAt = time + baseInterval * this.pacing * this.intervalMult * (this.special?.spawnMult ?? 1) * runRng.wave.float(0.7, 1.3);
+        if (this.queue.length === 0) {
+          this.emptyQueueAt = time;
+        }
       }
     }
-    if (this.queue.length === 0 && alive === 0) {
+
+    let roundEnded = false;
+    if (this.queue.length === 0) {
+      if (alive === 0) {
+        roundEnded = true;
+      } else if (this.mode === 'fluSeason') {
+        // Continuous wave flow: advance if only 1-2 germs remain or breather cap reached
+        if (alive <= 2 || (this.emptyQueueAt > 0 && time >= this.emptyQueueAt + BALANCE.fluSeasonMode.maxWaveBreatherMs)) {
+          roundEnded = true;
+        }
+      }
+    }
+
+    if (roundEnded) {
       this.phase = 'intermission';
-      this.nextRoundAt = time + WAVES.intermissionMs;
-      events.emit(GameEvents.RoundCompleted, { round: r });
+      const intermission = this.mode === 'fluSeason' ? BALANCE.fluSeasonMode.supplyWindowMs : WAVES.intermissionMs;
+      this.nextRoundAt = time + intermission;
+      this.emptyQueueAt = 0;
+      events.emit(GameEvents.RoundCompleted, { round: r, mode: this.mode });
     }
   }
 
   private startRound(time: number): void {
     const r = ++this.round;
     this.phase = 'active';
+    this.emptyQueueAt = 0;
     const specialId = this.isBossRound ? undefined : WAVES.specialFor(r);
     this.special = specialId ? SPECIAL_ROUNDS[specialId] : undefined;
     const sp = this.special;
-    this.scaling = { hpMult: WAVES.hpMult(r) * (sp?.hpMult ?? 1), speedMult: WAVES.speedMult(r) };
 
-    let count = Math.round(WAVES.count(r) * (sp?.countMult ?? 1));
+    const hpMult = this.mode === 'fluSeason'
+      ? BALANCE.fluSeasonMode.outbreakPressure.hpMult(r)
+      : WAVES.hpMult(r);
+    const speedMult = this.mode === 'fluSeason'
+      ? BALANCE.fluSeasonMode.outbreakPressure.speedMult(r)
+      : WAVES.speedMult(r);
+
+    this.scaling = { hpMult: hpMult * (sp?.hpMult ?? 1), speedMult };
+
+    const baseCount = this.mode === 'fluSeason'
+      ? BALANCE.fluSeasonMode.outbreakPressure.count(r)
+      : WAVES.count(r);
+    let count = Math.round(baseCount * (sp?.countMult ?? 1));
     this.queue = [];
     if (this.isBossRound) {
       this.queue.push(WAVES.bossFor(r));
       count = Math.round(count * WAVES.bossEscortFraction);
     }
     // Weighted random mix of normal germs
-    const base = sp?.mix ?? WAVES.composition(r);
+    const base = sp?.mix ? { ...sp.mix } : { ...WAVES.composition(r) };
+    if (this.mode === 'fluSeason') {
+      base.sprinter = (base.sprinter ?? 0.1) + BALANCE.fluSeasonMode.outbreakPressure.sprinterWeightBoost;
+      base.sneezer = (base.sneezer ?? 0.05) + BALANCE.fluSeasonMode.outbreakPressure.sneezerWeightBoost;
+    }
     const weights = Object.entries(this.adjustMix ? this.adjustMix({ ...base }, r) : base).filter(([id]) => GERMS[id]);
     const total = weights.reduce((sum, [, w]) => sum + w, 0);
     for (let i = 0; i < count; i++) {
@@ -109,11 +153,13 @@ export class WaveDirector {
       this.queue.push(entry[0]);
     }
 
-    this.nextSpawnAt = time + 600;
+    this.nextSpawnAt = time + (this.mode === 'fluSeason' ? 300 : 600);
     const titles = WAVES.titles;
     const boss = this.isBossRound ? GERMS[WAVES.bossFor(r)] : undefined;
     const title = boss ? `BOSS ROUND: ${boss.bossTitle ?? boss.name} ${boss.partner ? 'have' : 'has'} arrived`
-      : sp ? `${sp.name}: ${sp.blurb}` : titles[Math.min(r - 1, titles.length - 1)];
-    events.emit(GameEvents.RoundStarted, { round: r, title, special: sp?.name });
+      : sp ? `${sp.name}: ${sp.blurb}`
+      : this.mode === 'fluSeason' ? `OUTBREAK PRESSURE: WAVE ${r}`
+      : titles[Math.min(r - 1, titles.length - 1)];
+    events.emit(GameEvents.RoundStarted, { round: r, title, special: sp?.name, mode: this.mode });
   }
 }

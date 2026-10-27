@@ -22,10 +22,12 @@ export interface Settings {
   character: string;
   /** Difficulty for normal shifts (title screen): walkIn, urgent or trauma. Today's Shift is always Urgent. */
   difficulty: string;
+  /** Shift mode: standard or fluSeason. */
+  mode?: 'standard' | 'fluSeason';
 }
 
 const KEY = 'moshi.settings.v1';
-const DEFAULTS: Settings = { autoAim: true, sound: true, music: true, autoRefill: true, reducedMotion: false, learned: {}, character: 'eugene', difficulty: 'urgent' };
+const DEFAULTS: Settings = { autoAim: true, sound: true, music: true, autoRefill: true, reducedMotion: false, learned: {}, character: 'eugene', difficulty: 'urgent', mode: 'standard' };
 
 /** Only supported values cross the persistence boundary. Valid existing saves keep their keys. */
 export function parseSettings(value: unknown): Settings {
@@ -37,6 +39,7 @@ export function parseSettings(value: unknown): Settings {
   }
   if (typeof raw.character === 'string' && CHARACTERS.some((c) => c.id === raw.character)) fresh.character = raw.character;
   if (typeof raw.difficulty === 'string' && DIFFICULTIES.some((d) => d.id === raw.difficulty)) fresh.difficulty = raw.difficulty;
+  if (raw.mode === 'standard' || raw.mode === 'fluSeason') fresh.mode = raw.mode;
   if (raw.learned && typeof raw.learned === 'object' && !Array.isArray(raw.learned)) {
     fresh.learned = Object.fromEntries(Object.entries(raw.learned).filter(([key, v]) => ['move', 'spray', 'pour', 'purge', 'buy'].includes(key) && typeof v === 'boolean'));
   }

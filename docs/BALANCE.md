@@ -43,6 +43,10 @@ Values live in `src/config/balance.ts` and `src/config/controls.ts`.
 | Score bonuses | streak ≥ 10: +5 per kill; Spotless: +25 × round | `BALANCE.streak.scorePerKill`, `economy.spotlessScorePerRound` |
 | Spawn interval | 750 ms at r1, -50 ms/round, min 260 | Was 940 ms at r1 |
 | Boss rounds | every 5th, boss + 50% escort | Order: Diamond, Patient Zero, Methicillin, Influenza Twins (`WAVES.bossOrder`) |
+| Flu Season Mode: Waves | Continuous progression, 2.0s supply window | `BALANCE.fluSeasonMode.supplyWindowMs` = 2000, `firstRoundDelayMs` = 1500 |
+| Flu Season Mode: Count | 14, 18, 23, 28, 34... | `14 + 4(r-1) + 0.25(r-1)²` under outbreak pressure |
+| Flu Season Mode: Cadence | 635 ms at r1 down to 180 ms | Outbreak pressure spawn interval, max alive up to 34 |
+| Flu Season Mode: Breather Cap | 3500 ms max after queue clear | Advances wave if <= 2 stragglers remain or cap reached |
 | Diamond | 850 HP, 55 px/s, 92% knockback resist, radius 62 | Tuning in `BALANCE.diamond` |
 | Mandatory Meeting | every 10 s within 320 px; pull 150 px/s, Eugene walks at 35% | Break free with 80 damage; door = 30 damage + shove |
 | Write-Ups | 3 per 20% of her health lost | 10 HP, 170 px/s |

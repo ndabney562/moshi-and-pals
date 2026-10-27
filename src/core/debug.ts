@@ -44,11 +44,15 @@ const callout = params.has('callout') ? (params.get('callout') ?? '').split(',')
 const trainee = params.has('trainee') ? (params.get('trainee') ?? '').split(',').map((m) => m.trim()).filter(Boolean) : undefined;
 const distract = params.has('distract') ? (params.get('distract') ?? '').split(',').map((m) => m.trim()).filter(Boolean) : undefined;
 const imaging = params.has('imaging');
+const modeParam = params.get('mode');
+const mode = modeParam === 'fluSeason' ? ('fluSeason' as const) : undefined;
 
 export const DEBUG = {
   /** Show the perf overlay. On whenever any debug switch is used, so testers always see they're in a test build. */
   overlay: params.has('debug') || startRound !== undefined || copays !== undefined || fpsLimit !== undefined || god
-    || mods.length > 0 || seed !== undefined || doctor !== undefined || scribe !== undefined || secret !== undefined || callout !== undefined || trainee !== undefined || distract !== undefined || imaging,
+    || mods.length > 0 || seed !== undefined || doctor !== undefined || scribe !== undefined || secret !== undefined || callout !== undefined || trainee !== undefined || distract !== undefined || imaging || mode !== undefined,
+  /** Mode override ('fluSeason'). */
+  mode,
   /** First round to play (1 = normal). */
   startRound: startRound !== undefined ? Math.max(1, Math.floor(startRound)) : 1,
   copays: copays !== undefined ? Math.max(0, Math.floor(copays)) : 0,

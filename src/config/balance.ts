@@ -362,6 +362,34 @@ export const BALANCE = {
     fullMoon: { sizeMin: 0.7, sizeMax: 1.45, floorTint: 0xb8a8ff },
   },
   /**
+   * ENDLESS FLU SEASON MODE:
+   * Continuous waves, rising outbreak pressure, and short supply windows.
+   */
+  fluSeasonMode: {
+    /** Short supply window between waves (refill breather). */
+    supplyWindowMs: 2000,
+    /** Delay before wave 1 begins. */
+    firstRoundDelayMs: 1500,
+    /** Max time in ms after wave queue empties before supply window begins anyway. */
+    maxWaveBreatherMs: 3500,
+    /** Outbreak pressure scaling */
+    outbreakPressure: {
+      /** Base germ count per wave under outbreak pressure. */
+      count: (r: number) => Math.round(14 + 4 * (r - 1) + 0.25 * (r - 1) ** 2),
+      /** Max alive germs on screen at once during outbreak. */
+      maxAlive: (r: number) => Math.min(10 + r * 3, 34),
+      /** Spawn interval: faster cadence as outbreak pressure rises. */
+      spawnIntervalMs: (r: number) => Math.max(180, 680 - r * 45),
+      /** Germ health scaling under outbreak conditions. */
+      hpMult: (r: number) => Math.min(1 + 0.12 * (r - 1), 2.5),
+      /** Germ speed scaling under outbreak conditions. */
+      speedMult: (r: number) => Math.min(1 + 0.04 * (r - 1), 1.7),
+      /** Boost to Viral Sprinter and Sneezer spawn mix weights. */
+      sprinterWeightBoost: 0.25,
+      sneezerWeightBoost: 0.15,
+    },
+  },
+  /**
    * KEN: his passive (damage × against Diamond, from everything) and his signature, FILE A GRIEVANCE: a blast
    * of paperwork that hits and stuns germs around him, and summons Diamond to HR (frozen, no meetings,
    * no tantrums) if she's within `hrRange`. Breaks a Mandatory Meeting in progress.

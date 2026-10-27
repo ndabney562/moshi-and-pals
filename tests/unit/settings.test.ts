@@ -2,7 +2,7 @@ import { expect, it, vi } from 'vitest';
 
 it('loads the baseline defaults on a fresh device', async () => {
   const { settings } = await import('../../src/core/settings');
-  expect(settings).toEqual({ autoAim: true, sound: true, music: true, autoRefill: true, reducedMotion: false, learned: {}, character: 'eugene', difficulty: 'urgent' });
+  expect(settings).toEqual({ autoAim: true, sound: true, music: true, autoRefill: true, reducedMotion: false, learned: {}, character: 'eugene', difficulty: 'urgent', mode: 'standard' });
 });
 it('merges older partial settings and persists learned hints across reload', async () => {
   localStorage.setItem('moshi.settings.v1', '{"sound":false,"learned":{"move":true}}');

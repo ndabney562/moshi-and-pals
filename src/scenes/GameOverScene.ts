@@ -74,7 +74,7 @@ export class GameOverScene extends Phaser.Scene {
       this.add.text(x, y, s, { fontFamily: font, fontSize: `${size}px`, fontStyle: style, color }).setOrigin(origin, 0);
     card.add([
       t(cx + 28, cy + 16, 'DISCHARGE SUMMARY', 28, INK, '900'),
-      t(cx + cw - 28, cy + 22, `PATIENT: ${result.chart ?? 'MOSHKOVICH, E.'}  ·  SHIFT ${result.runs}  ·  ${(result.difficulty ?? 'Urgent').toUpperCase()}${result.specialty ? `  ·  ${result.specialty.toUpperCase()}` : ''}`, 16, INK_SOFT, 'bold').setOrigin(1, 0),
+      t(cx + cw - 28, cy + 22, `PATIENT: ${result.chart ?? 'MOSHKOVICH, E.'}  ·  SHIFT ${result.runs}  ·  ${result.mode === 'fluSeason' ? 'ENDLESS FLU SEASON' : (result.difficulty ?? 'Urgent').toUpperCase()}${result.specialty ? `  ·  ${result.specialty.toUpperCase()}` : ''}`, 16, INK_SOFT, 'bold').setOrigin(1, 0),
       t(cx + cw - 28, cy + 80, `🎓 +${result.cme ?? 0} CME CREDITS${result.dailyBonus ? `  (+${result.dailyBonus} FIRST SHIFT TODAY)` : ''}  ·  ⭐ +${result.nps ?? 0} NPS`, 20, RECORD, '900').setOrigin(1, 0),
       t(cx + 28, cy + 76, result.clockedOut ? 'CAUSE OF DEATH (NONE)' : 'CAUSE OF DEATH', 14, INK_SOFT),
       t(cx + 28, cy + 96, result.causeOfDeath, 22, INK, 'italic'),
@@ -125,6 +125,8 @@ export class GameOverScene extends Phaser.Scene {
     // Records are per difficulty; Today's Shift shows the day's best
     const bests = result.daily
       ? `TODAY'S BEST  ·  ${result.bestScore.toLocaleString()} pts  ·  Round ${result.bestRound}  ·  ${result.totalKills.toLocaleString()} germs all-time`
+      : result.mode === 'fluSeason'
+      ? `PERSONAL BESTS (FLU SEASON · ${(result.difficulty ?? 'Urgent').toUpperCase()})  ·  Round ${result.bestRound}  ·  ${result.bestScore.toLocaleString()} pts  ·  Streak ${result.recordStreak}  ·  ${result.totalKills.toLocaleString()} germs all-time`
       : `PERSONAL BESTS (${(result.difficulty ?? 'Urgent').toUpperCase()})  ·  Round ${result.bestRound}  ·  ${result.bestScore.toLocaleString()} pts  ·  Streak ${result.recordStreak}  ·  ${result.totalKills.toLocaleString()} germs all-time`;
     card.add(t(width / 2, cy + ch - 34, bests, 15, INK_SOFT, 'bold', 0.5));
     this.tweens.add({ targets: card, y: 0, alpha: 1, duration: 420, delay: 180, ease: 'Cubic.out' });
