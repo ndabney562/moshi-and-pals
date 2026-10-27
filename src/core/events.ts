@@ -72,6 +72,8 @@ export const GameEvents = {
   AchievementUnlocked: 'achievement.unlocked',
   /** { title, line } the Miracle Cure: a clue found or a step done (a banner) */
   SecretFound: 'secret.found',
+  /** { id, name, reason } opening a room showed its waiting helper called out this shift (a banner) */
+  HelperCalledOut: 'helper.calledOut',
 } as const;
 
 export interface RequisitionOption { id: string; name: string; blurb: string; color: number; }

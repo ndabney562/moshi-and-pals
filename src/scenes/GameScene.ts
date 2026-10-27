@@ -12,6 +12,8 @@ import { inputState } from '../core/inputState';
 import { settings } from '../core/settings';
 import { recordRun } from '../core/save';
 import { runRng, seedRun, hashSeed, runSeed } from '../core/rng';
+import { rollAttendance, type Attendance } from '../core/attendance';
+import { CALL_OUT_FALLBACK, CALL_OUT_REASONS } from '../data/callOuts';
 import { nextShift, type ShiftSetup } from '../core/shift';
 import { CONSTRUCTION_LINES, CONSTRUCTION_SIGN, modifierById, type ModifierId } from '../data/modifiers';
 import { difficultyById } from '../data/difficulties';
@@ -178,6 +180,10 @@ export class GameScene extends Phaser.Scene {
   private scribeShadows = new Map<string, Phaser.GameObjects.Image>();
   /** Helpers let out of their rooms this shift (or who started it with you): they stay all shift, and a save keeps them. */
   private released = new Set<ScribeId>();
+  /** CALL-OUTS: this shift's attendance for each helper who waits in a room (core/attendance.ts). */
+  private attendance = new Map<string, Attendance>();
+  /** Helpers whose call-out has been revealed this shift (their silhouette is gone; a save keeps this). */
+  private absent = new Set<ScribeId>();
   /** SAVE & QUIT: the shift as it stood when this round began (a save made mid-round picks up from here). */
   private roundStartSave?: ShiftSave;
   /** This shift's Specialty id ('' for none), for a save. */
@@ -231,6 +237,7 @@ export class GameScene extends Phaser.Scene {
     if (resume) clearSavedShift();
     this.roundStartSave = undefined;
     this.released = new Set();
+    this.absent = new Set();
     // Today's Shift or a normal one: the seed drives this run's rolls (core/rng)
     this.shift = resume?.shift ?? nextShift();
     seedRun(this.shift.seed);
@@ -292,6 +299,21 @@ export class GameScene extends Phaser.Scene {
     this.flow = new FlowField(room.width, room.height, this.blockingObstacles());
     // A Pal who hasn't been hired with NPS Scores can't go on shift (?doctor= skips that, for testing)
     this.character = characterById(resume?.character ?? DEBUG.doctor ?? (doctorUnlocked(settings.character) ? settings.character : 'eugene'));
+    this.attendance = rollAttendance(this.shift.seed, this.character.id, SCRIBES.map((s) => s.id));
+    if (DEBUG.callout) {
+      if (DEBUG.callout.includes('none')) {
+        for (const [id] of this.attendance) this.attendance.set(id, { out: false });
+      } else {
+        const pool = CALL_OUT_REASONS[this.character.id] ?? CALL_OUT_FALLBACK;
+        for (const id of DEBUG.callout) {
+          const existing = this.attendance.get(id);
+          this.attendance.set(id, { out: true, reason: existing?.reason ?? pool[0] ?? 'Called out.' });
+        }
+      }
+    }
+    if (DEBUG.scribe) {
+      this.attendance.set(DEBUG.scribe, { out: false });
+    }
     // The Miracle Cure's reward: Eugene wears his scrub cap from then on
     const capped = this.character.id === 'eugene' && progress().owned.includes('scrubCap');
     this.player = new Player(this, room.playerSpawn.x, room.playerSpawn.y, capped ? 'eugene-cap' : this.character.id === 'dhiwya' ? `dhiwya-${hashSeed(String(runSeed())) % 3}` : this.character.id);
@@ -1399,15 +1421,20 @@ export class GameScene extends Phaser.Scene {
     this.scribeRooms = new Map();
     this.scribeShadows = new Map();
     for (const def of SCRIBES) {
-      if (!def.waitsIn || def.id === forced || this.released.has(def.id) || (!scribeUnlocked(def.id) && !def.unlockRoom)) continue;
+      if (!def.waitsIn || def.id === forced || this.released.has(def.id) || this.absent.has(def.id) || (!scribeUnlocked(def.id) && !def.unlockRoom)) continue;
       const free = def.waitsIn.filter((id) => !this.unlocked.has(id) && !this.scribeRooms.has(id));
       if (free.length > 0) {
         const roomId = runRng.world.pick(free);
         this.scribeRooms.set(roomId, def.id);
         this.drawScribeShadow(roomId, def.id);
       } else if (scribeUnlocked(def.id)) {
-        this.released.add(def.id);
-        this.scribes.summon(def.id, this.time.now, Infinity);
+        const att = this.attendance.get(def.id);
+        if (att?.out) {
+          this.absent.add(def.id);
+        } else {
+          this.released.add(def.id);
+          this.scribes.summon(def.id, this.time.now, Infinity);
+        }
       }
     }
   }
@@ -1440,7 +1467,21 @@ export class GameScene extends Phaser.Scene {
     const from = shadow ? { x: shadow.x, y: shadow.y } : { x: area.x + area.w / 2, y: area.y + area.h / 2 };
     shadow?.destroy();
     const def = scribeById(id);
-    if (def?.unlockRoom === roomId && unlockScribe(id) && def.unlockBanner) events.emit(GameEvents.SecretFound, def.unlockBanner);
+    if (!def) return;
+
+    // CALL-OUTS: helpers roll once per shift. If absent, their shadow vanishes and a reason banner appears.
+    const att = this.attendance.get(id);
+    if (att?.out) {
+      this.absent.add(id);
+      events.emit(GameEvents.HelperCalledOut, {
+        id,
+        name: def.name,
+        reason: att.reason ?? 'Called out.',
+      });
+      return;
+    }
+
+    if (def.unlockRoom === roomId && unlockScribe(id) && def.unlockBanner) events.emit(GameEvents.SecretFound, def.unlockBanner);
     // Out for good: they stay on shift (and can't be hurt) until the shift ends
     this.released.add(id);
     this.scribes.summon(id, this.time.now, Infinity, from);
@@ -1485,6 +1526,7 @@ export class GameScene extends Phaser.Scene {
       slot: this.slot,
       snacks: [...this.snacks],
       helpers: [...this.released],
+      absent: [...this.absent],
       provider: this.abilities.save(),
       claimDeniedChance: this.claimDeniedChance,
       playedMs: Math.max(0, this.time.now - startedAt),
@@ -1554,6 +1596,11 @@ export class GameScene extends Phaser.Scene {
       if (!scribeById(id)) continue;
       this.released.add(id as ScribeId);
       this.scribes.summon(id as ScribeId, now, Infinity);
+    }
+    // Helpers whose call-out was already revealed stay absent
+    for (const id of save.absent ?? []) {
+      if (!scribeById(id)) continue;
+      this.absent.add(id as ScribeId);
     }
   }
 

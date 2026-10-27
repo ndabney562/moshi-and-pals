@@ -114,6 +114,20 @@ Values live in `src/config/balance.ts` and `src/config/controls.ts`.
 | Construction | from round 2, one opened room per round closes to Eugene | Not his room, no door within 140 px, only if he can still walk to the waiting room; germs pass |
 | Full Moon | germ looks ×0.7-1.45 (hitboxes unchanged), moonlit floor, patients walk backwards | |
 
+## Attendance & Call-Outs (`BALANCE.attendance`, `src/core/attendance.ts`, `src/data/callOuts.ts`)
+
+| Doctor | Call-out Chance | Notes |
+|---|---|---|
+| Janeen, Dhiwya | 3% | Universal favorites / beloved mentors |
+| Lucien, Jason | 6% | Respectful mentors & athletes |
+| Ken | 10% | Understandable grievance culture |
+| Kaya, Raj, Lidiya | 15% | High tempo / intense routines |
+| Eugene, Dharma | 22% | Classic curmudgeon / side effects |
+| Amanda | 40% | Legendarily moody |
+| Fallback | 15% | Missing or custom doctors |
+
+Each waiting helper rolls independently per shift using a seeded generator (`${seed}:attendance:${doctor}:${id}`). Silhouettes still render in locked rooms; opening reveals absence and doctor-specific humorous reason banner. Absence state is preserved in shift saves (`absent`).
+
 ## Music (`src/config/music.ts`, songs in `src/data/music.ts`)
 | Value | Current | Notes |
 |---|---|---|

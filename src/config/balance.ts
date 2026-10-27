@@ -430,6 +430,22 @@ export const BALANCE = {
     lucien: 1.5,
     ken: 1.25,
   },
+  /**
+   * CALL-OUTS (Noah, Oct 2026; core/attendance.ts): each helper who waits in a room rolls once per shift, on their own,
+   * with this chance of calling out. Lower affinity with the doctor on shift = more call-outs. Their silhouette still
+   * waits in the room; opening it shows they're out, and why (data/callOuts.ts). A doctor missing here uses `fallback`.
+   */
+  attendance: {
+    callOutChance: {
+      janeen: 0.03, dhiwya: 0.03,
+      lucien: 0.06, jason: 0.06,
+      ken: 0.1,
+      kaya: 0.15, raj: 0.15, lidiya: 0.15,
+      eugene: 0.22, dharma: 0.22,
+      amanda: 0.4,
+    } as Record<string, number>,
+    fallback: 0.15,
+  },
   /** What a hired Pal has over Eugene (on top of their signature move). toolDamage = damage × with every tool. */
   doctors: {
     kaya: { moveSpeed: 1.12, toolDamage: 1.1 },

@@ -35,6 +35,8 @@ export interface ShiftSave {
   snacks: string[];
   /** Helpers let out of their rooms this shift (they stay all shift). */
   helpers: string[];
+  /** Helpers whose call-out was already revealed this shift (their silhouette doesn't come back). */
+  absent?: string[];
   provider?: { pantry: number[]; ingredient: number };
   claimDeniedChance: number;
   /** Game time played so far (the Discharge Summary's time survived). */
@@ -87,6 +89,7 @@ export function savedShift(): ShiftSave | undefined {
       slot: Math.min(loadout.length - 1, Math.floor(num(r.slot))),
       snacks: strings(r.snacks),
       helpers: strings(r.helpers),
+      absent: strings(r.absent),
       claimDeniedChance: num(r.claimDeniedChance),
       playedMs: num(r.playedMs),
       stats: { ...stats, kills: { ...(stats.kills ?? {}) }, achievements: strings(stats.achievements) },
