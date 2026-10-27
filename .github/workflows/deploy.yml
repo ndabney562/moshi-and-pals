@@ -17,7 +17,7 @@ concurrency:
 jobs:
   build:
     if: github.ref == 'refs/heads/main'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4
@@ -30,7 +30,10 @@ jobs:
       - run: npm run test:unit
       - run: npm run build
       - run: npm run test:bundle
+      - name: Configure Ubuntu package downloads
+        run: sudo env GITHUB_ACTIONS="$GITHUB_ACTIONS" bash scripts/ci-apt.sh
       - run: npx playwright install --with-deps chromium webkit
+        timeout-minutes: 10
       - run: npm run test:regression
       - run: npm run smoke
       - run: npm run verify:bundle
