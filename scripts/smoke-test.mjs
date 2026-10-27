@@ -1539,6 +1539,10 @@ try {
 
   check(errors.length === 0, `no console errors${errors.length ? ': ' + errors.join(' | ') : ''}`);
 
+  // Finished shifts otherwise keep rendering and spawning germs behind every later scenario.
+  // Closing the page retains this context's saved progress for the debug check below.
+  await page.close();
+
   // Debug/stress switches: ?round=6&copays=999&god&fps=30
   const dbg = await context.newPage();
   labelWaits(dbg);
@@ -1573,7 +1577,7 @@ try {
   check(dbgState.fps > 0 && dbgState.fps <= 34, `?fps=30 caps the frame rate (${dbgState.fps} FPS)`);
   check(/p95/.test(dbgState.overlay) && /germs \d+/.test(dbgState.overlay), `debug overlay shows frame times and counts (${dbgState.overlay.split('\n')[0]})`);
   check(dbgErrors.length === 0, `no errors in debug mode${dbgErrors.length ? ': ' + dbgErrors.join(' | ') : ''}`);
-  await dbg.close();
+  await context.close();
 
   // TODAY'S SHIFT, MODIFIERS, DIFFICULTY (M17)
   const fresh17 = async (query = '', init) => {
@@ -1735,6 +1739,7 @@ try {
   await pp.screenshot({ path: 'smoke-portrait.png' });
   check(purgedTall, 'tapping SINUS PURGE works while the phone is upright');
   check(tallErrors.length === 0, `no errors in portrait${tallErrors.length ? ': ' + tallErrors.join(' | ') : ''}`);
+  await tall.close();
 
   // OFFLINE + UPDATES: the service worker caches what the game loaded, so it launches with no network;
   // a newer version.json puts UPDATE READY on the title screen

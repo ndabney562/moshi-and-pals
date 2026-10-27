@@ -40,6 +40,14 @@ The full simulator rerun also exposed stale WKWebView dynamic viewport CSS after
 
 Final local repair validation: 122 unit, 70 Chromium/WebKit regression, 206 legacy smoke, 6 artifact/worker, 36 Swift and 7 simulator tests passed; type checks, production build and sealed-bundle verification passed. Logs: `/private/tmp/moshi-resume-final-web.log`, `/private/tmp/moshi-resume-swift.log`, `/private/tmp/moshi-resume-ios-final.log`. Tested source fingerprint: `6dbb5056fff19f69d64e4136cf1a19fd7ef45d554f280461577ce4b823b888bd`. This follow-up changes native wake/rotation handling and test diagnostics, with no new gameplay features.
 
+## Pages smoke-runner cleanup
+
+PR #62 merged and main CI passed. Its first Pages run had one Linux WebKit offline-art request failure; 20 repeated unchanged Mac WebKit offline checks passed. The unchanged Pages rerun passed all 70 Chromium/WebKit cases, then exceeded the 45-minute build limit during legacy smoke. GitHub's check annotation confirms the time limit; the completed log recorded passing checks through the front desk with no smoke assertion failures (`/private/tmp/moshi-pages-timeout.log`). The local Linux browser-image download stalled, so no local Linux reproduction of the intermittent image error was established.
+
+The smoke runner retained its completed primary game page and portrait context while later scenarios ran. Those live shifts continued rendering in the background. It now closes the completed primary page before debug checks, closes that context after debug checks, and closes the portrait context immediately after its assertions. All 206 assertions, the Retina device scale and the workflow time limit remain intact. Failed Pages runs now retain `test-results` artifacts for seven days, including available browser traces.
+
+The complete local web gate was rerun with `CI=1`, the installed Chrome executable and CI's threefold smoke waits: type checks/build passed, 122 unit, 70 browser, 206 smoke and 6 bundle/worker checks passed. Log: `/private/tmp/moshi-ci-cleanup-web.log`. Workflow YAML parsed successfully and sealed-bundle verification passed. Production fingerprint remains `6dbb5056fff19f69d64e4136cf1a19fd7ef45d554f280461577ce4b823b888bd`; the previously passing 36 Swift and 7 simulator checks cover this identical game bundle. They were not rerun for the test-runner/workflow-only cleanup.
+
 ## Reviewable change list
 
 1. Added seven approved providers, shared procedural art, provider-specific dialogue and their first/second specials.
