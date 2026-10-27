@@ -136,6 +136,8 @@ try {
   await page.waitForFunction(() => window.game.scene.getScene('Game').germs.countActive(true) > 0, null, { timeout: 90000 });
   await page.evaluate(() => {
     const scene = window.game.scene.getScene('Game');
+    // Keep Eugene untouchable while stationary checks run (until the strand and death checks later)
+    scene.player.invulnerableUntil = Number.MAX_SAFE_INTEGER;
     for (const g of scene.germs.getChildren()) if (g.active) g.setPosition(scene.player.x + 300 + Math.random() * 40, scene.player.y - 20 + Math.random() * 40);
   });
   // Let the germs come to Eugene (within spray range) before spraying
@@ -159,6 +161,7 @@ try {
     // keep the nearest one in front of Eugene, so auto-aim and the spray get a fair go
     await page.evaluate(() => {
       const scene = window.game.scene.getScene('Game');
+      if (scene.sprayer.ammo < 24) scene.sprayer.ammo = 96;
       const e = scene.player;
       const live = scene.germs.getChildren().filter((g) => g.active);
       if (live.length === 0 || live.some((g) => Math.hypot(g.x - e.x, g.y - e.y) < 170)) return;
@@ -186,7 +189,15 @@ try {
   }));
   check(firstAch.saved.includes('firstKill') && firstAch.toast.startsWith('🏆'), `the first kill unlocks an achievement, saved, with a toast (${JSON.stringify(firstAch)})`);
 
-  // Tap the Refill button
+  // Tap the Refill button (ensure a partially used bottle and full reserve jug after the extended CI spray hold)
+  await page.evaluate(() => {
+    const scene = window.game.scene.getScene('Game');
+    scene.sprayer.refillStartedAt = -1;
+    scene.sprayer.spilled = false;
+    if (scene.sprayer.ammo >= scene.sprayer.def.capacity) scene.sprayer.ammo = 60;
+    scene.sprayer.reserve = scene.sprayer.def.reserve;
+    scene.sprayer.emitChanged(scene.time.now);
+  });
   const refillAt = await buttonAt('refillButton');
   await page.touchscreen.tap(refillAt.x, refillAt.y);
   // Refill takes 1.1 s of game time (which runs slower than real time when frames drop)
