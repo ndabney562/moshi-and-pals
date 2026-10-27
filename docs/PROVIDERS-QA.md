@@ -26,6 +26,18 @@ Commands use the locally installed Node 22 runtime, `npm run test:all`, `swift t
 
 One targeted WebKit menu test initially tapped a freshly redrawn interactive object before Phaser registered it. The test now waits for rendering frames, preserving the actual touch purchase assertions. Dhiwya marks are keyed to enemy spawn generations so pooled enemies cannot inherit a mark; locked second requests cannot bypass ownership checks. The first simulator run passed six tests but hit an Xcode app-launch background-assertion timeout in the achievements test; the full rerun against the final bundle passed all seven tests, including achievements and real WKWebView startup. No source-photo files, unrelated generated `output/` files or test traces are intended for the commit.
 
+## Milestone 6: Shared Online Leaderboard Backend & Integration (QA report)
+
+- **Worker API & D1 backend verified**: Cloudflare Worker endpoint handling `POST /api/scores` and `GET /api/scores` operates under the $0 free tier, using parameterized SQLite queries (`INSERT INTO scores`, `WHERE mode = ? AND difficulty = ?`), <= 2KB payload guardrails, and public edge caching headers (`Cache-Control: public, max-age=15`).
+- **Grapheme validation verified**: Player handles are constrained to 1–10 visible characters via Unicode grapheme cluster segmentation, rejecting whitespace-only, control characters, or oversized names.
+- **Client & Leaderboard UI verified**: `LeaderboardScene` renders top 10 scores with interactive mode pills (`STANDARD` vs `FLU SEASON (ENDLESS)`) and difficulty pills (`WALK-IN`, `URGENT`, `TRAUMA`). Player callsign can be edited and persisted to `localStorage`.
+- **Navigation entry points verified**: Accessible from Title Scene right menu card (`🏆 LEADERBOARD`) and GameOverScene Discharge Summary (`LEADERBOARD`), with clean return navigation to both callers.
+- **Test execution summary**:
+  - TypeScript type check: Passed with 0 errors (`tsc --project tsconfig.tests.json`).
+  - Unit tests: 24 test files, 153 passed (`npm run test:unit`).
+  - Web bundle & worker checks: 6 passed (`npm run test:bundle`).
+  - Playwright browser regression: 108 passed across Chromium and WebKit (`npm run test:regression`).
+
 ## Milestone 5: Endless Flu Season Mode (QA report)
 
 - **Mechanics verified**: Endless Flu Season (`mode: 'fluSeason'`) runs as an independent infinite mode with continuous wave spawning and rising outbreak pressure (`BALANCE.fluSeasonMode.outbreakPressure`).

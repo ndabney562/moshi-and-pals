@@ -9,6 +9,7 @@ import { registerOffline, watchForUpdates } from './core/updates';
 import { applyOrientation, isPortrait, patchForPortrait } from './core/orientation';
 import { BoardScene } from './scenes/BoardScene';
 import { LockerScene } from './scenes/LockerScene';
+import { LeaderboardScene } from './scenes/LeaderboardScene';
 import { BootScene } from './scenes/BootScene';
 import { GameOverScene } from './scenes/GameOverScene';
 import { GameScene } from './scenes/GameScene';
@@ -43,7 +44,7 @@ const game = new Phaser.Game({
   physics: { default: 'arcade', arcade: { debug: false } },
   input: { activePointers: 3 },
   render: { antialias: true, powerPreference: 'high-performance' },
-  scene: [BootScene, ProvidersScene, TitleScene, GameScene, HudScene, GameOverScene, BoardScene, LockerScene, NativeScene],
+  scene: [BootScene, ProvidersScene, TitleScene, GameScene, HudScene, GameOverScene, BoardScene, LockerScene, LeaderboardScene, NativeScene],
 });
 
 patchForPortrait(game);

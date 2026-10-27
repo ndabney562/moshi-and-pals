@@ -3,6 +3,8 @@ import { toTitle } from '../core/native';
 import { COLORS } from '../config/theme';
 import type { RunResult } from '../core/events';
 import { CREDITS } from '../data/miracleCure';
+import { getSavedPlayerName, submitOnlineScore } from '../core/leaderboard';
+import type { DifficultyId } from '../data/difficulties';
 
 /**
  * Game over: the DISCHARGE SUMMARY. Shown over the frozen clinic. What killed you, how far you got,
@@ -54,6 +56,24 @@ export class GameOverScene extends Phaser.Scene {
   private summary(result: RunResult): void {
     const { width, height } = this.scale;
     const font = 'system-ui, -apple-system, sans-serif';
+
+    const diffId: DifficultyId = (result.difficultyId ?? (
+      result.difficulty?.toLowerCase().includes('walk') ? 'walkIn' :
+      result.difficulty?.toLowerCase().includes('trauma') ? 'trauma' : 'urgent'
+    )) as DifficultyId;
+
+    if (result.score > 0) {
+      submitOnlineScore({
+        name: getSavedPlayerName(),
+        score: result.score,
+        round: result.round,
+        mode: result.mode ?? 'standard',
+        difficulty: diffId,
+        provider: result.character ?? 'eugene',
+        streak: result.bestStreak,
+        kills: result.kills,
+      }).catch(() => undefined);
+    }
     const title = this.add.text(width / 2, height * 0.085, result.clockedOut ? 'SHIFT COMPLETE' : 'CONTAMINATED', {
       fontFamily: font, fontSize: '58px', fontStyle: '900', color: result.clockedOut ? '#7fffd4' : '#ff6b6b',
     }).setOrigin(0.5).setShadow(0, 5, '#000', 10).setScale(0.6).setAlpha(0);
@@ -141,10 +161,18 @@ export class GameOverScene extends Phaser.Scene {
       this.tweens.add({ targets: ach, alpha: 1, duration: 400, delay: 600 });
     }
 
-    // One big PLAY AGAIN (plus the menu), ready the moment the summary lands
+    // Action buttons: PLAY AGAIN, LEADERBOARD, and MAIN MENU
     const by = Math.min(height - 56, cy + ch + 70);
-    this.makeButton(width / 2 - 130, by, 360, 'PLAY AGAIN', 0x2a9d8f, () => this.scene.start('Game', { resume: false }));
-    this.makeButton(width / 2 + 200, by, 220, 'MAIN MENU', 0x3f5f66, () => {
+    this.makeButton(width / 2 - 250, by, 250, 'PLAY AGAIN', 0x2a9d8f, () => this.scene.start('Game', { resume: false }));
+    this.makeButton(width / 2 + 10, by, 220, 'LEADERBOARD', 0x1f4f55, () => {
+      this.scene.pause('GameOver');
+      this.scene.launch('Leaderboard', {
+        returnTo: 'GameOver',
+        mode: result.mode ?? 'standard',
+        difficulty: diffId,
+      });
+    });
+    this.makeButton(width / 2 + 250, by, 200, 'MAIN MENU', 0x3f5f66, () => {
       this.scene.stop('Game');
       toTitle(this);
     });
@@ -154,7 +182,8 @@ export class GameOverScene extends Phaser.Scene {
   private makeButton(x: number, y: number, w: number, text: string, color: number, onTap: () => void): void {
     const h = 72;
     const bg = this.add.rectangle(x, y, w, h, color).setStrokeStyle(3, 0xe8fff9, 0.9).setInteractive({ useHandCursor: true });
-    this.add.text(x, y, text, { fontFamily: 'system-ui, sans-serif', fontSize: '28px', fontStyle: '900', color: COLORS.uiText }).setOrigin(0.5);
+    const size = text.length > 9 ? '22px' : '28px';
+    this.add.text(x, y, text, { fontFamily: 'system-ui, sans-serif', fontSize: size, fontStyle: '900', color: COLORS.uiText }).setOrigin(0.5);
     bg.on('pointerdown', () => bg.setScale(0.95));
     bg.on('pointerup', () => { bg.setScale(1); onTap(); });
     bg.on('pointerout', () => bg.setScale(1));

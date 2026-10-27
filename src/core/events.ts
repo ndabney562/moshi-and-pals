@@ -154,8 +154,10 @@ export interface RunResult {
   specialty: string;
   /** Who was on shift, as the chart names them. */
   chart: string;
+  character?: string;
   /** M17: the difficulty's name, the modifiers in play (names), and Today's Shift's date if it was one. */
   difficulty: string;
+  difficultyId?: string;
   modifiers: string[];
   daily?: string;
   mode?: 'standard' | 'fluSeason';

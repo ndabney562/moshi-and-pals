@@ -1,0 +1,14 @@
+# Cloudflare Worker configuration for Moshi and Pals Online Leaderboard
+# Enforces $0 free-tier constraints (Workers free plan + D1 free tier; no paid overages)
+name = "moshi-leaderboard"
+main = "index.ts"
+compatibility_date = "2026-10-26"
+
+# Free tier usage limits:
+# Workers: 100,000 requests/day
+# D1: 5M row reads/day, 100k row writes/day, 5 GB storage
+
+[[d1_databases]]
+binding = "DB"
+database_name = "moshi-leaderboard-db"
+database_id = "moshi-leaderboard-id"
