@@ -48,6 +48,12 @@ The smoke runner retained its completed primary game page and portrait context w
 
 The complete local web gate was rerun with `CI=1`, the installed Chrome executable and CI's threefold smoke waits: type checks/build passed, 122 unit, 70 browser, 206 smoke and 6 bundle/worker checks passed. Log: `/private/tmp/moshi-ci-cleanup-web.log`. Workflow YAML parsed successfully and sealed-bundle verification passed. Production fingerprint remains `6dbb5056fff19f69d64e4136cf1a19fd7ef45d554f280461577ce4b823b888bd`; the previously passing 36 Swift and 7 simulator checks cover this identical game bundle. They were not rerun for the test-runner/workflow-only cleanup.
 
+## Ubuntu dependency-download reliability
+
+PR #63 merged after both CI runs passed. Two fresh Pages runners then spent minutes slowly downloading Ubuntu libraries from `azure.archive.ubuntu.com`; the first was cancelled after more than 17 minutes. Similar mirror stalls are documented in [runner-images issue 14594](https://github.com/actions/runner-images/issues/14594). Linux build jobs now pin Ubuntu 24.04, use Ubuntu's official HTTPS archive through the existing runner mirror list, and bound APT retries and connection timeouts. Browser installation has a ten-minute step limit; dependency errors still fail the build. `scripts/ci-apt.sh` refuses execution outside a root Ubuntu 24.04 GitHub Actions environment and checks the expected mirror-list layout before writing anything.
+
+Local validation: both workflow YAML files and shell syntax parsed; the helper refused the local Mac. An actual amd64 Ubuntu 24.04 container with the runner's mirror-list layout recognized the retry/timeout settings, verified signed HTTPS indexes and downloaded the fonts and codec packages implicated in the stalled setup. The minimal image needed its standard signed CA package installed before HTTPS validation; certificate and archive-signature verification stayed enabled. Validation log: `/private/tmp/moshi-apt-container.log`. Host APT files were untouched. The complete web gate passed again with CI timing: 122 unit, 70 browser, 206 smoke and 6 bundle/worker checks, plus type/build and sealed-bundle checks (`/private/tmp/moshi-apt-final-web.log`). Production fingerprint remains `6dbb5056fff19f69d64e4136cf1a19fd7ef45d554f280461577ce4b823b888bd`; the existing native test results still cover the unchanged game and Swift sources.
+
 ## Reviewable change list
 
 1. Added seven approved providers, shared procedural art, provider-specific dialogue and their first/second specials.

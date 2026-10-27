@@ -19,7 +19,7 @@ concurrency:
 
 jobs:
   build-and-smoke-test:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4
@@ -32,10 +32,14 @@ jobs:
       - run: npm run test:unit
       - run: npm run build
       - run: npm run test:bundle
+      - name: Configure Ubuntu package downloads
+        run: sudo env GITHUB_ACTIONS="$GITHUB_ACTIONS" bash scripts/ci-apt.sh
       - name: Install the pinned Chromium engine
+        timeout-minutes: 10
         if: github.event_name != 'workflow_dispatch' || !inputs.full
         run: npx playwright install --with-deps chromium
       - name: Install both browser engines for the full gate
+        timeout-minutes: 10
         if: github.event_name == 'workflow_dispatch' && inputs.full
         run: npx playwright install --with-deps chromium webkit
       - name: Fast mobile smoke checks
