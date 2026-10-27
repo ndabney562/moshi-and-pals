@@ -26,6 +26,17 @@ Commands use the locally installed Node 22 runtime, `npm run test:all`, `swift t
 
 One targeted WebKit menu test initially tapped a freshly redrawn interactive object before Phaser registered it. The test now waits for rendering frames, preserving the actual touch purchase assertions. Dhiwya marks are keyed to enemy spawn generations so pooled enemies cannot inherit a mark; locked second requests cannot bypass ownership checks. The first simulator run passed six tests but hit an Xcode app-launch background-assertion timeout in the achievements test; the full rerun against the final bundle passed all seven tests, including achievements and real WKWebView startup. No source-photo files, unrelated generated `output/` files or test traces are intended for the commit.
 
+## Milestone 5: Endless Flu Season Mode (QA report)
+
+- **Mechanics verified**: Endless Flu Season (`mode: 'fluSeason'`) runs as an independent infinite mode with continuous wave spawning and rising outbreak pressure (`BALANCE.fluSeasonMode.outbreakPressure`).
+- **Wave flow & short supply windows**: Waves transition without stalling if the queue is empty and 2 or fewer germs linger (or after `maxWaveBreatherMs = 3500`), providing a 2.0-second supply window (`supplyWindowMs = 2000`) before the next wave immediately begins.
+- **Score isolation**: Flu Season personal records (`save.fluSeason`) are stored and tracked independently from standard Walk-In, Urgent, and Trauma records.
+- **UI & HUD verified**: Mode toggle on Title Scene switches cleanly between `STANDARD` and `FLU SEASON`; in-game HUD displays wave counter and supply window alerts; Discharge Summary reflects Endless Flu Season mode.
+- **Test execution summary**:
+  - TypeScript type check: Passed with 0 errors (`tsc --project tsconfig.tests.json`).
+  - Unit tests: 23 test files, 147 passed (`npm run test:unit`).
+  - Playwright browser regression: 104 passed across Chromium and WebKit (`npm run test:regression`).
+
 ## Milestone 4: Alexandra, Essence Scribe (QA report)
 
 - **Mechanics verified**: Alexandra fires multi-target ink and steam bursts hitting up to 4 targets for 45 damage every 700 ms, delivering 64.3 single-target DPS and up to 257.1 multi-target DPS, exceeding Omar, Alan, and Donald combined.

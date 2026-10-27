@@ -255,7 +255,12 @@ export class HudScene extends Phaser.Scene {
     const onHealth = (p: HealthPayload) => this.showHealth(p);
     const onHurt = () => this.flashDamage();
     const onScore = (p: { score: number }) => this.scoreText.setText(`SCORE ${p.score.toLocaleString()}`);
-    const onRound = (p: RoundPayload) => {
+    const onRound = (p: RoundPayload & { mode?: string }) => {
+      if (p.mode === 'fluSeason') {
+        this.roundText.setText(`WAVE ${p.round} (FLU)`);
+        this.showBanner(`FLU WAVE ${p.round}`, p.title || 'Outbreak pressure rising!', 2000, '#ff9999');
+        return;
+      }
       if (p.special) {
         this.roundText.setText(`ROUND ${p.round}`);
         this.showBanner(p.special, p.title.split(': ').slice(1).join(': '), 2600, '#ffe66d');
@@ -264,8 +269,10 @@ export class HudScene extends Phaser.Scene {
       this.roundText.setText(`ROUND ${p.round}`);
       this.showBanner(`ROUND ${p.round}`, p.title);
     };
-    const onCleared = (p: { round: number }) => {
-      if (this.spotless?.round === p.round) {
+    const onCleared = (p: { round: number; mode?: string }) => {
+      if (p.mode === 'fluSeason') {
+        this.showBanner('SUPPLY WINDOW', `Wave ${p.round} held! 2-second supply breather.`, 1600, '#7fffd4');
+      } else if (this.spotless?.round === p.round) {
         this.showBanner('SPOTLESS!', `Round ${p.round} without a scratch. +$${this.spotless.copays} Copays`, 2000);
       } else {
         this.showBanner('CLEARED!', `Round ${p.round} sanitized. Refill while you can.`, 1800);

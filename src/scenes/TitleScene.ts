@@ -6,7 +6,7 @@ import { doctorUnlocked, progress } from '../core/progress';
 import { saveSettings, settings } from '../core/settings';
 import { characterById } from '../data/characters';
 import { readSafeArea } from '../core/safeArea';
-import { chooseShift, dailyShift, localDate, savedDifficulty } from '../core/shift';
+import { chooseShift, dailyShift, localDate, savedDifficulty, savedMode } from '../core/shift';
 import { savedShift } from '../core/shiftSave';
 import { dailyBest } from '../core/save';
 import { BALANCE } from '../config/balance';
@@ -39,6 +39,8 @@ export class TitleScene extends Phaser.Scene {
   private dailyBestText!: Phaser.GameObjects.Text;
   private difficultyButton!: Phaser.GameObjects.Text;
   private difficultyInfo!: Phaser.GameObjects.Text;
+  private modeButton!: Phaser.GameObjects.Text;
+  private modeInfo!: Phaser.GameObjects.Text;
   /** The pre-shift panel: today's two modifiers, the day's best, CLOCK IN / BACK. */
   private dailyPanel!: Phaser.GameObjects.Container;
   private panelDim!: Phaser.GameObjects.Rectangle;
@@ -80,7 +82,8 @@ export class TitleScene extends Phaser.Scene {
     // CONTINUE SHIFT: pick a saved shift up again at the start of its round
     const saved = savedShift();
     const diffName = saved ? difficultyById(saved.shift.difficulty).name.toUpperCase() : '';
-    this.continueButton = this.add.text(0, 0, saved ? `▶ CONTINUE SHIFT · ROUND ${saved.round} · ${saved.shift.daily ? "TODAY'S SHIFT" : diffName}` : '', {
+    const modeLabel = saved?.shift.mode === 'fluSeason' ? 'FLU SEASON' : saved?.shift.daily ? "TODAY'S SHIFT" : diffName;
+    this.continueButton = this.add.text(0, 0, saved ? `▶ CONTINUE SHIFT · ROUND ${saved.round} · ${modeLabel}` : '', {
       fontFamily: font, fontSize: '24px', fontStyle: '900', color: '#0d2b2e', backgroundColor: '#7fffd4', padding: { x: 18, y: 10 },
     }).setOrigin(0.5).setVisible(!!saved).setInteractive({ useHandCursor: true });
     this.continueButton.on('pointerdown', (_p: Phaser.Input.Pointer, _x: number, _y: number, e: Phaser.Types.Input.EventData) => {
@@ -142,7 +145,21 @@ export class TitleScene extends Phaser.Scene {
     this.difficultyInfo = this.add.text(0, 0, '', {
       fontFamily: font, fontSize: '15px', fontStyle: 'bold', color: COLORS.uiText, backgroundColor: '#0d2b2ecc', padding: { x: 8, y: 4 },
     }).setOrigin(0, 0.5);
+
+    // Mode switch: standard vs endless flu season
+    this.modeButton = this.add.text(0, 0, '', {
+      fontFamily: font, fontSize: '20px', fontStyle: '900', color: COLORS.uiText, backgroundColor: '#0d2b2ecc', padding: { x: 14, y: 9 },
+    }).setOrigin(0, 1).setInteractive({ useHandCursor: true });
+    this.modeButton.on('pointerdown', (_p: Phaser.Input.Pointer, _x: number, _y: number, e: Phaser.Types.Input.EventData) => {
+      e.stopPropagation();
+      this.cycleMode();
+    });
+    this.modeInfo = this.add.text(0, 0, '', {
+      fontFamily: font, fontSize: '15px', fontStyle: 'bold', color: COLORS.uiText, backgroundColor: '#0d2b2ecc', padding: { x: 8, y: 4 },
+    }).setOrigin(0, 0.5);
+
     this.showDifficulty();
+    this.showMode();
     this.showDailyBest();
     this.buildDailyPanel();
 
@@ -154,7 +171,7 @@ export class TitleScene extends Phaser.Scene {
     this.input.keyboard?.once('keydown', () => (this.dailyPanel.visible ? this.begin(localDate()) : this.begin()));
     this.input.on('pointerdown', (_p: Phaser.Input.Pointer, over: Phaser.GameObjects.GameObject[]) => {
       if (this.dailyPanel.visible) return;
-      const buttons: Phaser.GameObjects.GameObject[] = [this.providersButton, this.updatePill, this.continueButton, this.boardButton, this.lockerButton, this.dailyButton, this.difficultyButton];
+      const buttons: Phaser.GameObjects.GameObject[] = [this.providersButton, this.updatePill, this.continueButton, this.boardButton, this.lockerButton, this.dailyButton, this.difficultyButton, this.modeButton];
       if (!buttons.some((b) => over.includes(b))) this.begin();
     });
   }
@@ -172,26 +189,29 @@ export class TitleScene extends Phaser.Scene {
     const rightWidth = Math.min(500, width * 0.46);
     const leftWidth = Math.min(460, width * 0.4);
     this.menuCards.clear().fillStyle(0x082225, 0.9).lineStyle(1, 0x7fffd4, 0.3);
-    this.menuCards.fillRoundedRect(Math.max(12, safe.left + 8), height - bottom - 254, leftWidth, 254, 18);
-    this.menuCards.strokeRoundedRect(Math.max(12, safe.left + 8), height - bottom - 254, leftWidth, 254, 18);
+    this.menuCards.fillRoundedRect(Math.max(12, safe.left + 8), height - bottom - 266, leftWidth, 266, 18);
+    this.menuCards.strokeRoundedRect(Math.max(12, safe.left + 8), height - bottom - 266, leftWidth, 266, 18);
     this.menuCards.fillRoundedRect(right - rightWidth, height - bottom - 228, rightWidth, 228, 18);
     this.menuCards.strokeRoundedRect(right - rightWidth, height - bottom - 228, rightWidth, 228, 18);
     this.tap.setPosition(width / 2, height * 0.51);
     this.pickInfo.setWordWrapWidth(rightWidth - 32);
     this.pickInfo.setFontSize(17);
-    for (const button of [this.boardButton, this.lockerButton, this.dailyButton, this.difficultyButton]) button.setFontSize(width < 1100 ? 20 : 22);
+    for (const button of [this.boardButton, this.lockerButton, this.dailyButton, this.difficultyButton, this.modeButton]) button.setFontSize(width < 1100 ? 19 : 21);
     this.continueButton.setPosition(width / 2, height * 0.64);
     this.updatePill.setPosition(width / 2, this.continueButton.visible ? height * 0.75 : height * 0.64);
     // The left-hand column: difficulty, Today's Shift, the board (clear of the notch)
     const left = Math.max(24, readSafeArea().left + 16);
     this.boardButton.setPosition(left, height - bottom - 8);
-    this.lockerButton.setPosition(left, height - bottom - 194);
-    this.dailyButton.setPosition(left, height - bottom - 70);
-    this.dailyBestText.setPosition(left + this.dailyButton.width + 10, height - bottom - 70 - this.dailyButton.height / 2);
-    this.difficultyButton.setPosition(left, height - bottom - 132);
-    this.difficultyInfo.setPosition(left + this.difficultyButton.width + 10, height - bottom - 132 - this.difficultyButton.height / 2);
+    this.lockerButton.setPosition(left, height - bottom - 212);
+    this.modeButton.setPosition(left, height - bottom - 160);
+    this.modeInfo.setPosition(left + this.modeButton.width + 10, height - bottom - 160 - this.modeButton.height / 2);
+    this.difficultyButton.setPosition(left, height - bottom - 108);
+    this.difficultyInfo.setPosition(left + this.difficultyButton.width + 10, height - bottom - 108 - this.difficultyButton.height / 2);
+    this.dailyButton.setPosition(left, height - bottom - 56);
+    this.dailyBestText.setPosition(left + this.dailyButton.width + 10, height - bottom - 56 - this.dailyButton.height / 2);
     this.dailyBestText.setVisible(width >= 1350);
     this.difficultyInfo.setVisible(width >= 1350);
+    this.modeInfo.setVisible(width >= 1350);
     this.layoutDailyPanel();
     this.providersButton.setPosition(right-16,height-bottom-24);
     this.pickInfo.setPosition(right - 16, height - bottom - 154);
@@ -208,6 +228,20 @@ export class TitleScene extends Phaser.Scene {
     const d = difficultyById(savedDifficulty());
     this.difficultyButton.setText(`🩺 ${d.name.toUpperCase()} ▸`);
     this.difficultyInfo.setText(d.blurb);
+  }
+
+  /** The mode switch shows standard or fluSeason. */
+  private showMode(): void {
+    const isFlu = savedMode() === 'fluSeason';
+    this.modeButton.setText(isFlu ? '🤧 FLU SEASON ▸' : '🏥 STANDARD ▸');
+    this.modeInfo.setText(isFlu ? 'Endless outbreak' : 'Scheduled breaks');
+  }
+
+  private cycleMode(): void {
+    settings.mode = settings.mode === 'fluSeason' ? 'standard' : 'fluSeason';
+    saveSettings();
+    this.showMode();
+    this.layout();
   }
 
   /** Walk-In → Urgent → Trauma Center → Walk-In (saved for next time). */
@@ -314,7 +348,8 @@ export class TitleScene extends Phaser.Scene {
     if (this.started) return;
     this.started = true;
     // (A continued Today's Shift stays one for PLAY AGAIN)
-    chooseShift(resume ? savedShift()?.shift.daily : daily);
+    const mode = resume ? savedShift()?.shift.mode : (daily ? undefined : (savedMode() === 'fluSeason' ? 'fluSeason' : undefined));
+    chooseShift(resume ? savedShift()?.shift.daily : daily, mode);
     // Fade to black, then the clinic fades in from black (GameScene/HudScene.create)
     this.input.enabled = false;
     this.cameras.main.fadeOut(DISPLAY.fadeOutMs, 0, 0, 0);

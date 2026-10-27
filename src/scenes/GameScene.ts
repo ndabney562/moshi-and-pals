@@ -381,7 +381,7 @@ export class GameScene extends Phaser.Scene {
     this.bossesDefeated = 0;
     this.applyResidency(resume?.specialty);
     this.slot = 0;
-    this.waves = new WaveDirector(this.time.now, resume?.round ?? DEBUG.startRound);
+    this.waves = new WaveDirector(this.time.now, resume?.round ?? DEBUG.startRound, this.shift.mode);
     this.waves.intervalMult = this.diff.spawnInterval;
     if (this.hasMod('fluSeason')) {
       // FLU SEASON: Viral Sprinters twice as often, and from round 1
@@ -2911,7 +2911,7 @@ export class GameScene extends Phaser.Scene {
     const sh = this.shift;
     if (sh.daily) this.achieve('clockedIn');
     // Records per difficulty; Today's Shift keeps the day's best instead (core/save.ts)
-    const record = recordRun(this.score, round, st.bestStreak, this.kills, sh.difficulty, sh.daily);
+    const record = recordRun(this.score, round, st.bestStreak, this.kills, sh.difficulty, sh.daily, sh.mode);
     // CME Credits for the Residency Board (and lifetime kills for the Atlas); the day's first Today's Shift earns a bonus
     const dailyBonus = sh.daily && record.firstDailyToday ? BALANCE.daily.firstFinishCme : 0;
     const cme = creditsFor(round, st.achievements.length, this.bossesDefeated) + dailyBonus;
@@ -2941,6 +2941,7 @@ export class GameScene extends Phaser.Scene {
       bank,
       specialty: this.specialtyName,
       difficulty: difficultyById(sh.difficulty).name,
+      mode: sh.mode,
       modifiers: sh.mods.map((id) => modifierById(id)?.name ?? id),
       daily: sh.daily,
       dailyBonus,

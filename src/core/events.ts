@@ -158,6 +158,7 @@ export interface RunResult {
   difficulty: string;
   modifiers: string[];
   daily?: string;
+  mode?: 'standard' | 'fluSeason';
   /** CME Credits (included in `cme`) for the day's first finished Today's Shift. */
   dailyBonus?: number;
   /** The Miracle Cure's alternate ending: the doctor clocked out instead of going down. */

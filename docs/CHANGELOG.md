@@ -1,5 +1,14 @@
 # Changelog
 
+## Endless Flu Season Mode (Milestone 5)
+
+- **Dedicated infinite shift mode**: Endless Flu Season (`mode: 'fluSeason'`) runs as an independent infinite mode, keeping mode-specific score records distinct from standard Walk-In, Urgent, and Trauma records.
+- **Continuous waves & rising outbreak pressure**: WaveDirector delivers continuous waves (`BALANCE.fluSeasonMode.outbreakPressure`), scaling germ count (`14 + 4*(r-1) + 0.25*(r-1)^2`), max on-screen limit (up to 34), cadence (`180ms - 680ms`), and HP/speed. Viral Sprinters and Sneezers appear from wave 1 with elevated spawn weights.
+- **Continuous wave progression & short supply windows**: Waves transition without stalling if the queue empties and 2 or fewer germs linger (or after `maxWaveBreatherMs = 3500`), giving a concise 2.0-second supply window (`supplyWindowMs = 2000`) before the next wave immediately begins.
+- **UI & HUD integration**: Added Title Scene mode toggle (`STANDARD` vs `FLU SEASON`), in-shift HUD banner alerts (`FLU WAVE [N]`, `SUPPLY WINDOW`), and Discharge Summary classification.
+- **Save & Quit persistence**: Active shift mode persists in `ShiftSave` (`mode: 'fluSeason'`), resuming seamlessly via CONTINUE SHIFT.
+- **Testing**: Full unit coverage in `tests/unit/flu-season-mode.test.ts` and Chromium/WebKit Playwright E2E coverage in `tests/e2e/flu-season-mode.spec.ts`.
+
 ## Alexandra, Premium Masked-Essence Combat Helper (Milestone 4)
 
 - **Alexandra added to Scribe roster**: Original floating essence with a black medical mask, cyan aura, and undulating cloud hover animation (`scribe-alexandra`).

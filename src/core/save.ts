@@ -1,4 +1,5 @@
 import { DIFFICULTIES, type DifficultyId } from '../data/difficulties';
+import type { ShiftMode } from './shift';
 
 /**
  * Saved progress on this device: personal records. Versioned, so updates never wipe progress:
@@ -31,6 +32,7 @@ export interface SaveData {
   daily: DailyRecord;
   totalKills: number;
   runs: number;
+  fluSeason?: Record<DifficultyId, Records>;
 }
 
 const KEY = 'moshi.save.v3';
@@ -61,7 +63,7 @@ function read(key: string): Record<string, unknown> | undefined {
 }
 
 export function loadSave(): SaveData {
-  const save: SaveData = { version: 3, records: allRecords(), daily: noDaily(), totalKills: 0, runs: 0 };
+  const save: SaveData = { version: 3, records: allRecords(), daily: noDaily(), totalKills: 0, runs: 0, fluSeason: allRecords() };
   const v3 = read(KEY);
   if (v3) {
     const recs = obj(v3.records);
@@ -70,6 +72,9 @@ export function loadSave(): SaveData {
     save.daily = { date: typeof daily.date === 'string' ? daily.date : '', bestScore: n(daily.bestScore), bestRound: n(daily.bestRound), finished: n(daily.finished) };
     save.totalKills = n(v3.totalKills);
     save.runs = n(v3.runs);
+    const flu = obj(v3.fluSeason);
+    save.fluSeason = allRecords();
+    for (const d of DIFFICULTIES) save.fluSeason[d.id] = recordsFrom(flu[d.id]);
     return save;
   }
   // v2 had one set of records (all Urgent: there were no difficulties yet); v1 only bestScore and bestRound
@@ -95,6 +100,12 @@ export function dailyBest(date: string): { bestScore: number; bestRound: number;
   return d.date === date ? d : { bestScore: 0, bestRound: 0, finished: 0 };
 }
 
+/** Endless Flu Season best for a difficulty. */
+export function fluSeasonBest(difficulty: DifficultyId = 'urgent'): Records {
+  const save = loadSave();
+  return save.fluSeason?.[difficulty] ?? noRecords();
+}
+
 export interface RunRecord {
   /** The records this run counted toward (its difficulty's, or the day's for Today's Shift), before and after. */
   previous: Records;
@@ -111,7 +122,7 @@ export interface RunRecord {
  * Records a finished run. Returns the previous and new records and which ones this run beat.
  * `daily` = the Today's Shift date (records go to the day, not the difficulty).
  */
-export function recordRun(score: number, round: number, bestStreak = 0, kills = 0, difficulty: DifficultyId = 'urgent', daily?: string): RunRecord {
+export function recordRun(score: number, round: number, bestStreak = 0, kills = 0, difficulty: DifficultyId = 'urgent', daily?: string, mode?: ShiftMode): RunRecord {
   const save = loadSave();
   save.totalKills += kills;
   save.runs += 1;
@@ -125,6 +136,15 @@ export function recordRun(score: number, round: number, bestStreak = 0, kills = 
     firstDailyToday = d.finished === 0;
     save.daily = { date: daily, bestScore: Math.max(d.bestScore, score), bestRound: Math.max(d.bestRound, round), finished: d.finished + 1 };
     next = { bestScore: save.daily.bestScore, bestRound: save.daily.bestRound, bestStreak: previous.bestStreak };
+  } else if (mode === 'fluSeason') {
+    if (!save.fluSeason) save.fluSeason = allRecords();
+    previous = save.fluSeason[difficulty] ?? noRecords();
+    next = {
+      bestScore: Math.max(previous.bestScore, score),
+      bestRound: Math.max(previous.bestRound, round),
+      bestStreak: Math.max(previous.bestStreak, bestStreak),
+    };
+    save.fluSeason[difficulty] = next;
   } else {
     previous = save.records[difficulty];
     next = {

@@ -85,6 +85,7 @@ export function savedShift(): ShiftSave | undefined {
         difficulty: sh.difficulty as ShiftSetup['difficulty'],
         mods: strings(sh.mods).filter((m): m is ModifierId => MODIFIERS.some((x) => x.id === m)),
         seed: sh.seed,
+        mode: sh.mode === 'fluSeason' ? 'fluSeason' : undefined,
       },
       character: typeof r.character === 'string' ? r.character : 'eugene',
       specialty: typeof r.specialty === 'string' ? r.specialty : '',
