@@ -34,6 +34,12 @@ jobs:
       - run: npm run test:regression
       - run: npm run smoke
       - run: npm run verify:bundle
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: pages-test-results
+          path: test-results
+          retention-days: 7
       - uses: actions/upload-pages-artifact@v3
         with:
           path: dist
