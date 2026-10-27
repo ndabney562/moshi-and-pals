@@ -10,3 +10,11 @@ xcuserdata/
 DerivedData/
 .build/
 .swiftpm/
+
+# Local test reports and browser traces
+test-results/
+playwright-report/
+coverage/
+
+# Local provider reference photos; excluded from published game assets
+.local/provider-references/

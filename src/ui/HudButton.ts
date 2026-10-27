@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import { settings } from '../core/settings';
 
 /** Round on-screen button with a label and optional progress ring (cooldowns, refills). */
 export class HudButton extends Phaser.GameObjects.Container {
@@ -15,10 +16,10 @@ export class HudButton extends Phaser.GameObjects.Container {
 
   constructor(scene: Phaser.Scene, readonly radius: number, text: string, private readonly color: number, onPress: () => void) {
     super(scene, 0, 0);
-    this.disc = scene.add.circle(0, 0, radius, color, 0.35).setStrokeStyle(4, color, 0.9);
+    this.disc = scene.add.circle(0, 0, radius, 0x0d2b2e, 0.72).setStrokeStyle(4, color, 0.9);
     this.ring = scene.add.graphics();
     this.label = scene.add.text(0, 0, text, {
-      fontFamily: 'system-ui, sans-serif', fontSize: '17px', fontStyle: 'bold', color: '#ffffff', align: 'center',
+      fontFamily: 'system-ui, sans-serif', fontSize: '20px', fontStyle: 'bold', color: '#ffffff', align: 'center',
     }).setOrigin(0.5).setShadow(0, 2, '#000', 3);
     // Long labels (FILE GRIEVANCE) shrink to fit inside the disc
     if (this.label.width > radius * 1.7) this.label.setScale((radius * 1.7) / this.label.width);
@@ -58,7 +59,7 @@ export class HudButton extends Phaser.GameObjects.Container {
   release(): void {
     if (this.holdMs > 0 && this.holdPointerId !== null) this.setProgress(-1);
     this.holdPointerId = null;
-    this.disc.setFillStyle(this.color, 0.35);
+    this.disc.setFillStyle(0x0d2b2e, 0.72);
     this.setScale(1);
   }
 
@@ -124,9 +125,9 @@ export class HudButton extends Phaser.GameObjects.Container {
 
   /** Throbs to get attention (e.g. "your bottle is empty"). */
   setUrgent(urgent: boolean): void {
-    if (urgent && !this.pulse) {
+    if (urgent && !settings.reducedMotion && !this.pulse) {
       this.pulse = this.scene.tweens.add({ targets: this.disc, scale: 1.18, duration: 260, yoyo: true, repeat: -1 });
-    } else if (!urgent && this.pulse) {
+    } else if ((!urgent || settings.reducedMotion) && this.pulse) {
       this.pulse.stop();
       this.pulse = undefined;
       this.disc.setScale(1);

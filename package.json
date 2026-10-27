@@ -1,20 +1,34 @@
 {
   "name": "moshi-and-pals",
   "private": true,
-  "version": "0.32.0",
+  "version": "0.33.0",
   "type": "module",
   "scripts": {
     "dev": "vite --host",
-    "build": "tsc --noEmit && vite build",
-    "preview": "vite preview --host",
-    "smoke": "node scripts/smoke-test.mjs"
+    "build": "tsc --noEmit && vite build && node scripts/verify-web-bundle.mjs --seal",
+    "preview": "node scripts/serve-web.mjs",
+    "smoke": "node scripts/smoke-test.mjs",
+    "test": "vitest run",
+    "test:unit": "vitest run",
+    "test:watch": "vitest",
+    "test:regression": "playwright test",
+    "test:baseline": "npm run test:typecheck && npm run test:unit && npm run build && npm run test:bundle && npm run test:regression",
+    "test:all": "npm run test:baseline && npm run smoke",
+    "test:typecheck": "tsc --project tsconfig.tests.json",
+    "verify:bundle": "node scripts/verify-web-bundle.mjs",
+    "smoke:quick": "playwright test --project=chromium --grep @smoke",
+    "test:bundle": "node --test tests/bundle.test.mjs tests/worker.test.mjs"
   },
   "dependencies": {
     "phaser": "3.90.0"
   },
   "devDependencies": {
+    "@playwright/test": "1.56.1",
+    "@types/node": "22.20.5",
+    "jsdom": "26.1.0",
     "playwright-core": "^1.56.1",
     "typescript": "5.9.3",
-    "vite": "7.3.6"
+    "vite": "7.3.6",
+    "vitest": "3.2.4"
   }
 }

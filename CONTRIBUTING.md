@@ -14,7 +14,8 @@ Thanks for helping! Moshi and Pals is Noah's game, so new characters, names and 
 Web game:
 
 ```
-npm run build && npm run smoke
+npx playwright install chromium webkit
+npm run test:all
 ```
 
 iPhone app (on a Mac with Xcode 16 and Node 22):
@@ -24,7 +25,7 @@ swift test --package-path ios/MoshiKit
 xcodebuild test -project ios/MoshiAndPals.xcodeproj -scheme MoshiAndPals -destination 'platform=iOS Simulator,name=iPhone 16'   # UI tests
 ```
 
-GitHub Actions runs both on every pull request (`ci.yml` and `ios.yml`).
+GitHub Actions runs the fast Linux web gate on pushes and pull requests (`ci.yml`). The full web gate is required by Pages deployment; the heavy macOS/iOS workflow (`ios.yml`) is manual. Run `npm run smoke:quick` for the short local mobile lane.
 
 ## Style
 

@@ -423,6 +423,13 @@ export const BALANCE = {
     perBoss: 3,
     prices: { kaya: 30, lucien: 45, ken: 60 } as Record<string, number>,
   },
+  /** Provider affinity: combat-helper damage and noncombat PSR bonus copays. */
+  helperDamage: {
+    eugene: 0.75,
+    kaya: 1,
+    lucien: 1.5,
+    ken: 1.25,
+  },
   /** What a hired Pal has over Eugene (on top of their signature move). toolDamage = damage × with every tool. */
   doctors: {
     kaya: { moveSpeed: 1.12, toolDamage: 1.1 },

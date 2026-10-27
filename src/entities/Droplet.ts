@@ -24,8 +24,9 @@ export class Droplet extends Phaser.Physics.Arcade.Image {
     this.pierceLeft = def.pierce ?? 0;
     this.hit.clear();
     this.enableBody(true, x, y, true, true);
-    this.setTexture('puff').setTint(tint).setAlpha(0.25).setScale(0.4).setDepth(11);
-    this.body!.setSize(16, 16).setOffset(16, 16);
+    this.setTexture(def.id === 'medication' ? 'medication-capsule' : 'puff').setTint(tint).setAlpha(def.id === 'medication' ? 1 : 0.25).setScale(def.id === 'medication' ? 1 : 0.4).setDepth(11);
+    if (def.id === 'medication') this.body!.setSize(12,8).setOffset(2,0);
+    else this.body!.setSize(16, 16).setOffset(16, 16);
     this.launchedAt = this.scene.time.now;
     this.setVelocity(Math.cos(angle) * speed, Math.sin(angle) * speed);
     this.setRotation(angle);
@@ -45,7 +46,7 @@ export class Droplet extends Phaser.Physics.Arcade.Image {
     }
     // Spread out and fade like an aerosol
     const t = (time - this.launchedAt) / (this.expiresAt - this.launchedAt);
-    this.setScale(0.4 + t * 1.2).setAlpha(0.25 * (1 - t));
+    if (this.def.id !== 'medication') this.setScale(0.4 + t * 1.2).setAlpha(0.25 * (1 - t));
   }
 
   retire(): void {

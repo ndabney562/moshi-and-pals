@@ -26,6 +26,19 @@ struct GameLayer: View {
                 StandInGameView()
             }
 
+            if ProcessInfo.processInfo.arguments.contains("-web-integration") {
+                #if DEBUG
+                Text(store.layoutDiagnostic)
+                    .frame(width: 1, height: 1).clipped()
+                    .accessibilityIdentifier("webLayoutDiagnostic")
+                #endif
+                Text(store.isShiftRunning ? "Shift in progress" : store.isGameReady ? "Web game ready" : "Web game loading")
+                    .font(.caption)
+                    .accessibilityIdentifier("realGameStatus")
+                    .allowsHitTesting(false)
+                    .frame(maxHeight: .infinity, alignment: .top)
+            }
+
             if store.presentedScreen != nil && !store.isGameReady && isWeb {
                 ScrubbingInView()
                     .transition(.opacity)

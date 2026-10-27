@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import { reactionLines } from '../core/dialogue';
 import { BALANCE } from '../config/balance';
 import { runRng } from '../core/rng';
 import { CHECKED_IN_LINES, CLEANED_LINES, VIOLATIONS, WAIT_COMPLAINTS } from '../data/patients';
@@ -179,9 +180,8 @@ export class PatientDirector {
     }
     const { player } = this.host;
     if (!player.dead && Phaser.Math.Distance.BetweenPoints(player, p) < this.cfg.grumbleRange) {
-      const own = this.host.doctor && this.host.doctor !== 'eugene' ? p.def[this.host.doctor] : undefined;
-      const lines = own?.length ? own : p.def.eugene;
-      this.eugeneBubble.say(Phaser.Utils.Array.GetRandom(lines), player, 52, 2000);
+      const lines = reactionLines(p.def, this.host.doctor);
+      this.eugeneBubble.say(runRng.dialogue.pick(lines), player, 52, 2000);
     }
   }
 

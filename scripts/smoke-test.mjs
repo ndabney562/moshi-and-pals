@@ -6,16 +6,20 @@
  *
  *   npm run build && npm run smoke
  */
-import { chromium } from 'playwright-core';
-import { preview } from 'vite';
+import { chromium, expect } from '@playwright/test';
+import { chromiumExecutable } from './browser.mjs';
+import { serveWeb } from './serve-web.mjs';
 
 // SMOKE_PORT lets two checkouts run the smoke test at once
 const port = Number(process.env.SMOKE_PORT ?? 4173);
-const server = await preview({ preview: { port, strictPort: true } });
+const server = await serveWeb({ port });
 const url = `http://localhost:${port}/moshi-and-pals/`;
 
 const browser = await chromium.launch({
-  executablePath: process.env.CHROMIUM_PATH ?? '/opt/pw-browsers/chromium-1194/chrome-linux/chrome',
+  executablePath: chromiumExecutable(),
+}).catch((error) => {
+  server.httpServer.close();
+  throw error;
 });
 // iPhone 15-ish, landscape
 const context = await browser.newContext({
@@ -53,9 +57,12 @@ const buttonAtIn = (pg, sceneKey, name) => pg.evaluate(([k, n]) => {
 }, [sceneKey, name]);
 
 let failed = false;
+let passedChecks = 0;
+let failedChecks = 0;
 const check = (ok, msg) => {
   console.log(`${ok ? 'PASS' : 'FAIL'} ${msg}`);
-  if (!ok) failed = true;
+  if (ok) passedChecks++;
+  else { failed = true; failedChecks++; }
   // On GitHub Actions, failures also become annotations (readable from the PR's checks without the raw log)
   if (!ok && process.env.GITHUB_ACTIONS) console.log(`::error title=Smoke test::${String(msg).replace(/\r?\n/g, ' ')}`);
 };
@@ -403,7 +410,12 @@ try {
     `APPEAL THE DECISION ($100) swaps in two different tools (${JSON.stringify(appealed)})`);
   const pickAt = await panelAt(0);
   await page.touchscreen.tap(pickAt.x, pickAt.y);
-  await page.waitForFunction(() => window.game.scene.getScene('Game').loadout.length === 2, null, { timeout: 10000 }).catch(() => {});
+  // Equipping is synchronous, while Phaser queues scene resume for the next frame.
+  await page.waitForFunction(() => {
+    const scene = window.game.scene.getScene('Game');
+    return scene.loadout.length === 2 && !window.game.scene.isPaused('Game') &&
+      window.game.scene.getScene('Hud').swapButton.visible;
+  }, null, { timeout: 10000 });
   const crated = await page.evaluate(() => {
     const scene = window.game.scene.getScene('Game');
     return { tools: scene.loadout.map((t) => t.def.id), slot: scene.slot, running: !window.game.scene.isPaused('Game'), swap: window.game.scene.getScene('Hud').swapButton.visible };
@@ -810,7 +822,7 @@ try {
   check(vend.open && vend.offered.length === 3 && vend.paused, `the vending machine offers three snacks while the game waits (${JSON.stringify(vend)})`);
   const snackAt = await panelAt(0);
   await page.touchscreen.tap(snackAt.x, snackAt.y);
-  await page.waitForFunction(() => !window.game.scene.getScene('Hud').choosing, null, { timeout: 10000 }).catch(() => {});
+  await page.waitForFunction(() => !window.game.scene.getScene('Hud').choosing && !window.game.scene.isPaused('Game'), null, { timeout: 10000 });
   const bought = await page.evaluate(() => {
     const scene = window.game.scene.getScene('Game');
     return { snacks: scene.snacks, copays: scene.copays, running: !window.game.scene.isPaused('Game') };
@@ -1537,16 +1549,28 @@ try {
   await dbg.touchscreen.tap(426, 200);
   await dbg.waitForFunction(() => window.game.scene.getScene('Game')?.waves?.round === 6, null, { timeout: 90000 });
   await dbg.waitForTimeout(6000); // germs reach Eugene and bump him
-  const dbgState = await dbg.evaluate(() => {
+  // Phaser 3.90 actualFps counts RAF callbacks before its FPS limiter. Count real scene updates instead.
+  const measuredFps = await dbg.evaluate(() => new Promise((resolve) => {
+    const scene = window.game.scene.getScene('Game');
+    let frames = 0;
+    const started = performance.now();
+    const count = () => frames++;
+    scene.events.on('update', count);
+    setTimeout(() => {
+      scene.events.off('update', count);
+      resolve(frames * 1000 / (performance.now() - started));
+    }, 1500);
+  }));
+  const dbgState = await dbg.evaluate((fps) => {
     const scene = window.game.scene.getScene('Game');
     return {
       round: scene.waves.round, copays: scene.copays, hp: scene.player.hp,
-      fps: Math.round(window.game.loop.actualFps), overlay: window.game.scene.getScene('Hud').fpsText.text,
+      fps: Math.round(fps), overlay: window.game.scene.getScene('Hud').fpsText.text,
     };
-  });
+  }, measuredFps);
   check(dbgState.round === 6 && dbgState.copays === 999, `?round=6&copays=999 starts at round 6 with $999 (${dbgState.round}, $${dbgState.copays})`);
   check(dbgState.hp === 100, `?god keeps Eugene at full health (${dbgState.hp})`);
-  check(dbgState.fps <= 34, `?fps=30 caps the frame rate (${dbgState.fps} FPS)`);
+  check(dbgState.fps > 0 && dbgState.fps <= 34, `?fps=30 caps the frame rate (${dbgState.fps} FPS)`);
   check(/p95/.test(dbgState.overlay) && /germs \d+/.test(dbgState.overlay), `debug overlay shows frame times and counts (${dbgState.overlay.split('\n')[0]})`);
   check(dbgErrors.length === 0, `no errors in debug mode${dbgErrors.length ? ': ' + dbgErrors.join(' | ') : ''}`);
   await dbg.close();
@@ -1724,13 +1748,21 @@ try {
   await sw.waitForFunction(() => window.game?.scene.isActive('Title'));
   const pill = await sw.waitForFunction(() => window.game.scene.getScene('Title').updatePill?.visible, null, { timeout: 10000 }).then(() => true, () => false);
   check(pill, 'a newer build on the server shows UPDATE READY on the title screen');
-  const cached = await sw.waitForFunction(async () => {
-    await navigator.serviceWorker.ready;
-    const keys = (await caches.keys()).filter((k) => k.startsWith('moshi-'));
-    if (!keys.length) return false;
-    const files = (await (await caches.open(keys[0])).keys()).map((r) => r.url);
-    return files.some((u) => u.endsWith('.js') && !u.includes('sw.js')) && files.some((u) => u.endsWith('/')) && files.some((u) => u.includes('title.jpg')) ? files.length : false;
-  }, null, { timeout: 30000, polling: 500 }).then((h) => h.jsonValue(), () => 0);
+  // waitForFunction treats an async predicate's Promise as truthy; poll the awaited value in Node.
+  let cached = 0;
+  await expect.poll(async () => {
+    cached = await sw.evaluate(async () => {
+      await navigator.serviceWorker.ready;
+      const keys = (await caches.keys()).filter((key) => key.startsWith('moshi-'));
+      const entries = await Promise.all(keys.map(async (key) => {
+        const cache = await caches.open(key);
+        return (await cache.keys()).map((request) => request.url);
+      }));
+      const files = entries.flat();
+      return files.some((url) => url.endsWith('.js') && !url.includes('sw.js')) && files.some((url) => url.endsWith('/')) && files.some((url) => url.includes('title.jpg')) ? files.length : 0;
+    });
+    return cached;
+  }, { timeout: 30000 * SLOW, intervals: [100, 250, 500] }).toBeGreaterThan(0);
   check(cached > 0, `the service worker caches the game (${cached} files)`);
   await swc.setOffline(true);
   await sw.reload({ waitUntil: 'domcontentloaded', timeout: 120000 });
@@ -1753,26 +1785,22 @@ try {
     hp.on('pageerror', (e) => hireErrors.push(where(e)));
     await hp.goto(url, { timeout: 90000 });
     await hp.waitForFunction(() => window.game?.scene.isActive('Title'), null, { timeout: 90000 });
+    const before = await hp.evaluate(() => window.game.scene.getScene('Title').pickInfo.text);
+    await hp.evaluate(() => window.game.scene.getScene('Title').scene.start('Providers'));
+    await hp.waitForFunction(() => window.game.scene.isActive('Providers'));
     const hire = await hp.evaluate(() => {
-      const t = window.game.scene.getScene('Title');
-      const label = (id) => t.picks.find((p) => p.id === id).name.text;
-      const before = { info: t.pickInfo.text, kaya: label('kaya') };
-      t.pick('lucien');
-      const tooPoor = { info: t.pickInfo.text, nps: JSON.parse(localStorage.getItem('moshi.progress.v1')).nps };
-      t.pick('lucien');
+      const t = window.game.scene.getScene('Providers');
+      t.index = 2; t.draw(); t.select(); t.select();
       const stillLocked = JSON.parse(localStorage.getItem('moshi.progress.v1')).owned.includes('doctor:lucien');
-      t.pick('kaya');
-      const asked = t.pickInfo.text;
-      t.pick('kaya');
+      t.index = 1; t.draw(); t.select();
+      const asked = t.confirming;
+      t.select();
       const saved = JSON.parse(localStorage.getItem('moshi.progress.v1'));
-      return { before, tooPoor, stillLocked, asked, owned: saved.owned, nps: saved.nps, kaya: label('kaya'), on: JSON.parse(localStorage.getItem('moshi.settings.v1')).character };
+      return { stillLocked, asked, owned: saved.owned, nps: saved.nps, on: JSON.parse(localStorage.getItem('moshi.settings.v1')).character };
     });
-    check(hire.before.info.startsWith('DR. MOSHKOVICH') && hire.before.kaya.includes('30 NPS'),
-      `a saved pick of an unhired Pal falls back to Dr. Moshkovich, and locked Pals show their NPS price (${JSON.stringify(hire.before)})`);
-    check(/NEED 10 MORE/.test(hire.tooPoor.info) && !hire.stillLocked && /TAP AGAIN/.test(hire.asked),
-      `a Pal you can't afford stays locked, one you can asks for a second tap (${JSON.stringify({ tooPoor: hire.tooPoor, asked: hire.asked })})`);
-    check(hire.owned.includes('doctor:kaya') && hire.nps === 5 && hire.kaya === 'KAYA' && hire.on === 'kaya',
-      `the second tap hires Dr. Kaya for 30 NPS and puts him on shift (${JSON.stringify({ owned: hire.owned, nps: hire.nps, on: hire.on })})`);
+    check(before.startsWith('DR. MOSHKOVICH'), `an unhired saved Pal falls back to Dr. Moshkovich (${before})`);
+    check(!hire.stillLocked && hire.asked === 'hire:kaya', `the Providers menu keeps unaffordable hires locked and asks for confirmation (${JSON.stringify(hire)})`);
+    check(hire.owned.includes('doctor:kaya') && hire.nps === 5 && hire.on === 'kaya', `confirming hires Kaya for 30 NPS and selects him (${JSON.stringify(hire)})`);
     check(hireErrors.length === 0, `no errors hiring a Pal${hireErrors.length ? ': ' + hireErrors.join(' | ') : ''}`);
     await hc.close();
   }
@@ -2402,7 +2430,7 @@ try {
       const s = window.__native.find((m) => m.type === 'snapshot');
       return { pals: s.pals.length, achievements: s.achievements.length, atlas: s.atlas.length, art: (s.art['eugene-held'] ?? '').startsWith('data:image/png'), title: window.game.scene.isActive('Title') };
     });
-    check(snap.pals === 4 && snap.achievements > 20 && snap.atlas > 10 && snap.art && !snap.title,
+    check(snap.pals === 11 && snap.achievements > 20 && snap.atlas > 10 && snap.art && !snap.title,
       `native: boots to the app's menu with a snapshot (${JSON.stringify(snap)})`);
     await np.evaluate(() => window.moshiNative.open('board'));
     await np.waitForFunction(() => window.game.scene.isActive('Board'));
@@ -2422,4 +2450,5 @@ try {
   await browser.close();
   server.httpServer.close();
 }
+console.log(`Smoke summary: ${passedChecks} passed, ${failedChecks} failed`);
 process.exit(failed ? 1 : 0);

@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import { drawProviderPreview, type PreviewProvider } from './providerArt';
 import { NATIVE } from '../core/native';
 import { COLORS } from '../config/theme';
 import { GERMS, type GermDef } from '../data/germs';
@@ -21,11 +22,24 @@ export class BootScene extends Phaser.Scene {
   }
 
   create(): void {
+    document.getElementById('loading')?.setAttribute('hidden', '');
     this.makeEugene();
     this.makeEugene(true);
     this.makeKaya();
     this.makeLucien();
     this.makeKen();
+    for (const id of ['janeen', 'amanda', 'dharma', 'dhiwya', 'lidiya', 'raj', 'jason'] as PreviewProvider[]) {
+      const g = this.add.graphics();
+      drawProviderPreview(g, id);
+      this.finishDoctor(g, id);
+    }
+    const capsule = this.add.graphics();
+    capsule.fillStyle(0xffffff).fillRoundedRect(0, 0, 16, 8, 4);
+    capsule.fillStyle(0xd995d9).fillRoundedRect(8, 0, 8, 8, 3);
+    capsule.generateTexture('medication-capsule', 16, 8); capsule.destroy();
+    for (const [i, color] of [0x138e91, 0x9964b7, 0xce8251].entries()) {
+      const g = this.add.graphics(); drawProviderPreview(g, 'dhiwya', color); this.finishDoctor(g, `dhiwya-${i}`);
+    }
     this.makeTools();
     this.makeOmar();
     this.makeAlan();

@@ -1,16 +1,17 @@
 import { defineConfig } from 'vite';
 import { readFileSync } from 'node:fs';
+// @ts-expect-error Shared Node build helper.
+import { sourceFingerprint } from './scripts/bundle-inputs.mjs';
 
 const pkg = JSON.parse(readFileSync('./package.json', 'utf8'));
 // Shown in the corner of the screen so testers can tell which build they have.
-const build = (process.env.GITHUB_SHA ?? 'local').slice(0, 7);
+const build = (process.env.GITHUB_SHA ?? sourceFingerprint()).slice(0, 7);
 
 const version = `v${pkg.version} (${build})`;
 
-// GitHub Pages serves the game from /moshi-and-pals/, so asset URLs need that prefix.
+// Relative URLs let the exact same artifact load from Pages and moshi://app/.
 export default defineConfig({
-  // The iPhone app (ios/) bundles a copy built with MOSHI_BASE=./ so it loads from inside the app.
-  base: process.env.MOSHI_BASE ?? '/moshi-and-pals/',
+  base: './',
   define: {
     __APP_VERSION__: JSON.stringify(version),
   },

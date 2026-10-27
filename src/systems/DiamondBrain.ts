@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import { dialogueText } from '../core/dialogue';
 import { BALANCE } from '../config/balance';
 import { sfx } from '../core/sfx';
 import { DIAMOND_LINES } from '../data/diamond';
@@ -207,7 +208,7 @@ export class DiamondBrain {
 
   private say(line: string, ms: number = this.cfg.speechMs): void {
     if (!this.bubble.scene) return; // replaced by a newer boss before a delayed line came due
-    this.bubble.say(line.replace('{SURNAME}', this.host.surname ?? 'MOSHKOVICH'), this.germ, this.germ.def.radius + 18, ms);
+    this.bubble.say(dialogueText(line, { SURNAME: this.host.surname ?? 'MOSHKOVICH' }), this.germ, this.germ.def.radius + 18, ms);
     this.nextChatterAt = this.host.scene.time.now + ms + Phaser.Math.Between(...this.cfg.chatterMs);
   }
 

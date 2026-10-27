@@ -1,5 +1,19 @@
 # Changelog
 
+## v0.33.0: Remaster v2
+
+- Share one sealed, relative-URL web bundle between Pages and SwiftUI; verify source freshness and every file before copying it into iOS.
+- Improve mobile viewport/safe-area handling, touch cancellation, menu/control contrast, readable dialogue, reduced-motion feedback, and audio interruption recovery. Preserve approved characters, jokes, saves and economy tuning.
+- Validate saved settings; keep browser `?native` links playable; preserve the previous offline build and prevent cached pages from downgrading a newer worker.
+- Add sharing metadata and a preview card composed from the existing poster. Add real WKWebView simulator integration coverage and artifact corruption/staleness checks.
+- Prepare Linux push/PR checks and test-gated Pages deployment; make heavy macOS/iOS workflows manual. The feature branch is approved for pushing after local QA.
+
+## Remaster v2 baseline tests
+
+- Add isolated Vitest unit coverage and Chrome/WebKit browser regression tests, with typechecked test sources and local JSON reports.
+- Preserve the full smoke suite, discover Chrome portably, and measure scene updates for the FPS-cap check; Phaser's RAF callback count does not measure the limited game update rate.
+- Phase 2 established the baseline without gameplay or workflow changes; the remaster proceeded after approval.
+
 ## v0.32.0: The iPhone app
 - **Moshi and Pals is a native iPhone app now** (`ios/`, SwiftUI, iOS 17+). The game itself is the same one, bundled into the app so it works offline. The menus are native: pick your Pal and difficulty, Today's Shift, Continue Shift, records, achievements, the Microbiology Atlas and settings. The Residency Board and Equipment Locker open in the game.
 - **Haptics** when you're hit, use a Sinus Purge, meet or beat a boss, finish a round, unlock something or go down. You can turn them off in Settings.

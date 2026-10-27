@@ -8,6 +8,7 @@ final class BridgeMessageTests: XCTestCase {
 
     func testSimpleMessages() throws {
         XCTAssertEqual(try decode(#"{"type":"ready"}"#), .ready)
+        XCTAssertEqual(try decode(#"{"type":"playing"}"#), .playing)
         XCTAssertEqual(try decode(#"{"type":"exit"}"#), .exit)
         XCTAssertEqual(try decode(#"{"type":"haptic","kind":"purge"}"#), .haptic(.purge))
     }
@@ -65,6 +66,7 @@ final class BridgeCommandTests: XCTestCase {
     func testJavaScriptForEachCommand() {
         XCTAssertEqual(BridgeCommand.start(.daily).javaScript, #"window.moshiNative && window.moshiNative.start({"kind":"daily"});"#)
         XCTAssertEqual(BridgeCommand.open(.board).javaScript, #"window.moshiNative && window.moshiNative.open("board");"#)
+        XCTAssertEqual(BridgeCommand.open(.providers).javaScript, #"window.moshiNative && window.moshiNative.open("providers");"#)
         XCTAssertEqual(BridgeCommand.hire(palID: "ken").javaScript, #"window.moshiNative && window.moshiNative.hire("ken");"#)
         XCTAssertEqual(BridgeCommand.refresh.javaScript, "window.moshiNative && window.moshiNative.refresh();")
     }

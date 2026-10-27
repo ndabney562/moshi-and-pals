@@ -15,6 +15,7 @@ let noise: AudioBuffer | null = null;
 const lastPlayed: Record<string, number> = {};
 /** Pitch multiplier for the sound being played right now (randomized a little each time so repeats don't drone). */
 let pitch = 1;
+let resuming: Promise<void> | undefined;
 
 /** Hook into Phaser's audio context. Call once after the first tap. */
 export function initSfx(scene: Phaser.Scene): void {
@@ -42,7 +43,7 @@ export function audioContext(): AudioContext | null {
 }
 
 export function setSfxMuted(muted: boolean): void {
-  if (master) master.gain.value = muted ? 0 : VOLUME;
+  if (master && ctx) master.gain.setTargetAtTime(muted ? 0 : VOLUME, ctx.currentTime, 0.015);
 }
 
 /**
@@ -51,7 +52,10 @@ export function setSfxMuted(muted: boolean): void {
  * handlers; it does nothing when audio is already running.
  */
 export function resumeAudio(): void {
-  if (ctx && ctx.state !== 'running') ctx.resume().catch(() => {});
+  if (!ctx || ctx.state === 'running' || ctx.state === 'closed' || resuming) return;
+  try {
+    resuming = ctx.resume().catch(() => {}).finally(() => { resuming = undefined; });
+  } catch { /* A terminated audio session can be retried on the next user gesture. */ }
 }
 
 /**

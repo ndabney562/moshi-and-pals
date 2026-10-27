@@ -41,7 +41,7 @@ Steps:
 2. Open `ios/MoshiAndPals.xcodeproj` in Xcode.
 3. Pick an iPhone simulator and press **Run** (⌘R).
 
-The **Bundle the game** build phase runs `scripts/ios-bundle-web.sh`. That script builds the game with Vite into `ios/build/web` and copies it into the app. It only rebuilds when the game's files change.
+The **Bundle the game** build phase runs `scripts/ios-bundle-web.sh`. It verifies the sealed `dist/` artifact, copies the exact files through `ios/build/web` into the app, and rebuilds only if the sources changed. `MOSHI_WEB_BUNDLE=/absolute/path/to/dist` requires an already verified artifact and refuses stale inputs. Both Pages and iOS use relative asset URLs and identical game files.
 
 **To run on your own iPhone:**
 
@@ -65,11 +65,25 @@ npm run build    # type-check and build to dist/
 npm run smoke    # phone-sized browser test of the build
 ```
 
+## Local QA gate
+
+Use Node 22 to match CI. The test tools are free and run locally.
+
+1. Run `npm ci` to install locked dependencies.
+2. Run `npx playwright install chromium webkit` to install browser engines. Tests use installed Google Chrome when available; `CHROMIUM_PATH` overrides it.
+3. Run `npm run test:baseline` for test typechecking, isolated unit tests, the production build, artifact parity checks, and Chrome/WebKit regressions at `/moshi-and-pals/`.
+4. Run `npm run smoke` for the preserved full gameplay smoke suite, or `npm run test:all` for both gates in sequence.
+5. Review `test-results/unit.json`, `test-results/regression.json`, and failure screenshots/traces. Reports are ignored by Git.
+
+`npm run test:watch` watches unit tests. Set `REGRESSION_PORT` or `SMOKE_PORT` if the default local ports (4174 and 4173) are occupied. If browser downloads use a custom `PLAYWRIGHT_BROWSERS_PATH`, supply that same variable when running tests.
+
+The suite covers saves/migrations, rewards/purchases, equipment timing, seeded shifts, Pal dialogue selection, bridge commands, real browser transitions, mobile layouts, and controlled offline reload. Native bridge browser tests emulate the host; the simulator suite also boots the real bundled WKWebView, starts a shift, and relaunches the app. See [the remaster QA report](docs/REMASTER-v2-QA.md) for measured results and remaining checks.
+
 ## How it fits together
 
 ```
 src/                 the game (TypeScript + Phaser 3), shared by the web and the app
-  core/native.ts     the bridge the iPhone app talks to (only active with ?native)
+  core/native.ts     the bridge the iPhone app talks to (active with ?native and a callable host)
 ios/
   MoshiAndPals/      SwiftUI app: App/, DesignSystem/ (Theme.swift), Features/, Services/
   MoshiKit/          Swift package: models, the bridge protocol, the store and view models (MVVM), unit tests
@@ -80,6 +94,12 @@ scripts/ios-bundle-web.sh   builds the game into the app
 The app keeps one `WKWebView` running the bundled game. While the menus are showing, the game's loop is asleep. The SwiftUI screens send commands through `window.moshiNative`, like "start a shift", "open the board" or "change a setting". The game answers through a `WKScriptMessageHandler` with a snapshot of the saves, haptic cues, and "back to the menu". More detail is in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 
 Docs live in [`docs/`](docs/): design, architecture, assets, backlog, bugs, balance, changelog, contributions. See [CONTRIBUTING.md](CONTRIBUTING.md) to help out.
+
+## Deployment
+
+Pushes and pull requests run unit checks plus a short Chromium mobile smoke lane on Linux. The full gate is available through CI's manual `full` input. Pages runs the complete unit, artifact, Chromium/WebKit and gameplay smoke checks before uploading the exact tested `dist/` bundle; deployment is restricted to `main`. The macOS/iOS workflow runs manually.
+
+The game uses no paid hosting or backend. The public link is [Moshi and Pals](https://ndabney562.github.io/moshi-and-pals/). Local changes appear there only after an approved push and merge to `main`.
 
 ## License
 

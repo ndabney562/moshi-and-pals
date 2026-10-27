@@ -16,7 +16,9 @@ concurrency:
 
 jobs:
   build:
+    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
+    timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -24,7 +26,14 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
+      - run: npm run test:typecheck
+      - run: npm run test:unit
       - run: npm run build
+      - run: npm run test:bundle
+      - run: npx playwright install --with-deps chromium webkit
+      - run: npm run test:regression
+      - run: npm run smoke
+      - run: npm run verify:bundle
       - uses: actions/upload-pages-artifact@v3
         with:
           path: dist

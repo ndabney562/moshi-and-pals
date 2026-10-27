@@ -1,3 +1,5 @@
+import { supportsWebUpdates } from './platform';
+
 /**
  * OFFLINE + UPDATES. Registers the service worker (public/sw.js) so the game launches from the Home Screen
  * with no signal, and checks version.json (written by the build) to notice when a newer build is live, so
@@ -10,11 +12,21 @@ const listeners = new Set<() => void>();
 /** Build id this page is running (matches version.json's "version"). */
 const RUNNING = __APP_VERSION__;
 
-export function registerOffline(): void {
+export async function registerOffline(): Promise<void> {
+  if (!supportsWebUpdates()) return;
   const params = new URLSearchParams(location.search);
-  // Automated test browsers skip it (so tests always see the newest files) unless a test asks for it with ?sw
   if (!('serviceWorker' in navigator) || (navigator.webdriver && !params.has('sw'))) return;
-  navigator.serviceWorker.register(`./sw.js?v=${encodeURIComponent(RUNNING)}`, { scope: './' }).catch(() => undefined);
+  try {
+    const registration = await navigator.serviceWorker.getRegistration();
+    if (registration?.active) {
+      const current = new URL(registration.active.scriptURL).searchParams.get('v');
+      if (current === RUNNING) return;
+      // An offline page may be the previous build. Never downgrade a newer active worker from that page.
+      const response = await fetch('./version.json', { cache: 'no-store' });
+      if (!response.ok || (await response.json()).version !== RUNNING) return;
+    }
+    await navigator.serviceWorker.register(`./sw.js?v=${encodeURIComponent(RUNNING)}`, { scope: './' });
+  } catch { /* Offline or unavailable storage: keep the current worker and the playable page. */ }
 }
 
 /**
@@ -23,15 +35,16 @@ export function registerOffline(): void {
  * has booted (title screen); files already cached are skipped.
  */
 export function offerFilesToCache(): void {
-  if (!('serviceWorker' in navigator)) return;
+  if (!supportsWebUpdates() || !('serviceWorker' in navigator)) return;
   navigator.serviceWorker.getRegistration().then((reg) => {
     const urls = performance.getEntriesByType('resource').map((e) => e.name).filter((u) => u.startsWith(location.origin));
-    reg?.active?.postMessage({ type: 'cache', urls: [location.href.split('?')[0], ...urls] });
+    reg?.active?.postMessage({ type: 'cache', version: RUNNING, urls: [location.href.split('?')[0], ...urls] });
   }).catch(() => undefined);
 }
 
 /** Asks the server which build is live. Resolves true (and tells listeners) if it's newer than this one. */
 export async function checkForUpdate(): Promise<boolean> {
+  if (!supportsWebUpdates()) return false;
   if (updateReady) return true;
   try {
     const res = await fetch(`./version.json?t=${Date.now()}`, { cache: 'no-store' });

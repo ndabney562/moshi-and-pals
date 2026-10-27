@@ -14,6 +14,7 @@ public enum GameScreen: String, Codable, Identifiable, Sendable {
     case shift
     case board
     case locker
+    case providers
 
     public var id: String { rawValue }
 }

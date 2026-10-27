@@ -4,6 +4,8 @@ import Foundation
 public enum BridgeMessage: Equatable, Sendable {
     /// The game finished booting (or came back to the menu) and takes commands.
     case ready
+    /// The real web game has initialized a playable shift.
+    case playing
     /// Saved progress changed.
     case snapshot(GameSnapshot)
     /// The player left a shift, the board or the locker.
@@ -27,6 +29,8 @@ public enum BridgeMessage: Equatable, Sendable {
         switch envelope.type {
         case "ready":
             return .ready
+        case "playing":
+            return .playing
         case "exit":
             return .exit
         case "snapshot":

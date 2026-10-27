@@ -18,6 +18,8 @@ export interface ScribeHost {
   readonly flow: FlowField;
   readonly fx: Fx;
   readonly patients: PatientDirector;
+  /** Provider affinity, separate from permanent staff upgrades and applied once per actual hit. */
+  readonly helperDamage?: number;
   germs(): Germ[];
   /** Hurts a germ through the normal damage path (numbers, kills, Copays). */
   hit(germ: Germ, damage: number, angle: number, knockback: number): void;
@@ -44,6 +46,10 @@ class Scribe {
   bestDist = Infinity;
   bestAt = 0;
   step = 0;
+  rallyUntil = 0;
+  rallyPower = 1;
+  rallySpeed = 1;
+  distracted = false;
   kills = 0;
   cleaned = 0;
   /** Their staff upgrades (read when they're summoned). */
@@ -127,7 +133,16 @@ export class Scribes {
     }
   }
 
+  /** Recall clears interruption and gathers helpers; permanent upgrade values are never mutated. */
+  rally(time: number, ms: number, power: number, speed: number, recall: boolean): void {
+    for (const s of this.list.filter(s => s.here)) {
+      s.rallyUntil = time + ms; s.rallyPower = power; s.rallySpeed = speed;
+      if (recall) { s.distracted = false; this.teleport(s, time); }
+    }
+  }
+
   private think(s: Scribe, time: number, dtMs: number): void {
+    if (s.distracted) return;
     const { player, flow } = this.host;
     const img = s.img;
     const cfg = this.cfg;
@@ -183,7 +198,7 @@ export class Scribes {
         }
       }
       const a = Phaser.Math.Angle.Between(img.x, img.y, gx, gy);
-      const speed = cfg.speed * (d > 220 ? 1.5 : 1) * (dtMs / 1000);
+      const speed = cfg.speed * (time < s.rallyUntil ? s.rallySpeed : 1) * (d > 220 ? 1.5 : 1) * (dtMs / 1000);
       const stepLen = Math.min(speed, d);
       this.place(s, img.x + Math.cos(a) * stepLen, img.y + Math.sin(a) * stepLen);
       if (!germ && !patient) img.rotation = Phaser.Math.Angle.RotateTo(img.rotation, a, 0.15);
@@ -218,13 +233,13 @@ export class Scribes {
     const a = Phaser.Math.Angle.Between(img.x, img.y, germ.x, germ.y);
     if (s.def.id === 'omar') {
       const c = this.cfg.omar;
-      s.nextAttackAt = time + c.everyMs * s.boost.speed;
+      s.nextAttackAt = time + c.everyMs * s.boost.speed / (time < s.rallyUntil ? s.rallySpeed : 1);
       fx.nozzleMist(img.x + Math.cos(a) * 26, img.y + Math.sin(a) * 26, a, 18, s.def.color, 4);
       sfx.spray();
       this.strike(s, germ, c.damage, a, c.knockback);
     } else if (s.def.id === 'donald') {
       const c = this.cfg.donald;
-      s.nextAttackAt = time + c.everyMs * s.boost.speed;
+      s.nextAttackAt = time + c.everyMs * s.boost.speed / (time < s.rallyUntil ? s.rallySpeed : 1);
       const ux = Math.cos(a), uy = Math.sin(a);
       this.beam(img.x + ux * 24, img.y + uy * 24, a, c.range, c.width, s.def.color);
       sfx.zap();
@@ -239,7 +254,7 @@ export class Scribes {
       }
     } else {
       const c = this.cfg.alan;
-      s.nextAttackAt = time + c.everyMs * s.boost.speed;
+      s.nextAttackAt = time + c.everyMs * s.boost.speed / (time < s.rallyUntil ? s.rallySpeed : 1);
       const chain: Germ[] = [germ];
       let from = germ;
       for (let i = 0; i < c.chain; i++) {
@@ -273,7 +288,7 @@ export class Scribes {
 
   private strike(s: Scribe, g: Germ, damage: number, angle: number, knockback: number): void {
     if (!g.active) return;
-    this.host.hit(g, damage * s.boost.power, angle, knockback);
+    this.host.hit(g, damage * s.boost.power * (this.host.helperDamage ?? 1), angle, knockback);
     if (!g.active) s.kills++;
   }
 

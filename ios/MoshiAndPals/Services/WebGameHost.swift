@@ -13,7 +13,7 @@ final class WebGameHost: NSObject, GameCommandSending {
     private let store: GameStore
     private let root: URL?
 
-    init(store: GameStore, root: URL? = BundledGameSchemeHandler.bundledRoot()) {
+    init(store: GameStore, root: URL? = BundledGameSchemeHandler.bundledRoot(), ephemeral: Bool = false) {
         self.store = store
         self.root = root
         super.init()
@@ -24,7 +24,7 @@ final class WebGameHost: NSObject, GameCommandSending {
         config.userContentController.add(WeakMessageHandler(self), name: "moshi")
         config.allowsInlineMediaPlayback = true
         config.mediaTypesRequiringUserActionForPlayback = []
-        config.websiteDataStore = .default()
+        config.websiteDataStore = ephemeral ? .nonPersistent() : .default()
 
         let view = WKWebView(frame: .zero, configuration: config)
         view.isOpaque = true
@@ -59,7 +59,18 @@ final class WebGameHost: NSObject, GameCommandSending {
 
     fileprivate func receive(_ body: Any) {
         do {
-            store.receive(try BridgeMessage.decode(body: body))
+            let message = try BridgeMessage.decode(body: body)
+            store.receive(message)
+            #if DEBUG
+            if message == .playing && ProcessInfo.processInfo.arguments.contains("-web-integration") {
+                DispatchQueue.main.asyncAfter(deadline: .now() + 1) { [weak self] in
+                    guard let view = self?.webView else { return }
+                    view.evaluateJavaScript("JSON.stringify({inner:[innerWidth,innerHeight],visual:[visualViewport.width,visualViewport.height],portrait:document.body.className,canvas:document.querySelector('canvas').getBoundingClientRect().toJSON(),parent:document.getElementById('game').getBoundingClientRect().toJSON()})") { [weak self] value, _ in
+                        self?.store.layoutDiagnostic = value as? String ?? "unavailable"
+                    }
+                }
+            }
+            #endif
         } catch {
             log.error("Unreadable message from the game: \(String(describing: error), privacy: .public)")
         }

@@ -313,6 +313,8 @@ EQUIPMENT.ionizer9000 = {
   rechargePerSecond: 30,
 };
 
+EQUIPMENT.medication = { ...EQUIPMENT.squirtBottle, id: 'medication', name: 'Fictional Medication Capsules', unit: 'caps', spareName: 'REFILLS', capacity: 60, reserve: 240, costPerShot: 1, fireIntervalMs: 240, dropletsPerShot: 1, damage: 15, spreadDeg: 4, range: 300, color: 0xe6b4e9, mistPuffs: 0, tiers: [{ name: 'Extended Release', blurb: 'Capsules pierce one germ', cost: 300, mods: { pierce: 1, range: 350 } }, { name: 'Refill Pack', blurb: 'Faster capsules, larger pack', cost: 700, mods: { fireIntervalMs: 190, capacity: 80 } }] };
+
 export const CRATE_POOL = ['lysolFogger', 'bleachSoaker', 'uvWand', 'peroxideFoamer', 'wipes', 'gelLauncher', 'defib'];
 
 export const STARTING_EQUIPMENT = 'squirtBottle';

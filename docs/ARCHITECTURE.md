@@ -1,14 +1,14 @@
 # Technical Architecture
 
-**Stack:** TypeScript + Phaser 3.90 + Vite. Deployed to GitHub Pages by `.github/workflows/deploy.yml` on every push to `main`. Later wrapped with Capacitor for TestFlight.
+**Stack:** TypeScript + Phaser 3.90 + Vite. Deployed to GitHub Pages by `.github/workflows/deploy.yml` on every push to `main`. A SwiftUI wrapper embeds the same sealed artifact.
 
-## iPhone app (`ios/`, v0.32)
-A SwiftUI app (iOS 17+, MVVM, no dependencies) around the same web build. `scripts/ios-bundle-web.sh` (an Xcode build phase) builds the game with `MOSHI_BASE=./` and copies it into the app as `Game/`. `WebGameHost` keeps one `WKWebView` alive for the app's life, serving those files at `moshi://app/` (`BundledGameSchemeHandler`). The custom scheme gives localStorage a stable origin.
-- **Game side:** `src/core/native.ts`, active only with `?native`. Boot goes to the empty `Native` scene instead of Title, and its loop sleeps there. `toTitle()` (used by every way back to the menu) returns there and posts `exit`. `window.moshiNative` takes `start({kind})`, `open('board'|'locker')`, `hire(id)`, `setSettings(patch)` and `refresh()`. The game posts `snapshot` (saves, records, achievements, Atlas, today's modifiers, saved shift, and the Pals' and germs' textures once), `ready`, `exit` and `haptic` (from the event bus).
-- **App side:** `ios/MoshiKit` (Swift package, unit-tested) holds the Codable snapshot models, `BridgeMessage`/`BridgeCommand`, `GameStore` (the single source of truth: it queues commands until `ready`, caches the last snapshot to disk and throttles haptics) and the Play/Progress/Settings view models. `ios/MoshiAndPals` holds the views and `DesignSystem/Theme.swift` (all colors, type, spacing, motion). UI tests launch with `-ui-testing`, which swaps the web view for a stand-in and loads sample data.
+## iPhone app (`ios/`, v0.33)
+A SwiftUI app (iOS 17+, MVVM, no dependencies) around the same web build. `scripts/ios-bundle-web.sh` (an Xcode build phase) verifies the shared relative-URL `dist/` artifact against source and file checksums, then copies it into the app as `Game/`. `scripts/verify-web-bundle.mjs` rejects missing, stale or changed files. No native-specific JavaScript build exists. `WebGameHost` keeps one `WKWebView` alive for the app's life, serving those files at `moshi://app/` (`BundledGameSchemeHandler`). The custom scheme gives localStorage a stable origin.
+- **Game side:** `src/core/native.ts`, active only with both `?native` and a callable WebKit host, detected in `core/platform.ts`. A browser query without a host falls back to Title. Boot goes to the empty `Native` scene instead of Title, and its loop sleeps there. `toTitle()` (used by every way back to the menu) returns there and posts `exit`. `window.moshiNative` takes `start({kind})`, `open('board'|'locker')`, `hire(id)`, `setSettings(patch)` and `refresh()`. The game posts `snapshot` (saves, records, achievements, Atlas, today's modifiers, saved shift, and the Pals' and germs' textures once), `ready`, `playing`, `exit` and `haptic` (from the event bus).
+- **App side:** `ios/MoshiKit` (Swift package, unit-tested) holds the Codable snapshot models, `BridgeMessage`/`BridgeCommand`, `GameStore` (the single source of truth: it queues commands until `ready`, caches the last snapshot to disk and throttles haptics) and the Play/Progress/Settings view models. `ios/MoshiAndPals` holds the views and `DesignSystem/Theme.swift` (all colors, type, spacing, motion). Menu tests use `-ui-testing` with sample data; integration tests use `-web-integration`, an ephemeral real WKWebView and an empty snapshot cache. The real game reports `playing` after shift initialization; native state never treats the start command alone as proof of gameplay.
 
 ## Display
-Fixed logical height of 720 px; width follows the screen's aspect ratio (`src/config/display.ts`), scaled to fill. HUD reads iPhone safe-area insets via a CSS probe (`src/core/safeArea.ts`).
+Fixed logical height of 720 px; width follows the screen's aspect ratio (`src/config/display.ts`), scaled to fill. Visible dimensions follow `visualViewport` and `100dvh`. Resize work is coalesced per animation frame, with a cheap dimension check on active frames to recover from missed WKWebView resize callbacks. HUD reads iPhone safe-area insets via a CSS probe and the actual canvas scale (`src/core/safeArea.ts`).
 
 ## Scenes (`src/scenes/`)
 - **Boot**: generates placeholder textures in code (will become the asset loader).
@@ -18,7 +18,7 @@ Fixed logical height of 720 px; width follows the screen's aspect ratio (`src/co
 
 ## Data flow
 `Hud` → `core/inputState` → `Game` → `entities/Player`.
-Systems will announce gameplay events on `core/events.ts` (event bus); dialogue, audio, scoring and Easter eggs listen there instead of being wired into combat code.
+Systems announce gameplay events on `core/events.ts` (event bus); dialogue, audio, scoring and Easter eggs listen there instead of being wired into combat code.
 
 ## Pals and scribes (M16, M18)
 - `data/characters.ts` lists the playable Pals (passive + signature id); GameScene runs the signature (`sinusPurge`, `codeBlue`, `cleanField`, `grievance`). Ken's passive multiplies damage to Diamond inside `damageGerm`, so every source counts.
@@ -86,3 +86,15 @@ Debug switches live in `core/debug.ts` (`?round`, `?copays`, `?god`, `?fps`, `?d
 `npm run build && npm run smoke` serves the build, opens it in a phone-sized touch browser, drives both sticks, checks Eugene moves and faces the aim direction, waits for germs, sprays them until some die, taps Refill, and fails on console errors. CI runs it on every pull request.
 - Orientation: `core/orientation.ts` keeps the game landscape. On a touch screen taller than wide it rotates `#game` 90° with CSS, and patches Phaser's parent measuring, centering and pointer mapping to match; `safeArea.ts` rotates the insets too.
 - **Save & Quit** (`core/shiftSave.ts`, key `moshi.shift.v1`): `GameScene.snapshot(round)` captures the run-level state (shift setup, doctor, Specialty, Copays, score, health, open rooms, tools with tiers, snacks, released helpers, run stats, Miracle Cure flags) at every RoundStarted; `saveAndQuit()` saves that mid-round, or a fresh snapshot for the next round in a break. `scene.start('Game', { resume: true })` loads it in `create` (and clears it): `WaveDirector` starts at the saved round, `restoreShift` puts the rest back (`restoreRoom` opens rooms without fanfare; snacks are replayed through `applySnack`). Every other start passes `{ resume: false }` (Phaser keeps a scene's last start data otherwise).
+
+## Remaster boundaries
+
+`core/mechanics.ts` contains pure equipment scaling and analog-input math. `core/dialogue.ts` selects approved character reactions and replaces named tokens. Dialogue uses its own seeded stream so speech does not change spawn or loot rolls. `resetInputState` clears shared controls without replacing their object identity; cancellation and pause also release held keys/buttons.
+
+Settings are validated at the storage boundary without changing save keys. Audio recovery coalesces repeated gestures, tolerates interrupted sessions, and ramps mute changes. Speech and urgent control pulses honor reduced motion. The FPS readout counts actual scene updates rather than RAF callbacks.
+
+The service worker precaches the sealed manifest’s complete asset set before activation, then scopes its caches to the Pages directory, keeps the current and previous build, validates cache offers, waits for cache writes, and never downgrades a newer worker from an older cached page. The native custom scheme skips web update/offline registration. The worker file remains in both bundles to preserve artifact parity.
+
+## Release checks
+
+`npm run test:all` runs source/test typechecking, unit tests, a production build, artifact integrity/parity checks, real-browser regressions, and the full gameplay smoke suite in order. The strict preview server supports both `/moshi-and-pals/` and the native root layout, returns real 404s for asset misses, and does not mask errors with SPA fallbacks. CI uses pinned browser engines on Linux; heavy iOS tests are manual. Pages uploads the exact artifact that passed the complete web gate.

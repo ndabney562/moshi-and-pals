@@ -215,3 +215,15 @@ export function buyStaffLevel(id: ScribeId): boolean {
   save();
   return true;
 }
+
+/** Second signatures are independent, permanent NPS purchases. */
+export function secondUnlocked(id: string): boolean {
+  return doctorUnlocked(id) && state.owned.includes(`ability:${id}`);
+}
+export function buySecond(id: string): boolean {
+  const c = characterById(id);
+  if (c.id !== id || !c.second || !doctorUnlocked(id) || secondUnlocked(id) || state.nps < c.second.price) return false;
+  state = { ...state, nps: state.nps - c.second.price, owned: [...state.owned, `ability:${id}`] };
+  save();
+  return true;
+}

@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import { secondUnlocked } from '../core/progress';
 import { toTitle } from '../core/native';
 import { CONTROLS } from '../config/controls';
 import { DISPLAY } from '../config/display';
@@ -8,7 +9,7 @@ import {
   events, GameEvents, type BossPayload, type EquipmentChangedPayload, type HealthPayload, type RequisitionPayload, type RoomPayload, type VendingPayload, type RoundPayload, type StationPayload, type StreakPayload,
 } from '../core/events';
 import { DEBUG } from '../core/debug';
-import { inputState } from '../core/inputState';
+import { inputState, resetInputState } from '../core/inputState';
 import { resumeAudio, setSfxMuted } from '../core/sfx';
 import { applyVolume, setMusicPaused } from '../core/music';
 import { TIPS } from '../data/tips';
@@ -99,6 +100,7 @@ export class HudScene extends Phaser.Scene {
   private toastQueue: AchievementDef[] = [];
   private toastBusy = false;
   private refillButton!: HudButton;
+  private secondButton!: HudButton;
   private purgeButton!: HudButton;
   private interactButton!: HudButton;
   private swapButton!: HudButton;
@@ -225,6 +227,8 @@ export class HudScene extends Phaser.Scene {
     this.purgeButton = new HudButton(this, CONTROLS.buttons.purgeRadius, who.button, 0xc8ff6b, () => {
       inputState.purgeRequested = true;
     });
+    this.secondButton=new HudButton(this,42,who.second?.button ?? 'SECOND',0xd6a8ff,()=>{inputState.secondRequested=true;}).setVisible(secondUnlocked(who.id));
+    this.input.keyboard?.addKey('F').on('down',()=>{inputState.secondRequested=true;});
     // SWAP appears once a crate has given Eugene a second tool
     this.swapButton = new HudButton(this, CONTROLS.buttons.swapRadius, 'SWAP', 0xffe66d, () => {
       inputState.swapRequested = true;
@@ -320,6 +324,7 @@ export class HudScene extends Phaser.Scene {
     };
 
     const listeners: [string, (...args: never[]) => void][] = [
+      [GameEvents.SecondChanged, (p: {progress:number})=>this.secondButton.setProgress(p.progress>=1?-1:p.progress).setAlpha(p.progress>=1?1:.55)],
       [GameEvents.EquipmentChanged, onEquipment],
       [GameEvents.PlayerHealthChanged, onHealth],
       [GameEvents.PlayerBumped, onHurt],
@@ -333,6 +338,7 @@ export class HudScene extends Phaser.Scene {
       [GameEvents.PowerupPicked, onPicked],
       [GameEvents.RoomUnlocked, onBought],
       [GameEvents.ToolUnlocked, onBought],
+      [GameEvents.SecondChanged, (p: {progress:number})=>this.secondButton.setProgress(p.progress>=1?-1:p.progress).setAlpha(p.progress>=1?1:.55)],
       [GameEvents.EquipmentChanged, onPerfect],
       [GameEvents.BossSpawned, onBoss],
       [GameEvents.BossHealth, onBossHealth],
@@ -364,9 +370,14 @@ export class HudScene extends Phaser.Scene {
 
     // Auto-pause when the app is hidden (home screen, app switcher, a call) or loses focus
     const autoPause = () => this.pause();
+    const cancelTouch = () => { this.releaseInputs(); this.pause(); };
+    document.addEventListener('touchcancel', cancelTouch, { passive: true });
+    document.addEventListener('pointercancel', cancelTouch, { passive: true });
     this.game.events.on(Phaser.Core.Events.HIDDEN, autoPause);
     this.game.events.on(Phaser.Core.Events.BLUR, autoPause);
     this.events.once('shutdown', () => {
+      document.removeEventListener('touchcancel', cancelTouch);
+      document.removeEventListener('pointercancel', cancelTouch);
       this.game.events.off(Phaser.Core.Events.HIDDEN, autoPause);
       this.game.events.off(Phaser.Core.Events.BLUR, autoPause);
     });
@@ -647,14 +658,26 @@ export class HudScene extends Phaser.Scene {
     const { sprayRadius, purgeRadius, interactRadius } = CONTROLS.buttons;
     const purgeX = rightX - sprayRadius - purgeRadius - 22;
     this.purgeButton.setPosition(purgeX, rightY + sprayRadius - purgeRadius);
+    this.secondButton.setPosition(purgeX-110,rightY+sprayRadius-purgeRadius);
     this.interactButton.setPosition(purgeX - 10, rightY - sprayRadius - interactRadius - 10);
     this.interactNote.setPosition(purgeX - 10, rightY - sprayRadius - interactRadius * 2 - 16);
   }
 
   /** FPS counter; with ?debug, also frame-time p95 and entity counts (text redrawn 4x a second, not every frame). */
+  private measuredFrames = 0;
+  private fpsWindowAt = 0;
+  private measuredFps = 0;
+
   private updateFps(): void {
     if (!this.fpsText) return;
     const loop = this.game.loop;
+    if (!this.fpsWindowAt) this.fpsWindowAt = loop.now;
+    this.measuredFrames++;
+    if (loop.now - this.fpsWindowAt >= 1000) {
+      this.measuredFps = this.measuredFrames * 1000 / (loop.now - this.fpsWindowAt);
+      this.measuredFrames = 0;
+      this.fpsWindowAt = loop.now;
+    }
     if (DEBUG.overlay) {
       this.frameTimes.push(loop.delta);
       if (this.frameTimes.length > 240) this.frameTimes.shift();
@@ -662,7 +685,7 @@ export class HudScene extends Phaser.Scene {
     if (loop.now < this.nextStatsAt) return;
     this.nextStatsAt = loop.now + 250;
     if (!DEBUG.overlay) {
-      this.fpsText.setText(`${Math.round(loop.actualFps)} FPS`);
+      this.fpsText.setText(`${Math.round(this.measuredFps)} FPS`);
       return;
     }
     const sorted = [...this.frameTimes].sort((a, b) => a - b);
@@ -671,7 +694,7 @@ export class HudScene extends Phaser.Scene {
     const s = (this.scene.get('Game') as GameScene).stats();
     const flags = [DEBUG.god && 'GOD', DEBUG.fpsLimit && `CAP ${DEBUG.fpsLimit}`].filter(Boolean).join(' ');
     this.fpsText.setText([
-      `${Math.round(loop.actualFps)} FPS  p95 ${p95.toFixed(1)}ms  max ${worst.toFixed(0)}ms`,
+      `${Math.round(this.measuredFps)} FPS  p95 ${p95.toFixed(1)}ms  max ${worst.toFixed(0)}ms`,
       `germs ${s.germs}  drops ${s.droplets}  fx ${s.particles}  pts ${s.patients}`,
       `DEBUG ${flags}`.trim(),
     ].join('\n'));
@@ -831,13 +854,11 @@ export class HudScene extends Phaser.Scene {
     this.moveStick.release();
     this.aimStick?.release();
     this.endSprayTouch();
-    for (const b of [this.sprayButton, this.refillButton, this.purgeButton, this.interactButton, this.swapButton]) b?.release();
+    for (const b of [this.sprayButton, this.refillButton, this.purgeButton, this.secondButton, this.interactButton, this.swapButton]) b?.release();
     this.mouseDown = false;
     this.spaceDown = false;
-    Object.assign(inputState, {
-      moveX: 0, moveY: 0, aiming: false, firing: false,
-      refillRequested: false, purgeRequested: false, interactRequested: false, swapRequested: false,
-    });
+    resetInputState();
+    this.input.keyboard?.resetKeys();
   }
 
   resume(): void {

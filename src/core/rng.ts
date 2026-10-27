@@ -87,7 +87,7 @@ export const randomSeed = (): number => Math.floor(Math.random() * 4294967296) >
  *   secret:   the Miracle Cure's code
  *   vents:    where the germ vents (spawn points) sit each round
  */
-const STREAMS = ['wave', 'spawn', 'loot', 'patients', 'ai', 'world', 'secret', 'vents'] as const;
+const STREAMS = ['wave', 'spawn', 'loot', 'patients', 'ai', 'world', 'secret', 'vents', 'dialogue'] as const;
 export type RngStream = (typeof STREAMS)[number];
 
 export const runRng = Object.fromEntries(STREAMS.map((s) => [s, new Rng(hashSeed(s))])) as Record<RngStream, Rng>;

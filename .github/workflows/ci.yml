@@ -1,11 +1,26 @@
 name: CI
 
 on:
+  push:
   pull_request:
+  workflow_dispatch:
+    inputs:
+      full:
+        description: Run both browser engines and the full gameplay smoke suite
+        type: boolean
+        default: true
+
+permissions:
+  contents: read
+
+concurrency:
+  group: web-ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   build-and-smoke-test:
     runs-on: ubuntu-latest
+    timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -13,8 +28,24 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
+      - run: npm run test:typecheck
+      - run: npm run test:unit
       - run: npm run build
-      # Phone-sized touch test of the built game, using the runner's Chrome
-      - run: npm run smoke
-        env:
-          CHROMIUM_PATH: /usr/bin/google-chrome
+      - run: npm run test:bundle
+      - name: Install the pinned Chromium engine
+        if: github.event_name != 'workflow_dispatch' || !inputs.full
+        run: npx playwright install --with-deps chromium
+      - name: Install both browser engines for the full gate
+        if: github.event_name == 'workflow_dispatch' && inputs.full
+        run: npx playwright install --with-deps chromium webkit
+      - name: Fast mobile smoke checks
+        if: github.event_name != 'workflow_dispatch' || !inputs.full
+        run: npm run smoke:quick
+      - name: Full browser and gameplay regression gate
+        if: github.event_name == 'workflow_dispatch' && inputs.full
+        run: npm run test:regression && npm run smoke
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: web-test-results
+          path: test-results
