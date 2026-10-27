@@ -1019,6 +1019,12 @@ try {
   // Patients: one walks in, commits a health code violation, and gets sprayed into compliance
   const violation = await page.evaluate(() => {
     const scene = window.game.scene.getScene('Game');
+    // Hold an ordinary active round in the waiting room (the exam-table check left waves in intermission and Eugene in exam1)
+    if (scene.waves.round < 2 || scene.waves.isBossRound) scene.waves.round = 3;
+    scene.waves.phase = 'active';
+    scene.waves.nextSpawnAt = scene.time.now + 60000;
+    const sp = scene.room.playerSpawn;
+    scene.player.setPosition(sp.x, sp.y);
     // Only the test's patient (others may have wandered in during a slow run)
     for (const other of scene.patients.group.getChildren()) if (other.active) other.retire();
     scene.patients.spawn(scene.time.now);
