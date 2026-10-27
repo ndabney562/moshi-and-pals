@@ -446,6 +446,18 @@ export const BALANCE = {
     } as Record<string, number>,
     fallback: 0.15,
   },
+  /**
+   * TRAINEES (Noah, Oct 2026; docs/PROVIDER-EXPANSION-SPEC.md): random mid-shift assignments that expire after
+   * a timed period. Omar, Selina and Elaine can receive trainees. Alan and Donald are NOT eligible.
+   * A trainee imposes a 67% slowdown: movement speed, action/attack rate, and raw damage/copays output drop to 33%
+   * (rate multiplier changes the interval by division: interval / 0.33, or ~3.03x interval length).
+   */
+  trainees: {
+    statMult: 0.33,
+    durationMs: 40000,
+    chancePerRound: 0.20,
+    eligible: ['omar', 'selina', 'elaine'] as const,
+  },
   /** What a hired Pal has over Eugene (on top of their signature move). toolDamage = damage × with every tool. */
   doctors: {
     kaya: { moveSpeed: 1.12, toolDamage: 1.1 },

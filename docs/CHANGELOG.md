@@ -1,5 +1,14 @@
 # Changelog
 
+## Random Timed Trainees (Milestone 2)
+
+- **Random mid-shift trainee assignments**: Omar, Selina, and Elaine can receive trainees during shifts (`BALANCE.trainees`). Alan and Donald are technical/noncompliant specialists and reject trainee assignments.
+- **67% slowdown mechanics**: A trainee reduces helper movement speed, action/attack cadence, and raw output/damage to 33% (`statMult = 0.33`).
+- **Interval division rule**: Action, spray, and check-in intervals expand by division (`interval / 0.33`, or ~3.03× duration), compounding with output reduction to ~10.89% DPS / Copay yield.
+- **Visual feedback & dialogue**: Helpers receive a warm amber tint (`0xffd54f`), in-character arrival/completion speech bubbles, and HUD banners (`[NAME] HAS A TRAINEE` and `[NAME]'S TRAINEE SIGNED OFF`).
+- **ShiftSave persistence**: Remaining trainee game-time duration is tracked in `ShiftSave.trainees` and restored across save & quit / continue shift cycles.
+- **Testing & debug overrides**: Added `?trainee=` query parameter, unit coverage in `tests/unit/trainee.test.ts`, and Playwright e2e browser test coverage in `tests/e2e/trainee.spec.ts`.
+
 ## Helper Call-Outs & Attendance (Milestone 1)
 
 - **Independent helper attendance rolls per shift**: Each helper who waits in a room rolls once per shift independently, based on the shift seed and provider affinity (`BALANCE.attendance`).

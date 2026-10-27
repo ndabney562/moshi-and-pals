@@ -26,9 +26,22 @@ Commands use the locally installed Node 22 runtime, `npm run test:all`, `swift t
 
 One targeted WebKit menu test initially tapped a freshly redrawn interactive object before Phaser registered it. The test now waits for rendering frames, preserving the actual touch purchase assertions. Dhiwya marks are keyed to enemy spawn generations so pooled enemies cannot inherit a mark; locked second requests cannot bypass ownership checks. The first simulator run passed six tests but hit an Xcode app-launch background-assertion timeout in the achievements test; the full rerun against the final bundle passed all seven tests, including achievements and real WKWebView startup. No source-photo files, unrelated generated `output/` files or test traces are intended for the commit.
 
+## Milestone 2: Random Timed Trainees (QA report)
+
+- **Mechanics verified**: 67% slowdown (`statMult = 0.33`) applied across movement speed, action/attack cadence (interval ÷ 0.33, or ~3.03× duration), and raw output/damage. Compounding DPS and copays/sec tested and confirmed at ~10.89% of baseline.
+- **Eligibility verified**: Omar, Selina, and Elaine successfully receive trainees; Alan and Donald reject assignments deterministically in unit and E2E tests.
+- **Visual feedback & dialogue verified**: Amber tint `0xffd54f` active during trainee shadowing; in-character arrival/completion speech bubbles delivered; HUD banners announced (`[NAME] HAS A TRAINEE` and `[NAME]'S TRAINEE SIGNED OFF`).
+- **Persistence verified**: Remaining duration serialized in `ShiftSave.trainees` and restored across save & quit / continue shift cycles without rerolling or dropping timers.
+- **Test execution summary**:
+  - TypeScript type check: Passed with 0 errors (`tsc --project tsconfig.tests.json`).
+  - Unit tests: 20 test files, 134 passed (`npm run test:unit`).
+  - Web bundle & worker checks: 6 passed (`npm run test:bundle`).
+  - Playwright browser regression: 82 passed across Chromium and WebKit (`npm run test:regression`).
+  - Legacy smoke test suite: 206 passed, 0 failed (`npm run smoke`).
+
 ## Remaining expansion work
 
-Call-out scheduling, random timed trainees, random distractions, Alexandra, Flu Season, the shared online leaderboard and puzzle mode are separate milestones. This report does not claim they are implemented. Rally can clear a combat helper's interruption flag; the random distraction event generator remains separate. Second abilities for the four original providers were not part of this new-provider approval.
+Random distractions & interventions, Alexandra, Flu Season, the shared online leaderboard and puzzle mode are separate milestones. This report does not claim they are implemented. Rally can clear a combat helper's interruption flag; the random distraction event generator remains separate. Second abilities for the four original providers were not part of this new-provider approval.
 
 Janeen leads at equivalent equipment/upgrades; unlimited health snacks prevent an absolute health comparison against arbitrarily different runs. Numbers are an initial balance pass validated by deterministic tests, not a substitute for physical-iPhone playtesting or player feedback. Local simulator/browser checks do not establish hardware performance on every supported iPhone.
 

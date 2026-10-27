@@ -74,6 +74,10 @@ export const GameEvents = {
   SecretFound: 'secret.found',
   /** { id, name, reason } opening a room showed its waiting helper called out this shift (a banner) */
   HelperCalledOut: 'helper.calledOut',
+  /** { id, name, durationMs } helper assigned a random timed trainee (67% slowdown) */
+  TraineeAssigned: 'trainee.assigned',
+  /** { id, name } helper trainee completed orientation (restores normal stats) */
+  TraineeCompleted: 'trainee.completed',
 } as const;
 
 export interface RequisitionOption { id: string; name: string; blurb: string; color: number; }
@@ -117,6 +121,8 @@ export interface StreakPayload { count: number; mult: number; left: number; }
 export interface HealthPayload { hp: number; maxHp: number; }
 export interface RoundPayload { round: number; title: string; /** Special round name, if it is one. */ special?: string; }
 export interface BossPayload { name: string; hp: number; maxHp: number; }
+export interface TraineeAssignedPayload { id: string; name: string; durationMs: number; }
+export interface TraineeCompletedPayload { id: string; name: string; }
 export interface RunResult {
   score: number; round: number; kills: number;
   bestScore: number; bestRound: number; newBestScore: boolean; newBestRound: boolean;
@@ -150,4 +156,12 @@ export interface RunResult {
   clockedOut?: boolean;
 }
 
-export const events = new Phaser.Events.EventEmitter();
+class FallbackEmitter {
+  private l = new Map<string, Set<Function>>();
+  on(e: string, fn: Function) { (this.l.get(e) ?? this.l.set(e, new Set()).get(e)!).add(fn); return this; }
+  off(e: string, fn: Function) { this.l.get(e)?.delete(fn); return this; }
+  emit(e: string, ...args: unknown[]) { this.l.get(e)?.forEach((fn) => fn(...args)); return true; }
+  once(e: string, fn: Function) { const wrap = (...args: unknown[]) => { this.off(e, wrap); fn(...args); }; return this.on(e, wrap); }
+}
+
+export const events = (Phaser?.Events?.EventEmitter ? new Phaser.Events.EventEmitter() : new FallbackEmitter()) as unknown as Phaser.Events.EventEmitter;
