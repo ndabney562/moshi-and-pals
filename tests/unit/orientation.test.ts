@@ -20,7 +20,9 @@ it('rotates a coarse-pointer portrait screen and its safe areas', () => {
   expect(rotateInsets({ top: 1, right: 2, bottom: 3, left: 4 })).toEqual({ left: 1, top: 2, right: 3, bottom: 4 });
   screen(852, 393);
   applyOrientation();
-  expect(game.style.width).toBe('');
+  expect(game.style.width).toBe('852px');
+  expect(game.style.height).toBe('393px');
+  expect(game.style.left).toBe('');
   expect(document.body.classList.contains('portrait')).toBe(false);
 });
 it('keeps a portrait desktop unrotated and handles a missing safe-area probe', () => {

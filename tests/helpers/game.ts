@@ -15,7 +15,7 @@ export const test = base.extend<{ cleanRuntime: void }>({
     page.on('pageerror', (error) => errors.push(error.stack ?? error.message));
     page.on('console', (message) => {
       const offlineProbe = testInfo.annotations.some((a) => a.type === 'offline')
-        && /Failed to load resource:.*(ERR_INTERNET_DISCONNECTED|ERR_EMPTY_RESPONSE|Internet connection appears to be offline|network connection was lost|server unexpectedly dropped)/i.test(message.text());
+        && /Failed to load resource:.*(ERR_INTERNET_DISCONNECTED|ERR_EMPTY_RESPONSE|Internet connection appears to be offline|network connection was lost|server unexpectedly dropped|Connection terminated unexpectedly)/i.test(message.text());
       if (message.type() === 'error' && !offlineProbe) errors.push(message.text());
     });
     page.on('requestfailed', (request) => {

@@ -20,9 +20,9 @@ export function applyOrientation(): void {
   const portrait = isPortrait();
   const { width, height } = viewportSize();
   document.body.classList.toggle('portrait', portrait);
-  // Pixel sizes rather than vh/vw, which include Safari's toolbars
-  el.style.width = portrait ? `${height}px` : '';
-  el.style.height = portrait ? `${width}px` : '';
+  // Explicit pixels also avoid stale 100dvh dimensions during WKWebView rotation.
+  el.style.width = `${portrait ? height : width}px`;
+  el.style.height = `${portrait ? width : height}px`;
   el.style.left = portrait ? `${width}px` : '';
 }
 

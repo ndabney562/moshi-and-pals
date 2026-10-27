@@ -32,6 +32,14 @@ Call-out scheduling, random timed trainees, random distractions, Alexandra, Flu 
 
 Janeen leads at equivalent equipment/upgrades; unlimited health snacks prevent an absolute health comparison against arbitrarily different runs. Numbers are an initial balance pass validated by deterministic tests, not a substitute for physical-iPhone playtesting or player feedback. Local simulator/browser checks do not establish hardware performance on every supported iPhone.
 
+## October 27 deployment follow-up
+
+PR #61 merged successfully and main CI passed. Its Pages gate stopped at three Linux WebKit cases: a native-start timeout and two intentional-outage console messages using the Linux wording "Connection terminated unexpectedly". Native commands now cancel an older menu sleep timer and enqueue the scene change before Phaser's synchronous wake tick. The outage-only diagnostic filter recognizes that wording; failed asset requests and runtime exceptions remain checked. Browser coverage now waits for the native loop to sleep before opening the board and starting a shift.
+
+The full simulator rerun also exposed stale WKWebView dynamic viewport CSS after rotation: the viewport was 874 by 402 while the parent remained 874 pixels tall. Both orientations now explicitly size the game container from the measured viewport. Unit and browser assertions cover landscape parent dimensions; the unchanged real-WKWebView geometry assertion passes. The initial failed simulator run stalled collecting diagnostics and was stopped after its seven test results were logged.
+
+Final local repair validation: 122 unit, 70 Chromium/WebKit regression, 206 legacy smoke, 6 artifact/worker, 36 Swift and 7 simulator tests passed; type checks, production build and sealed-bundle verification passed. Logs: `/private/tmp/moshi-resume-final-web.log`, `/private/tmp/moshi-resume-swift.log`, `/private/tmp/moshi-resume-ios-final.log`. Tested source fingerprint: `6dbb5056fff19f69d64e4136cf1a19fd7ef45d554f280461577ce4b823b888bd`. This follow-up changes native wake/rotation handling and test diagnostics, with no new gameplay features.
+
 ## Reviewable change list
 
 1. Added seven approved providers, shared procedural art, provider-specific dialogue and their first/second specials.

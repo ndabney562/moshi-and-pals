@@ -89,5 +89,6 @@ test('waking the native game reconciles orientation even when resize events are 
   await page.evaluate(() => window.moshiNative.start());
   await active(page, 'Hud');
   await expect(page.locator('body')).not.toHaveClass(/portrait/);
+  await expect.poll(() => page.locator('#game').evaluate((parent) => parent.getBoundingClientRect().height)).toBe(393);
   await expect.poll(() => page.locator('canvas').evaluate((canvas) => canvas.getBoundingClientRect().bottom)).toBeLessThanOrEqual(394);
 });
