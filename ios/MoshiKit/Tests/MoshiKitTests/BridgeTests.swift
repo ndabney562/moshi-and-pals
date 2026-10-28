@@ -27,7 +27,7 @@ final class BridgeMessageTests: XCTestCase {
         let json = """
         {"type":"snapshot","version":"v0.31.0 (abc1234)",
          "settings":{"autoAim":false,"sound":true,"music":false,"autoRefill":true,"reducedMotion":false,"character":"kaya","difficulty":"trauma"},
-         "pals":[{"id":"eugene","name":"Dr. Moshkovich","short":"EUGENE","blurb":"Honk","price":0,"unlocked":true}],
+         "pals":[{"id":"eugene","name":"Eugene","short":"EUGENE","blurb":"Honk","price":0,"unlocked":true}],
          "difficulties":[{"id":"urgent","name":"Urgent","blurb":"As intended","bestScore":1200,"bestRound":11,"bestStreak":40}],
          "totals":{"runs":3,"totalKills":250},
          "progress":{"credits":4,"nps":12,"bank":300},

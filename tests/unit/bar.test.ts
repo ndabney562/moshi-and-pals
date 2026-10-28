@@ -100,7 +100,7 @@ describe('Bar', () => {
   });
 
   it('adjusts outerHeight when avatar is provided', () => {
-    const bar = new Bar(mockScene, 240, 22, 0x4cd964, 'Dr. Moshkovich', { key: 'provider-portraits', frame: 'eugene' });
+    const bar = new Bar(mockScene, 240, 22, 0x4cd964, 'Eugene', { key: 'provider-portraits', frame: 'eugene' });
     expect(bar.outerHeight).toBe(36);
   });
 

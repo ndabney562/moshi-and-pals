@@ -6,9 +6,9 @@ public extension GameSnapshot {
         version: "v0.32.0 (sample)",
         settings: GameSettings(character: "eugene", difficulty: "urgent"),
         pals: [
-            Pal(id: "eugene", name: "Dr. Moshkovich", short: "EUGENE", blurb: "SINUS PURGE: a honk that blasts germs away", price: 0, unlocked: true),
-            Pal(id: "kaya", name: "Dr. Kaya", short: "KAYA", blurb: "CODE BLUE: a sprint that bowls germs over", price: 30, unlocked: true),
-            Pal(id: "lucien", name: "PA Lucien", short: "LUCIEN", blurb: "CLEAN FIELD: a sterile zone that slows and burns germs", price: 45, unlocked: false),
+            Pal(id: "eugene", name: "Eugene", short: "EUGENE", blurb: "SINUS PURGE: a honk that blasts germs away", price: 0, unlocked: true),
+            Pal(id: "kaya", name: "Kaya", short: "KAYA", blurb: "CODE BLUE: a sprint that bowls germs over", price: 30, unlocked: true),
+            Pal(id: "lucien", name: "Lucien", short: "LUCIEN", blurb: "CLEAN FIELD: a sterile zone that slows and burns germs", price: 45, unlocked: false),
             Pal(id: "ken", name: "Ken", short: "KEN", blurb: "FILE A GRIEVANCE: sends Diamond to HR", price: 60, unlocked: false),
         ],
         difficulties: [

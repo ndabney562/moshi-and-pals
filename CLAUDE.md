@@ -11,4 +11,4 @@
 - Before pushing: `npm run build && npm run smoke` (uses /opt/pw-browsers Chromium; set CHROMIUM_PATH elsewhere).
 - Keep docs/ concise; update CHANGELOG.md and BALANCE.md when behavior or numbers change.
 - No real CityMD names or logos. The map may follow the real clinic's floor plan (Noah's call, Oct 2026; keep the photos out of the repo). No Call of Duty assets or names.
-- The Pals are Noah's coworkers, playable by his call (Oct 2026): Dr. Kaya and PA Lucien. Keep their photos out of the repo; no team logos on their art.
+- The Pals are Noah's coworkers, playable by his call (Oct 2026): Kaya and Lucien. Keep their photos out of the repo; no team logos on their art.
