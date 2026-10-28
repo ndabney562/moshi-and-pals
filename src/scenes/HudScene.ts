@@ -62,6 +62,7 @@ export class HudScene extends Phaser.Scene {
   private pauseButton!: HudButton;
   private pauseMenu!: Phaser.GameObjects.Container;
   private pauseDim!: Phaser.GameObjects.Rectangle;
+  private pauseCard!: Phaser.GameObjects.Graphics;
   private pauseTitle!: Phaser.GameObjects.Text;
   private pauseTip!: Phaser.GameObjects.Text;
   private pauseVersion!: Phaser.GameObjects.Text;
@@ -200,7 +201,7 @@ export class HudScene extends Phaser.Scene {
 
     // Pause: top-right corner, away from both thumbs. Settings live in the pause menu.
     this.pauseButton = new HudButton(this, CONTROLS.buttons.pauseRadius, 'II', 0xe8fff9, () => this.pause());
-    this.buildPauseMenu(style);
+    this.buildPauseMenu();
     // ACHIEVEMENT toast, shown under the score
     this.toastName = this.add.text(0, -12, '', { ...style, fontSize: '20px', fontStyle: '900', color: '#ffe66d' }).setOrigin(0.5);
     this.toastHow = this.add.text(0, 16, '', { ...style, fontSize: '15px', fontStyle: 'bold' }).setOrigin(0.5);
@@ -242,7 +243,10 @@ export class HudScene extends Phaser.Scene {
     this.swapButton = new HudButton(this, CONTROLS.buttons.swapRadius, 'SWAP', 0xffe66d, () => {
       inputState.swapRequested = true;
     }).setVisible(false);
-    this.toolText = this.add.text(0, 0, '', { ...tag, fontSize: '14px', fontStyle: 'bold' }).setOrigin(1, 1);
+    this.toolText = this.add.text(0, 0, '', {
+      fontFamily: MENU.font, fontSize: '14px', fontStyle: '900', color: '#ffffff',
+      backgroundColor: '#0c2528ee', padding: { x: 10, y: 5 },
+    }).setOrigin(1, 1).setShadow(0, 1, '#051314', 3);
 
     // USE pops up at supply carts (restock) and locked doors (buy them open)
     this.interactButton = new HudButton(this, CONTROLS.buttons.interactRadius, 'USE', 0x7fffd4, () => {
@@ -801,16 +805,30 @@ export class HudScene extends Phaser.Scene {
   }
 
   /** The pause screen: dims the game and offers resume, sound, auto-aim and quit. Hidden until paused. */
-  private buildPauseMenu(style: Phaser.Types.GameObjects.Text.TextStyle): void {
+  private buildPauseMenu(): void {
     // Swallows touches so nothing underneath (sticks, buttons) reacts while paused
-    this.pauseDim = this.add.rectangle(0, 0, 10, 10, 0x0d2b2e, 0.82).setOrigin(0).setInteractive();
-    this.pauseTitle = this.add.text(0, 0, 'PAUSED', { ...style, fontSize: '64px', fontStyle: '900' }).setOrigin(0.5).setShadow(0, 5, '#000', 8);
-    this.pauseTip = this.add.text(0, 0, '', { ...style, fontSize: '20px', fontStyle: 'italic', color: COLORS.uiAccent, align: 'center', wordWrap: { width: 700 } }).setOrigin(0.5);
-    this.pauseVersion = this.add.text(0, 0, `Moshi and Pals ${__APP_VERSION__}`, { ...style, fontSize: '14px', color: '#9fb8b3' }).setOrigin(0.5, 1);
-    const item = (label: string, onTap: () => void) => this.add.text(0, 0, label, {
-      ...style, fontSize: '26px', fontStyle: 'bold', backgroundColor: '#1f4f55', padding: { x: 22, y: 12 }, align: 'center', fixedWidth: 340,
+    this.pauseDim = this.add.rectangle(0, 0, 10, 10, 0x051314, 0.85).setOrigin(0).setInteractive();
+    this.pauseCard = this.add.graphics();
+    this.pauseTitle = this.add.text(0, 0, 'PAUSED', {
+      fontFamily: MENU.font, fontSize: '56px', fontStyle: '900', color: '#ffffff',
+    }).setOrigin(0.5).setShadow(0, 4, '#051314', 6);
+    this.pauseTip = this.add.text(0, 0, '', {
+      fontFamily: MENU.font, fontSize: '16px', fontStyle: 'italic', color: MENU.mint, align: 'center', wordWrap: { width: 680 },
+    }).setOrigin(0.5).setShadow(0, 2, '#051314', 4);
+    this.pauseVersion = this.add.text(0, 0, `Moshi and Pals ${__APP_VERSION__}`, {
+      fontFamily: MENU.font, fontSize: '13px', fontStyle: 'bold', color: '#88a6a2',
+    }).setOrigin(0.5, 1);
+
+    const item = (label: string, onTap: () => void, primary = false) => this.add.text(0, 0, label, {
+      fontFamily: MENU.font, fontSize: primary ? '24px' : '20px', fontStyle: '900',
+      color: primary ? MENU.ink : '#ffffff',
+      backgroundColor: primary ? MENU.mint : '#0e2e33',
+      padding: { x: 22, y: 10 },
+      align: 'center',
+      fixedWidth: 360,
     }).setOrigin(0.5).setInteractive({ useHandCursor: true }).on('pointerup', onTap);
-    this.resumeItem = item('RESUME', () => this.resume());
+
+    this.resumeItem = item('RESUME', () => this.resume(), true);
     this.soundToggle = item('', () => {
       settings.sound = !settings.sound;
       saveSettings();
@@ -824,7 +842,7 @@ export class HudScene extends Phaser.Scene {
       this.refreshSoundToggle();
     });
     // SOUND and MUSIC share a row, half width each
-    for (const t of [this.soundToggle, this.musicToggle]) t.setFixedSize(166, 0).setFontSize(22);
+    for (const t of [this.soundToggle, this.musicToggle]) t.setFixedSize(176, 0).setFontSize(18);
     this.autoRefillToggle = item('', () => {
       settings.autoRefill = !settings.autoRefill;
       saveSettings();
@@ -869,9 +887,9 @@ export class HudScene extends Phaser.Scene {
       toTitle(this);
     });
     // They share a row, like SOUND and MUSIC
-    for (const t of [this.saveQuitItem, this.quitItem]) t.setFixedSize(166, 0).setFontSize(18);
+    for (const t of [this.saveQuitItem, this.quitItem]) t.setFixedSize(176, 0).setFontSize(16);
     items.push(this.saveQuitItem, this.quitItem);
-    this.pauseMenu = this.add.container(0, 0, [this.pauseDim, this.pauseTitle, this.pauseTip, this.pauseVersion, ...items]).setDepth(100).setVisible(false);
+    this.pauseMenu = this.add.container(0, 0, [this.pauseDim, this.pauseCard, this.pauseTitle, this.pauseTip, this.pauseVersion, ...items]).setDepth(100).setVisible(false);
     this.refreshSoundToggle();
     this.refreshAutoAimToggle();
     this.refreshAutoRefillToggle();
@@ -889,17 +907,28 @@ export class HudScene extends Phaser.Scene {
   private layoutPauseMenu(width: number, height: number): void {
     this.pauseDim.setSize(width, height);
     this.pauseDim.input?.hitArea.setSize(width, height);
-    this.pauseTitle.setPosition(width / 2, height * 0.15);
-    this.pauseTip.setPosition(width / 2, height * 0.15 + 58);
+    this.pauseTitle.setPosition(width / 2, height * 0.13);
+    this.pauseTip.setPosition(width / 2, height * 0.13 + 52);
     this.pauseVersion.setPosition(width / 2, height - this.safe.bottom - 10);
     const items = [this.resumeItem, this.soundToggle, this.autoRefillToggle, this.motionToggle, this.autoAimToggle, this.achievementsItem, this.saveQuitItem].filter((t): t is Phaser.GameObjects.Text => !!t);
-    const top = height * 0.3;
-    const gap = Math.min(66, (height * 0.62) / items.length);
+    const top = height * 0.28;
+    const gap = Math.min(56, (height * 0.64) / items.length);
     items.forEach((t, i) => t.setPosition(width / 2, top + i * gap));
-    this.soundToggle.x = width / 2 - 87;
-    this.musicToggle.setPosition(width / 2 + 87, this.soundToggle.y);
-    this.saveQuitItem.x = width / 2 - 87;
-    this.quitItem.setPosition(width / 2 + 87, this.saveQuitItem.y);
+    this.soundToggle.x = width / 2 - 92;
+    this.musicToggle.setPosition(width / 2 + 92, this.soundToggle.y);
+    this.saveQuitItem.x = width / 2 - 92;
+    this.quitItem.setPosition(width / 2 + 92, this.saveQuitItem.y);
+
+    const cardW = 400;
+    const cardTop = top - 24;
+    const cardH = (items.length - 1) * gap + 54;
+    const g = this.pauseCard.clear();
+    g.fillStyle(0x020a0b, 0.65);
+    g.fillRoundedRect(width / 2 - cardW / 2 + 4, cardTop + 4, cardW, cardH, 18);
+    g.fillStyle(0x081e22, 0.95);
+    g.fillRoundedRect(width / 2 - cardW / 2, cardTop, cardW, cardH, 18);
+    g.lineStyle(2, 0x1b4549, 0.9);
+    g.strokeRoundedRect(width / 2 - cardW / 2, cardTop, cardW, cardH, 18);
   }
 
   /** Freezes the game and shows the pause menu. Safe to call any time (ignored if already paused or the run is over). */
