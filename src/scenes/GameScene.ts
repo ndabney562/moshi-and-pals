@@ -575,6 +575,7 @@ export class GameScene extends Phaser.Scene {
       this.boss?.destroy();
       this.boss = undefined;
       this.cure.destroy();
+      this.scribes?.destroy();
       stopMusic(0.3);
     });
 

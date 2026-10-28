@@ -2,6 +2,7 @@ import Phaser from 'phaser';
 import { BALANCE } from '../config/balance';
 import { events, GameEvents } from '../core/events';
 import { staffBoost } from '../core/progress';
+import { settings } from '../core/settings';
 import { sfx } from '../core/sfx';
 import { SCRIBES, type ScribeDef, type ScribeId } from '../data/scribes';
 import type { Germ } from '../entities/Germ';
@@ -50,6 +51,8 @@ class Scribe {
   readonly img: Phaser.GameObjects.Image;
   readonly shadow: Phaser.GameObjects.Image;
   readonly bubble: SpeechBubble;
+  readonly reticle?: Phaser.GameObjects.Graphics;
+  currentTarget?: Germ;
   until = 0;
   nextAttackAt = 0;
   nextCleanAt = 0;
@@ -74,6 +77,15 @@ class Scribe {
     this.shadow = scene.add.image(0, 0, 'shadow').setDepth(9).setVisible(false);
     this.img = scene.add.image(0, 0, `scribe-${def.id}`).setDepth(9.8).setVisible(false);
     this.bubble = new SpeechBubble(scene);
+    if (scene.add?.graphics) {
+      this.reticle = scene.add.graphics().setDepth(9.6).setVisible(false);
+    }
+  }
+
+  destroy(): void {
+    if (this.reticle) {
+      this.reticle.destroy();
+    }
   }
 
   get here(): boolean {
@@ -186,6 +198,11 @@ export class Scribes {
   assignDistraction(id: ScribeId, target: { x: number; y: number; label: string }, time: number, ms: number): boolean {
     const s = this.list.find((x) => x.def.id === id);
     if (!s || !s.here || s.distraction) return false;
+    s.currentTarget = undefined;
+    if (s.reticle?.visible) {
+      s.reticle.clear();
+      s.reticle.setVisible(false);
+    }
     let marker: Phaser.GameObjects.Graphics | undefined;
     let markerText: Phaser.GameObjects.Text | undefined;
     if (this.host.scene.add?.graphics) {
@@ -234,6 +251,11 @@ export class Scribes {
   assignImaging(time: number, ms: number, target = { x: 940, y: 1400 }): boolean {
     const s = this.list.find((x) => x.def.id === 'donald');
     if (!s || !s.here || s.distraction) return false;
+    s.currentTarget = undefined;
+    if (s.reticle?.visible) {
+      s.reticle.clear();
+      s.reticle.setVisible(false);
+    }
     let marker: Phaser.GameObjects.Graphics | undefined;
     let markerText: Phaser.GameObjects.Text | undefined;
     if (this.host.scene.add?.graphics) {
@@ -341,7 +363,16 @@ export class Scribes {
         this.dismiss(s);
         continue;
       }
-      if (this.host.player.dead) continue;
+      if (this.host.player.dead) {
+        if (s.currentTarget) {
+          s.currentTarget = undefined;
+          if (s.reticle?.visible) {
+            s.reticle.clear();
+            s.reticle.setVisible(false);
+          }
+        }
+        continue;
+      }
       this.think(s, time, dtMs);
     }
   }
@@ -366,6 +397,13 @@ export class Scribes {
 
     // Distracted or imaging: steer toward the in-world target, halt combat/cleaning, check intervention
     if (s.distraction) {
+      if (s.currentTarget) {
+        s.currentTarget = undefined;
+        if (s.reticle?.visible) {
+          s.reticle.clear();
+          s.reticle.setVisible(false);
+        }
+      }
       const distToPlayer = Phaser.Math.Distance.Between(img.x, img.y, player.x, player.y);
       if (s.distraction.kind === 'distraction' && (time >= s.distraction.assignedAt + 1200) && distToPlayer <= BALANCE.distractions.interventionRange) {
         this.clearDistraction(s, time, true);
@@ -400,7 +438,9 @@ export class Scribes {
     // Germs first; with none in reach, the nearest patient with a violation on record. In the same room
     // they step over the seats to get to one (furniture, no walls); otherwise they need a clear line.
     const xray = s.def.id === 'donald';
-    const germ = this.nearestGerm(img.x, img.y, xray ? cfg.donald.range : cfg.range, xray);
+    const germ = this.nearestGerm(img.x, img.y, xray ? cfg.donald.range : cfg.range, xray, s.currentTarget);
+    s.currentTarget = germ;
+    this.updateReticle(s, time);
     const patient = germ ? undefined : this.host.patients.nearestViolator(img.x, img.y, cfg.cleanRange * 1.8,
       (p) => p.violations > 0 && (this.host.sameRoom(img.x, img.y, p.x, p.y) || flow.lineClear(img.x, img.y, p.x, p.y)));
 
@@ -473,17 +513,105 @@ export class Scribes {
   }
 
   /** The nearest germ in reach: in sight, or with `throughWalls` (X-rays) anywhere on the same floor. */
-  private nearestGerm(x: number, y: number, range: number, throughWalls = false): Germ | undefined {
+  private nearestGerm(x: number, y: number, range: number, throughWalls = false, currentTarget?: Germ): Germ | undefined {
     let best: Germ | undefined;
     let bestD = range * range;
+
+    // Target hysteresis: give currentTarget a slight stickiness advantage (~15% distance buffer)
+    // so the helper's focus reticle and shots don't jitter between two equidistant germs.
+    if (currentTarget && currentTarget.active) {
+      const d = (currentTarget.x - x) ** 2 + (currentTarget.y - y) ** 2;
+      const maxRangeD = (range * 1.1) ** 2;
+      if (d <= maxRangeD) {
+        const seen = throughWalls ? this.host.sameFloor(x, y, currentTarget.x, currentTarget.y) : this.host.flow.lineClear(x, y, currentTarget.x, currentTarget.y);
+        if (seen) {
+          best = currentTarget;
+          bestD = d * 0.75;
+        }
+      }
+    }
+
     for (const g of this.host.germs()) {
-      if (!g.active) continue;
+      if (!g.active || g === currentTarget) continue;
       const d = (g.x - x) ** 2 + (g.y - y) ** 2;
       if (d >= bestD) continue;
       const seen = throughWalls ? this.host.sameFloor(x, y, g.x, g.y) : this.host.flow.lineClear(x, y, g.x, g.y);
       if (seen) { bestD = d; best = g; }
     }
     return best;
+  }
+
+  /** Renders a distinct tactical target reticle over the germ actively engaged by this helper. */
+  private updateReticle(s: Scribe, time: number): void {
+    if (!s.reticle) return;
+    if (!s.here || s.distracted || !s.currentTarget || !s.currentTarget.active || this.host.player.dead) {
+      if (s.reticle.visible) {
+        s.reticle.clear();
+        s.reticle.setVisible(false);
+      }
+      return;
+    }
+
+    const g = s.currentTarget;
+    const isTrainee = s.hasTrainee(time);
+    const color = isTrainee ? 0xffd54f : s.def.color;
+    const reduced = settings.reducedMotion;
+
+    s.reticle.setVisible(true);
+    s.reticle.clear();
+
+    const scribeIndex = Math.max(0, this.list.indexOf(s));
+    const baseRadius = Math.max(14, (g.displayWidth || 24) * 0.5 + 4) + scribeIndex * 3;
+    const pulse = reduced ? 0 : Math.sin(time / 140) * 1.5;
+    const r = baseRadius + pulse;
+    const arm = Math.max(5, Math.floor(r * 0.35));
+
+    const gx = g.x;
+    const gy = g.y;
+
+    s.reticle.lineStyle(2, color, isTrainee ? 0.95 : 0.85);
+
+    // 4 Corner Brackets: [ ]
+    // Top-left
+    s.reticle.beginPath();
+    s.reticle.moveTo(gx - r, gy - r + arm);
+    s.reticle.lineTo(gx - r, gy - r);
+    s.reticle.lineTo(gx - r + arm, gy - r);
+    s.reticle.strokePath();
+
+    // Top-right
+    s.reticle.beginPath();
+    s.reticle.moveTo(gx + r - arm, gy - r);
+    s.reticle.lineTo(gx + r, gy - r);
+    s.reticle.lineTo(gx + r, gy - r + arm);
+    s.reticle.strokePath();
+
+    // Bottom-left
+    s.reticle.beginPath();
+    s.reticle.moveTo(gx - r, gy + r - arm);
+    s.reticle.lineTo(gx - r, gy + r);
+    s.reticle.lineTo(gx - r + arm, gy + r);
+    s.reticle.strokePath();
+
+    // Bottom-right
+    s.reticle.beginPath();
+    s.reticle.moveTo(gx + r - arm, gy + r);
+    s.reticle.lineTo(gx + r, gy + r);
+    s.reticle.lineTo(gx + r, gy + r - arm);
+    s.reticle.strokePath();
+
+    // Trainee indicator: gold pip above top center
+    if (isTrainee) {
+      s.reticle.fillStyle(0xffd54f, 0.95);
+      s.reticle.fillCircle(gx, gy - r - 4, 3);
+    } else {
+      // Scribe directional indicator dot pointing toward the attacking scribe
+      const angle = Math.atan2(s.img.y - gy, s.img.x - gx);
+      const dotX = gx + Math.cos(angle) * (r + 4);
+      const dotY = gy + Math.sin(angle) * (r + 4);
+      s.reticle.fillStyle(color, 0.85);
+      s.reticle.fillCircle(dotX, dotY, 2.5);
+    }
   }
 
   /** Omar sprays the nearest germ; Alan zaps it and jumps to the next ones; Donald X-rays everything in a line. */
@@ -571,7 +699,16 @@ export class Scribes {
     const now = time ?? this.host.scene?.time?.now ?? 0;
     const traineeDmgMult = s.hasTrainee?.(now) ? BALANCE.trainees.statMult : 1;
     this.host.hit(g, damage * s.boost.power * (this.host.helperDamage ?? 1) * traineeDmgMult, angle, knockback);
-    if (!g.active) s.kills++;
+    if (!g.active) {
+      s.kills++;
+      if (s.currentTarget === g) {
+        s.currentTarget = undefined;
+        if (s.reticle?.visible) {
+          s.reticle.clear();
+          s.reticle.setVisible(false);
+        }
+      }
+    }
   }
 
   /** Donald's X-ray: a pale glowing band that flashes and fades. */
@@ -656,6 +793,11 @@ export class Scribes {
       if (s.distraction.markerText) s.distraction.markerText.destroy();
       s.distraction = undefined;
     }
+    if (s.reticle) {
+      s.reticle.clear();
+      s.reticle.setVisible(false);
+    }
+    s.currentTarget = undefined;
     s.bubble.say(pick(s.def.lines.leave), { x: s.img.x, y: s.img.y }, 44, 1800);
     s.shadow.setVisible(false);
     s.until = 0;
@@ -672,5 +814,24 @@ export class Scribes {
   /** Scribe kills and cleaned-up patients this shift, both of them together. */
   get totals(): { kills: number; cleaned: number } {
     return this.list.reduce((t, s) => ({ kills: t.kills + s.kills, cleaned: t.cleaned + s.cleaned }), { kills: 0, cleaned: 0 });
+  }
+
+  /** Cleans up all helper GameObjects (reticles, markers) when tearing down. */
+  destroy(): void {
+    for (const s of this.list) {
+      s.destroy();
+    }
+  }
+
+  /** The germ currently targeted by this helper (tests, inspect). */
+  getTarget(id: ScribeId): Germ | undefined {
+    const s = this.list.find((x) => x.def.id === id);
+    return s && s.here ? s.currentTarget : undefined;
+  }
+
+  /** Whether the helper is actively aiming at or locked onto an active enemy target. */
+  hasTarget(id: ScribeId): boolean {
+    const s = this.list.find((x) => x.def.id === id);
+    return !!(s && s.here && s.currentTarget && s.currentTarget.active);
   }
 }
