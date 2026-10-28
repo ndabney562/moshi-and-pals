@@ -26,8 +26,6 @@ test('Spore Pod swaps to cracked-shell texture when flipped and reverts when rec
   expect(initial.armorFront).toBe(0.25);
   expect(initial.armorBack).toBe(1.5);
 
-  await page.screenshot({ path: '/private/tmp/moshi-sporepod-upright.png' });
-
   // Trigger Sinus Purge to flip the Spore Pod
   const flipped = await page.evaluate(() => {
     const g = window.game.scene.getScene('Game');
@@ -44,8 +42,6 @@ test('Spore Pod swaps to cracked-shell texture when flipped and reverts when rec
   expect(flipped.texture).toBe('germ-sporePod-flipped');
   expect(flipped.isFlipped).toBe(true);
   expect(flipped.armorFlippedFace).toBe(1.5);
-
-  await page.screenshot({ path: '/private/tmp/moshi-sporepod-flipped.png' });
 
   // Advance time past flip duration (2000ms) and update germ
   const recovered = await page.evaluate(() => {
