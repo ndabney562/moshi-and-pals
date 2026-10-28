@@ -52,6 +52,7 @@ test('an immediate Continue tap after Save & Quit restores the existing shift', 
     g.score = 1234;
     window.game.scene.getScene('Hud').pause();
   });
+  await page.waitForFunction(() => window.game.scene.isPaused('Game'));
   await tapObject(page, 'Hud', 'saveQuitItem');
   await active(page, 'Title');
   // Do not reload or wait for a later animation frame: cover the transition race.

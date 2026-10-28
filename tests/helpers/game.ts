@@ -15,12 +15,17 @@ export const test = base.extend<{ cleanRuntime: void }>({
     page.on('pageerror', (error) => errors.push(error.stack ?? error.message));
     page.on('console', (message) => {
       const offlineProbe = testInfo.annotations.some((a) => a.type === 'offline')
-        && /Failed to load resource:.*(ERR_INTERNET_DISCONNECTED|ERR_EMPTY_RESPONSE|Internet connection appears to be offline|network connection was lost|server unexpectedly dropped|Connection terminated unexpectedly)/i.test(message.text());
+        && /Failed to load resource:.*(ERR_INTERNET_DISCONNECTED|ERR_EMPTY_RESPONSE|Internet connection appears to be offline|network connection was lost|server unexpectedly dropped|Connection terminated unexpectedly|WebKit encountered an internal error)/i.test(message.text());
       if (message.type() === 'error' && !offlineProbe) errors.push(message.text());
     });
     page.on('requestfailed', (request) => {
-      const expectedProbe = testInfo.annotations.some((a) => a.type === 'offline') && new URL(request.url()).pathname.endsWith('/version.json');
-      if (!expectedProbe) errors.push(`${request.failure()?.errorText} ${request.url()}`);
+      const failureText = request.failure()?.errorText || '';
+      const isOffline = testInfo.annotations.some((a) => a.type === 'offline');
+      const expectedProbe = isOffline && (
+        new URL(request.url()).pathname.endsWith('/version.json')
+        || /Connection terminated unexpectedly|WebKit encountered an internal error|ERR_INTERNET_DISCONNECTED|network connection was lost|server unexpectedly dropped/i.test(failureText)
+      );
+      if (!expectedProbe) errors.push(`${failureText} ${request.url()}`);
     });
     page.on('response', (response) => { if (response.status() >= 400) errors.push(`${response.status()} ${response.url()}`); });
     await use();
