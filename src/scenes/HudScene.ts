@@ -5,6 +5,7 @@ import { CONTROLS } from '../config/controls';
 import { DISPLAY } from '../config/display';
 import { COLORS } from '../config/theme';
 import { BALANCE } from '../config/balance';
+import { MENU } from '../ui/menuTheme';
 import {
   events, GameEvents, type BossPayload, type EquipmentChangedPayload, type HealthPayload, type RequisitionPayload, type RoomPayload, type VendingPayload, type RoundPayload, type StationPayload, type StreakPayload,
 } from '../core/events';
@@ -61,6 +62,7 @@ export class HudScene extends Phaser.Scene {
   private pauseButton!: HudButton;
   private pauseMenu!: Phaser.GameObjects.Container;
   private pauseDim!: Phaser.GameObjects.Rectangle;
+  private pauseCard!: Phaser.GameObjects.Graphics;
   private pauseTitle!: Phaser.GameObjects.Text;
   private pauseTip!: Phaser.GameObjects.Text;
   private pauseVersion!: Phaser.GameObjects.Text;
@@ -105,6 +107,8 @@ export class HudScene extends Phaser.Scene {
   private interactButton!: HudButton;
   private swapButton!: HudButton;
   private toolText!: Phaser.GameObjects.Text;
+  private headerBar!: Phaser.GameObjects.Graphics;
+  private roomBadge!: Phaser.GameObjects.Graphics;
   private roomText!: Phaser.GameObjects.Text;
   /** M17: Today's Shift / modifiers / difficulty in play, under the room name. */
   private shiftText!: Phaser.GameObjects.Text;
@@ -147,23 +151,25 @@ export class HudScene extends Phaser.Scene {
       this.sprayButton = new HudButton(this, CONTROLS.buttons.sprayRadius, 'SPRAY', 0x7fffd4, () => {});
     }
 
-    const style = { fontFamily: 'system-ui, -apple-system, sans-serif', fontSize: '18px', color: COLORS.uiText };
+    const style = { fontFamily: MENU.font, fontSize: '18px', color: COLORS.uiText };
     this.vignette = this.add.graphics().setAlpha(0).setDepth(-1);
-    this.roundText = this.add.text(0, 0, '', { ...style, fontSize: '26px', fontStyle: '900' })
-      .setOrigin(0.5, 0).setShadow(0, 2, '#000', 4);
+    this.headerBar = this.add.graphics();
+    this.roomBadge = this.add.graphics();
+    this.roundText = this.add.text(0, 0, '', { ...style, fontSize: '24px', fontStyle: '900', color: '#ffffff' })
+      .setOrigin(0.5, 0).setShadow(0, 2, '#051314', 4);
     // Small labels get a dark backing so they stay readable over the light floor
     const tag = { ...style, backgroundColor: '#0d2b2ecc', padding: { x: 8, y: 4 } };
     this.versionText = this.add.text(0, 0, __APP_VERSION__, { ...tag, fontSize: '14px' }).setOrigin(1, 0).setVisible(DEBUG.overlay);
     if (DISPLAY.showFps || DEBUG.overlay) this.fpsText = this.add.text(0, 0, '', { ...tag, fontSize: '16px', align: 'right' });
-    this.scoreText = this.add.text(0, 0, 'SCORE 0', { ...tag, fontSize: '18px', fontStyle: 'bold' }).setOrigin(0.5, 0);
-    this.roomText = this.add.text(0, 0, '', { ...tag, fontSize: '15px' }).setOrigin(1, 0);
+    this.scoreText = this.add.text(0, 0, 'SCORE 0', { ...style, fontSize: '15px', fontStyle: '900', color: '#ffffff' }).setOrigin(0.5, 0.5).setShadow(0, 1, '#051314', 3);
+    this.roomText = this.add.text(0, 0, '', { ...style, fontSize: '14px', fontStyle: 'bold', color: '#e8fff9' }).setOrigin(1, 0).setShadow(0, 1, '#051314', 3);
     const shift = (this.scene.get('Game') as GameScene).shift;
     const parts = shift.mods.map((id) => modifierById(id)).filter((m) => !!m).map((m) => `${m!.icon} ${m!.name.toUpperCase()}`);
     if (shift.difficulty !== 'urgent') parts.unshift(difficultyById(shift.difficulty).name.toUpperCase());
     if (shift.daily) parts.unshift("📋 TODAY'S SHIFT");
     this.shiftText = this.add.text(0, 0, parts.join('  ·  '), { ...tag, fontSize: '14px', fontStyle: 'bold', color: '#ffe66d' })
       .setOrigin(1, 0).setVisible(parts.length > 0);
-    this.copaysText = this.add.text(0, 0, '$0 COPAYS', { ...tag, fontSize: '17px', fontStyle: 'bold', color: COLORS.uiAccent }).setOrigin(0.5, 0);
+    this.copaysText = this.add.text(0, 0, '$0 COPAYS', { ...style, fontSize: '15px', fontStyle: '900', color: COLORS.uiAccent }).setOrigin(0.5, 0.5).setShadow(0, 1, '#051314', 3);
     this.streakText = this.add.text(0, 0, '', { ...style, fontSize: '18px', fontStyle: '900', color: '#ffe66d' })
       .setOrigin(0.5, 0).setShadow(0, 2, '#000', 4).setVisible(false);
     this.streakBar = this.add.graphics();
@@ -172,7 +178,11 @@ export class HudScene extends Phaser.Scene {
       this.arrows.push(this.add.image(0, 0, 'threat-arrow').setVisible(false).setDepth(-0.5));
     }
     const who = (this.scene.get('Game') as GameScene).character;
-    this.health = new Bar(this, 240, 22, 0x4cd964, who.short);
+    const hasPortrait = this.textures.exists('provider-portraits') && this.textures.get('provider-portraits').has(who.id);
+    this.health = new Bar(
+      this, 240, 22, 0x4cd964, who.short,
+      hasPortrait ? { key: 'provider-portraits', frame: who.id } : undefined,
+    );
     this.powerRows.length = 0;
     for (let i = 0; i < 4; i++) {
       this.powerRows.push({
@@ -191,7 +201,7 @@ export class HudScene extends Phaser.Scene {
 
     // Pause: top-right corner, away from both thumbs. Settings live in the pause menu.
     this.pauseButton = new HudButton(this, CONTROLS.buttons.pauseRadius, 'II', 0xe8fff9, () => this.pause());
-    this.buildPauseMenu(style);
+    this.buildPauseMenu();
     // ACHIEVEMENT toast, shown under the score
     this.toastName = this.add.text(0, -12, '', { ...style, fontSize: '20px', fontStyle: '900', color: '#ffe66d' }).setOrigin(0.5);
     this.toastHow = this.add.text(0, 16, '', { ...style, fontSize: '15px', fontStyle: 'bold' }).setOrigin(0.5);
@@ -233,7 +243,10 @@ export class HudScene extends Phaser.Scene {
     this.swapButton = new HudButton(this, CONTROLS.buttons.swapRadius, 'SWAP', 0xffe66d, () => {
       inputState.swapRequested = true;
     }).setVisible(false);
-    this.toolText = this.add.text(0, 0, '', { ...tag, fontSize: '14px', fontStyle: 'bold' }).setOrigin(1, 1);
+    this.toolText = this.add.text(0, 0, '', {
+      fontFamily: MENU.font, fontSize: '14px', fontStyle: '900', color: '#ffffff',
+      backgroundColor: '#0c2528ee', padding: { x: 10, y: 5 },
+    }).setOrigin(1, 1).setShadow(0, 1, '#051314', 3);
 
     // USE pops up at supply carts (restock) and locked doors (buy them open)
     this.interactButton = new HudButton(this, CONTROLS.buttons.interactRadius, 'USE', 0x7fffd4, () => {
@@ -300,7 +313,10 @@ export class HudScene extends Phaser.Scene {
       if (!p.near) this.interactButton.release();
       this.interactNote.setText(p.near ? [p.note, p.hold && p.affordable ? 'HOLD TO BUY' : ''].filter(Boolean).join('\n') : '').setVisible(p.near);
     };
-    const onRoomEntered = (p: RoomPayload) => this.roomText.setText(`📍 ${p.name.toUpperCase()}`);
+    const onRoomEntered = (p: RoomPayload) => {
+      this.roomText.setText(`📍 ${p.name.toUpperCase()}`);
+      this.drawRoomBadge();
+    };
     const onRequisition = (p: RequisitionPayload) => {
       this.openChoice('requisition');
       this.choicePanel.show({
@@ -643,6 +659,56 @@ export class HudScene extends Phaser.Scene {
     }
   }
 
+  private drawHeader(): void {
+    const { width } = this.scale;
+    const m = CONTROLS.hudMargin;
+    const topY = this.safe.top + m;
+    const statY = topY + 28;
+
+    this.roundText.setPosition(width / 2, topY - 4);
+    this.scoreText.setPosition(width / 2 - 76, statY + 13);
+    this.copaysText.setPosition(width / 2 + 76, statY + 13);
+
+    const g = this.headerBar.clear();
+    const pillW = 320;
+    const pillH = 26;
+    const pillX = width / 2 - pillW / 2;
+
+    // Drop shadow
+    g.fillStyle(0x051314, 0.55);
+    g.fillRoundedRect(pillX, statY + 2.5, pillW, pillH, 13);
+
+    // Pill casing
+    g.fillStyle(0x0c2528, 0.92);
+    g.fillRoundedRect(pillX, statY, pillW, pillH, 13);
+    g.lineStyle(1.5, 0x1b4549, 0.85);
+    g.strokeRoundedRect(pillX, statY, pillW, pillH, 13);
+
+    // Center divider
+    g.lineStyle(1.5, 0x1b4549, 0.65);
+    g.lineBetween(width / 2, statY + 5, width / 2, statY + pillH - 5);
+  }
+
+  private drawRoomBadge(): void {
+    if (!this.roomText.text) {
+      this.roomBadge.clear();
+      return;
+    }
+    const g = this.roomBadge.clear();
+    const padX = 12, padY = 5;
+    const rw = this.roomText.width + padX * 2;
+    const rh = this.roomText.height + padY * 2;
+    const rx = this.roomText.x - rw + padX;
+    const ry = this.roomText.y - padY;
+
+    g.fillStyle(0x051314, 0.5);
+    g.fillRoundedRect(rx, ry + 2, rw, rh, 10);
+    g.fillStyle(0x0c2528, 0.9);
+    g.fillRoundedRect(rx, ry, rw, rh, 10);
+    g.lineStyle(1.5, 0x1b4549, 0.85);
+    g.strokeRoundedRect(rx, ry, rw, rh, 10);
+  }
+
   /** Positions everything relative to the current screen size and iPhone safe areas. */
   private layout(): void {
     this.safe = readSafeArea();
@@ -656,11 +722,10 @@ export class HudScene extends Phaser.Scene {
     this.sprayHome.set(rightX, rightY);
     if (this.sprayTouchId === null) this.sprayButton?.setPosition(rightX, rightY);
     this.drawVignette(width, height);
-    this.roundText.setPosition(width / 2, this.safe.top + m - 4);
-    this.scoreText.setPosition(width / 2, this.safe.top + m + 30);
-    this.copaysText.setPosition(width / 2, this.safe.top + m + 62);
-    this.streakText.setPosition(width / 2, this.safe.top + m + 94);
-    this.bossBar.setPosition(width / 2 - this.bossBar.barWidth / 2, this.safe.top + m + 132);
+    this.drawHeader();
+    const statY = this.safe.top + m + 28;
+    this.streakText.setPosition(width / 2, statY + 32);
+    this.bossBar.setPosition(width / 2 - this.bossBar.barWidth / 2, statY + 68);
     this.banner.setPosition(width / 2, height * 0.38);
     this.bannerSub.setPosition(width / 2, height * 0.38 + 45).setWordWrapWidth(Math.min(1100, width * 0.8));
     this.health.setPosition(this.safe.left + m, this.safe.top + m);
@@ -670,6 +735,7 @@ export class HudScene extends Phaser.Scene {
     this.versionText.setPosition(infoX, this.safe.top + m);
     this.fpsText?.setOrigin(1, 0).setPosition(infoX, this.safe.top + m + 30);
     this.roomText.setPosition(infoX, this.safe.top + m + (DEBUG.overlay ? 110 : 8));
+    this.drawRoomBadge();
     this.shiftText.setPosition(infoX, this.roomText.y + 34);
     this.layoutPauseMenu(width, height);
     this.choicePanel.layout(width, height);
@@ -739,16 +805,30 @@ export class HudScene extends Phaser.Scene {
   }
 
   /** The pause screen: dims the game and offers resume, sound, auto-aim and quit. Hidden until paused. */
-  private buildPauseMenu(style: Phaser.Types.GameObjects.Text.TextStyle): void {
+  private buildPauseMenu(): void {
     // Swallows touches so nothing underneath (sticks, buttons) reacts while paused
-    this.pauseDim = this.add.rectangle(0, 0, 10, 10, 0x0d2b2e, 0.82).setOrigin(0).setInteractive();
-    this.pauseTitle = this.add.text(0, 0, 'PAUSED', { ...style, fontSize: '64px', fontStyle: '900' }).setOrigin(0.5).setShadow(0, 5, '#000', 8);
-    this.pauseTip = this.add.text(0, 0, '', { ...style, fontSize: '20px', fontStyle: 'italic', color: COLORS.uiAccent, align: 'center', wordWrap: { width: 700 } }).setOrigin(0.5);
-    this.pauseVersion = this.add.text(0, 0, `Moshi and Pals ${__APP_VERSION__}`, { ...style, fontSize: '14px', color: '#9fb8b3' }).setOrigin(0.5, 1);
-    const item = (label: string, onTap: () => void) => this.add.text(0, 0, label, {
-      ...style, fontSize: '26px', fontStyle: 'bold', backgroundColor: '#1f4f55', padding: { x: 22, y: 12 }, align: 'center', fixedWidth: 340,
+    this.pauseDim = this.add.rectangle(0, 0, 10, 10, 0x051314, 0.85).setOrigin(0).setInteractive();
+    this.pauseCard = this.add.graphics();
+    this.pauseTitle = this.add.text(0, 0, 'PAUSED', {
+      fontFamily: MENU.font, fontSize: '56px', fontStyle: '900', color: '#ffffff',
+    }).setOrigin(0.5).setShadow(0, 4, '#051314', 6);
+    this.pauseTip = this.add.text(0, 0, '', {
+      fontFamily: MENU.font, fontSize: '16px', fontStyle: 'italic', color: MENU.mint, align: 'center', wordWrap: { width: 680 },
+    }).setOrigin(0.5).setShadow(0, 2, '#051314', 4);
+    this.pauseVersion = this.add.text(0, 0, `Moshi and Pals ${__APP_VERSION__}`, {
+      fontFamily: MENU.font, fontSize: '13px', fontStyle: 'bold', color: '#88a6a2',
+    }).setOrigin(0.5, 1);
+
+    const item = (label: string, onTap: () => void, primary = false) => this.add.text(0, 0, label, {
+      fontFamily: MENU.font, fontSize: primary ? '24px' : '20px', fontStyle: '900',
+      color: primary ? MENU.ink : '#ffffff',
+      backgroundColor: primary ? MENU.mint : '#0e2e33',
+      padding: { x: 22, y: 10 },
+      align: 'center',
+      fixedWidth: 360,
     }).setOrigin(0.5).setInteractive({ useHandCursor: true }).on('pointerup', onTap);
-    this.resumeItem = item('RESUME', () => this.resume());
+
+    this.resumeItem = item('RESUME', () => this.resume(), true);
     this.soundToggle = item('', () => {
       settings.sound = !settings.sound;
       saveSettings();
@@ -762,7 +842,7 @@ export class HudScene extends Phaser.Scene {
       this.refreshSoundToggle();
     });
     // SOUND and MUSIC share a row, half width each
-    for (const t of [this.soundToggle, this.musicToggle]) t.setFixedSize(166, 0).setFontSize(22);
+    for (const t of [this.soundToggle, this.musicToggle]) t.setFixedSize(176, 0).setFontSize(18);
     this.autoRefillToggle = item('', () => {
       settings.autoRefill = !settings.autoRefill;
       saveSettings();
@@ -807,9 +887,9 @@ export class HudScene extends Phaser.Scene {
       toTitle(this);
     });
     // They share a row, like SOUND and MUSIC
-    for (const t of [this.saveQuitItem, this.quitItem]) t.setFixedSize(166, 0).setFontSize(18);
+    for (const t of [this.saveQuitItem, this.quitItem]) t.setFixedSize(176, 0).setFontSize(16);
     items.push(this.saveQuitItem, this.quitItem);
-    this.pauseMenu = this.add.container(0, 0, [this.pauseDim, this.pauseTitle, this.pauseTip, this.pauseVersion, ...items]).setDepth(100).setVisible(false);
+    this.pauseMenu = this.add.container(0, 0, [this.pauseDim, this.pauseCard, this.pauseTitle, this.pauseTip, this.pauseVersion, ...items]).setDepth(100).setVisible(false);
     this.refreshSoundToggle();
     this.refreshAutoAimToggle();
     this.refreshAutoRefillToggle();
@@ -827,17 +907,28 @@ export class HudScene extends Phaser.Scene {
   private layoutPauseMenu(width: number, height: number): void {
     this.pauseDim.setSize(width, height);
     this.pauseDim.input?.hitArea.setSize(width, height);
-    this.pauseTitle.setPosition(width / 2, height * 0.15);
-    this.pauseTip.setPosition(width / 2, height * 0.15 + 58);
+    this.pauseTitle.setPosition(width / 2, height * 0.13);
+    this.pauseTip.setPosition(width / 2, height * 0.13 + 52);
     this.pauseVersion.setPosition(width / 2, height - this.safe.bottom - 10);
     const items = [this.resumeItem, this.soundToggle, this.autoRefillToggle, this.motionToggle, this.autoAimToggle, this.achievementsItem, this.saveQuitItem].filter((t): t is Phaser.GameObjects.Text => !!t);
-    const top = height * 0.3;
-    const gap = Math.min(66, (height * 0.62) / items.length);
+    const top = height * 0.28;
+    const gap = Math.min(56, (height * 0.64) / items.length);
     items.forEach((t, i) => t.setPosition(width / 2, top + i * gap));
-    this.soundToggle.x = width / 2 - 87;
-    this.musicToggle.setPosition(width / 2 + 87, this.soundToggle.y);
-    this.saveQuitItem.x = width / 2 - 87;
-    this.quitItem.setPosition(width / 2 + 87, this.saveQuitItem.y);
+    this.soundToggle.x = width / 2 - 92;
+    this.musicToggle.setPosition(width / 2 + 92, this.soundToggle.y);
+    this.saveQuitItem.x = width / 2 - 92;
+    this.quitItem.setPosition(width / 2 + 92, this.saveQuitItem.y);
+
+    const cardW = 400;
+    const cardTop = top - 24;
+    const cardH = (items.length - 1) * gap + 54;
+    const g = this.pauseCard.clear();
+    g.fillStyle(0x020a0b, 0.65);
+    g.fillRoundedRect(width / 2 - cardW / 2 + 4, cardTop + 4, cardW, cardH, 18);
+    g.fillStyle(0x081e22, 0.95);
+    g.fillRoundedRect(width / 2 - cardW / 2, cardTop, cardW, cardH, 18);
+    g.lineStyle(2, 0x1b4549, 0.9);
+    g.strokeRoundedRect(width / 2 - cardW / 2, cardTop, cardW, cardH, 18);
   }
 
   /** Freezes the game and shows the pause menu. Safe to call any time (ignored if already paused or the run is over). */
