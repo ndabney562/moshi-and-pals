@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import { MENU, menuButton } from '../ui/menuTheme';
 import { DISPLAY } from '../config/display';
 import { COLORS } from '../config/theme';
 import { applyUpdate, offerFilesToCache, onUpdateReady } from '../core/updates';
@@ -49,6 +50,10 @@ export class TitleScene extends Phaser.Scene {
   private panelTexts: Phaser.GameObjects.Text[] = [];
   private panelButtons: { bg: Phaser.GameObjects.Rectangle; label: Phaser.GameObjects.Text }[] = [];
 
+  private heading!: Phaser.GameObjects.Text;
+  private subtitle!: Phaser.GameObjects.Text;
+  private wordmark!: Phaser.GameObjects.Text;
+  private portrait!: Phaser.GameObjects.Image;
   private started = false;
   /** CONTINUE SHIFT: shown when a shift was saved from the pause menu. */
   private continueButton!: Phaser.GameObjects.Text;
@@ -172,6 +177,21 @@ export class TitleScene extends Phaser.Scene {
     this.showDailyBest();
     this.buildDailyPanel();
 
+    this.heading = this.add.text(0, 0, 'Moshi\nand Pals.', { fontFamily: MENU.font, fontSize: '66px', fontStyle: '900', color: MENU.ink, lineSpacing: -12 });
+    this.subtitle = this.add.text(0, 0, 'A little chaos. A lot of care.', { fontFamily: MENU.font, fontSize: '21px', color: MENU.muted });
+    this.wordmark = this.add.text(0, 0, 'Moshi and Pals', { fontFamily: MENU.font, fontSize: '24px', fontStyle: '900', color: MENU.ink });
+    this.portrait = this.add.image(0, 0, 'provider-portraits', selected.id);
+    this.pickInfo.setText(selected.name).setColor(MENU.ink).setBackgroundColor('rgba(0,0,0,0)').setOrigin(0, .5);
+    this.npsText.setText(`${progress().nps.toLocaleString()} NPS   /   ${progress().credits} CME   /   $${progress().bank.toLocaleString()} Copays`).setColor(MENU.muted).setBackgroundColor('rgba(0,0,0,0)');
+    this.tap.setText('START SHIFT  →');
+    menuButton(this.tap, true).setInteractive({ useHandCursor: true }).on('pointerdown', () => this.begin());
+    for (const b of [this.boardButton, this.lockerButton, this.providersButton, this.leaderboardButton, this.dailyButton, this.difficultyButton, this.modeButton, this.continueButton, this.updatePill]) menuButton(b);
+    this.boardButton.setText('BOARD');
+    this.lockerButton.setText('LOCKER');
+    this.providersButton.setText('PROVIDERS');
+    this.leaderboardButton.setText('LEADERBOARD');
+    this.dailyButton.setText("TODAY'S SHIFT  →");
+    this.dailyBestText.setColor(MENU.muted).setBackgroundColor('rgba(0,0,0,0)');
     // The screen's shape can change after load (rotating, Safari's toolbars), so re-fit whenever it does
     this.layout();
     this.scale.on('resize', this.layout, this);
@@ -181,69 +201,72 @@ export class TitleScene extends Phaser.Scene {
     this.input.on('pointerdown', (_p: Phaser.Input.Pointer, over: Phaser.GameObjects.GameObject[]) => {
       if (this.dailyPanel.visible) return;
       const buttons: Phaser.GameObjects.GameObject[] = [this.providersButton, this.leaderboardButton, this.updatePill, this.continueButton, this.boardButton, this.lockerButton, this.dailyButton, this.difficultyButton, this.modeButton];
-      if (!buttons.some((b) => over.includes(b))) this.begin();
+      if (buttons.some((b) => over.includes(b))) return;
+      // Interactive objects enter Phaser's hit-test list on the next frame.
+      // A tap during the first Title frame must still honor Continue/nav rather
+      // than fall through to the legacy tap-anywhere normal-shift action.
+      const pending = (buttons as Phaser.GameObjects.Text[]).find(b => b.visible && b.getBounds().contains(_p.x, _p.y));
+      if (pending) {
+        pending.emit('pointerdown', _p, 0, 0, { stopPropagation() {} });
+        return;
+      }
+      this.begin();
     });
   }
 
-  /** Noah's poster covers the screen. Wide phones crop it, mostly from the bottom, so the logo stays in view. */
+  /** One action column and an unobstructed illustrated clinic, within safe areas. */
   private layout(): void {
-    const { width, height } = this.scale;
-    const art = this.art;
-    const k = Math.max(width / art.width, height / art.height);
-    const spare = art.height - height / k; // image rows that don't fit
-    art.setScale(k).setPosition(width / 2, -Math.min(spare, 30) * k);
+    const { width: w, height: h } = this.scale;
     const safe = readSafeArea();
-    const bottom = Math.max(16, safe.bottom + 12);
-    const right = width - Math.max(16, safe.right + 12);
-    const rightWidth = Math.min(500, width * 0.46);
-    const leftWidth = Math.min(460, width * 0.4);
-    this.menuCards.clear().fillStyle(0x082225, 0.9).lineStyle(1, 0x7fffd4, 0.3);
-    this.menuCards.fillRoundedRect(Math.max(12, safe.left + 8), height - bottom - 266, leftWidth, 266, 18);
-    this.menuCards.strokeRoundedRect(Math.max(12, safe.left + 8), height - bottom - 266, leftWidth, 266, 18);
-    this.menuCards.fillRoundedRect(right - rightWidth, height - bottom - 266, rightWidth, 266, 18);
-    this.menuCards.strokeRoundedRect(right - rightWidth, height - bottom - 266, rightWidth, 266, 18);
-    this.tap.setPosition(width / 2, height * 0.51);
-    this.pickInfo.setWordWrapWidth(rightWidth - 32);
-    this.pickInfo.setFontSize(17);
-    for (const button of [this.boardButton, this.lockerButton, this.dailyButton, this.difficultyButton, this.modeButton, this.leaderboardButton]) button.setFontSize(width < 1100 ? 19 : 21);
-    this.continueButton.setPosition(width / 2, height * 0.64);
-    this.updatePill.setPosition(width / 2, this.continueButton.visible ? height * 0.75 : height * 0.64);
-    // The left-hand column: difficulty, Today's Shift, the board (clear of the notch)
-    const left = Math.max(24, readSafeArea().left + 16);
-    this.boardButton.setPosition(left, height - bottom - 8);
-    this.lockerButton.setPosition(left, height - bottom - 212);
-    this.modeButton.setPosition(left, height - bottom - 160);
-    this.modeInfo.setPosition(left + this.modeButton.width + 10, height - bottom - 160 - this.modeButton.height / 2);
-    this.difficultyButton.setPosition(left, height - bottom - 108);
-    this.difficultyInfo.setPosition(left + this.difficultyButton.width + 10, height - bottom - 108 - this.difficultyButton.height / 2);
-    this.dailyButton.setPosition(left, height - bottom - 56);
-    this.dailyBestText.setPosition(left + this.dailyButton.width + 10, height - bottom - 56 - this.dailyButton.height / 2);
-    this.dailyBestText.setVisible(width >= 1350);
-    this.difficultyInfo.setVisible(width >= 1350);
-    this.modeInfo.setVisible(width >= 1350);
+    const left = Math.max(32, safe.left + 20);
+    const right = w - Math.max(28, safe.right + 16);
+    const column = Math.min(500, (right - left) * .42);
+    const artLeft = left + column + 16;
+    const k = Math.max((w - artLeft) / this.art.width, (h - 126) / this.art.height);
+    this.art.setScale(k).setPosition((artLeft + w) / 2, 126);
+    this.menuCards.clear().fillStyle(MENU.paper).fillRect(0, 0, artLeft, h)
+      .fillRect(0, 0, w, 126).lineStyle(1, MENU.line).lineBetween(left, 120, right, 120);
+    this.wordmark.setPosition(left, 27);
+    const navLeft = left + 240;
+    const slot = (right - navLeft) / 4;
+    [this.providersButton, this.lockerButton, this.boardButton, this.leaderboardButton].forEach((b, i) => {
+      b.setOrigin(.5).setFontSize(20).setPadding(10, 24)
+        .setPosition(navLeft + slot * (i + .5), 44);
+    });
+    this.npsText.setOrigin(1, .5).setFontSize(17).setPosition(right, 95);
+    this.heading.setPosition(left, 154).setFontSize(w < 1100 ? 56 : 66);
+    this.subtitle.setPosition(left, 302).setFontSize(w < 1100 ? 17 : 21);
+    this.portrait.setPosition(left + 32, 368).setDisplaySize(60, 80);
+    this.pickInfo.setPosition(left + 76, 368).setFontSize(21).setWordWrapWidth(column - 90);
+    this.tap.setOrigin(0, .5).setPosition(left, 450).setFontSize(w < 1100 ? 25 : 30).setPadding(22, 26);
+    this.modeButton.setOrigin(0, .5).setPosition(left, 548).setFontSize(20).setPadding(12, 24);
+    this.difficultyButton.setOrigin(0, .5).setPosition(left + column * .53, 548).setFontSize(20).setPadding(12, 24);
+    this.modeInfo.setVisible(false); this.difficultyInfo.setVisible(false);
+    this.dailyButton.setOrigin(0, .5).setPosition(left, 638).setFontSize(20).setPadding(16, 22);
+    this.dailyBestText.setOrigin(0).setPosition(left, 684).setFontSize(16).setVisible(true);
+    this.continueButton.setOrigin(0, .5).setPosition(artLeft + 22, h - Math.max(52, safe.bottom + 38)).setFontSize(18).setPadding(16, 18);
+    this.updatePill.setPosition((artLeft + right) / 2, h - Math.max(this.continueButton.visible ? 132 : 40, safe.bottom + 26)).setFontSize(17);
+    for (const b of [this.tap, this.providersButton, this.lockerButton, this.boardButton, this.leaderboardButton, this.modeButton, this.difficultyButton, this.dailyButton, this.continueButton]) {
+      b.setBackgroundColor('rgba(0,0,0,0)');
+      if (!b.visible) continue;
+      const box = b.getBounds();
+      this.menuCards.fillStyle(b === this.tap ? 0x80eac8 : b === this.continueButton ? 0xfffcf6 : 0xeeeade)
+        .fillRoundedRect(box.x, box.y, box.width, box.height, b === this.tap ? 26 : 14);
+    }
     this.layoutDailyPanel();
-    this.providersButton.setPosition(right - 16, height - bottom - 20);
-    this.leaderboardButton.setPosition(right - 16, height - bottom - 78);
-    this.pickInfo.setPosition(right - 16, height - bottom - 148);
-    this.placeNps();
-  }
-
-  /** The NPS counter sits just above the doctor's line (which is one or two lines tall). */
-  private placeNps(): void {
-    this.npsText.setPosition(this.pickInfo.x, this.pickInfo.y - this.pickInfo.height - 6);
   }
 
   /** The difficulty switch shows the saved one. */
   private showDifficulty(): void {
     const d = difficultyById(savedDifficulty());
-    this.difficultyButton.setText(`🩺 ${d.name.toUpperCase()} ▸`);
+    this.difficultyButton.setText(`${d.name.toUpperCase()} ▾`);
     this.difficultyInfo.setText(d.blurb);
   }
 
   /** The mode switch shows standard or fluSeason. */
   private showMode(): void {
     const isFlu = savedMode() === 'fluSeason';
-    this.modeButton.setText(isFlu ? '🤧 FLU SEASON ▸' : '🏥 STANDARD ▸');
+    this.modeButton.setText(isFlu ? 'FLU SEASON ▾' : 'STANDARD ▾');
     this.modeInfo.setText(isFlu ? 'Endless outbreak' : 'Scheduled breaks');
   }
 
