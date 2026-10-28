@@ -62,7 +62,7 @@ export class TitleScene extends Phaser.Scene {
   create(): void {
     this.started = false;
     this.input.enabled = true;
-    this.bgArt = this.add.image(0, 0, 'title-art').setOrigin(0.5, 0.5).setAlpha(0.22).setTint(0x7799aa);
+    this.bgArt = this.add.image(0, 0, 'title-art').setOrigin(0.5, 0.5).setAlpha(0.55).setTint(0xaaccee);
     this.art = this.add.image(0, 0, 'title-art').setOrigin(0.5, 0.5);
     if (!settings.reducedMotion) this.tweens.add({ targets: this.art, alpha: { from: 0, to: 1 }, duration: 400 });
     this.menuCards = this.add.graphics();
@@ -237,25 +237,17 @@ export class TitleScene extends Phaser.Scene {
 
     // Main poster is cleanly fitted & centered in the available vertical viewport
     const k = Math.min(w / this.art.width, availH / this.art.height);
-    const artW = this.art.width * k;
-    const artH = this.art.height * k;
     this.art.setScale(k).setPosition(w / 2, centerY);
 
     this.menuCards.clear();
 
-    // Subtle drop shadow and outline around the poster
-    this.menuCards.fillStyle(0x000000, 0.35)
-      .fillRoundedRect(w / 2 - artW / 2 - 2, centerY - artH / 2 + 3, artW + 4, artH, 14);
-    this.menuCards.lineStyle(1.5, 0x1f4f55, 0.75)
-      .strokeRoundedRect(w / 2 - artW / 2, centerY - artH / 2, artW, artH, 12);
-
     // 1. Sleek top dark glassmorphic header bar
-    this.menuCards.fillStyle(0x06181b, 0.88).fillRect(0, 0, w, topBarH);
-    this.menuCards.lineStyle(1.5, 0x1f4f55, 0.85).lineBetween(0, topBarH, w, topBarH);
+    this.menuCards.fillStyle(0x06181b, 0.82).fillRect(0, 0, w, topBarH);
+    this.menuCards.lineStyle(1, 0x1f4f55, 0.6).lineBetween(0, topBarH, w, topBarH);
 
     // 2. Sleek bottom dark glassmorphic console shelf
     this.menuCards.fillStyle(0x06181b, 0.88).fillRect(0, bottomBarY, w, bottomBarH);
-    this.menuCards.lineStyle(1.5, 0x1f4f55, 0.85).lineBetween(0, bottomBarY, w, bottomBarY);
+    this.menuCards.lineStyle(1, 0x1f4f55, 0.6).lineBetween(0, bottomBarY, w, bottomBarY);
 
     // Hide text headers (poster illustration already features the title logo)
     this.heading.setVisible(false);
