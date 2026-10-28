@@ -172,7 +172,11 @@ export class HudScene extends Phaser.Scene {
       this.arrows.push(this.add.image(0, 0, 'threat-arrow').setVisible(false).setDepth(-0.5));
     }
     const who = (this.scene.get('Game') as GameScene).character;
-    this.health = new Bar(this, 240, 22, 0x4cd964, who.short);
+    const hasPortrait = this.textures.exists('provider-portraits') && this.textures.get('provider-portraits').has(who.id);
+    this.health = new Bar(
+      this, 240, 22, 0x4cd964, who.short,
+      hasPortrait ? { key: 'provider-portraits', frame: who.id } : undefined,
+    );
     this.powerRows.length = 0;
     for (let i = 0; i < 4; i++) {
       this.powerRows.push({
