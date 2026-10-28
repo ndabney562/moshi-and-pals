@@ -157,6 +157,9 @@ export class Germ extends Phaser.Physics.Arcade.Sprite {
     } else if (time < this.flippedUntil) {
       // On its back: spins helplessly
       this.rotation += dtMs * 0.012;
+      if (this.def.id === 'sporePod' && this.texture.key !== 'germ-sporePod-flipped') {
+        this.setTexture('germ-sporePod-flipped');
+      }
     } else if (time >= this.stunnedUntil) {
       const angle = Phaser.Math.Angle.Between(this.x, this.y, target.x, target.y);
       const body = this.body as Phaser.Physics.Arcade.Body;
@@ -208,6 +211,9 @@ export class Germ extends Phaser.Physics.Arcade.Sprite {
     if (this.flippedUntil > 0 && time >= this.flippedUntil) {
       this.flippedUntil = 0;
       this.clearTint();
+      if (this.def.id === 'sporePod' && this.texture.key !== 'germ-sporePod') {
+        this.setTexture('germ-sporePod');
+      }
     }
   }
 
@@ -241,6 +247,9 @@ export class Germ extends Phaser.Physics.Arcade.Sprite {
   flip(time: number, ms: number): void {
     this.flippedUntil = Math.max(this.flippedUntil, time + ms);
     this.stun(time, ms);
+    if (this.def.id === 'sporePod') {
+      this.setTexture('germ-sporePod-flipped');
+    }
   }
 
   isFlipped(time: number): boolean {
