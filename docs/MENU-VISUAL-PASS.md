@@ -27,10 +27,19 @@ portrait atlas, ivory backgrounds, glossy softly rendered three-quarter baby
 doctor caricatures, oversized round heads, full cheeks, tiny bodies, consistent
 lighting, no labels, no logos, and recognizable hair/clothing/complexion.
 
-Frame order: Eugene, Kaya, Lucien, Ken; Jason, Dhiwya, Raj, Lidiya; Dharma,
+Frame order: Eugene, Ken, Lucien, Kaya; Jason, Dhiwya, Raj, Lidiya; Dharma,
 Amanda, Janeen, empty. A correction pass gave Dharma straight short side-swept
 black hair and a clean-shaven face to distinguish him from Lucien. Menu portraits
 are separate from the existing procedural top-down gameplay art.
+
+October 28 identity correction: Ken is the dark-fleece portrait (row 1, column 2);
+Kaya is the cap-and-sunglasses portrait (row 1, column 4). Only the menu atlas
+mapping changed; provider IDs, names, abilities, unlocks and saves retain their
+existing associations. Mobile regressions cover both identities in the roster,
+after persisted selection on the title screen and when starting a shift.
+The correction passed the full local gate: 153 unit, 124 Chromium/WebKit browser,
+206 gameplay smoke and six bundle/service-worker checks. Both new identity
+tests reproduced the original atlas mismatch before the correction.
 
 ## Verification
 

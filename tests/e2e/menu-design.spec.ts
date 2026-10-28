@@ -106,6 +106,57 @@ test('all eleven providers have distinct portrait frames and the roster selects 
   await expect.poll(() => page.evaluate(() => window.game.scene.getScene('Providers').index)).toBe(4);
 });
 
+for (const provider of [
+  { id: 'ken', name: 'Ken', column: 1, index: 3, signature: 'grievance' },
+  { id: 'kaya', name: 'Dr. Kaya', column: 3, index: 1, signature: 'codeBlue' },
+]) {
+  test(`${provider.name} keeps the correct portrait and identity from roster to shift @smoke`, async ({ page }) => {
+    await page.addInitScript(() => {
+      if (!localStorage.getItem('moshi.progress.v1')) {
+        localStorage.setItem('moshi.progress.v1', JSON.stringify({ owned: ['doctor:ken', 'doctor:kaya'] }));
+      }
+    });
+    await boot(page);
+    await tapObject(page, 'Title', 'providersButton');
+    await active(page, 'Providers');
+    await page.evaluate(index => {
+      const s = window.game.scene.getScene('Providers');
+      s.index = index; s.draw();
+    }, provider.index);
+    const card = await page.evaluate(id => {
+      const s = window.game.scene.getScene('Providers');
+      const portrait = s.content.list.find((o: any) => o.type === 'Image');
+      const frame = s.textures.get('provider-portraits').get(id);
+      return {
+        name: s.content.list.find((o: any) => o.type === 'Text' && o.style.fontSize === '38px').text,
+        frame: portrait.frame.name, x: frame.cutX, y: frame.cutY,
+        atlasWidth: s.textures.get('provider-portraits').getSourceImage().width,
+      };
+    }, provider.id);
+    expect(card.name).toBe(provider.name);
+    expect(card.frame).toBe(provider.id);
+    // Art identity anchors: row 1 has Ken's fleece in column 2 and Kaya's cap/sunglasses in column 4.
+    expect(card.x).toBe(Math.round(provider.column * card.atlasWidth / 4));
+    expect(card.y).toBe(0);
+    await page.evaluate(() => window.game.scene.getScene('Providers').select());
+    await page.keyboard.press('Escape');
+    await active(page, 'Title');
+    await page.reload();
+    await active(page, 'Title');
+    expect(await page.evaluate(() => {
+      const s = window.game.scene.getScene('Title');
+      return { name: s.pickInfo.text, frame: s.portrait.frame.name, x: s.portrait.frame.cutX };
+    })).toEqual({ name: provider.name, frame: provider.id, x: card.x });
+    expect(await page.evaluate(() => JSON.parse(localStorage.getItem('moshi.settings.v1')!).character)).toBe(provider.id);
+    await tapObject(page, 'Title', 'tap');
+    await active(page, 'Hud');
+    expect(await page.evaluate(() => {
+      const s = window.game.scene.getScene('Game');
+      return { id: s.character.id, name: s.character.name, signature: s.character.signature, texture: s.player.texture.key };
+    })).toEqual({ id: provider.id, name: provider.name, signature: provider.signature, texture: provider.id });
+  });
+}
+
 test('secondary menu navigation survives resizing without starting a shift', async ({ page }) => {
   await boot(page);
   for (const [field, key] of [['boardButton', 'Board'], ['lockerButton', 'Locker'], ['leaderboardButton', 'Leaderboard']]) {
