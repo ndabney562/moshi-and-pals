@@ -236,8 +236,20 @@ export class TitleScene extends Phaser.Scene {
     this.npsText.setOrigin(1, .5).setFontSize(17).setPosition(right, 95);
     this.heading.setPosition(left, 154).setFontSize(w < 1100 ? 56 : 66);
     this.subtitle.setPosition(left, 302).setFontSize(w < 1100 ? 17 : 21);
-    this.portrait.setPosition(left + 32, 368).setDisplaySize(60, 80);
-    this.pickInfo.setPosition(left + 76, 368).setFontSize(21).setWordWrapWidth(column - 90);
+
+    // Provider Spotlight Card backplate & avatar medallion
+    const cardX = left;
+    const cardY = 328;
+    const cardW = column;
+    const cardH = 82;
+    this.menuCards.fillStyle(0x000000, 0.06).fillRoundedRect(cardX, cardY + 2, cardW, cardH, 16);
+    this.menuCards.fillStyle(0xfffcf6, 1).fillRoundedRect(cardX, cardY, cardW, cardH, 16);
+    this.menuCards.lineStyle(1.5, 0xd8ded4, 0.9).strokeRoundedRect(cardX, cardY, cardW, cardH, 16);
+    this.menuCards.fillStyle(0x80eac8, 0.25).fillCircle(left + 42, cardY + cardH / 2, 32);
+    this.menuCards.lineStyle(2, 0x80eac8, 0.9).strokeCircle(left + 42, cardY + cardH / 2, 32);
+    this.portrait.setPosition(left + 42, cardY + cardH / 2).setDisplaySize(48, 64);
+    this.pickInfo.setPosition(left + 88, cardY + cardH / 2).setFontSize(20).setWordWrapWidth(column - 100);
+
     this.tap.setOrigin(0, .5).setPosition(left, 450).setFontSize(w < 1100 ? 25 : 30).setPadding(22, 26);
     this.modeButton.setOrigin(0, .5).setPosition(left, 548).setFontSize(20).setPadding(12, 24);
     this.difficultyButton.setOrigin(0, .5).setPosition(left + column * .53, 548).setFontSize(20).setPadding(12, 24);
@@ -250,8 +262,45 @@ export class TitleScene extends Phaser.Scene {
       b.setBackgroundColor('rgba(0,0,0,0)');
       if (!b.visible) continue;
       const box = b.getBounds();
-      this.menuCards.fillStyle(b === this.tap ? 0x80eac8 : b === this.continueButton ? 0xfffcf6 : 0xeeeade)
-        .fillRoundedRect(box.x, box.y, box.width, box.height, b === this.tap ? 26 : 14);
+      const isPrimary = b === this.tap;
+      const isContinue = b === this.continueButton;
+      const isDaily = b === this.dailyButton;
+      const radius = isPrimary ? 24 : isContinue ? 16 : 12;
+
+      // 1. Drop shadow
+      this.menuCards.fillStyle(0x000000, isPrimary ? 0.2 : 0.08)
+        .fillRoundedRect(box.x, box.y + (isPrimary ? 4 : 2), box.width, box.height, radius);
+
+      // 2. Beveled bottom casing
+      if (isPrimary) {
+        this.menuCards.fillStyle(0x147a62, 1)
+          .fillRoundedRect(box.x, box.y + 2, box.width, box.height, radius);
+      } else if (isDaily) {
+        this.menuCards.fillStyle(0xb38600, 1)
+          .fillRoundedRect(box.x, box.y + 2, box.width, box.height, radius);
+      } else {
+        this.menuCards.fillStyle(0xd5d2c4, 1)
+          .fillRoundedRect(box.x, box.y + 1, box.width, box.height, radius);
+      }
+
+      // 3. Face fill
+      const faceColor = isPrimary ? 0x80eac8 : isContinue ? 0xfffcf6 : isDaily ? 0xffe66d : 0xfffcf6;
+      this.menuCards.fillStyle(faceColor, 1)
+        .fillRoundedRect(box.x, box.y, box.width, box.height - (isPrimary ? 2 : 1), radius);
+
+      // 4. Subtle stroke outline
+      const strokeColor = isPrimary ? 0x4db896 : isContinue ? 0x80eac8 : isDaily ? 0xffd166 : 0xd8ded4;
+      this.menuCards.lineStyle(1.5, strokeColor, 0.9)
+        .strokeRoundedRect(box.x, box.y, box.width, box.height - (isPrimary ? 2 : 1), radius);
+
+      // 5. Specular top rim gloss for primary and continue
+      if (isPrimary || isContinue) {
+        this.menuCards.lineStyle(1, 0xffffff, 0.5)
+          .beginPath()
+          .moveTo(box.x + radius, box.y + 1)
+          .lineTo(box.x + box.width - radius, box.y + 1)
+          .strokePath();
+      }
     }
     this.layoutDailyPanel();
   }

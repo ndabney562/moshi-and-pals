@@ -50,21 +50,49 @@ export class ProvidersScene extends Phaser.Scene {
     const button = (x: number, y: number, label: string, action: () => void, primary = false) =>
       (() => {
         const t = text(x, y, label, 18).setOrigin(label === 'BACK' ? .5 : label === '▶' ? 1 : 0, .5).setPadding(18, 16).setInteractive({ useHandCursor: true }).on('pointerup', action);
-        // A rounded surface shares the text's real hit bounds.
+        // A rounded surface shares the text's real hit bounds with tactile depth.
         const b = t.getBounds();
-        panels.fillStyle(primary ? 0x80eac8 : 0xe9e8dd).fillRoundedRect(b.x, b.y, b.width, b.height, 16);
+        const radius = 16;
+        panels.fillStyle(0x000000, primary ? 0.16 : 0.08).fillRoundedRect(b.x, b.y + (primary ? 3 : 2), b.width, b.height, radius);
+        panels.fillStyle(primary ? 0x147a62 : 0xd0cec0, 1).fillRoundedRect(b.x, b.y + (primary ? 2 : 1), b.width, b.height, radius);
+        panels.fillStyle(primary ? 0x80eac8 : 0xfffcf6, 1).fillRoundedRect(b.x, b.y, b.width, b.height - (primary ? 2 : 1), radius);
+        panels.lineStyle(1.5, primary ? 0x4db896 : 0xd8ded4, 0.9).strokeRoundedRect(b.x, b.y, b.width, b.height - (primary ? 2 : 1), radius);
+        if (primary) {
+          panels.lineStyle(1, 0xffffff, 0.55).beginPath()
+            .moveTo(b.x + radius, b.y + 1)
+            .lineTo(b.x + b.width - radius, b.y + 1)
+            .strokePath();
+        }
         return t;
       })();
     items.push(this.add.rectangle(0, 0, w, h, MENU.paper).setOrigin(0));
-    const panels = this.add.graphics().fillStyle(MENU.card).lineStyle(1, MENU.line);
-    panels.fillRoundedRect(left, 126, right - left, 420, 24).strokeRoundedRect(left, 126, right - left, 420, 24);
+    const panels = this.add.graphics();
+    // Hero Card drop-shadow elevation and bevel
+    panels.fillStyle(0x000000, 0.08).fillRoundedRect(left + 2, 126 + 4, right - left, 420, 24);
+    panels.fillStyle(0xd5d2c4, 1).fillRoundedRect(left, 126 + 2, right - left, 420, 24);
+    panels.fillStyle(MENU.card).fillRoundedRect(left, 126, right - left, 418, 24);
+    panels.lineStyle(1.5, MENU.line).strokeRoundedRect(left, 126, right - left, 418, 24);
     items.push(panels);
+
+    // Top Header & NPS Badge
     text(left, 42, 'Moshi and Pals / Providers', 25);
-    text(right, 42, `${progress().nps.toLocaleString()} NPS`, 21, MENU.teal).setOrigin(1, .5);
+    const npsW = 164;
+    panels.fillStyle(0x000000, 0.06).fillRoundedRect(right - npsW, 26, npsW, 34, 17);
+    panels.fillStyle(0xfffcf6, 1).fillRoundedRect(right - npsW, 24, npsW, 34, 17);
+    panels.lineStyle(1.5, 0x80eac8, 0.9).strokeRoundedRect(right - npsW, 24, npsW, 34, 17);
+    text(right - npsW / 2, 41, `⭐ ${progress().nps.toLocaleString()} NPS`, 18, MENU.teal).setOrigin(.5);
     text(left, 92, 'Meet your next shift.', 30);
     text(right, 92, `${this.index + 1} / ${CHARACTERS.length} · ${settings.character === c.id ? 'ON SHIFT' : owned ? 'AVAILABLE' : 'LOCKED'}`, 17, MENU.muted).setOrigin(1, .5);
+
     const portraitH = 352, portraitW = portraitH * .75;
-    items.push(this.add.image(left + (right - left) * .23, 336, 'provider-portraits', c.id).setDisplaySize(portraitW, portraitH));
+    const px = left + (right - left) * .23;
+    const py = 336;
+    // Portrait frame elevation
+    panels.fillStyle(0x000000, 0.1).fillRoundedRect(px - portraitW / 2 + 2, py - portraitH / 2 + 4, portraitW, portraitH, 18);
+    panels.fillStyle(0xfffcf6, 1).fillRoundedRect(px - portraitW / 2, py - portraitH / 2, portraitW, portraitH, 18);
+    panels.lineStyle(2, 0x80eac8, 0.85).strokeRoundedRect(px - portraitW / 2, py - portraitH / 2, portraitW, portraitH, 18);
+    items.push(this.add.image(px, py, 'provider-portraits', c.id).setDisplaySize(portraitW, portraitH));
+
     const x = left + (right - left) * .48;
     text(x, 178, c.name, 38);
     text(x, 248, c.blurb, 21, MENU.muted).setLineSpacing(6);
@@ -79,7 +107,12 @@ export class ProvidersScene extends Phaser.Scene {
     const stripX = w / 2 - count * (tileW + 12) / 2;
     for (let i = first; i < Math.min(first + count, CHARACTERS.length); i++) {
       const def = CHARACTERS[i], tx = stripX + (i - first) * (tileW + 12);
-      panels.fillStyle(i === this.index ? 0x80eac8 : 0xeeeade).fillRoundedRect(tx, 570, tileW, tileH, 12);
+      const isSelected = i === this.index;
+      panels.fillStyle(0x000000, isSelected ? 0.15 : 0.06).fillRoundedRect(tx, 570 + (isSelected ? 3 : 2), tileW, tileH, 14);
+      panels.fillStyle(isSelected ? 0x147a62 : 0xd5d2c4, 1).fillRoundedRect(tx, 570 + (isSelected ? 2 : 1), tileW, tileH, 14);
+      panels.fillStyle(isSelected ? 0x80eac8 : 0xfffcf6, 1).fillRoundedRect(tx, 570, tileW, tileH - (isSelected ? 2 : 1), 14);
+      panels.lineStyle(1.5, isSelected ? 0x4db896 : 0xd8ded4, 0.9).strokeRoundedRect(tx, 570, tileW, tileH - (isSelected ? 2 : 1), 14);
+
       const hit = this.add.rectangle(tx + tileW / 2, 622, tileW, tileH, 0xffffff, 0).setInteractive({ useHandCursor: true });
       items.push(hit);
       const art = this.add.image(tx + tileW / 2, 610, 'provider-portraits', def.id).setDisplaySize(60, 80);
