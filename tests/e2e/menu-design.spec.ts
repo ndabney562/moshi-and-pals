@@ -109,7 +109,7 @@ test('all eleven providers have distinct portrait frames and the roster selects 
 
 for (const provider of [
   { id: 'ken', name: 'Ken', column: 1, index: 3, signature: 'grievance' },
-  { id: 'kaya', name: 'Dr. Kaya', column: 3, index: 1, signature: 'codeBlue' },
+  { id: 'kaya', name: 'Kaya', column: 3, index: 1, signature: 'codeBlue' },
 ]) {
   test(`${provider.name} keeps the correct portrait and identity from roster to shift @smoke`, async ({ page }) => {
     await page.addInitScript(() => {

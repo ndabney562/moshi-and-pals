@@ -13,7 +13,7 @@ It ships two ways from this one repo:
 
 ## Features
 
-- **Four playable Pals.** Dr. Moshkovich, Dr. Kaya, PA Lucien and Ken each have a signature move. You hire them with NPS Scores.
+- **Four playable Pals.** Eugene, Kaya, Lucien and Ken each have a signature move. You hire them with NPS Scores.
 - **Waves of germs** in a clinic you buy open room by room. Includes Sneezers, Spore Pods, Bacillus Bulldozers, and the bosses Diamond the Practice Manager and Patient Zero.
 - **Absurd disinfection gear:** Lysol Fogger, Bleach Super Soaker, UV Wand, Gel Launcher, Defib Paddles and more.
 - **Helpers:** Omar and Alan (scribes), Donald (X-ray), and Selina and Elaine at the front desk.

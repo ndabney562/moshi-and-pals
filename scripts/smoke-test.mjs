@@ -1823,7 +1823,7 @@ try {
       const saved = JSON.parse(localStorage.getItem('moshi.progress.v1'));
       return { stillLocked, asked, owned: saved.owned, nps: saved.nps, on: JSON.parse(localStorage.getItem('moshi.settings.v1')).character };
     });
-    check(before === 'Dr. Moshkovich', `an unhired saved Pal falls back to Dr. Moshkovich (${before})`);
+    check(before === 'Eugene', `an unhired saved Pal falls back to Eugene (${before})`);
     check(!hire.stillLocked && hire.asked === 'hire:kaya', `the Providers menu keeps unaffordable hires locked and asks for confirmation (${JSON.stringify(hire)})`);
     check(hire.owned.includes('doctor:kaya') && hire.nps === 5 && hire.on === 'kaya', `confirming hires Kaya for 30 NPS and selects him (${JSON.stringify(hire)})`);
     check(hireErrors.length === 0, `no errors hiring a Pal${hireErrors.length ? ': ' + hireErrors.join(' | ') : ''}`);
@@ -1915,10 +1915,10 @@ try {
     }, start.x0, { timeout: 20000 }).then((h) => h.jsonValue(), () => ({ hurt: 0, dx: 0 }));
     if (who === 'kaya') {
       check(start.texture === 'kaya' && /CODE/.test(start.label) && start.cooling && moved.hurt >= 2,
-        `Dr. Kaya's CODE BLUE sprints through germs (${JSON.stringify({ ...start, ...moved })})`);
+        `Kaya's CODE BLUE sprints through germs (${JSON.stringify({ ...start, ...moved })})`);
     } else {
       check(start.texture === 'lucien' && start.maxHp === 130 && /CLEAN/.test(start.label) && start.cooling && moved.hurt >= 2,
-        `PA Lucien (+30 health) puts down a CLEAN FIELD that burns germs (${JSON.stringify({ ...start, ...moved })})`);
+        `Lucien (+30 health) puts down a CLEAN FIELD that burns germs (${JSON.stringify({ ...start, ...moved })})`);
     }
     check(palErrors.length === 0, `no errors playing ${who}${palErrors.length ? ': ' + palErrors.join(' | ') : ''}`);
     await pc.close();
@@ -1977,7 +1977,7 @@ try {
       sc.signature(sc.time.now);
       return { kenDmg, plainDmg, hr: boss.atHr, said: boss.bubble.text, frozen: boss.germ.frozenUntil > sc.time.now };
     });
-    check(vsDiamond.kenDmg > vsDiamond.plainDmg * 1.3, `Ken hits Diamond harder than Dr. Moshkovich does (${vsDiamond.kenDmg} vs ${vsDiamond.plainDmg})`);
+    check(vsDiamond.kenDmg > vsDiamond.plainDmg * 1.3, `Ken hits Diamond harder than Eugene does (${vsDiamond.kenDmg} vs ${vsDiamond.plainDmg})`);
     check(vsDiamond.hr && vsDiamond.frozen && vsDiamond.said.length > 0, `his GRIEVANCE summons Diamond to HR ("${vsDiamond.said}")`);
     check(kenErrors.length === 0, `no errors playing Ken${kenErrors.length ? ': ' + kenErrors.join(' | ') : ''}`);
     await kc.close();

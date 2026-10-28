@@ -39,18 +39,18 @@ export interface CharacterDef {
 export const CHARACTERS: CharacterDef[] = [
   {
     helperDamage: BALANCE.helperDamage.eugene,
-    id: 'eugene', name: 'Dr. Moshkovich', short: 'EUGENE', chart: 'MOSHKOVICH, E.', surname: 'MOSHKOVICH',
+    id: 'eugene', name: 'Eugene', short: 'EUGENE', chart: 'MOSHKOVICH, E.', surname: 'MOSHKOVICH',
     signature: 'sinusPurge', button: 'SINUS\nPURGE', blurb: 'SINUS PURGE: a honk that blasts germs away', passive: {}, price: 0,
   },
   {
     helperDamage: BALANCE.helperDamage.kaya,
-    id: 'kaya', name: 'Dr. Kaya', short: 'KAYA', chart: 'KAYA, DR.', surname: 'KAYA',
+    id: 'kaya', name: 'Kaya', short: 'KAYA', chart: 'KAYA', surname: 'KAYA',
     signature: 'codeBlue', button: 'CODE\nBLUE', blurb: `CODE BLUE: a sprint that bowls germs over · ${pct(D.kaya.moveSpeed)}% faster · +${pct(D.kaya.toolDamage)}% damage`,
     passive: D.kaya, price: price('kaya'),
   },
   {
     helperDamage: BALANCE.helperDamage.lucien,
-    id: 'lucien', name: 'PA Lucien', short: 'LUCIEN', chart: 'LUCIEN, PA', surname: 'LUCIEN',
+    id: 'lucien', name: 'Lucien', short: 'LUCIEN', chart: 'LUCIEN', surname: 'LUCIEN',
     signature: 'cleanField', button: 'CLEAN\nFIELD', blurb: `CLEAN FIELD: a sterile zone that slows and burns germs · +${D.lucien.maxHp} health · +${pct(D.lucien.toolDamage)}% damage`,
     passive: D.lucien, price: price('lucien'),
   },
