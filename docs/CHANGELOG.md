@@ -1,5 +1,12 @@
 # Changelog
 
+## Spore Pod State Readability Prototype
+
+- **Enhanced Carapace Silhouette**: Added a reinforced forward-facing shield brow covering the front 120° protected arc on `germ-sporePod`, making its armored face instantly recognizable at any angle or scale on mobile.
+- **Flipped / Vulnerable State Art (`germ-sporePod-flipped`)**: When knocked onto its back via Sinus Purge, the Spore Pod swaps to a cracked, open-shell texture exposing its soft vulnerable belly with dazed spiral eyes and flailing cilia/feet, automatically reverting when the purge timer expires.
+- **Invariants Preserved**: Armor multipliers (0.25× front, 1.5× back/flipped), HP (50), turn speed, knockback resistance, and purge duration remain 100% unchanged.
+- **Testing**: Added unit test coverage in `tests/unit/spore-pod.test.ts` (2 passed) and Playwright browser regression test in `tests/e2e/spore-pod.spec.ts` (2 passed across Chromium and WebKit).
+
 ## Illustrated menu remaster
 
 - Rebuilt the title layout with an unobstructed clinic illustration, rounded

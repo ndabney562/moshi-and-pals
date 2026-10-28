@@ -978,7 +978,7 @@ export class BootScene extends Phaser.Scene {
     const r = def.radius;
     const size = (r + 12) * 2;
     const c = size / 2;
-    const g = this.add.graphics();
+    let g = this.add.graphics();
     const hex = (rad: number) => Array.from({ length: 6 }, (_, i) => {
       const a = (i / 6) * Math.PI * 2 + Math.PI / 6;
       return new Phaser.Math.Vector2(c + Math.cos(a) * rad, c + Math.sin(a) * rad);
@@ -987,12 +987,15 @@ export class BootScene extends Phaser.Scene {
     g.fillStyle(0xf2c98a).fillPoints(hex(r), true);
     g.lineStyle(3, def.outline).strokePoints(hex(r), true);
     g.fillStyle(0xffffff, 0.3).fillCircle(c - r * 0.45, c, r * 0.25);
+    // Reinforced carapace shield brow: solid outer rim covering the front 120° arc
+    g.fillStyle(def.color).slice(c, c, r + 9, -Math.PI / 3, Math.PI / 3, false).fillPath();
+    g.lineStyle(4, def.outline).slice(c, c, r + 9, -Math.PI / 3, Math.PI / 3, false).strokePath();
     // Armor: three heavy plates over the front 120°
     for (let i = -1; i <= 1; i++) {
       const a = i * (Math.PI / 3);
-      g.fillStyle(def.color).slice(c, c, r + 8, a - 0.5, a + 0.5, false).fillPath();
-      g.lineStyle(3, def.outline).slice(c, c, r + 8, a - 0.5, a + 0.5, false).strokePath();
-      g.fillStyle(0xffffff, 0.25).fillCircle(c + Math.cos(a) * (r * 0.95), c + Math.sin(a) * (r * 0.95), 3);
+      g.fillStyle(def.color).slice(c, c, r + 8, a - 0.48, a + 0.48, false).fillPath();
+      g.lineStyle(3, def.outline).slice(c, c, r + 8, a - 0.48, a + 0.48, false).strokePath();
+      g.fillStyle(0xffffff, 0.35).fillCircle(c + Math.cos(a) * (r * 0.95), c + Math.sin(a) * (r * 0.95), 3.5);
     }
     // Eyes in the slit between plates
     g.fillStyle(0x1a0e04).fillEllipse(c + r * 0.25, c, r * 0.4, r * 0.9);
@@ -1001,6 +1004,48 @@ export class BootScene extends Phaser.Scene {
       g.fillStyle(0x111111).fillCircle(c + r * 0.34, c + r * dy, r * 0.06);
     }
     g.generateTexture(`germ-${def.id}`, size, size);
+    g.destroy();
+
+    // FLIPPED / VULNERABLE STATE: cracked shell opened on its back, soft belly exposed with dazed eyes
+    g = this.add.graphics();
+    // Little flailing cilia/feet around the perimeter
+    g.lineStyle(2.5, def.outline);
+    for (const a of [0.4, 1.1, 1.8, 2.5, 3.2, 3.9, 4.6, 5.3, 6.0]) {
+      const legX = c + Math.cos(a) * r;
+      const legY = c + Math.sin(a) * r;
+      const tipX = c + Math.cos(a) * (r + 7);
+      const tipY = c + Math.sin(a) * (r + 7);
+      g.lineBetween(legX, legY, tipX, tipY);
+      g.fillStyle(def.outline).fillCircle(tipX, tipY, 2);
+    }
+    // Soft, squishy vulnerable underbelly (pale peach)
+    g.fillStyle(0xffe4c4).fillCircle(c, c, r);
+    g.lineStyle(3, 0xd49b6a).strokeCircle(c, c, r);
+    // Split carapace shell halves pushed to the flanks
+    for (const dy of [-1, 1]) {
+      const shellY = c + dy * r * 0.65;
+      g.fillStyle(def.color).fillEllipse(c - r * 0.1, shellY, r * 1.5, r * 0.45);
+      g.lineStyle(3, def.outline).strokeEllipse(c - r * 0.1, shellY, r * 1.5, r * 0.45);
+      // Jagged crack on the split edges
+      g.lineStyle(2, def.outline);
+      g.lineBetween(c - r * 0.6, c + dy * r * 0.35, c - r * 0.2, c + dy * r * 0.42);
+      g.lineBetween(c - r * 0.2, c + dy * r * 0.42, c + r * 0.2, c + dy * r * 0.36);
+      g.lineBetween(c + r * 0.2, c + dy * r * 0.36, c + r * 0.6, c + dy * r * 0.45);
+    }
+    // Soft belly highlight
+    g.fillStyle(0xffffff, 0.45).fillCircle(c - r * 0.2, c, r * 0.25);
+    // Dazed spiral / cross googly eyes in the center belly
+    for (const dy of [-0.24, 0.24]) {
+      const eyeX = c + r * 0.05;
+      const eyeY = c + r * dy;
+      g.fillStyle(0xffffff).fillCircle(eyeX, eyeY, r * 0.2);
+      g.lineStyle(2, def.outline).strokeCircle(eyeX, eyeY, r * 0.2);
+      // Dazed spiral / X pupils
+      g.lineStyle(2, 0x111111);
+      g.lineBetween(eyeX - 3.5, eyeY - 3.5, eyeX + 3.5, eyeY + 3.5);
+      g.lineBetween(eyeX - 3.5, eyeY + 3.5, eyeX + 3.5, eyeY - 3.5);
+    }
+    g.generateTexture(`germ-${def.id}-flipped`, size, size);
     g.destroy();
   }
 
