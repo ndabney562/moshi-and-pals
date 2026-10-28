@@ -3072,12 +3072,26 @@ export class GameScene extends Phaser.Scene {
   private drawObstacle(g: Phaser.GameObjects.Graphics, o: Obstacle): void {
     const outline = 0x1b2b30;
     switch (o.kind) {
-      case 'wall':
+      case 'wall': {
+        // Wall drop shadow cast onto floor
+        g.fillStyle(0x0a1618, 0.22).fillRect(o.x + 3, o.y + 4, o.w, o.h);
+        // Wall body: rich medical teal
         g.fillStyle(COLORS.wall).fillRect(o.x, o.y, o.w, o.h);
-        g.lineStyle(3, COLORS.wallTrim).strokeRect(o.x + 2, o.y + 2, o.w - 4, o.h - 4);
+        // Top architectural cap (lighter top rim)
+        const capH = Math.min(8, o.h * 0.25);
+        g.fillStyle(0x2d6870).fillRect(o.x, o.y, o.w, capH);
+        // Bright crown highlight line at very top
+        g.fillStyle(0x66c7d1).fillRect(o.x, o.y, o.w, 2);
+        // Bottom baseboard trim
+        const baseH = Math.min(5, o.h * 0.2);
+        g.fillStyle(0x0f2427).fillRect(o.x, o.y + o.h - baseH, o.w, baseH);
+        // Border outline
+        g.lineStyle(2, outline).strokeRect(o.x, o.y, o.w, o.h);
         break;
+      }
       case 'door': {
         // Doors that never open (the exit)
+        g.fillStyle(0x000000, 0.22).fillRect(o.x + 3, o.y + 4, o.w, o.h);
         g.fillStyle(COLORS.doorLocked).fillRect(o.x, o.y, o.w, o.h);
         g.lineStyle(3, 0xffd166).strokeRect(o.x + 3, o.y + 3, o.w - 6, o.h - 6);
         this.doorLabel(o, `🔒 ${o.label ?? ''}`);
@@ -3087,19 +3101,28 @@ export class GameScene extends Phaser.Scene {
         const count = Math.round(o.w / 54);
         for (let i = 0; i < count; i++) {
           const cx = o.x + i * 54 + 3;
+          // Floor contact shadow
+          g.fillStyle(0x000000, 0.16).fillRoundedRect(cx + 2, o.y + 4, 48, 48, 6);
           g.fillStyle(COLORS.chairDark).fillRoundedRect(cx, o.y, 48, 14, 4); // backrest
+          g.fillStyle(0x4a8fe0).fillRect(cx + 4, o.y + 2, 40, 2); // backrest bevel
           g.fillStyle(COLORS.chair).fillRoundedRect(cx, o.y + 12, 48, 36, 6); // seat
+          g.fillStyle(0x569cf0).fillRoundedRect(cx + 4, o.y + 14, 40, 6, 2); // seat cushion highlight
           g.lineStyle(2, outline).strokeRoundedRect(cx, o.y, 48, 48, 6);
         }
         break;
       }
       case 'desk':
+        // Floor contact shadow
+        g.fillStyle(0x000000, 0.18).fillRect(o.x + 3, o.y + 4, o.w, o.h);
         g.fillStyle(COLORS.desk).fillRect(o.x, o.y, o.w, o.h);
         g.fillStyle(COLORS.deskTop).fillRect(o.x + 6, o.y + 6, o.w - 12, o.h - 12);
+        g.fillStyle(0xd4ad82).fillRect(o.x + 8, o.y + 8, o.w - 16, 4); // top surface sheen
         g.lineStyle(3, outline).strokeRect(o.x, o.y, o.w, o.h);
         break;
       case 'table':
+        g.fillStyle(0x000000, 0.18).fillRoundedRect(o.x + 3, o.y + 4, o.w, o.h, 10);
         g.fillStyle(COLORS.table).fillRoundedRect(o.x, o.y, o.w, o.h, 10);
+        g.fillStyle(0xb59270).fillRoundedRect(o.x + 4, o.y + 4, o.w - 8, 6, 3); // table bevel
         g.lineStyle(3, outline).strokeRoundedRect(o.x, o.y, o.w, o.h, 10);
         // Magazines from 2009
         g.fillStyle(0xe76f51).fillRect(o.x + 24, o.y + 20, 40, 30);
@@ -3107,16 +3130,23 @@ export class GameScene extends Phaser.Scene {
         g.fillStyle(0xf4a261).fillRect(o.x + 128, o.y + 18, 30, 40);
         break;
       case 'plant':
+        g.fillStyle(0x000000, 0.18).fillCircle(o.x + o.w / 2 + 2, o.y + o.h / 2 + 3, o.w / 2.6);
         g.fillStyle(COLORS.pot).fillCircle(o.x + o.w / 2, o.y + o.h / 2, o.w / 2.6);
+        g.fillStyle(0xbd693a).fillCircle(o.x + o.w / 2 - 2, o.y + o.h / 2 - 2, o.w / 3.2); // terracotta rim
         g.fillStyle(COLORS.plant).fillCircle(o.x + o.w / 2 - 10, o.y + o.h / 2 - 6, 18)
           .fillCircle(o.x + o.w / 2 + 10, o.y + o.h / 2 - 4, 16).fillCircle(o.x + o.w / 2, o.y + o.h / 2 + 10, 16);
+        g.fillStyle(0x60c46e).fillCircle(o.x + o.w / 2 - 8, o.y + o.h / 2 - 8, 7)
+          .fillCircle(o.x + o.w / 2 + 8, o.y + o.h / 2 - 6, 6); // leaf highlights
         break;
       case 'supplyCart': {
         // A rolling cart of alcohol jugs
+        g.fillStyle(0x000000, 0.18).fillRoundedRect(o.x + 3, o.y + 4, o.w, o.h, 6);
         g.fillStyle(0x8f9ba3).fillRoundedRect(o.x, o.y, o.w, o.h, 6);
+        g.fillStyle(0xb4c0c8).fillRoundedRect(o.x + 4, o.y + 4, o.w - 8, 4, 2); // metallic shelf sheen
         g.lineStyle(3, outline).strokeRoundedRect(o.x, o.y, o.w, o.h, 6);
         for (let i = 0; i < 3; i++) {
           g.fillStyle(0x7fd3ff).fillRoundedRect(o.x + 8 + i * 27, o.y + 8, 20, o.h - 16, 4);
+          g.fillStyle(0xc5efff).fillRect(o.x + 10 + i * 27, o.y + 10, 4, o.h - 20); // jug glass glint
           g.fillStyle(0x1565c0).fillRect(o.x + 13 + i * 27, o.y + 4, 10, 6);
         }
         this.add.text(o.x + o.w / 2, o.y - 6, `🧴 ${o.label ?? ''} $${this.restockCost}`, {
@@ -3126,6 +3156,7 @@ export class GameScene extends Phaser.Scene {
         break;
       }
       case 'stall':
+        g.fillStyle(0x000000, 0.18).fillRect(o.x + 3, o.y + 4, o.w, o.h);
         g.fillStyle(0xcfd8dc).fillRect(o.x, o.y, o.w, o.h);
         g.lineStyle(3, outline).strokeRect(o.x, o.y, o.w, o.h);
         g.fillStyle(0xffffff).fillEllipse(o.x + o.w / 2, o.y + 50, 54, 66); // toilet
@@ -3135,6 +3166,7 @@ export class GameScene extends Phaser.Scene {
         break;
       case 'magTable':
         // A low table and a fan of very old magazines
+        g.fillStyle(0x000000, 0.16).fillRoundedRect(o.x + 3, o.y + 4, o.w, o.h, 6);
         g.fillStyle(0x8d6e63).fillRoundedRect(o.x, o.y, o.w, o.h, 6);
         g.lineStyle(3, outline).strokeRoundedRect(o.x, o.y, o.w, o.h, 6);
         for (const [dx, c] of [[0.12, 0xef9a9a], [0.38, 0xfff59d], [0.62, 0x90caf9]] as [number, number][]) {
@@ -3143,33 +3175,40 @@ export class GameScene extends Phaser.Scene {
         }
         break;
       case 'microwave':
+        g.fillStyle(0x000000, 0.18).fillRoundedRect(o.x + 3, o.y + 4, o.w, o.h, 4);
         g.fillStyle(0xeceff1).fillRoundedRect(o.x, o.y, o.w, o.h, 4);
         g.lineStyle(3, outline).strokeRoundedRect(o.x, o.y, o.w, o.h, 4);
         g.fillStyle(0x37474f).fillRect(o.x + 6, o.y + 6, o.w * 0.6, o.h - 12); // the window
         g.fillStyle(0x90a4ae).fillRect(o.x + o.w * 0.75, o.y + 6, o.w * 0.18, o.h - 12); // buttons
         break;
       case 'recordsDoor':
+        g.fillStyle(0x000000, 0.18).fillRect(o.x + 3, o.y + 4, o.w, o.h);
         g.fillStyle(0x6d4c41).fillRect(o.x, o.y, o.w, o.h);
         g.lineStyle(3, 0xffd166).strokeRect(o.x + 3, o.y + 3, o.w - 6, o.h - 6);
         this.trapLabel(o, o.label ?? '');
         break;
       case 'sink':
+        g.fillStyle(0x000000, 0.18).fillRect(o.x + 3, o.y + 4, o.w, o.h);
         g.fillStyle(0xeceff1).fillRect(o.x, o.y, o.w, o.h);
         g.lineStyle(3, outline).strokeRect(o.x, o.y, o.w, o.h);
         for (let i = 0; i < 2; i++) g.fillStyle(0x90caf9).fillEllipse(o.x + o.w * (0.28 + i * 0.44), o.y + o.h / 2, o.w * 0.3, o.h * 0.6);
         break;
       case 'examTable':
+        g.fillStyle(0x000000, 0.18).fillRoundedRect(o.x + 3, o.y + 4, o.w, o.h, 10);
         g.fillStyle(0x4db6ac).fillRoundedRect(o.x, o.y, o.w, o.h, 10);
+        g.fillStyle(0x80cbc4).fillRect(o.x + 4, o.y + 4, o.w - 8, 4); // table vinyl bevel
         g.fillStyle(0xfafafa).fillRect(o.x + o.w * 0.25, o.y + 6, o.w * 0.5, o.h - 12); // paper roll
         g.lineStyle(3, outline).strokeRoundedRect(o.x, o.y, o.w, o.h, 10);
         break;
       case 'counter':
+        g.fillStyle(0x000000, 0.18).fillRect(o.x + 3, o.y + 4, o.w, o.h);
         g.fillStyle(0x8d6e63).fillRect(o.x, o.y, o.w, o.h);
         g.fillStyle(0xd7ccc8).fillRect(o.x + 5, o.y + 5, o.w - 10, o.h - 10);
         g.lineStyle(3, outline).strokeRect(o.x, o.y, o.w, o.h);
         if (o.label) this.furnitureLabel(o);
         break;
       case 'xray':
+        g.fillStyle(0x000000, 0.18).fillRoundedRect(o.x + 3, o.y + 4, o.w, o.h, 14);
         g.fillStyle(0x90a4ae).fillRoundedRect(o.x, o.y, o.w, o.h, 14);
         g.fillStyle(0x263238).fillRect(o.x + 30, o.y + 30, o.w - 60, o.h - 60); // the plate
         g.fillStyle(0xffd166).fillRect(o.x, o.y + o.h - 14, o.w, 8); // caution stripe
@@ -3177,18 +3216,21 @@ export class GameScene extends Phaser.Scene {
         if (o.label) this.furnitureLabel(o);
         break;
       case 'couch':
+        g.fillStyle(0x000000, 0.18).fillRoundedRect(o.x + 3, o.y + 4, o.w, o.h, 16);
         g.fillStyle(0x6d4c7d).fillRoundedRect(o.x, o.y, o.w, o.h, 16);
         for (let i = 0; i < 3; i++) g.fillStyle(0x9575cd).fillRoundedRect(o.x + 14 + i * ((o.w - 28) / 3), o.y + 24, (o.w - 28) / 3 - 6, o.h - 34, 8);
         g.lineStyle(3, outline).strokeRoundedRect(o.x, o.y, o.w, o.h, 16);
         break;
       case 'fridge':
+        g.fillStyle(0x000000, 0.18).fillRoundedRect(o.x + 3, o.y + 4, o.w, o.h, 6);
         g.fillStyle(0xf5f5f5).fillRoundedRect(o.x, o.y, o.w, o.h, 6);
         g.lineStyle(3, outline).strokeRoundedRect(o.x, o.y, o.w, o.h, 6);
         g.lineStyle(2, outline).lineBetween(o.x + 4, o.y + o.h * 0.35, o.x + o.w - 4, o.y + o.h * 0.35);
         g.fillStyle(0x607d8b).fillRect(o.x + o.w - 16, o.y + o.h * 0.45, 6, 22); // handle
         break;
       case 'crate': {
-        // Wooden supply crate with a big "?" stencil
+        // Wooden supply crate with a big "?" stencil and floor contact shadow
+        g.fillStyle(0x000000, 0.18).fillRect(o.x + 3, o.y + 4, o.w, o.h);
         g.fillStyle(0xa0703c).fillRect(o.x, o.y, o.w, o.h);
         g.lineStyle(4, 0x6b4423).strokeRect(o.x + 2, o.y + 2, o.w - 4, o.h - 4);
         g.lineBetween(o.x + 4, o.y + 4, o.x + o.w - 4, o.y + o.h - 4).lineBetween(o.x + o.w - 4, o.y + 4, o.x + 4, o.y + o.h - 4);

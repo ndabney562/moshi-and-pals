@@ -481,19 +481,59 @@ export class BootScene extends Phaser.Scene {
     g.destroy();
   }
 
-  /** Two-tone clinic linoleum, tiled across the floor. */
+  /** Two-tone clinic linoleum with tactile grout seams, vinyl specks, and bevel highlights. */
   private makeFloorTile(): void {
     const g = this.add.graphics();
+    // Base tile colors
     g.fillStyle(COLORS.floorA).fillRect(0, 0, 64, 64);
     g.fillStyle(COLORS.floorB).fillRect(0, 0, 32, 32).fillRect(32, 32, 32, 32);
-    g.lineStyle(1, 0xb5c7c0, 0.8).strokeRect(0, 0, 64, 64);
+
+    // Each 32x32 quadrant tile gets beveling, vinyl specks, and micro-highlights
+    const quadrants = [
+      { x: 0, y: 0 },
+      { x: 32, y: 0 },
+      { x: 0, y: 32 },
+      { x: 32, y: 32 },
+    ];
+
+    for (const q of quadrants) {
+      // Clean top-left bevel highlight
+      g.lineStyle(1, 0xffffff, 0.45);
+      g.lineBetween(q.x + 1, q.y + 1, q.x + 31, q.y + 1);
+      g.lineBetween(q.x + 1, q.y + 1, q.x + 1, q.y + 31);
+
+      // Subtle bottom-right shadow bevel
+      g.lineStyle(1, 0x8ea8a0, 0.35);
+      g.lineBetween(q.x + 1, q.y + 31, q.x + 31, q.y + 31);
+      g.lineBetween(q.x + 31, q.y + 1, q.x + 31, q.y + 31);
+
+      // Micro vinyl flecks (authentic hospital linoleum composition)
+      g.fillStyle(0x528277, 0.16);
+      g.fillRect(q.x + 7, q.y + 8, 2, 2);
+      g.fillRect(q.x + 22, q.y + 14, 2, 2);
+      g.fillRect(q.x + 12, q.y + 24, 2, 2);
+
+      g.fillStyle(0xffffff, 0.35);
+      g.fillRect(q.x + 18, q.y + 6, 1.5, 1.5);
+      g.fillRect(q.x + 8, q.y + 18, 1.5, 1.5);
+      g.fillRect(q.x + 24, q.y + 26, 1.5, 1.5);
+    }
+
+    // Grout seam grid lines (1.5px soft mint-slate)
+    g.lineStyle(1.5, 0x98b3ab, 0.85);
+    g.strokeRect(0, 0, 64, 64);
+    g.lineBetween(32, 0, 32, 64);
+    g.lineBetween(0, 32, 64, 32);
+
     g.generateTexture('floor', 64, 64);
     g.destroy();
   }
 
   private makeShadow(): void {
     const g = this.add.graphics();
-    g.fillStyle(0x000000, 0.22).fillEllipse(32, 16, 60, 28);
+    // Two-tier contact shadow with soft penumbra
+    g.fillStyle(0x000000, 0.12).fillEllipse(32, 16, 62, 28);
+    g.fillStyle(0x000000, 0.22).fillEllipse(32, 16, 46, 20);
     g.generateTexture('shadow', 64, 32);
     g.destroy();
   }
@@ -562,15 +602,26 @@ export class BootScene extends Phaser.Scene {
         g.lineBetween(c + Math.cos(a) * r, c + Math.sin(a) * r, c + Math.cos(a) * (r + len), c + Math.sin(a) * (r + len));
       }
     }
-    // Body with lighter belly spots
+    // Body with 3D volume shading
     g.fillStyle(def.color).fillCircle(c, c, r);
+    // Underside shadow crescent
+    g.fillStyle(def.outline, 0.25).beginPath()
+      .arc(c, c, r - 2, Phaser.Math.DegToRad(40), Phaser.Math.DegToRad(140), false)
+      .strokePath();
+    // Curved glossy specular rim highlight (arcade sheen)
+    g.lineStyle(Math.max(2, r * 0.12), 0xffffff, 0.35).beginPath()
+      .arc(c, c, r * 0.72, -2.4, -1.0, false).strokePath();
+
     g.lineStyle(3, def.outline).strokeCircle(c, c, r);
     g.fillStyle(0xffffff, 0.25).fillCircle(c - r * 0.35, c - r * 0.35, r * 0.3);
     g.fillStyle(def.outline, 0.35).fillCircle(c + r * 0.4, c + r * 0.45, r * 0.15).fillCircle(c - r * 0.45, c + r * 0.3, r * 0.1);
     // Eyes facing right (+x), the direction it moves
     for (const dy of [-0.32, 0.32]) {
       g.fillStyle(0xffffff).fillCircle(c + r * 0.38, c + r * dy, r * 0.27);
+      g.lineStyle(1.5, def.outline, 0.5).strokeCircle(c + r * 0.38, c + r * dy, r * 0.27);
       g.fillStyle(0x111111).fillCircle(c + r * 0.48, c + r * dy, r * 0.13);
+      // Bright catchlight glint in eyes
+      g.fillStyle(0xffffff, 0.95).fillCircle(c + r * 0.44, c + r * (dy - 0.06), Math.max(1.2, r * 0.05));
     }
     // Grin (bosses scowl)
     if (def.boss) {
@@ -1002,6 +1053,7 @@ export class BootScene extends Phaser.Scene {
     for (const dy of [-0.22, 0.22]) {
       g.fillStyle(0xffe066).fillCircle(c + r * 0.3, c + r * dy, r * 0.12);
       g.fillStyle(0x111111).fillCircle(c + r * 0.34, c + r * dy, r * 0.06);
+      g.fillStyle(0xffffff, 0.95).fillCircle(c + r * 0.32, c + r * (dy - 0.03), Math.max(1.2, r * 0.04));
     }
     g.generateTexture(`germ-${def.id}`, size, size);
     g.destroy();
@@ -1066,12 +1118,14 @@ export class BootScene extends Phaser.Scene {
       g.fillStyle(0xffffff).fillCircle(c + r * 0.2, c + r * dy, r * 0.24);
       g.fillStyle(def.color).fillRect(c + r * 0.2 - r * 0.26, c + r * dy - r * 0.26, r * 0.52, r * 0.13); // droopy lids
       g.fillStyle(0x111111).fillCircle(c + r * 0.28, c + r * dy + r * 0.06, r * 0.1);
+      g.fillStyle(0xffffff, 0.9).fillCircle(c + r * 0.25, c + r * dy + r * 0.02, Math.max(1, r * 0.04)); // catchlight
       g.fillStyle(0x7fd3ff).fillCircle(c + r * 0.05, c + r * dy + r * 0.25, r * 0.07); // tear
     }
     // The nose: big, red, shiny
     g.fillStyle(0xe5383b).fillCircle(c + r * 0.85, c, r * 0.42);
     g.lineStyle(2, 0x7a1012).strokeCircle(c + r * 0.85, c, r * 0.42);
-    g.fillStyle(0xffffff, 0.6).fillCircle(c + r * 0.95, c - r * 0.14, r * 0.1);
+    g.fillStyle(0xffffff, 0.75).fillCircle(c + r * 0.95, c - r * 0.14, r * 0.12);
+    g.fillStyle(0xffffff, 0.4).fillCircle(c + r * 0.82, c + r * 0.12, r * 0.06);
     g.generateTexture(`germ-${def.id}`, size, size);
     g.destroy();
   }
@@ -1089,6 +1143,7 @@ export class BootScene extends Phaser.Scene {
     for (const dy of [-0.35, 0.35]) {
       g.fillStyle(0xffffff).fillCircle(c + r * 0.4, c + r * dy, r * 0.28);
       g.fillStyle(0x111111).fillCircle(c + r * 0.5, c + r * dy, r * 0.14);
+      g.fillStyle(0xffffff, 0.95).fillCircle(c + r * 0.46, c + r * (dy - 0.06), Math.max(1.2, r * 0.05));
     }
     g.lineStyle(2, def.outline).lineBetween(c + r * 0.1, c - r * 0.75, c + r * 0.6, c - r * 0.5)
       .lineBetween(c + r * 0.1, c + r * 0.75, c + r * 0.6, c + r * 0.5);
@@ -1212,10 +1267,13 @@ export class BootScene extends Phaser.Scene {
     g.destroy();
   }
 
-  /** Generic soft blob used for splats and mist; tinted at runtime. */
+  /** Generic soft blob used for splats and mist; layered droplet tinted at runtime. */
   private makeSplat(): void {
     const g = this.add.graphics();
-    g.fillStyle(0xffffff).fillCircle(8, 8, 8);
+    // Multi-layered juicy droplet with soft halo and dense core
+    g.fillStyle(0xffffff, 0.25).fillCircle(8, 8, 8);
+    g.fillStyle(0xffffff, 0.65).fillCircle(8, 8, 5.5);
+    g.fillStyle(0xffffff, 1.0).fillCircle(7.5, 7.5, 3);
     g.generateTexture('blob', 16, 16);
     g.destroy();
   }
