@@ -27,6 +27,7 @@ export class TitleScene extends Phaser.Scene {
   }
 
   private art!: Phaser.GameObjects.Image;
+  private bgArt!: Phaser.GameObjects.Image;
   private menuCards!: Phaser.GameObjects.Graphics;
   private tap!: Phaser.GameObjects.Text;
   private updatePill!: Phaser.GameObjects.Text;
@@ -61,7 +62,8 @@ export class TitleScene extends Phaser.Scene {
   create(): void {
     this.started = false;
     this.input.enabled = true;
-    this.art = this.add.image(0, 0, 'title-art').setOrigin(0.5, 0);
+    this.bgArt = this.add.image(0, 0, 'title-art').setOrigin(0.5, 0.5).setAlpha(0.22).setTint(0x7799aa);
+    this.art = this.add.image(0, 0, 'title-art').setOrigin(0.5, 0.5);
     if (!settings.reducedMotion) this.tweens.add({ targets: this.art, alpha: { from: 0, to: 1 }, duration: 400 });
     this.menuCards = this.add.graphics();
 
@@ -223,22 +225,37 @@ export class TitleScene extends Phaser.Scene {
     const left = Math.max(20, safe.left + 14);
     const right = w - Math.max(20, safe.right + 14);
 
-    // Full poster covers the entire screen centered
-    const k = Math.max(w / this.art.width, h / this.art.height);
-    this.art.setScale(k).setPosition(w / 2, h / 2);
+    const topBarH = 48;
+    const bottomBarH = Math.min(108, Math.max(82, Math.round(h * 0.23)));
+    const bottomBarY = h - bottomBarH;
+    const availH = bottomBarY - topBarH;
+    const centerY = topBarH + availH / 2;
+
+    // Ambient background covers the entire canvas edge-to-edge
+    const bgK = Math.max(w / this.bgArt.width, h / this.bgArt.height);
+    this.bgArt.setScale(bgK).setPosition(w / 2, h / 2);
+
+    // Main poster is cleanly fitted & centered in the available vertical viewport
+    const k = Math.min(w / this.art.width, availH / this.art.height);
+    const artW = this.art.width * k;
+    const artH = this.art.height * k;
+    this.art.setScale(k).setPosition(w / 2, centerY);
 
     this.menuCards.clear();
 
+    // Subtle drop shadow and outline around the poster
+    this.menuCards.fillStyle(0x000000, 0.35)
+      .fillRoundedRect(w / 2 - artW / 2 - 2, centerY - artH / 2 + 3, artW + 4, artH, 14);
+    this.menuCards.lineStyle(1.5, 0x1f4f55, 0.75)
+      .strokeRoundedRect(w / 2 - artW / 2, centerY - artH / 2, artW, artH, 12);
+
     // 1. Sleek top dark glassmorphic header bar
-    const topBarH = 54;
-    this.menuCards.fillStyle(0x06181b, 0.82).fillRect(0, 0, w, topBarH);
-    this.menuCards.lineStyle(1.5, 0x1f4f55, 0.9).lineBetween(0, topBarH, w, topBarH);
+    this.menuCards.fillStyle(0x06181b, 0.88).fillRect(0, 0, w, topBarH);
+    this.menuCards.lineStyle(1.5, 0x1f4f55, 0.85).lineBetween(0, topBarH, w, topBarH);
 
     // 2. Sleek bottom dark glassmorphic console shelf
-    const bottomBarH = Math.min(124, Math.max(94, Math.round(h * 0.26)));
-    const bottomBarY = h - bottomBarH;
-    this.menuCards.fillStyle(0x06181b, 0.85).fillRect(0, bottomBarY, w, bottomBarH);
-    this.menuCards.lineStyle(1.5, 0x1f4f55, 0.9).lineBetween(0, bottomBarY, w, bottomBarY);
+    this.menuCards.fillStyle(0x06181b, 0.88).fillRect(0, bottomBarY, w, bottomBarH);
+    this.menuCards.lineStyle(1.5, 0x1f4f55, 0.85).lineBetween(0, bottomBarY, w, bottomBarY);
 
     // Hide text headers (poster illustration already features the title logo)
     this.heading.setVisible(false);
@@ -247,17 +264,17 @@ export class TitleScene extends Phaser.Scene {
 
     // Doctor chip in top bar (satisfies menu-design.spec.ts portrait/name check)
     const docX = left + 14;
-    const docY = 27;
-    this.portrait.setPosition(docX, docY).setDisplaySize(26, 34).setVisible(true);
-    this.pickInfo.setPosition(docX + 18, docY).setFontSize(14).setColor('#e8fff9').setOrigin(0, 0.5).setVisible(true);
+    const docY = Math.round(topBarH / 2);
+    this.portrait.setPosition(docX, docY).setDisplaySize(24, 32).setVisible(true);
+    this.pickInfo.setPosition(docX + 16, docY).setFontSize(13).setColor('#e8fff9').setOrigin(0, 0.5).setVisible(true);
 
     // Top Navigation buttons (equally spaced across center-top)
     const navButtons = [this.providersButton, this.lockerButton, this.boardButton, this.leaderboardButton];
-    const navStartX = left + 130;
-    const navAvailW = Math.max(340, right - 220 - navStartX);
+    const navStartX = left + 120;
+    const navAvailW = Math.max(340, right - 200 - navStartX);
     const slot = navAvailW / 4;
     navButtons.forEach((b, i) => {
-      b.setOrigin(0.5).setFontSize(15).setPadding(10, 6)
+      b.setOrigin(0.5).setFontSize(14).setPadding(8, 5)
         .setPosition(navStartX + slot * (i + 0.5), docY);
     });
     this.npsText.setOrigin(1, 0.5).setFontSize(13).setPosition(right, docY);
