@@ -50,6 +50,16 @@ at the end of the new menu helper. After that whitespace-only cleanup, type,
 compiled JavaScript was verified byte-identical to the full-suite artifact after
 normalizing its build-version string; no runtime logic changed.
 
+Final palette source: `330205bb9be1` (prefix). Populated leaderboard rows now
+use the light menu palette consistently, including rank, score and date text.
+After this color-only correction, type/build, 153 unit, six bundle and 16
+Chromium/WebKit leaderboard/menu checks passed. A populated-table visual check
+found minimum row-text contrast of 4.94:1 and no runtime errors. Its screenshot,
+`previews/menu-leaderboard-implemented.png`, uses **sample scores**, not a live
+provisioned backend. Focused browser log:
+`/private/tmp/moshi-menu-palette-regression.log`. The full functional gate above
+preceded this palette-only change; gameplay, data and request logic are unchanged.
+
 The first full run passed 153 unit,
 114 browser, six artifact/worker and 36 Swift tests; seven iOS simulator tests
 also passed. Smoke found an outdated uppercase provider-label expectation and

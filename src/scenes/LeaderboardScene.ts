@@ -189,12 +189,12 @@ export class LeaderboardScene extends Phaser.Scene {
     scores.forEach((entry, i) => {
       const y = startY + i * rowH;
       const isTop3 = i < 3;
-      const rankColor = i === 0 ? '#ffd700' : i === 1 ? '#c0c0c0' : i === 2 ? '#cd7f32' : MENU.muted;
+      const rankColor = i === 0 ? MENU.amber : MENU.teal;
 
-      const bg = this.add.rectangle(width / 2, y + 14, cw, rowH - 4, i % 2 === 0 ? 0x0f343a : 0x0a2428, 0.75).setOrigin(0.5);
+      const bg = this.add.rectangle(width / 2, y + 14, cw, rowH - 4, i % 2 === 0 ? 0xfffcf6 : 0xf0f0e6, 1).setOrigin(0.5);
       this.rowsContainer.add(bg);
 
-      const t = (x: number, s: string, color = '#e8fff9', style = 'bold', origin = 0) => {
+      const t = (x: number, s: string, color = MENU.ink, style = 'bold', origin = 0) => {
         const textObj = this.add.text(x, y + 4, s, {
           fontFamily: font, fontSize: '17px', fontStyle: style, color,
         }).setOrigin(origin, 0);
@@ -203,13 +203,13 @@ export class LeaderboardScene extends Phaser.Scene {
       };
 
       t(left + 24, `#${i + 1}`, rankColor, '900');
-      t(left + 90, entry.name, isTop3 ? '#ffffff' : '#e8fff9', '900');
+      t(left + 90, entry.name, MENU.ink, isTop3 ? '900' : 'bold');
       t(left + cw * 0.45, entry.score.toLocaleString(), MENU.teal, '900', 0.5);
       t(left + cw * 0.62, `R${entry.round}`, MENU.teal, 'bold', 0.5);
       t(left + cw * 0.78, (entry.provider ?? 'Eugene').toUpperCase(), MENU.muted, 'bold', 0.5);
 
       const dateStr = entry.created_at ? new Date(entry.created_at).toLocaleDateString(undefined, { month: 'numeric', day: 'numeric' }) : '';
-      t(left + cw - 24, dateStr, '#8fa8a3', 'normal', 1);
+      t(left + cw - 24, dateStr, MENU.muted, 'normal', 1);
     });
   }
 }
