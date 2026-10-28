@@ -1,5 +1,19 @@
 # Changelog
 
+## Illustrated menu remaster
+
+- Rebuilt the title layout with an unobstructed clinic illustration, rounded
+  navigation and a clear Start Shift action; retained real saved balances,
+  difficulty, mode, daily challenge and Continue actions.
+- Added eleven baby-style provider portraits and a touch-selectable roster.
+  Purchases and second-special unlocks use the existing progression data.
+- Unified Board, Locker and Leaderboard typography and cream/teal palette,
+  with responsive menu rebuilding and improved Board spacing on tablets.
+- Protected immediate saved-shift resume, separated update/Continue prompts,
+  and discarded stale leaderboard responses after resize, close or new requests.
+- Added browser coverage for menu bounds, roster selection, saved shifts and
+  delayed leaderboard responses. See `MENU-VISUAL-PASS.md` for QA and art provenance.
+
 ## Shared Online Leaderboard Backend & Integration (Milestone 6)
 
 - **Cloudflare Worker & D1 backend**: Lightweight backend in `worker/index.ts` with strict $0 tier compliance (capped request sizes <= 2KB, parameterized SQL queries, edge response caching via `Cache-Control: public, max-age=15`, CORS headers, and `/api/health` probe).

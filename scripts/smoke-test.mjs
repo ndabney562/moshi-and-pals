@@ -1531,7 +1531,7 @@ try {
     if (at) await page.touchscreen.tap(at.x, at.y);
     return !!at;
   };
-  await tapText('Title', 'RESIDENCY BOARD');
+  await tapText('Title', 'BOARD');
   await page.waitForFunction(() => window.game.scene.isActive('Board'), null, { timeout: 10000 }).catch(() => {});
   const boughtSpec = await tapText('Board', 'BUY');
   await page.waitForTimeout(300);
@@ -1823,7 +1823,7 @@ try {
       const saved = JSON.parse(localStorage.getItem('moshi.progress.v1'));
       return { stillLocked, asked, owned: saved.owned, nps: saved.nps, on: JSON.parse(localStorage.getItem('moshi.settings.v1')).character };
     });
-    check(before.startsWith('DR. MOSHKOVICH'), `an unhired saved Pal falls back to Dr. Moshkovich (${before})`);
+    check(before === 'Dr. Moshkovich', `an unhired saved Pal falls back to Dr. Moshkovich (${before})`);
     check(!hire.stillLocked && hire.asked === 'hire:kaya', `the Providers menu keeps unaffordable hires locked and asks for confirmation (${JSON.stringify(hire)})`);
     check(hire.owned.includes('doctor:kaya') && hire.nps === 5 && hire.on === 'kaya', `confirming hires Kaya for 30 NPS and selects him (${JSON.stringify(hire)})`);
     check(hireErrors.length === 0, `no errors hiring a Pal${hireErrors.length ? ': ' + hireErrors.join(' | ') : ''}`);
@@ -1857,7 +1857,7 @@ try {
       if (at) await lp.touchscreen.tap(at.x, at.y);
       return !!at;
     };
-    await tapIn('Title', 'EQUIPMENT LOCKER');
+    await tapIn('Title', 'LOCKER');
     const opened = await lp.waitForFunction(() => window.game.scene.isActive('Locker'), null, { timeout: 10000 }).then(() => true, () => false);
     await tapIn('Locker', 'UPGRADE');
     await lp.waitForTimeout(300);
@@ -2091,7 +2091,7 @@ try {
       await sp1.waitForTimeout(250);
       return !!at;
     };
-    await tapIn('Title', 'RESIDENCY BOARD');
+    await tapIn('Title', 'BOARD');
     await sp1.waitForFunction(() => window.game.scene.isActive('Board'), null, { timeout: 10000 }).catch(() => {});
     await tapIn('Board', 'STAFF');
     const hired = await tapIn('Board', 'HIRE');
@@ -2200,7 +2200,7 @@ try {
       await fp.waitForTimeout(300);
       return !!at;
     };
-    await tapIn('Title', 'EQUIPMENT LOCKER');
+    await tapIn('Title', 'LOCKER');
     await fp.waitForFunction(() => window.game.scene.isActive('Locker'), null, { timeout: 10000 }).catch(() => {});
     await tapIn('Locker', 'STAFF');
     await tapIn('Locker', 'UPGRADE');

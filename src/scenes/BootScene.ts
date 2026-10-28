@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import { drawProviderPreview, type PreviewProvider } from './providerArt';
 import { NATIVE } from '../core/native';
+import { registerPortraits } from '../ui/menuTheme';
 import { COLORS } from '../config/theme';
 import { GERMS, type GermDef } from '../data/germs';
 import { VIOLATIONS, type ViolationDef } from '../data/patients';
@@ -19,9 +20,11 @@ export class BootScene extends Phaser.Scene {
   preload(): void {
     // Noah's title art (Moshi and Pals poster)
     this.load.image('title-art', 'assets/title.jpg');
+    this.load.image('provider-portraits', 'assets/provider-portraits.png');
   }
 
   create(): void {
+    registerPortraits(this);
     document.getElementById('loading')?.setAttribute('hidden', '');
     this.makeEugene();
     this.makeEugene(true);
