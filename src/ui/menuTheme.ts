@@ -7,7 +7,8 @@ export const MENU = {
   font: 'Avenir Next, Trebuchet MS, system-ui, sans-serif',
 };
 
-export const PORTRAITS = ['eugene', 'kaya', 'lucien', 'ken', 'jason', 'dhiwya', 'raj', 'lidiya', 'dharma', 'amanda', 'janeen'];
+// Atlas art order: Ken wears the dark fleece; Kaya wears the cap and sunglasses.
+export const PORTRAITS = ['eugene', 'ken', 'lucien', 'kaya', 'jason', 'dhiwya', 'raj', 'lidiya', 'dharma', 'amanda', 'janeen'];
 
 export function registerPortraits(scene: Phaser.Scene): void {
   const texture = scene.textures.get('provider-portraits');
