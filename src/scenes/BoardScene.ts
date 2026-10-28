@@ -85,17 +85,25 @@ export class BoardScene extends Phaser.Scene {
     this.txt(left, 140, 'One at a time, for the whole shift. Every perk has a catch.', 17, COLORS.uiAccent, 'italic');
     const rowH = 72;
     const rows = [{ id: '', name: 'General Practice', perk: 'No perk', catch: 'No catch', cost: 0 }, ...SPECIALTIES];
+    const cardGfx = this.add.graphics();
+    this.body.add(cardGfx);
     rows.forEach((s, i) => {
       const y = 180 + i * rowH;
       const owned = !s.id || p.owned.includes(s.id);
-      this.txt(left, y, s.name, 22, owned ? COLORS.uiText : MENU.muted, '900');
-      this.txt(left, y + 30, `+ ${s.perk}    − ${s.catch}`, 16, owned ? MENU.muted : MENU.muted);
+      const active = p.specialty === s.id;
+      const ch = rowH - 8;
+
+      cardGfx.fillStyle(0x000000, 0.04).fillRoundedRect(left, y - 4 + 2, right - left, ch, 12);
+      cardGfx.fillStyle(active ? 0xf0faf6 : MENU.card, 1).fillRoundedRect(left, y - 4, right - left, ch, 12);
+      cardGfx.lineStyle(1.5, active ? 0x80eac8 : MENU.line, 0.9).strokeRoundedRect(left, y - 4, right - left, ch, 12);
+
+      this.txt(left + 14, y, s.name, 22, owned ? COLORS.uiText : MENU.muted, '900');
+      this.txt(left + 14, y + 30, `+ ${s.perk}    − ${s.catch}`, 16, owned ? (active ? MENU.teal : MENU.muted) : MENU.muted);
       const mid = y + 22;
       if (!owned) {
-        this.pill(right, mid, `BUY  ${s.cost} CME`, () => { if (buy(s.id)) chooseSpecialty(s.id); this.show('specialties'); }, false, p.credits >= s.cost);
+        this.pill(right - 14, mid, `BUY  ${s.cost} CME`, () => { if (buy(s.id)) chooseSpecialty(s.id); this.show('specialties'); }, false, p.credits >= s.cost);
       } else {
-        const active = p.specialty === s.id;
-        this.pill(right, mid, active ? 'ON SHIFT' : 'CHOOSE', () => { chooseSpecialty(s.id); this.show('specialties'); }, active);
+        this.pill(right - 14, mid, active ? 'ON SHIFT' : 'CHOOSE', () => { chooseSpecialty(s.id); this.show('specialties'); }, active);
       }
     });
   }
@@ -107,20 +115,34 @@ export class BoardScene extends Phaser.Scene {
     const right = Math.min(width - 32, width / 2 + 520);
     this.txt(left, 140, 'Bring a crate tool from home: you start every shift carrying it.', 17, COLORS.uiAccent, 'italic');
     if (!p.owned.includes('starterKit')) {
-      this.txt(left, 190, 'STARTER KIT', 26, COLORS.uiText, '900');
-      this.txt(left, 226, 'Unlocks choosing a starting tool. The bottle comes either way.', 17, MENU.muted);
-      this.pill(right, 208, `BUY  ${STARTER_KIT_COST} CME`, () => { buy('starterKit'); this.show('kit'); }, false, p.credits >= STARTER_KIT_COST);
+      const cardGfx = this.add.graphics();
+      this.body.add(cardGfx);
+      cardGfx.fillStyle(0x000000, 0.04).fillRoundedRect(left, 180, right - left, 90, 14);
+      cardGfx.fillStyle(MENU.card, 1).fillRoundedRect(left, 178, right - left, 90, 14);
+      cardGfx.lineStyle(1.5, MENU.line, 0.9).strokeRoundedRect(left, 178, right - left, 90, 14);
+
+      this.txt(left + 16, 192, 'STARTER KIT', 26, COLORS.uiText, '900');
+      this.txt(left + 16, 230, 'Unlocks choosing a starting tool. The bottle comes either way.', 17, MENU.muted);
+      this.pill(right - 16, 222, `BUY  ${STARTER_KIT_COST} CME`, () => { buy('starterKit'); this.show('kit'); }, false, p.credits >= STARTER_KIT_COST);
       return;
     }
     const rows = ['', ...CRATE_POOL];
     const rowH = Math.min(58, 440 / rows.length);
+    const cardGfx = this.add.graphics();
+    this.body.add(cardGfx);
     rows.forEach((id, i) => {
       const y = 180 + i * rowH;
       const def = id ? EQUIPMENT[id] : undefined;
-      this.txt(left, y, def ? def.name : 'Just the bottle', 21, COLORS.uiText, '900');
-      if (def?.blurb) this.txt(left + 360, y + 3, def.blurb, 15, MENU.muted);
       const active = p.startTool === id;
-      this.pill(right, y + 12, active ? 'PACKED' : 'PACK IT', () => { chooseStartTool(id); this.show('kit'); }, active);
+      const ch = rowH - 6;
+
+      cardGfx.fillStyle(0x000000, 0.04).fillRoundedRect(left, y - 4 + 2, right - left, ch, 12);
+      cardGfx.fillStyle(active ? 0xf0faf6 : MENU.card, 1).fillRoundedRect(left, y - 4, right - left, ch, 12);
+      cardGfx.lineStyle(1.5, active ? 0x80eac8 : MENU.line, 0.9).strokeRoundedRect(left, y - 4, right - left, ch, 12);
+
+      this.txt(left + 14, y, def ? def.name : 'Just the bottle', 21, COLORS.uiText, '900');
+      if (def?.blurb) this.txt(left + 360, y + 3, def.blurb, 15, MENU.muted);
+      this.pill(right - 14, y + 12, active ? 'PACKED' : 'PACK IT', () => { chooseStartTool(id); this.show('kit'); }, active);
     });
   }
 
@@ -138,11 +160,23 @@ export class BoardScene extends Phaser.Scene {
     const top = 176;
     const rowH = Math.min(120, (height - top - 84) / SCRIBES.length);
     const small = rowH < 110;
+    const cardGfx = this.add.graphics();
+    this.body.add(cardGfx);
     SCRIBES.forEach((sc, i) => {
       const y = top + i * rowH;
       const id = scribeUnlockId(sc.id);
       const hired = p.owned.includes(id);
-      const portrait = this.add.image(left + 44, y + (small ? 30 : 34), `scribe-${sc.id}`).setAngle(-90).setAlpha(hired ? 1 : 0.6).setScale(small ? 0.8 : 1);
+      const ch = rowH - 10;
+
+      cardGfx.fillStyle(0x000000, 0.04).fillRoundedRect(left, y - 4 + 2, right - left, ch, 14);
+      cardGfx.fillStyle(hired ? 0xf8fcfb : MENU.card, 1).fillRoundedRect(left, y - 4, right - left, ch, 14);
+      cardGfx.lineStyle(1.5, hired ? 0x80eac8 : MENU.line, 0.9).strokeRoundedRect(left, y - 4, right - left, ch, 14);
+
+      cardGfx.fillStyle(0x000000, 0.06).fillCircle(left + 48, y + (small ? 30 : 34) + 2, 26);
+      cardGfx.fillStyle(hired ? 0xfffcf6 : 0xe4e6dc, 1).fillCircle(left + 48, y + (small ? 30 : 34), 26);
+      cardGfx.lineStyle(1.5, hired ? 0x80eac8 : 0xd8ded4, 0.9).strokeCircle(left + 48, y + (small ? 30 : 34), 26);
+
+      const portrait = this.add.image(left + 48, y + (small ? 30 : 34), `scribe-${sc.id}`).setAngle(-90).setAlpha(hired ? 1 : 0.6).setScale(small ? 0.75 : 0.95);
       this.body.add(portrait);
       const k = small ? 0.8 : 1;
       this.txt(left + 110, y, `${sc.name.toUpperCase()}, ${sc.role}`, Math.round(24 * k), hired ? COLORS.uiText : MENU.muted, '900');
@@ -151,9 +185,9 @@ export class BoardScene extends Phaser.Scene {
         : 'Also shames patients with health code violations into cleaning up.';
       this.txt(left + 110, y + 58 * k, extra, Math.round(15 * k + 1), hired ? MENU.muted : MENU.muted, 'italic');
       const mid = y + 30 * k;
-      if (hired) this.pill(right, mid, 'ON CALL', () => undefined, true, false).setAlpha(1);
-      else if (sc.cost === undefined) this.pill(right, mid, (sc.unlockHint ?? 'LOCKED').toUpperCase(), () => undefined, false, false);
-      else this.pill(right, mid, `HIRE  ${sc.cost} CME`, () => { buy(id); this.show('scribes'); }, false, p.credits >= sc.cost);
+      if (hired) this.pill(right - 14, mid, 'ON CALL', () => undefined, true, false).setAlpha(1);
+      else if (sc.cost === undefined) this.pill(right - 14, mid, (sc.unlockHint ?? 'LOCKED').toUpperCase(), () => undefined, false, false);
+      else this.pill(right - 14, mid, `HIRE  ${sc.cost} CME`, () => { buy(id); this.show('scribes'); }, false, p.credits >= sc.cost);
     });
   }
 
@@ -164,6 +198,8 @@ export class BoardScene extends Phaser.Scene {
     const colW = Math.min(620, (width - 100) / 2);
     const left = width / 2 - colW;
     const rowH = Math.min(64, (height - 150 - 90) / perCol);
+    const cardGfx = this.add.graphics();
+    this.body.add(cardGfx);
     ATLAS.forEach((entry, i) => {
       const def = GERMS[entry.id];
       if (!def) return;
@@ -172,9 +208,15 @@ export class BoardScene extends Phaser.Scene {
       const kills = p.kills[entry.id] ?? 0;
       const need = def.boss ? 1 : ATLAS_UNLOCK_KILLS;
       const known = kills >= need;
-      this.txt(x, y, `${known ? '🔬' : '🔒'}  ${def.name}  ·  ${kills.toLocaleString()} disinfected`, 18, known ? MENU.teal : MENU.muted, '900');
-      this.txt(x + 30, y + 24, known ? entry.note : `Disinfect ${need - Math.min(kills, need)} more to unlock the clinical note.`, 14, known ? COLORS.uiText : MENU.muted)
-        .setWordWrapWidth(colW - 50);
+      const ch = rowH - 6;
+
+      cardGfx.fillStyle(0x000000, 0.03).fillRoundedRect(x, y - 2 + 2, colW - 20, ch, 10);
+      cardGfx.fillStyle(known ? MENU.card : 0xf2efe6, 1).fillRoundedRect(x, y - 2, colW - 20, ch, 10);
+      cardGfx.lineStyle(1.5, known ? 0x80eac8 : MENU.line, 0.8).strokeRoundedRect(x, y - 2, colW - 20, ch, 10);
+
+      this.txt(x + 12, y, `${known ? '🔬' : '🔒'}  ${def.name}  ·  ${kills.toLocaleString()} disinfected`, 18, known ? MENU.teal : MENU.muted, '900');
+      this.txt(x + 36, y + 24, known ? entry.note : `Disinfect ${need - Math.min(kills, need)} more to unlock the clinical note.`, 14, known ? COLORS.uiText : MENU.muted)
+        .setWordWrapWidth(colW - 60);
     });
   }
 }

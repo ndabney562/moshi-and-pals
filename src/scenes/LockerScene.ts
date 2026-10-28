@@ -60,7 +60,10 @@ export class LockerScene extends Phaser.Scene {
     const bank = progress().bank;
     this.header.setText(`EQUIPMENT LOCKER  ·  $${bank.toLocaleString()} BANKED`);
     this.body.removeAll(true);
-    for (const t of this.tabs) t.text.setBackgroundColor(t.id === this.shelf ? MENU.mint : '#eeeade');
+    for (const t of this.tabs) {
+      t.text.setBackgroundColor(t.id === this.shelf ? MENU.mint : '#eeeade');
+      t.text.setColor(t.id === this.shelf ? MENU.ink : COLORS.uiText);
+    }
     if (this.shelf === 'staff') {
       this.drawStaff(bank);
       return;
@@ -71,23 +74,35 @@ export class LockerScene extends Phaser.Scene {
     const top = 146;
     const rowH = Math.min(62, (height - top - 90) / LOCKER_TOOLS.length);
     const max = LOCKER.levels.length;
+    const cardW = right - left;
+
+    const rowGfx = this.add.graphics();
+    this.body.add(rowGfx);
+
     LOCKER_TOOLS.forEach((id, i) => {
       const def = EQUIPMENT[id];
       if (!def) return;
       const y = top + i * rowH;
       const level = lockerLevel(id);
       const next = LOCKER.levels[level];
-      this.txt(left, y, def.name, 20, COLORS.uiText, '900');
-      for (let k = 0; k < max; k++) this.txt(left + k * 22, y + 27, '★', 18, k < level ? MENU.teal : '#e4e6dc', '900');
+
+      // Row card backplate
+      const ch = rowH - 8;
+      rowGfx.fillStyle(0x000000, 0.04).fillRoundedRect(left, y - 4 + 2, cardW, ch, 12);
+      rowGfx.fillStyle(MENU.card, 1).fillRoundedRect(left, y - 4, cardW, ch, 12);
+      rowGfx.lineStyle(1.5, MENU.line, 0.85).strokeRoundedRect(left, y - 4, cardW, ch, 12);
+
+      this.txt(left + 14, y, def.name, 20, COLORS.uiText, '900');
+      for (let k = 0; k < max; k++) this.txt(left + 14 + k * 22, y + 27, '★', 18, k < level ? MENU.teal : '#dcd8cc', '900');
       const nextText = LOCKER_LEVEL_TEXT[level];
       const line = next && nextText ? `Next: ${nextText.name} (${nextText.blurb})` : 'Fully upgraded. It even has your name on it.';
-      this.txt(left + 76, y + 29, line, 15, next ? MENU.muted : MENU.muted);
+      this.txt(left + 90, y + 29, line, 15, next ? MENU.muted : MENU.muted);
       const mid = y + rowH / 2 - 4;
       const label = next ? `UPGRADE  $${next.cost.toLocaleString()}` : 'MAXED';
       const can = !!next && bank >= next.cost;
-      const b = this.add.text(right, mid, label, {
+      const b = this.add.text(right - 14, mid, label, {
         fontFamily: font, fontSize: '18px', fontStyle: '900', color: next ? COLORS.uiText : MENU.ink,
-        backgroundColor: !next ? MENU.mint : can ? MENU.mint : '#e4e6dc', padding: { x: 14, y: 8 },
+        backgroundColor: !next ? MENU.mint : can ? MENU.mint : '#e4e6dc', padding: { x: 16, y: 8 },
       }).setOrigin(1, 0.5).setAlpha(next && !can ? 0.5 : 1);
       if (can) b.setInteractive({ useHandCursor: true }).on('pointerup', () => {
         if (buyLockerLevel(id)) sfx.cash();
@@ -108,28 +123,44 @@ export class LockerScene extends Phaser.Scene {
     const right = width / 2 + half;
     const top = 146;
     const rowH = Math.min(78, (height - top - 90) / SCRIBES.length);
+    const cardW = right - left;
+
+    const rowGfx = this.add.graphics();
+    this.body.add(rowGfx);
+
     SCRIBES.forEach((sc, i) => {
       const y = top + i * rowH;
       const open = scribeUnlocked(sc.id);
       const level = staffLevel(sc.id);
-      // (Omar, Alan and Donald stay all shift once they're out, so they don't get Overtime)
       const tiers = staffTiers(sc.id);
       const max = tiers.length;
       const tier = tiers[level];
       const next = tier === undefined ? undefined : STAFF.levels[tier];
-      this.body.add(this.add.image(left + 24, y + 24, `scribe-${sc.id}`).setAngle(-90).setScale(0.55).setAlpha(open ? 1 : 0.4));
-      this.txt(left + 56, y, `${sc.name}, ${sc.role.toLowerCase()}`, 20, open ? COLORS.uiText : MENU.muted, '900');
-      for (let k = 0; k < max; k++) this.txt(left + 56 + k * 22, y + 27, '★', 18, k < level ? MENU.teal : '#e4e6dc', '900');
+
+      // Row card backplate
+      const ch = rowH - 8;
+      rowGfx.fillStyle(0x000000, 0.04).fillRoundedRect(left, y - 4 + 2, cardW, ch, 14);
+      rowGfx.fillStyle(MENU.card, 1).fillRoundedRect(left, y - 4, cardW, ch, 14);
+      rowGfx.lineStyle(1.5, MENU.line, 0.85).strokeRoundedRect(left, y - 4, cardW, ch, 14);
+
+      // Staff thumbnail frame
+      rowGfx.fillStyle(0x000000, 0.06).fillCircle(left + 36, y + ch / 2 - 2, 24);
+      rowGfx.fillStyle(open ? 0xfffcf6 : 0xe4e6dc, 1).fillCircle(left + 36, y + ch / 2 - 4, 24);
+      rowGfx.lineStyle(1.5, open ? 0x80eac8 : 0xd8ded4, 0.9).strokeCircle(left + 36, y + ch / 2 - 4, 24);
+
+      this.body.add(this.add.image(left + 36, y + ch / 2 - 4, `scribe-${sc.id}`).setAngle(-90).setScale(0.55).setAlpha(open ? 1 : 0.4));
+      this.txt(left + 72, y, `${sc.name}, ${sc.role.toLowerCase()}`, 20, open ? COLORS.uiText : MENU.muted, '900');
+      for (let k = 0; k < max; k++) this.txt(left + 72 + k * 22, y + 27, '★', 18, k < level ? MENU.teal : '#dcd8cc', '900');
       const nextText = tier === undefined ? undefined : STAFF_LEVEL_TEXT[tier];
       const line = !open ? `Not on staff yet. ${sc.unlockHint ?? 'Hire them on the Residency Board'}.`
         : next && nextText ? `Next: ${nextText.name} (${nextText.blurb})` : 'Fully upgraded. Somebody give them a raise.';
-      this.txt(left + 132, y + 29, line, 15, open && next ? MENU.muted : MENU.muted);
+      this.txt(left + 148, y + 29, line, 15, open && next ? MENU.muted : MENU.muted);
       const mid = y + rowH / 2 - 4;
       const label = !open ? 'LOCKED' : next ? `UPGRADE  $${next.cost.toLocaleString()}` : 'MAXED';
       const can = open && !!next && bank >= next.cost;
-      const b = this.add.text(right, mid, label, {
+      const b = this.add.text(right - 14, mid, label, {
         fontFamily: font, fontSize: '18px', fontStyle: '900', color: open && !next ? MENU.ink : COLORS.uiText,
-        backgroundColor: open && !next ? MENU.mint : can ? MENU.mint : '#e4e6dc', padding: { x: 14, y: 8 },
+        backgroundColor: open && !next ? MENU.mint : can ? MENU.mint : '#e4e6dc', padding: { x: 16, y: 8 },
       }).setOrigin(1, 0.5).setAlpha(open && next && !can ? 0.5 : open ? 1 : 0.5);
       if (can) b.setInteractive({ useHandCursor: true }).on('pointerup', () => {
         if (buyStaffLevel(sc.id)) sfx.cash();
