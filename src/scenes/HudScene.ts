@@ -5,6 +5,7 @@ import { CONTROLS } from '../config/controls';
 import { DISPLAY } from '../config/display';
 import { COLORS } from '../config/theme';
 import { BALANCE } from '../config/balance';
+import { MENU } from '../ui/menuTheme';
 import {
   events, GameEvents, type BossPayload, type EquipmentChangedPayload, type HealthPayload, type RequisitionPayload, type RoomPayload, type VendingPayload, type RoundPayload, type StationPayload, type StreakPayload,
 } from '../core/events';
@@ -105,6 +106,8 @@ export class HudScene extends Phaser.Scene {
   private interactButton!: HudButton;
   private swapButton!: HudButton;
   private toolText!: Phaser.GameObjects.Text;
+  private headerBar!: Phaser.GameObjects.Graphics;
+  private roomBadge!: Phaser.GameObjects.Graphics;
   private roomText!: Phaser.GameObjects.Text;
   /** M17: Today's Shift / modifiers / difficulty in play, under the room name. */
   private shiftText!: Phaser.GameObjects.Text;
@@ -147,23 +150,25 @@ export class HudScene extends Phaser.Scene {
       this.sprayButton = new HudButton(this, CONTROLS.buttons.sprayRadius, 'SPRAY', 0x7fffd4, () => {});
     }
 
-    const style = { fontFamily: 'system-ui, -apple-system, sans-serif', fontSize: '18px', color: COLORS.uiText };
+    const style = { fontFamily: MENU.font, fontSize: '18px', color: COLORS.uiText };
     this.vignette = this.add.graphics().setAlpha(0).setDepth(-1);
-    this.roundText = this.add.text(0, 0, '', { ...style, fontSize: '26px', fontStyle: '900' })
-      .setOrigin(0.5, 0).setShadow(0, 2, '#000', 4);
+    this.headerBar = this.add.graphics();
+    this.roomBadge = this.add.graphics();
+    this.roundText = this.add.text(0, 0, '', { ...style, fontSize: '24px', fontStyle: '900', color: '#ffffff' })
+      .setOrigin(0.5, 0).setShadow(0, 2, '#051314', 4);
     // Small labels get a dark backing so they stay readable over the light floor
     const tag = { ...style, backgroundColor: '#0d2b2ecc', padding: { x: 8, y: 4 } };
     this.versionText = this.add.text(0, 0, __APP_VERSION__, { ...tag, fontSize: '14px' }).setOrigin(1, 0).setVisible(DEBUG.overlay);
     if (DISPLAY.showFps || DEBUG.overlay) this.fpsText = this.add.text(0, 0, '', { ...tag, fontSize: '16px', align: 'right' });
-    this.scoreText = this.add.text(0, 0, 'SCORE 0', { ...tag, fontSize: '18px', fontStyle: 'bold' }).setOrigin(0.5, 0);
-    this.roomText = this.add.text(0, 0, '', { ...tag, fontSize: '15px' }).setOrigin(1, 0);
+    this.scoreText = this.add.text(0, 0, 'SCORE 0', { ...style, fontSize: '15px', fontStyle: '900', color: '#ffffff' }).setOrigin(0.5, 0.5).setShadow(0, 1, '#051314', 3);
+    this.roomText = this.add.text(0, 0, '', { ...style, fontSize: '14px', fontStyle: 'bold', color: '#e8fff9' }).setOrigin(1, 0).setShadow(0, 1, '#051314', 3);
     const shift = (this.scene.get('Game') as GameScene).shift;
     const parts = shift.mods.map((id) => modifierById(id)).filter((m) => !!m).map((m) => `${m!.icon} ${m!.name.toUpperCase()}`);
     if (shift.difficulty !== 'urgent') parts.unshift(difficultyById(shift.difficulty).name.toUpperCase());
     if (shift.daily) parts.unshift("📋 TODAY'S SHIFT");
     this.shiftText = this.add.text(0, 0, parts.join('  ·  '), { ...tag, fontSize: '14px', fontStyle: 'bold', color: '#ffe66d' })
       .setOrigin(1, 0).setVisible(parts.length > 0);
-    this.copaysText = this.add.text(0, 0, '$0 COPAYS', { ...tag, fontSize: '17px', fontStyle: 'bold', color: COLORS.uiAccent }).setOrigin(0.5, 0);
+    this.copaysText = this.add.text(0, 0, '$0 COPAYS', { ...style, fontSize: '15px', fontStyle: '900', color: COLORS.uiAccent }).setOrigin(0.5, 0.5).setShadow(0, 1, '#051314', 3);
     this.streakText = this.add.text(0, 0, '', { ...style, fontSize: '18px', fontStyle: '900', color: '#ffe66d' })
       .setOrigin(0.5, 0).setShadow(0, 2, '#000', 4).setVisible(false);
     this.streakBar = this.add.graphics();
@@ -304,7 +309,10 @@ export class HudScene extends Phaser.Scene {
       if (!p.near) this.interactButton.release();
       this.interactNote.setText(p.near ? [p.note, p.hold && p.affordable ? 'HOLD TO BUY' : ''].filter(Boolean).join('\n') : '').setVisible(p.near);
     };
-    const onRoomEntered = (p: RoomPayload) => this.roomText.setText(`📍 ${p.name.toUpperCase()}`);
+    const onRoomEntered = (p: RoomPayload) => {
+      this.roomText.setText(`📍 ${p.name.toUpperCase()}`);
+      this.drawRoomBadge();
+    };
     const onRequisition = (p: RequisitionPayload) => {
       this.openChoice('requisition');
       this.choicePanel.show({
@@ -647,6 +655,56 @@ export class HudScene extends Phaser.Scene {
     }
   }
 
+  private drawHeader(): void {
+    const { width } = this.scale;
+    const m = CONTROLS.hudMargin;
+    const topY = this.safe.top + m;
+    const statY = topY + 28;
+
+    this.roundText.setPosition(width / 2, topY - 4);
+    this.scoreText.setPosition(width / 2 - 76, statY + 13);
+    this.copaysText.setPosition(width / 2 + 76, statY + 13);
+
+    const g = this.headerBar.clear();
+    const pillW = 320;
+    const pillH = 26;
+    const pillX = width / 2 - pillW / 2;
+
+    // Drop shadow
+    g.fillStyle(0x051314, 0.55);
+    g.fillRoundedRect(pillX, statY + 2.5, pillW, pillH, 13);
+
+    // Pill casing
+    g.fillStyle(0x0c2528, 0.92);
+    g.fillRoundedRect(pillX, statY, pillW, pillH, 13);
+    g.lineStyle(1.5, 0x1b4549, 0.85);
+    g.strokeRoundedRect(pillX, statY, pillW, pillH, 13);
+
+    // Center divider
+    g.lineStyle(1.5, 0x1b4549, 0.65);
+    g.lineBetween(width / 2, statY + 5, width / 2, statY + pillH - 5);
+  }
+
+  private drawRoomBadge(): void {
+    if (!this.roomText.text) {
+      this.roomBadge.clear();
+      return;
+    }
+    const g = this.roomBadge.clear();
+    const padX = 12, padY = 5;
+    const rw = this.roomText.width + padX * 2;
+    const rh = this.roomText.height + padY * 2;
+    const rx = this.roomText.x - rw + padX;
+    const ry = this.roomText.y - padY;
+
+    g.fillStyle(0x051314, 0.5);
+    g.fillRoundedRect(rx, ry + 2, rw, rh, 10);
+    g.fillStyle(0x0c2528, 0.9);
+    g.fillRoundedRect(rx, ry, rw, rh, 10);
+    g.lineStyle(1.5, 0x1b4549, 0.85);
+    g.strokeRoundedRect(rx, ry, rw, rh, 10);
+  }
+
   /** Positions everything relative to the current screen size and iPhone safe areas. */
   private layout(): void {
     this.safe = readSafeArea();
@@ -660,11 +718,10 @@ export class HudScene extends Phaser.Scene {
     this.sprayHome.set(rightX, rightY);
     if (this.sprayTouchId === null) this.sprayButton?.setPosition(rightX, rightY);
     this.drawVignette(width, height);
-    this.roundText.setPosition(width / 2, this.safe.top + m - 4);
-    this.scoreText.setPosition(width / 2, this.safe.top + m + 30);
-    this.copaysText.setPosition(width / 2, this.safe.top + m + 62);
-    this.streakText.setPosition(width / 2, this.safe.top + m + 94);
-    this.bossBar.setPosition(width / 2 - this.bossBar.barWidth / 2, this.safe.top + m + 132);
+    this.drawHeader();
+    const statY = this.safe.top + m + 28;
+    this.streakText.setPosition(width / 2, statY + 32);
+    this.bossBar.setPosition(width / 2 - this.bossBar.barWidth / 2, statY + 68);
     this.banner.setPosition(width / 2, height * 0.38);
     this.bannerSub.setPosition(width / 2, height * 0.38 + 45).setWordWrapWidth(Math.min(1100, width * 0.8));
     this.health.setPosition(this.safe.left + m, this.safe.top + m);
@@ -674,6 +731,7 @@ export class HudScene extends Phaser.Scene {
     this.versionText.setPosition(infoX, this.safe.top + m);
     this.fpsText?.setOrigin(1, 0).setPosition(infoX, this.safe.top + m + 30);
     this.roomText.setPosition(infoX, this.safe.top + m + (DEBUG.overlay ? 110 : 8));
+    this.drawRoomBadge();
     this.shiftText.setPosition(infoX, this.roomText.y + 34);
     this.layoutPauseMenu(width, height);
     this.choicePanel.layout(width, height);
