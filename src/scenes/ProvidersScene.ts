@@ -67,26 +67,35 @@ export class ProvidersScene extends Phaser.Scene {
       })();
     items.push(this.add.rectangle(0, 0, w, h, MENU.paper).setOrigin(0));
     const panels = this.add.graphics();
+
+    // Responsive vertical budgeting
+    const heroTop = 114;
+    const availH = h - heroTop - Math.max(20, safe.bottom + 12);
+    const tileH = Math.min(100, Math.max(72, Math.round(availH * 0.19)));
+    const cardH = Math.min(418, availH - tileH - 18);
+    const stripY = heroTop + cardH + 12;
+
     // Hero Card drop-shadow elevation and bevel
-    panels.fillStyle(0x000000, 0.08).fillRoundedRect(left + 2, 126 + 4, right - left, 420, 24);
-    panels.fillStyle(0xd5d2c4, 1).fillRoundedRect(left, 126 + 2, right - left, 420, 24);
-    panels.fillStyle(MENU.card).fillRoundedRect(left, 126, right - left, 418, 24);
-    panels.lineStyle(1.5, MENU.line).strokeRoundedRect(left, 126, right - left, 418, 24);
+    panels.fillStyle(0x000000, 0.08).fillRoundedRect(left + 2, heroTop + 4, right - left, cardH, 24);
+    panels.fillStyle(0xd5d2c4, 1).fillRoundedRect(left, heroTop + 2, right - left, cardH, 24);
+    panels.fillStyle(MENU.card).fillRoundedRect(left, heroTop, right - left, cardH - 2, 24);
+    panels.lineStyle(1.5, MENU.line).strokeRoundedRect(left, heroTop, right - left, cardH - 2, 24);
     items.push(panels);
 
-    // Top Header & NPS Badge
-    text(left, 42, 'Moshi and Pals / Providers', 25);
+    // Top Header: Dedicated BACK button on top-left + Page Title + NPS Badge on right
+    button(left, 42, 'BACK', () => toTitle(this));
+    text(left + 100, 42, 'Providers', 25);
     const npsW = 164;
     panels.fillStyle(0x000000, 0.06).fillRoundedRect(right - npsW, 26, npsW, 34, 17);
     panels.fillStyle(0xfffcf6, 1).fillRoundedRect(right - npsW, 24, npsW, 34, 17);
     panels.lineStyle(1.5, 0x80eac8, 0.9).strokeRoundedRect(right - npsW, 24, npsW, 34, 17);
     text(right - npsW / 2, 41, `⭐ ${progress().nps.toLocaleString()} NPS`, 18, MENU.teal).setOrigin(.5);
-    text(left, 92, 'Meet your next shift.', 30);
-    text(right, 92, `${this.index + 1} / ${CHARACTERS.length} · ${settings.character === c.id ? 'ON SHIFT' : owned ? 'AVAILABLE' : 'LOCKED'}`, 17, MENU.muted).setOrigin(1, .5);
+    text(left, 86, 'Meet your next shift.', 24);
+    text(right, 86, `${this.index + 1} / ${CHARACTERS.length} · ${settings.character === c.id ? 'ON SHIFT' : owned ? 'AVAILABLE' : 'LOCKED'}`, 17, MENU.muted).setOrigin(1, .5);
 
-    const portraitH = 352, portraitW = portraitH * .75;
+    const portraitH = Math.min(340, Math.round(cardH * 0.82)), portraitW = Math.round(portraitH * .75);
     const px = left + (right - left) * .23;
-    const py = 336;
+    const py = heroTop + cardH / 2;
     // Portrait frame elevation
     panels.fillStyle(0x000000, 0.1).fillRoundedRect(px - portraitW / 2 + 2, py - portraitH / 2 + 4, portraitW, portraitH, 18);
     panels.fillStyle(0xfffcf6, 1).fillRoundedRect(px - portraitW / 2, py - portraitH / 2, portraitW, portraitH, 18);
@@ -94,35 +103,34 @@ export class ProvidersScene extends Phaser.Scene {
     items.push(this.add.image(px, py, 'provider-portraits', c.id).setDisplaySize(portraitW, portraitH));
 
     const x = left + (right - left) * .48;
-    text(x, 178, c.name, 38);
-    text(x, 248, c.blurb, 21, MENU.muted).setLineSpacing(6);
-    text(x, 324, `Helper output ×${c.helperDamage}`, 18, MENU.teal);
-    text(x, 374, c.second ? `SECOND SPECIAL · ${c.second.name}` : 'Second special coming in a future update', 18, MENU.amber);
+    text(x, heroTop + 42, c.name, 38);
+    text(x, heroTop + 104, c.blurb, 20, MENU.muted).setLineSpacing(6);
+    text(x, heroTop + 174, `Helper output ×${c.helperDamage}`, 18, MENU.teal);
+    text(x, heroTop + 220, c.second ? `SECOND SPECIAL · ${c.second.name}` : 'Second special coming in a future update', 18, MENU.amber);
     const hire = owned ? (settings.character === c.id ? 'SELECTED FOR SHIFT' : 'SELECT FOR SHIFT') : `${this.confirming === `hire:${c.id}` ? 'CONFIRM HIRE' : 'HIRE'} · ${c.price.toLocaleString()} NPS`;
-    button(x, 440, hire, () => this.select(), true).setAlpha(owned || progress().nps >= c.price ? 1 : .5);
-    if (c.second) button(x, 506, secondUnlocked(c.id) ? 'SECOND UNLOCKED' : `${this.confirming === `second:${c.id}` ? 'CONFIRM' : 'UNLOCK SECOND'} · ${c.second.price.toLocaleString()} NPS`, () => this.unlockSecond())
+    button(x, heroTop + 280, hire, () => this.select(), true).setAlpha(owned || progress().nps >= c.price ? 1 : .5);
+    if (c.second) button(x, heroTop + 342, secondUnlocked(c.id) ? 'SECOND UNLOCKED' : `${this.confirming === `second:${c.id}` ? 'CONFIRM' : 'UNLOCK SECOND'} · ${c.second.price.toLocaleString()} NPS`, () => this.unlockSecond())
       .setAlpha(owned && progress().nps >= c.second.price || secondUnlocked(c.id) ? 1 : .5);
     const count = 6, first = Math.floor(this.index / count) * count;
-    const tileW = Math.min(110, (right - left - 170) / count), tileH = 104;
+    const tileW = Math.min(110, (right - left - 170) / count);
     const stripX = w / 2 - count * (tileW + 12) / 2;
     for (let i = first; i < Math.min(first + count, CHARACTERS.length); i++) {
       const def = CHARACTERS[i], tx = stripX + (i - first) * (tileW + 12);
       const isSelected = i === this.index;
-      panels.fillStyle(0x000000, isSelected ? 0.15 : 0.06).fillRoundedRect(tx, 570 + (isSelected ? 3 : 2), tileW, tileH, 14);
-      panels.fillStyle(isSelected ? 0x147a62 : 0xd5d2c4, 1).fillRoundedRect(tx, 570 + (isSelected ? 2 : 1), tileW, tileH, 14);
-      panels.fillStyle(isSelected ? 0x80eac8 : 0xfffcf6, 1).fillRoundedRect(tx, 570, tileW, tileH - (isSelected ? 2 : 1), 14);
-      panels.lineStyle(1.5, isSelected ? 0x4db896 : 0xd8ded4, 0.9).strokeRoundedRect(tx, 570, tileW, tileH - (isSelected ? 2 : 1), 14);
+      panels.fillStyle(0x000000, isSelected ? 0.15 : 0.06).fillRoundedRect(tx, stripY + (isSelected ? 3 : 2), tileW, tileH, 14);
+      panels.fillStyle(isSelected ? 0x147a62 : 0xd5d2c4, 1).fillRoundedRect(tx, stripY + (isSelected ? 2 : 1), tileW, tileH, 14);
+      panels.fillStyle(isSelected ? 0x80eac8 : 0xfffcf6, 1).fillRoundedRect(tx, stripY, tileW, tileH - (isSelected ? 2 : 1), 14);
+      panels.lineStyle(1.5, isSelected ? 0x4db896 : 0xd8ded4, 0.9).strokeRoundedRect(tx, stripY, tileW, tileH - (isSelected ? 2 : 1), 14);
 
-      const hit = this.add.rectangle(tx + tileW / 2, 622, tileW, tileH, 0xffffff, 0).setInteractive({ useHandCursor: true });
+      const hit = this.add.rectangle(tx + tileW / 2, stripY + tileH / 2, tileW, tileH, 0xffffff, 0).setInteractive({ useHandCursor: true });
       items.push(hit);
-      const art = this.add.image(tx + tileW / 2, 610, 'provider-portraits', def.id).setDisplaySize(60, 80);
+      const art = this.add.image(tx + tileW / 2, stripY + tileH / 2 - 10, 'provider-portraits', def.id).setDisplaySize(Math.round(tileW * 0.55), Math.round(tileH * 0.7));
       hit.on('pointerup', () => { this.index = i; this.confirming = ''; this.draw(); });
       items.push(art);
-      text(tx + tileW / 2, 658, def.short, 14).setOrigin(.5);
+      text(tx + tileW / 2, stripY + tileH - 14, def.short, 13).setOrigin(.5);
     }
-    button(left, 615, '◀', () => this.next(-1));
-    button(right, 615, '▶', () => this.next(1)).setOrigin(1, .5);
-    button(w / 2, h - Math.max(32, safe.bottom + 26), 'BACK', () => toTitle(this)).setFontSize(15);
+    button(left, stripY + tileH / 2, '◀', () => this.next(-1));
+    button(right, stripY + tileH / 2, '▶', () => this.next(1)).setOrigin(1, .5);
     this.content = this.add.container(0, 0, items);
   }
 }

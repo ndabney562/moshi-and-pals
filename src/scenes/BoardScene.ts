@@ -78,13 +78,13 @@ export class BoardScene extends Phaser.Scene {
   }
 
   private drawSpecialties(): void {
-    const { width } = this.scale;
+    const { width, height } = this.scale;
     const p = progress();
     const left = Math.max(32, width / 2 - 520);
     const right = Math.min(width - 32, width / 2 + 520);
     this.txt(left, 140, 'One at a time, for the whole shift. Every perk has a catch.', 17, COLORS.uiAccent, 'italic');
-    const rowH = 72;
     const rows = [{ id: '', name: 'General Practice', perk: 'No perk', catch: 'No catch', cost: 0 }, ...SPECIALTIES];
+    const rowH = Math.min(72, (height - 180 - 80) / rows.length);
     const cardGfx = this.add.graphics();
     this.body.add(cardGfx);
     rows.forEach((s, i) => {

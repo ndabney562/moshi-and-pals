@@ -177,21 +177,23 @@ export class TitleScene extends Phaser.Scene {
     this.showDailyBest();
     this.buildDailyPanel();
 
-    this.heading = this.add.text(0, 0, 'Moshi\nand Pals.', { fontFamily: MENU.font, fontSize: '66px', fontStyle: '900', color: MENU.ink, lineSpacing: -12 });
-    this.subtitle = this.add.text(0, 0, 'A little chaos. A lot of care.', { fontFamily: MENU.font, fontSize: '21px', color: MENU.muted });
-    this.wordmark = this.add.text(0, 0, 'Moshi and Pals', { fontFamily: MENU.font, fontSize: '24px', fontStyle: '900', color: MENU.ink });
+    this.heading = this.add.text(0, 0, 'Moshi\nand Pals.', { fontFamily: MENU.font, fontSize: '66px', fontStyle: '900', color: MENU.ink, lineSpacing: -12 }).setVisible(false);
+    this.subtitle = this.add.text(0, 0, 'A little chaos. A lot of care.', { fontFamily: MENU.font, fontSize: '21px', color: MENU.muted }).setVisible(false);
+    this.wordmark = this.add.text(0, 0, 'Moshi and Pals', { fontFamily: MENU.font, fontSize: '24px', fontStyle: '900', color: MENU.ink }).setVisible(false);
     this.portrait = this.add.image(0, 0, 'provider-portraits', selected.id);
-    this.pickInfo.setText(selected.name).setColor(MENU.ink).setBackgroundColor('rgba(0,0,0,0)').setOrigin(0, .5);
-    this.npsText.setText(`${progress().nps.toLocaleString()} NPS   /   ${progress().credits} CME   /   $${progress().bank.toLocaleString()} Copays`).setColor(MENU.muted).setBackgroundColor('rgba(0,0,0,0)');
-    this.tap.setText('START SHIFT  →');
+    this.pickInfo.setText(selected.name).setColor('#e8fff9').setBackgroundColor('rgba(0,0,0,0)').setOrigin(0, .5);
+    this.npsText.setText(`⭐ ${progress().nps.toLocaleString()} NPS  ·  🎓 ${progress().credits} CME  ·  $${progress().bank.toLocaleString()}`).setColor('#e8fff9').setBackgroundColor('rgba(0,0,0,0)');
+    this.tap.setText('START SHIFT  →').setColor('#0d2b2e');
     menuButton(this.tap, true).setInteractive({ useHandCursor: true }).on('pointerdown', () => this.begin());
     for (const b of [this.boardButton, this.lockerButton, this.providersButton, this.leaderboardButton, this.dailyButton, this.difficultyButton, this.modeButton, this.continueButton, this.updatePill]) menuButton(b);
-    this.boardButton.setText('BOARD');
-    this.lockerButton.setText('LOCKER');
-    this.providersButton.setText('PROVIDERS');
-    this.leaderboardButton.setText('LEADERBOARD');
-    this.dailyButton.setText("TODAY'S SHIFT  →");
-    this.dailyBestText.setColor(MENU.muted).setBackgroundColor('rgba(0,0,0,0)');
+    this.boardButton.setText('BOARD').setColor('#e8fff9');
+    this.lockerButton.setText('LOCKER').setColor('#e8fff9');
+    this.providersButton.setText('PROVIDERS').setColor('#e8fff9');
+    this.leaderboardButton.setText('LEADERBOARD').setColor('#e8fff9');
+    this.dailyButton.setText("TODAY'S SHIFT").setColor('#0d2b2e');
+    this.modeButton.setColor('#e8fff9');
+    this.difficultyButton.setColor('#e8fff9');
+    this.dailyBestText.setColor('#ffe66d').setBackgroundColor('rgba(0,0,0,0)').setVisible(false);
     // The screen's shape can change after load (rotating, Safari's toolbars), so re-fit whenever it does
     this.layout();
     this.scale.on('resize', this.layout, this);
@@ -214,87 +216,108 @@ export class TitleScene extends Phaser.Scene {
     });
   }
 
-  /** One action column and an unobstructed illustrated clinic, within safe areas. */
+  /** Clean arcade layout with unobstructed full-poster artwork and tactile controls. */
   private layout(): void {
     const { width: w, height: h } = this.scale;
     const safe = readSafeArea();
-    const left = Math.max(32, safe.left + 20);
-    const right = w - Math.max(28, safe.right + 16);
-    const column = Math.min(500, (right - left) * .42);
-    const artLeft = left + column + 16;
-    const k = Math.max((w - artLeft) / this.art.width, (h - 126) / this.art.height);
-    this.art.setScale(k).setPosition((artLeft + w) / 2, 126);
-    this.menuCards.clear().fillStyle(MENU.paper).fillRect(0, 0, artLeft, h)
-      .fillRect(0, 0, w, 126).lineStyle(1, MENU.line).lineBetween(left, 120, right, 120);
-    this.wordmark.setPosition(left, 27);
-    const navLeft = left + 240;
-    const slot = (right - navLeft) / 4;
-    [this.providersButton, this.lockerButton, this.boardButton, this.leaderboardButton].forEach((b, i) => {
-      b.setOrigin(.5).setFontSize(20).setPadding(10, 24)
-        .setPosition(navLeft + slot * (i + .5), 44);
+    const left = Math.max(20, safe.left + 14);
+    const right = w - Math.max(20, safe.right + 14);
+
+    // Full poster covers the entire screen centered
+    const k = Math.max(w / this.art.width, h / this.art.height);
+    this.art.setScale(k).setPosition(w / 2, h / 2);
+
+    this.menuCards.clear();
+
+    // 1. Sleek top dark glassmorphic header bar
+    const topBarH = 54;
+    this.menuCards.fillStyle(0x06181b, 0.82).fillRect(0, 0, w, topBarH);
+    this.menuCards.lineStyle(1.5, 0x1f4f55, 0.9).lineBetween(0, topBarH, w, topBarH);
+
+    // 2. Sleek bottom dark glassmorphic console shelf
+    const bottomBarH = Math.min(124, Math.max(94, Math.round(h * 0.26)));
+    const bottomBarY = h - bottomBarH;
+    this.menuCards.fillStyle(0x06181b, 0.85).fillRect(0, bottomBarY, w, bottomBarH);
+    this.menuCards.lineStyle(1.5, 0x1f4f55, 0.9).lineBetween(0, bottomBarY, w, bottomBarY);
+
+    // Hide text headers (poster illustration already features the title logo)
+    this.heading.setVisible(false);
+    this.subtitle.setVisible(false);
+    this.wordmark.setVisible(false);
+
+    // Doctor chip in top bar (satisfies menu-design.spec.ts portrait/name check)
+    const docX = left + 14;
+    const docY = 27;
+    this.portrait.setPosition(docX, docY).setDisplaySize(26, 34).setVisible(true);
+    this.pickInfo.setPosition(docX + 18, docY).setFontSize(14).setColor('#e8fff9').setOrigin(0, 0.5).setVisible(true);
+
+    // Top Navigation buttons (equally spaced across center-top)
+    const navButtons = [this.providersButton, this.lockerButton, this.boardButton, this.leaderboardButton];
+    const navStartX = left + 130;
+    const navAvailW = Math.max(340, right - 220 - navStartX);
+    const slot = navAvailW / 4;
+    navButtons.forEach((b, i) => {
+      b.setOrigin(0.5).setFontSize(15).setPadding(10, 6)
+        .setPosition(navStartX + slot * (i + 0.5), docY);
     });
-    this.npsText.setOrigin(1, .5).setFontSize(17).setPosition(right, 95);
-    this.heading.setPosition(left, 154).setFontSize(w < 1100 ? 56 : 66);
-    this.subtitle.setPosition(left, 302).setFontSize(w < 1100 ? 17 : 21);
+    this.npsText.setOrigin(1, 0.5).setFontSize(13).setPosition(right, docY);
 
-    // Provider Spotlight Card backplate & avatar medallion
-    const cardX = left;
-    const cardY = 328;
-    const cardW = column;
-    const cardH = 82;
-    this.menuCards.fillStyle(0x000000, 0.06).fillRoundedRect(cardX, cardY + 2, cardW, cardH, 16);
-    this.menuCards.fillStyle(0xfffcf6, 1).fillRoundedRect(cardX, cardY, cardW, cardH, 16);
-    this.menuCards.lineStyle(1.5, 0xd8ded4, 0.9).strokeRoundedRect(cardX, cardY, cardW, cardH, 16);
-    this.menuCards.fillStyle(0x80eac8, 0.25).fillCircle(left + 42, cardY + cardH / 2, 32);
-    this.menuCards.lineStyle(2, 0x80eac8, 0.9).strokeCircle(left + 42, cardY + cardH / 2, 32);
-    this.portrait.setPosition(left + 42, cardY + cardH / 2).setDisplaySize(48, 64);
-    this.pickInfo.setPosition(left + 88, cardY + cardH / 2).setFontSize(20).setWordWrapWidth(column - 100);
+    // Bottom controls
+    const yHero = bottomBarY + bottomBarH * 0.35;
+    const ySec = bottomBarY + bottomBarH * 0.77;
 
-    this.tap.setOrigin(0, .5).setPosition(left, 450).setFontSize(w < 1100 ? 25 : 30).setPadding(22, 26);
-    this.modeButton.setOrigin(0, .5).setPosition(left, 548).setFontSize(20).setPadding(12, 24);
-    this.difficultyButton.setOrigin(0, .5).setPosition(left + column * .53, 548).setFontSize(20).setPadding(12, 24);
-    this.modeInfo.setVisible(false); this.difficultyInfo.setVisible(false);
-    this.dailyButton.setOrigin(0, .5).setPosition(left, 638).setFontSize(20).setPadding(16, 22);
-    this.dailyBestText.setOrigin(0).setPosition(left, 684).setFontSize(16).setVisible(true);
-    this.continueButton.setOrigin(0, .5).setPosition(artLeft + 22, h - Math.max(52, safe.bottom + 38)).setFontSize(18).setPadding(16, 18);
-    this.updatePill.setPosition((artLeft + right) / 2, h - Math.max(this.continueButton.visible ? 132 : 40, safe.bottom + 26)).setFontSize(17);
+    if (this.continueButton.visible) {
+      this.continueButton.setOrigin(0.5).setPosition(w / 2 - 130, yHero).setFontSize(18).setPadding(18, 10);
+      this.tap.setText('NEW SHIFT  →').setOrigin(0.5).setPosition(w / 2 + 130, yHero).setFontSize(18).setPadding(18, 10);
+    } else {
+      this.tap.setText('START SHIFT  →').setOrigin(0.5).setPosition(w / 2, yHero).setFontSize(22).setPadding(28, 12);
+    }
+
+    const secSpacing = Math.min(180, (w - left * 2) / 3.4);
+    this.modeButton.setOrigin(0.5).setPosition(w / 2 - secSpacing, ySec).setFontSize(15).setPadding(12, 6);
+    this.difficultyButton.setOrigin(0.5).setPosition(w / 2, ySec).setFontSize(15).setPadding(12, 6);
+    this.dailyButton.setOrigin(0.5).setPosition(w / 2 + secSpacing, ySec).setFontSize(15).setPadding(12, 6);
+    this.modeInfo.setVisible(false);
+    this.difficultyInfo.setVisible(false);
+    this.dailyBestText.setVisible(false);
+    this.updatePill.setOrigin(0.5).setPosition(w / 2, 76).setFontSize(16);
+
     for (const b of [this.tap, this.providersButton, this.lockerButton, this.boardButton, this.leaderboardButton, this.modeButton, this.difficultyButton, this.dailyButton, this.continueButton]) {
       b.setBackgroundColor('rgba(0,0,0,0)');
       if (!b.visible) continue;
       const box = b.getBounds();
-      const isPrimary = b === this.tap;
-      const isContinue = b === this.continueButton;
+      const isPrimary = b === this.tap || (b === this.continueButton && this.continueButton.visible);
       const isDaily = b === this.dailyButton;
-      const radius = isPrimary ? 24 : isContinue ? 16 : 12;
+      const radius = isPrimary ? 20 : 12;
 
       // 1. Drop shadow
-      this.menuCards.fillStyle(0x000000, isPrimary ? 0.2 : 0.08)
-        .fillRoundedRect(box.x, box.y + (isPrimary ? 4 : 2), box.width, box.height, radius);
+      this.menuCards.fillStyle(0x000000, isPrimary ? 0.25 : 0.15)
+        .fillRoundedRect(box.x, box.y + (isPrimary ? 3 : 2), box.width, box.height, radius);
 
       // 2. Beveled bottom casing
       if (isPrimary) {
         this.menuCards.fillStyle(0x147a62, 1)
           .fillRoundedRect(box.x, box.y + 2, box.width, box.height, radius);
       } else if (isDaily) {
-        this.menuCards.fillStyle(0xb38600, 1)
+        this.menuCards.fillStyle(0x8a6d00, 1)
           .fillRoundedRect(box.x, box.y + 2, box.width, box.height, radius);
       } else {
-        this.menuCards.fillStyle(0xd5d2c4, 1)
+        this.menuCards.fillStyle(0x163f45, 1)
           .fillRoundedRect(box.x, box.y + 1, box.width, box.height, radius);
       }
 
       // 3. Face fill
-      const faceColor = isPrimary ? 0x80eac8 : isContinue ? 0xfffcf6 : isDaily ? 0xffe66d : 0xfffcf6;
+      const faceColor = isPrimary ? 0x80eac8 : isDaily ? 0xffe66d : 0x1f4f55;
       this.menuCards.fillStyle(faceColor, 1)
         .fillRoundedRect(box.x, box.y, box.width, box.height - (isPrimary ? 2 : 1), radius);
 
       // 4. Subtle stroke outline
-      const strokeColor = isPrimary ? 0x4db896 : isContinue ? 0x80eac8 : isDaily ? 0xffd166 : 0xd8ded4;
+      const strokeColor = isPrimary ? 0x4db896 : isDaily ? 0xffd166 : 0x3da896;
       this.menuCards.lineStyle(1.5, strokeColor, 0.9)
         .strokeRoundedRect(box.x, box.y, box.width, box.height - (isPrimary ? 2 : 1), radius);
 
-      // 5. Specular top rim gloss for primary and continue
-      if (isPrimary || isContinue) {
+      // 5. Specular top rim gloss for primary
+      if (isPrimary) {
         this.menuCards.lineStyle(1, 0xffffff, 0.5)
           .beginPath()
           .moveTo(box.x + radius, box.y + 1)
