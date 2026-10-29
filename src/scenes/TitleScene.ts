@@ -1,9 +1,10 @@
 import Phaser from 'phaser';
 import { MENU, menuButton } from '../ui/menuTheme';
+import { renderMenuTopPanel, MenuHeaderComponents } from '../ui/menuHeader';
 import { DISPLAY } from '../config/display';
 import { COLORS } from '../config/theme';
 import { applyUpdate, offerFilesToCache, onUpdateReady } from '../core/updates';
-import { doctorUnlocked, progress } from '../core/progress';
+import { doctorUnlocked } from '../core/progress';
 import { saveSettings, settings } from '../core/settings';
 import { characterById } from '../data/characters';
 import { readSafeArea } from '../core/safeArea';
@@ -16,10 +17,9 @@ import { modifierById, type ModifierId } from '../data/modifiers';
 
 const font = 'system-ui, -apple-system, sans-serif';
 
-
 /**
- * "Tap to start" screen. The tap also matters technically: iPhones only allow
- * game audio after the player has touched the screen once.
+ * "Tap to start" screen. Only explicit actions (NEW SHIFT or CONTINUE SHIFT)
+ * start a shift, preventing accidental launches while navigating tabs.
  */
 export class TitleScene extends Phaser.Scene {
   constructor() {
@@ -33,8 +33,9 @@ export class TitleScene extends Phaser.Scene {
   private updatePill!: Phaser.GameObjects.Text;
   private boardButton!: Phaser.GameObjects.Text;
   private lockerButton!: Phaser.GameObjects.Text;
+  private atlasButton!: Phaser.GameObjects.Text;
   private pickInfo!: Phaser.GameObjects.Text;
-  private npsText!: Phaser.GameObjects.Text;
+  public npsText!: Phaser.GameObjects.Text;
   private providersButton!: Phaser.GameObjects.Text;
   private leaderboardButton!: Phaser.GameObjects.Text;
   /** M17: TODAY'S SHIFT (opens the pre-shift panel), today's best beside it, and the difficulty switch. */
@@ -58,31 +59,34 @@ export class TitleScene extends Phaser.Scene {
   private started = false;
   /** CONTINUE SHIFT: shown when a shift was saved from the pause menu. */
   private continueButton!: Phaser.GameObjects.Text;
+  private topHeader!: MenuHeaderComponents;
 
   create(): void {
     this.started = false;
     this.input.enabled = true;
+    if (this.cameras?.main) {
+      this.cameras.main.fadeIn(150, 0, 0, 0);
+    }
     this.bgArt = this.add.image(0, 0, 'title-art').setOrigin(0.5, 0.5).setAlpha(0.55).setTint(0xaaccee);
     this.art = this.add.image(0, 0, 'title-art').setOrigin(0.5, 0.5);
     if (!settings.reducedMotion) this.tweens.add({ targets: this.art, alpha: { from: 0, to: 1 }, duration: 400 });
     this.menuCards = this.add.graphics();
 
-    this.tap = this.add.text(0, 0, 'TAP TO START', {
-      fontFamily: font, fontSize: '36px', fontStyle: '900',
-      backgroundColor: '#7fffd4', color: '#0d2b2e', padding: { x: 26, y: 14 },
+    this.tap = this.add.text(0, 0, 'START SHIFT  →', {
+      fontFamily: font, fontSize: '32px', fontStyle: '900',
+      backgroundColor: '#7fffd4', color: '#0d2b2e', padding: { x: 28, y: 14 },
     }).setOrigin(0.5);
     if (!settings.reducedMotion) this.tweens.add({ targets: this.tap, alpha: 0.82, duration: 1100, yoyo: true, repeat: -1 });
 
     // A newer build is live: offer it (tapping here reloads instead of starting)
     this.updatePill = this.add.text(0, 0, '✨ UPDATE READY · TAP HERE TO GET IT', {
-      fontFamily: font, fontSize: '22px', fontStyle: '900', color: '#0d2b2e', backgroundColor: '#ffe66d', padding: { x: 16, y: 10 },
+      fontFamily: font, fontSize: '20px', fontStyle: '900', color: '#0d2b2e', backgroundColor: '#ffe66d', padding: { x: 16, y: 10 },
     }).setOrigin(0.5).setVisible(false).setInteractive({ useHandCursor: true });
     this.updatePill.on('pointerdown', (_p: Phaser.Input.Pointer, _x: number, _y: number, e: Phaser.Types.Input.EventData) => {
       e.stopPropagation();
       applyUpdate();
     });
     const off = onUpdateReady(() => this.updatePill.setVisible(true));
-    // Everything's loaded by now: let the offline cache have it
     offerFilesToCache();
     navigator.serviceWorker?.ready.then(() => offerFilesToCache()).catch(() => undefined);
     this.events.once('shutdown', off);
@@ -92,56 +96,30 @@ export class TitleScene extends Phaser.Scene {
     const diffName = saved ? difficultyById(saved.shift.difficulty).name.toUpperCase() : '';
     const modeLabel = saved?.shift.mode === 'fluSeason' ? 'FLU SEASON' : saved?.shift.daily ? "TODAY'S SHIFT" : diffName;
     this.continueButton = this.add.text(0, 0, saved ? `▶ CONTINUE SHIFT · ROUND ${saved.round} · ${modeLabel}` : '', {
-      fontFamily: font, fontSize: '24px', fontStyle: '900', color: '#0d2b2e', backgroundColor: '#7fffd4', padding: { x: 18, y: 10 },
+      fontFamily: font, fontSize: '22px', fontStyle: '900', color: '#0d2b2e', backgroundColor: '#7fffd4', padding: { x: 18, y: 10 },
     }).setOrigin(0.5).setVisible(!!saved).setInteractive({ useHandCursor: true });
-    this.continueButton.on('pointerdown', (_p: Phaser.Input.Pointer, _x: number, _y: number, e: Phaser.Types.Input.EventData) => {
-      e.stopPropagation();
+    const onContinue = (e?: any) => {
+      e?.stopPropagation?.();
       this.begin(undefined, true);
-    });
+    };
+    this.continueButton.on('pointerdown', (_p: any, _x: any, _y: any, e: any) => onContinue(e));
+    this.continueButton.on('pointerup', (_p: any, _x: any, _y: any, e: any) => onContinue(e));
 
-    // The Residency Board: spend CME Credits between shifts
-    this.boardButton = this.add.text(0, 0, `🎓 RESIDENCY BOARD · ${progress().credits} CME`, {
-      fontFamily: font, fontSize: '20px', fontStyle: '900', color: COLORS.uiText, backgroundColor: '#0d2b2ecc', padding: { x: 14, y: 9 },
-    }).setOrigin(0, 1).setInteractive({ useHandCursor: true });
-    this.boardButton.on('pointerdown', (_p: Phaser.Input.Pointer, _x: number, _y: number, e: Phaser.Types.Input.EventData) => {
-      e.stopPropagation();
-      this.started = true;
-      this.scene.start('Board');
-    });
-
-    // The Equipment Locker: tool upgrades that stay, bought with banked Copays
-    this.lockerButton = this.add.text(0, 0, `🧰 EQUIPMENT LOCKER · $${progress().bank.toLocaleString()}`, {
-      fontFamily: font, fontSize: '20px', fontStyle: '900', color: COLORS.uiText, backgroundColor: '#0d2b2ecc', padding: { x: 14, y: 9 },
-    }).setOrigin(0, 1).setInteractive({ useHandCursor: true });
-    this.lockerButton.on('pointerdown', (_p: Phaser.Input.Pointer, _x: number, _y: number, e: Phaser.Types.Input.EventData) => {
-      e.stopPropagation();
-      this.started = true;
-      this.scene.start('Locker');
-    });
-
-    this.pickInfo = this.add.text(0, 0, '', {
-      fontFamily: font, fontSize: '15px', fontStyle: 'bold', color: '#ffe66d', backgroundColor: '#0d2b2ecc', padding: { x: 8, y: 4 },
-    }).setOrigin(1, 1);
-    this.npsText = this.add.text(0, 0, '', {
-      fontFamily: font, fontSize: '15px', fontStyle: '900', color: COLORS.uiText, backgroundColor: '#0d2b2ecc', padding: { x: 8, y: 4 },
-    }).setOrigin(1, 1);
-    this.providersButton=this.add.text(0,0,'PROVIDERS · SELECT / UNLOCK',{fontFamily:font,fontSize:'22px',fontStyle:'bold',color:'#e8fff9',backgroundColor:'#315d64',padding:{x:18,y:14}}).setOrigin(1,1).setInteractive({useHandCursor:true}).on('pointerdown',(_p:Phaser.Input.Pointer,_x:number,_y:number,e:Phaser.Types.Input.EventData)=>{e.stopPropagation();this.scene.start('Providers');});
-    this.leaderboardButton = this.add.text(0, 0, '🏆 LEADERBOARD', {
-      fontFamily: font, fontSize: '20px', fontStyle: '900', color: COLORS.uiText, backgroundColor: '#1f4f55', padding: { x: 16, y: 10 },
-    }).setOrigin(1, 1).setInteractive({ useHandCursor: true });
-    this.leaderboardButton.on('pointerdown', (_p: Phaser.Input.Pointer, _x: number, _y: number, e: Phaser.Types.Input.EventData) => {
-      e.stopPropagation();
-      this.started = true;
-      this.scene.start('Leaderboard', { returnTo: 'Title' });
-    });
-    const selected=characterById(doctorUnlocked(settings.character)?settings.character:'eugene');
-    settings.character=selected.id;
-    this.pickInfo.setText(`${selected.name.toUpperCase()} · ${selected.blurb}`);
-    this.npsText.setText(`⭐ ${progress().nps} NPS SCORES`);
+    // Render standardized top panel with all 5 tabs
+    const buttonsOut: { [key: string]: Phaser.GameObjects.Text } = {};
+    this.topHeader = renderMenuTopPanel(this, 'title', buttonsOut);
+    this.portrait = this.topHeader.portrait;
+    this.pickInfo = this.topHeader.pickInfo;
+    this.npsText = this.topHeader.npsText;
+    this.providersButton = buttonsOut['providersButton'];
+    this.lockerButton = buttonsOut['lockerButton'];
+    this.boardButton = buttonsOut['boardButton'];
+    this.atlasButton = buttonsOut['atlasButton'];
+    this.leaderboardButton = buttonsOut['leaderboardButton'];
 
     // TODAY'S SHIFT: the daily challenge, with today's best beside it
     this.dailyButton = this.add.text(0, 0, "📋 TODAY'S SHIFT", {
-      fontFamily: font, fontSize: '20px', fontStyle: '900', color: '#0d2b2e', backgroundColor: '#ffe66d', padding: { x: 14, y: 9 },
+      fontFamily: font, fontSize: '18px', fontStyle: '900', color: '#0d2b2e', backgroundColor: '#ffe66d', padding: { x: 14, y: 9 },
     }).setOrigin(0, 1).setInteractive({ useHandCursor: true });
     this.dailyButton.on('pointerdown', (_p: Phaser.Input.Pointer, _x: number, _y: number, e: Phaser.Types.Input.EventData) => {
       e.stopPropagation();
@@ -150,9 +128,10 @@ export class TitleScene extends Phaser.Scene {
     this.dailyBestText = this.add.text(0, 0, '', {
       fontFamily: font, fontSize: '15px', fontStyle: 'bold', color: '#ffe66d', backgroundColor: '#0d2b2ecc', padding: { x: 8, y: 4 },
     }).setOrigin(0, 0.5);
+
     // Difficulty for normal shifts (saved); tap to cycle
     this.difficultyButton = this.add.text(0, 0, '', {
-      fontFamily: font, fontSize: '20px', fontStyle: '900', color: COLORS.uiText, backgroundColor: '#0d2b2ecc', padding: { x: 14, y: 9 },
+      fontFamily: font, fontSize: '18px', fontStyle: '900', color: COLORS.uiText, backgroundColor: '#0d2b2ecc', padding: { x: 14, y: 9 },
     }).setOrigin(0, 1).setInteractive({ useHandCursor: true });
     this.difficultyButton.on('pointerdown', (_p: Phaser.Input.Pointer, _x: number, _y: number, e: Phaser.Types.Input.EventData) => {
       e.stopPropagation();
@@ -164,7 +143,7 @@ export class TitleScene extends Phaser.Scene {
 
     // Mode switch: standard vs endless flu season
     this.modeButton = this.add.text(0, 0, '', {
-      fontFamily: font, fontSize: '20px', fontStyle: '900', color: COLORS.uiText, backgroundColor: '#0d2b2ecc', padding: { x: 14, y: 9 },
+      fontFamily: font, fontSize: '18px', fontStyle: '900', color: COLORS.uiText, backgroundColor: '#0d2b2ecc', padding: { x: 14, y: 9 },
     }).setOrigin(0, 1).setInteractive({ useHandCursor: true });
     this.modeButton.on('pointerdown', (_p: Phaser.Input.Pointer, _x: number, _y: number, e: Phaser.Types.Input.EventData) => {
       e.stopPropagation();
@@ -182,48 +161,42 @@ export class TitleScene extends Phaser.Scene {
     this.heading = this.add.text(0, 0, 'Moshi\nand Pals.', { fontFamily: MENU.font, fontSize: '66px', fontStyle: '900', color: MENU.ink, lineSpacing: -12 }).setVisible(false);
     this.subtitle = this.add.text(0, 0, 'A little chaos. A lot of care.', { fontFamily: MENU.font, fontSize: '21px', color: MENU.muted }).setVisible(false);
     this.wordmark = this.add.text(0, 0, 'Moshi and Pals', { fontFamily: MENU.font, fontSize: '24px', fontStyle: '900', color: MENU.ink }).setVisible(false);
-    this.portrait = this.add.image(0, 0, 'provider-portraits', selected.id).setInteractive({ useHandCursor: true });
-    this.portrait.on('pointerdown', (_p: Phaser.Input.Pointer, _x: number, _y: number, e: Phaser.Types.Input.EventData) => {
+
+    menuButton(this.tap, true).setInteractive({ useHandCursor: true });
+    const onStart = (e?: any) => {
       e?.stopPropagation?.();
-      this.started = true;
-      this.scene.start('Providers');
-    });
-    this.pickInfo.setText(selected.name).setColor('#e8fff9').setBackgroundColor('rgba(0,0,0,0)').setOrigin(0, .5).setInteractive({ useHandCursor: true });
-    this.pickInfo.on('pointerdown', (_p: Phaser.Input.Pointer, _x: number, _y: number, e: Phaser.Types.Input.EventData) => {
-      e?.stopPropagation?.();
-      this.started = true;
-      this.scene.start('Providers');
-    });
-    this.npsText.setText(`⭐ ${progress().nps.toLocaleString()} NPS  ·  🎓 ${progress().credits} CME  ·  $${progress().bank.toLocaleString()}`).setColor('#e8fff9').setBackgroundColor('rgba(0,0,0,0)');
-    this.tap.setText('START SHIFT  →').setColor('#0d2b2e');
-    menuButton(this.tap, true).setInteractive({ useHandCursor: true }).on('pointerdown', () => this.begin());
-    for (const b of [this.boardButton, this.lockerButton, this.providersButton, this.leaderboardButton, this.dailyButton, this.difficultyButton, this.modeButton, this.continueButton, this.updatePill]) menuButton(b);
-    this.boardButton.setText('BOARD').setColor('#e8fff9');
-    this.lockerButton.setText('LOCKER').setColor('#e8fff9');
-    this.providersButton.setText('PROVIDERS').setColor('#e8fff9');
-    this.leaderboardButton.setText('LEADERBOARD').setColor('#e8fff9');
+      this.begin();
+    };
+    this.tap.on('pointerdown', (_p: any, _x: any, _y: any, e: any) => onStart(e));
+    this.tap.on('pointerup', (_p: any, _x: any, _y: any, e: any) => onStart(e));
+
+    for (const b of [this.dailyButton, this.difficultyButton, this.modeButton, this.continueButton, this.updatePill]) menuButton(b);
     this.dailyButton.setText("TODAY'S SHIFT").setColor('#0d2b2e');
     this.modeButton.setColor('#e8fff9');
     this.difficultyButton.setColor('#e8fff9');
     this.dailyBestText.setColor('#ffe66d').setBackgroundColor('rgba(0,0,0,0)').setVisible(false);
-    // The screen's shape can change after load (rotating, Safari's toolbars), so re-fit whenever it does
+
     this.layout();
     this.scale.on('resize', this.layout, this);
-    this.events.once('shutdown', () => this.scale.off('resize', this.layout, this));
+    this.events.once('shutdown', () => {
+      this.scale.off('resize', this.layout, this);
+      this.topHeader?.destroy();
+    });
 
     this.input.keyboard?.once('keydown', () => (this.dailyPanel.visible ? this.begin(localDate()) : this.begin()));
+
+    // Hit-forgiveness for buttons on touch, but background taps NEVER start the game
     this.input.on('pointerdown', (_p: Phaser.Input.Pointer, over: Phaser.GameObjects.GameObject[]) => {
       if (this.dailyPanel.visible) return;
       const buttons: Phaser.GameObjects.GameObject[] = [
         this.providersButton, this.leaderboardButton, this.updatePill, this.continueButton,
-        this.boardButton, this.lockerButton, this.dailyButton, this.difficultyButton, this.modeButton,
+        this.boardButton, this.lockerButton, this.atlasButton, this.dailyButton, this.difficultyButton, this.modeButton,
         this.tap, this.portrait, this.pickInfo,
       ];
       if (buttons.some((b) => over.includes(b))) return;
 
-      // Expand hit detection by 16px for comfortable touch forgiveness on mobile
       const hit = (buttons as (Phaser.GameObjects.Text | Phaser.GameObjects.Image)[]).find(b => {
-        if (!b.visible) return false;
+        if (!b?.visible) return false;
         const bounds = b.getBounds();
         return _p.x >= bounds.x - 16 && _p.x <= bounds.right + 16 &&
                _p.y >= bounds.y - 16 && _p.y <= bounds.bottom + 16;
@@ -232,25 +205,15 @@ export class TitleScene extends Phaser.Scene {
         hit.emit('pointerdown', _p, 0, 0, { stopPropagation() {} });
         return;
       }
-
-      // Shield the header and footer consoles from accidental shift starts
-      const topBarH = 64;
-      const bottomBarH = Math.min(130, Math.max(96, Math.round(this.scale.height * 0.18)));
-      const bottomBarY = this.scale.height - bottomBarH;
-      if (_p.y <= topBarH + 16 || _p.y >= bottomBarY - 16) {
-        return;
-      }
-
-      this.begin();
+      // Background taps do NOT call this.begin()
     });
   }
 
   /** Clean arcade layout with unobstructed full-poster artwork and tactile controls. */
-  private layout(): void {
+  layout(): void {
     const { width: w, height: h } = this.scale;
     const safe = readSafeArea();
     const left = Math.max(20, safe.left + 14);
-    const right = w - Math.max(20, safe.right + 14);
 
     const topBarH = 64;
     const bottomBarH = Math.min(130, Math.max(96, Math.round(h * 0.18)));
@@ -258,102 +221,79 @@ export class TitleScene extends Phaser.Scene {
     const availH = bottomBarY - topBarH;
     const centerY = topBarH + availH / 2;
 
-    // Ambient background covers the entire canvas edge-to-edge
     const bgK = Math.max(w / this.bgArt.width, h / this.bgArt.height);
     this.bgArt.setScale(bgK).setPosition(w / 2, h / 2);
 
-    // Main poster is cleanly fitted & centered in the available vertical viewport
     const k = Math.min(w / this.art.width, availH / this.art.height);
     this.art.setScale(k).setPosition(w / 2, centerY);
 
     this.menuCards.clear();
+    // Bottom console shelf
+    this.menuCards.fillStyle(0x06181b, 0.90).fillRect(0, bottomBarY, w, bottomBarH);
+    this.menuCards.lineStyle(1.5, 0x1f4f55, 0.8).lineBetween(0, bottomBarY, w, bottomBarY);
 
-    // 1. Sleek top dark glassmorphic header bar
-    this.menuCards.fillStyle(0x06181b, 0.85).fillRect(0, 0, w, topBarH);
-    this.menuCards.lineStyle(1, 0x1f4f55, 0.6).lineBetween(0, topBarH, w, topBarH);
-
-    // 2. Sleek bottom dark glassmorphic console shelf
-    this.menuCards.fillStyle(0x06181b, 0.9).fillRect(0, bottomBarY, w, bottomBarH);
-    this.menuCards.lineStyle(1, 0x1f4f55, 0.6).lineBetween(0, bottomBarY, w, bottomBarY);
-
-    // Hide text headers (poster illustration already features the title logo)
     this.heading.setVisible(false);
     this.subtitle.setVisible(false);
     this.wordmark.setVisible(false);
 
-    // Doctor chip in top bar (satisfies menu-design.spec.ts portrait/name check)
-    const docX = left + 14;
-    const docY = Math.round(topBarH / 2);
-    this.portrait.setPosition(docX, docY).setDisplaySize(28, 36).setVisible(true);
-    this.pickInfo.setPosition(docX + 20, docY).setFontSize(14).setColor('#e8fff9').setOrigin(0, 0.5).setVisible(true);
+    // Refresh selected character display
+    const selected = characterById(doctorUnlocked(settings.character) ? settings.character : 'eugene');
+    settings.character = selected.id;
+    this.pickInfo.setText(selected.name);
+    this.portrait.setFrame(selected.id);
 
-    // Top Navigation buttons (equally spaced across center-top)
-    const navButtons = [this.providersButton, this.lockerButton, this.boardButton, this.leaderboardButton];
-    const navStartX = left + 130;
-    const navAvailW = Math.max(340, right - 220 - navStartX);
-    const slot = navAvailW / 4;
-    navButtons.forEach((b, i) => {
-      b.setOrigin(0.5).setFontSize(15).setPadding(12, 8)
-        .setPosition(navStartX + slot * (i + 0.5), docY);
-    });
-    this.npsText.setOrigin(1, 0.5).setFontSize(14).setPosition(right, docY);
+    // Call header layout
+    this.topHeader.layout();
 
     // Bottom controls
     const yHero = bottomBarY + bottomBarH * 0.36;
     const ySec = bottomBarY + bottomBarH * 0.77;
 
     if (this.continueButton.visible) {
-      this.continueButton.setOrigin(0.5).setPosition(w / 2 - 140, yHero).setFontSize(19).setPadding(20, 12);
-      this.tap.setText('NEW SHIFT  →').setOrigin(0.5).setPosition(w / 2 + 140, yHero).setFontSize(19).setPadding(20, 12);
+      this.continueButton.setOrigin(0.5).setPosition(w / 2 - 140, yHero).setFontSize(18).setPadding(18, 10);
+      this.tap.setText('NEW SHIFT  →').setOrigin(0.5).setPosition(w / 2 + 140, yHero).setFontSize(18).setPadding(18, 10);
     } else {
-      this.tap.setText('START SHIFT  →').setOrigin(0.5).setPosition(w / 2, yHero).setFontSize(23).setPadding(30, 14);
+      this.tap.setText('START SHIFT  →').setOrigin(0.5).setPosition(w / 2, yHero).setFontSize(22).setPadding(28, 12);
     }
 
     const secSpacing = Math.min(240, (w - left * 2) / 3.4);
-    this.modeButton.setOrigin(0.5).setPosition(w / 2 - secSpacing, ySec).setFontSize(16).setPadding(16, 8);
-    this.difficultyButton.setOrigin(0.5).setPosition(w / 2, ySec).setFontSize(16).setPadding(16, 8);
-    this.dailyButton.setOrigin(0.5).setPosition(w / 2 + secSpacing, ySec).setFontSize(16).setPadding(16, 8);
+    this.modeButton.setOrigin(0.5).setPosition(w / 2 - secSpacing, ySec).setFontSize(15).setPadding(14, 7);
+    this.difficultyButton.setOrigin(0.5).setPosition(w / 2, ySec).setFontSize(15).setPadding(14, 7);
+    this.dailyButton.setOrigin(0.5).setPosition(w / 2 + secSpacing, ySec).setFontSize(15).setPadding(14, 7);
     this.modeInfo.setVisible(false);
     this.difficultyInfo.setVisible(false);
     this.dailyBestText.setVisible(false);
-    this.updatePill.setOrigin(0.5).setPosition(w / 2, 76).setFontSize(16);
+    this.updatePill.setOrigin(0.5).setPosition(w / 2, 76).setFontSize(15);
 
-    for (const b of [this.tap, this.providersButton, this.lockerButton, this.boardButton, this.leaderboardButton, this.modeButton, this.difficultyButton, this.dailyButton, this.continueButton]) {
+    // Style bottom buttons with tactile depth
+    for (const b of [this.tap, this.modeButton, this.difficultyButton, this.dailyButton, this.continueButton]) {
       b.setBackgroundColor('rgba(0,0,0,0)');
       if (!b.visible) continue;
       const box = b.getBounds();
       b.input?.hitArea?.setTo?.(-8, -8, box.width + 16, box.height + 16);
       const isPrimary = b === this.tap || (b === this.continueButton && this.continueButton.visible);
       const isDaily = b === this.dailyButton;
-      const radius = isPrimary ? 20 : 12;
+      const radius = isPrimary ? 18 : 12;
 
-      // 1. Drop shadow
       this.menuCards.fillStyle(0x000000, isPrimary ? 0.25 : 0.15)
         .fillRoundedRect(box.x, box.y + (isPrimary ? 3 : 2), box.width, box.height, radius);
 
-      // 2. Beveled bottom casing
       if (isPrimary) {
-        this.menuCards.fillStyle(0x147a62, 1)
-          .fillRoundedRect(box.x, box.y + 2, box.width, box.height, radius);
+        this.menuCards.fillStyle(0x147a62, 1).fillRoundedRect(box.x, box.y + 2, box.width, box.height, radius);
       } else if (isDaily) {
-        this.menuCards.fillStyle(0x8a6d00, 1)
-          .fillRoundedRect(box.x, box.y + 2, box.width, box.height, radius);
+        this.menuCards.fillStyle(0x8a6d00, 1).fillRoundedRect(box.x, box.y + 2, box.width, box.height, radius);
       } else {
-        this.menuCards.fillStyle(0x163f45, 1)
-          .fillRoundedRect(box.x, box.y + 1, box.width, box.height, radius);
+        this.menuCards.fillStyle(0x163f45, 1).fillRoundedRect(box.x, box.y + 1, box.width, box.height, radius);
       }
 
-      // 3. Face fill
       const faceColor = isPrimary ? 0x80eac8 : isDaily ? 0xffe66d : 0x1f4f55;
       this.menuCards.fillStyle(faceColor, 1)
         .fillRoundedRect(box.x, box.y, box.width, box.height - (isPrimary ? 2 : 1), radius);
 
-      // 4. Subtle stroke outline
       const strokeColor = isPrimary ? 0x4db896 : isDaily ? 0xffd166 : 0x3da896;
       this.menuCards.lineStyle(1.5, strokeColor, 0.9)
         .strokeRoundedRect(box.x, box.y, box.width, box.height - (isPrimary ? 2 : 1), radius);
 
-      // 5. Specular top rim gloss for primary
       if (isPrimary) {
         this.menuCards.lineStyle(1, 0xffffff, 0.5)
           .beginPath()
@@ -378,6 +318,7 @@ export class TitleScene extends Phaser.Scene {
     this.modeButton.setText(isFlu ? 'FLU SEASON ▾' : 'STANDARD ▾');
     this.modeInfo.setText(isFlu ? 'Endless outbreak' : 'Scheduled breaks');
   }
+
 
   private cycleMode(): void {
     settings.mode = settings.mode === 'fluSeason' ? 'standard' : 'fluSeason';

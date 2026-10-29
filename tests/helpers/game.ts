@@ -44,15 +44,24 @@ export async function boot(page: Page, query = '?god&seed=123') {
 }
 export async function start(page: Page, query?: string) {
   await boot(page, query);
-  await page.touchscreen.tap(426, 200);
+  await tapObject(page, 'Title', 'tap');
   await active(page, 'Hud');
 }
 export async function tapObject(page: Page, scene: string, property: string) {
   const point = await page.evaluate(([key, field]) => {
     const object = window.game.scene.getScene(key)[field];
     const box = window.game.canvas.getBoundingClientRect();
-    const scale = box.width / window.game.scale.width;
     const bounds = object.getBounds();
+    const isPortrait = document.body.classList.contains('portrait');
+    if (isPortrait) {
+      const kw = box.height / window.game.scale.width;
+      const kh = box.width / window.game.scale.height;
+      return {
+        x: box.right - bounds.centerY * kh,
+        y: box.top + bounds.centerX * kw,
+      };
+    }
+    const scale = box.width / window.game.scale.width;
     return { x: box.left + bounds.centerX * scale, y: box.top + bounds.centerY * scale };
   }, [scene, property]);
   await page.touchscreen.tap(point.x, point.y);

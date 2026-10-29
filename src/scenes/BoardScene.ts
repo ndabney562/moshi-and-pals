@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 import { toTitle } from '../core/native';
+import { renderMenuTopPanel, renderBackButton, MenuHeaderComponents } from '../ui/menuHeader';
 import { COLORS as GAME_COLORS } from '../config/theme';
 import { MENU, restartOnMenuResize } from '../ui/menuTheme';
 const COLORS = { ...GAME_COLORS, uiText: MENU.ink, uiAccent: MENU.teal };
@@ -23,27 +24,42 @@ export class BoardScene extends Phaser.Scene {
   private body!: Phaser.GameObjects.Container;
   private header!: Phaser.GameObjects.Text;
   private tabs: { id: Tab; text: Phaser.GameObjects.Text }[] = [];
+  private topHeader?: MenuHeaderComponents;
 
   constructor() {
     super('Board');
   }
 
+  init(data?: { tab?: Tab }): void {
+    if (data?.tab) this.tab = data.tab;
+  }
+
   create(): void {
     restartOnMenuResize(this);
+    if (this.cameras?.main) {
+      this.cameras.main.fadeIn(150, 0, 0, 0);
+    }
     const { width, height } = this.scale;
     this.add.rectangle(0, 0, width, height, MENU.paper).setOrigin(0);
-    this.header = this.add.text(width / 2, 40, '', { fontFamily: font, fontSize: '38px', fontStyle: '900', color: COLORS.uiText }).setOrigin(0.5);
+
+    // Standardized Top Panel: Single active tab badge ('🎓 BOARD' or '🔬 ATLAS')
+    this.topHeader = renderMenuTopPanel(this, this.tab === 'atlas' ? 'atlas' : 'board');
+    this.events.once('shutdown', () => {
+      this.topHeader?.destroy();
+    });
+
+    this.header = this.add.text(width / 2, 40, '', { fontFamily: font, fontSize: '38px', fontStyle: '900', color: COLORS.uiText }).setOrigin(0.5).setVisible(false);
     const labels: [Tab, string][] = [['specialties', 'SPECIALTIES'], ['kit', 'STARTER KIT'], ['scribes', 'STAFF'], ['atlas', 'MICROBIOLOGY ATLAS']];
     this.tabs = labels.map(([id, label], i) => {
       const text = this.add.text(width / 2 + (i - (labels.length - 1) / 2) * Math.min(250, (width - 64) / 4), 96, label, {
-        fontFamily: font, fontSize: '20px', fontStyle: 'bold', color: COLORS.uiText, backgroundColor: '#eeeade', padding: { x: 18, y: 10 },
+        fontFamily: font, fontSize: '18px', fontStyle: 'bold', color: COLORS.uiText, backgroundColor: '#eeeade', padding: { x: 16, y: 8 },
       }).setOrigin(0.5).setInteractive({ useHandCursor: true }).on('pointerup', () => this.show(id));
       return { id, text };
     });
     this.body = this.add.container(0, 0);
-    this.add.text(width / 2, height - 40, 'BACK', {
-      fontFamily: font, fontSize: '26px', fontStyle: 'bold', color: COLORS.uiText, backgroundColor: '#e4e6dc', padding: { x: 44, y: 12 },
-    }).setOrigin(0.5).setInteractive({ useHandCursor: true }).on('pointerup', () => toTitle(this));
+
+    // Standardized bottom-left BACK button
+    renderBackButton(this, () => toTitle(this));
     this.input.keyboard?.on('keydown-ESC', () => toTitle(this));
     this.show(this.tab);
   }
@@ -52,6 +68,9 @@ export class BoardScene extends Phaser.Scene {
     this.tab = tab;
     const p = progress();
     this.header.setText(`RESIDENCY BOARD  ·  ${p.credits} CME`);
+    if (this.topHeader?.activeTabBadge) {
+      this.topHeader.activeTabBadge.setText(tab === 'atlas' ? '🔬 ATLAS' : '🎓 BOARD');
+    }
     for (const t of this.tabs) t.text.setBackgroundColor(t.id === tab ? MENU.mint : '#eeeade');
     this.body.removeAll(true);
     if (tab === 'specialties') this.drawSpecialties();

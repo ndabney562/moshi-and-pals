@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 import { toTitle } from '../core/native';
+import { transitionTo, renderMenuTopPanel, renderBackButton, MenuHeaderComponents } from '../ui/menuHeader';
 import { COLORS as GAME_COLORS } from '../config/theme';
 import { MENU, restartOnMenuResize } from '../ui/menuTheme';
 const COLORS = { ...GAME_COLORS, uiText: MENU.ink, uiAccent: MENU.teal };
@@ -19,6 +20,7 @@ export class LeaderboardScene extends Phaser.Scene {
   private diffPills: Phaser.GameObjects.Text[] = [];
   private returnTo = 'Title';
   private requestSerial = 0;
+  private topHeader?: MenuHeaderComponents;
 
   constructor() {
     super('Leaderboard');
@@ -32,15 +34,20 @@ export class LeaderboardScene extends Phaser.Scene {
 
   create(): void {
     restartOnMenuResize(this);
-    this.events.once('shutdown', () => { ++this.requestSerial; });
+    if (this.cameras?.main) {
+      this.cameras.main.fadeIn(150, 0, 0, 0);
+    }
+    this.events.once('shutdown', () => {
+      ++this.requestSerial;
+      this.topHeader?.destroy();
+    });
     const { width, height } = this.scale;
     this.add.rectangle(0, 0, width, height, MENU.paper).setOrigin(0);
 
-    this.add.text(width / 2, 36, 'LEADERBOARD', {
-      fontFamily: font, fontSize: '36px', fontStyle: '900', color: COLORS.uiText,
-    }).setOrigin(0.5);
+    // Standardized Top Panel: Single active tab badge '🏆 LEADERBOARD'
+    this.topHeader = renderMenuTopPanel(this, 'leaderboard');
 
-    const callsignText = this.add.text(width - 32, 36, `CALLSIGN: ${getSavedPlayerName()} ✎`, {
+    const callsignText = this.add.text(width - 32, 80, `CALLSIGN: ${getSavedPlayerName()} ✎`, {
       fontFamily: font, fontSize: '15px', fontStyle: 'bold', color: MENU.teal,
       backgroundColor: '#eeeade', padding: { x: 12, y: 6 },
     }).setOrigin(1, 0.5).setInteractive({ useHandCursor: true });
@@ -59,9 +66,9 @@ export class LeaderboardScene extends Phaser.Scene {
     ];
     this.modePills = modes.map((m, i) => {
       const x = width / 2 - 160 + i * 320;
-      const b = this.add.text(x, 88, m.label, {
-        fontFamily: font, fontSize: '18px', fontStyle: '900', color: COLORS.uiText,
-        backgroundColor: '#eeeade', padding: { x: 16, y: 8 },
+      const b = this.add.text(x, 80, m.label, {
+        fontFamily: font, fontSize: '16px', fontStyle: '900', color: COLORS.uiText,
+        backgroundColor: '#eeeade', padding: { x: 14, y: 6 },
       }).setOrigin(0.5).setInteractive({ useHandCursor: true }).on('pointerup', () => {
         this.mode = m.id;
         this.updateFilterStyles();
@@ -73,9 +80,9 @@ export class LeaderboardScene extends Phaser.Scene {
     // Difficulty filter pills
     this.diffPills = DIFFICULTIES.map((d, i) => {
       const x = width / 2 + (i - 1) * 220;
-      const b = this.add.text(x, 134, d.name.toUpperCase(), {
-        fontFamily: font, fontSize: '16px', fontStyle: 'bold', color: COLORS.uiText,
-        backgroundColor: '#eeeade', padding: { x: 14, y: 6 },
+      const b = this.add.text(x, 122, d.name.toUpperCase(), {
+        fontFamily: font, fontSize: '15px', fontStyle: 'bold', color: COLORS.uiText,
+        backgroundColor: '#eeeade', padding: { x: 14, y: 5 },
       }).setOrigin(0.5).setInteractive({ useHandCursor: true }).on('pointerup', () => {
         this.difficulty = d.id;
         this.updateFilterStyles();
@@ -85,7 +92,7 @@ export class LeaderboardScene extends Phaser.Scene {
     });
 
     // Header row
-    const tableY = 176;
+    const tableY = 162;
     const cw = Math.min(940, width - 60);
     const left = width / 2 - cw / 2;
     const headerBg = this.add.rectangle(width / 2, tableY + 12, cw, 32, MENU.card, 0.9).setOrigin(0.5);
@@ -111,15 +118,13 @@ export class LeaderboardScene extends Phaser.Scene {
 
     // Bottom buttons
     const by = height - 42;
-    this.add.text(width / 2 - 120, by, 'REFRESH', {
-      fontFamily: font, fontSize: '22px', fontStyle: 'bold', color: COLORS.uiText,
+    this.add.text(width / 2, by, 'REFRESH', {
+      fontFamily: font, fontSize: '20px', fontStyle: 'bold', color: COLORS.uiText,
       backgroundColor: MENU.mint, padding: { x: 28, y: 10 },
     }).setOrigin(0.5).setInteractive({ useHandCursor: true }).on('pointerup', () => this.loadScores());
 
-    this.add.text(width / 2 + 120, by, 'BACK', {
-      fontFamily: font, fontSize: '22px', fontStyle: 'bold', color: COLORS.uiText,
-      backgroundColor: '#e4e6dc', padding: { x: 36, y: 10 },
-    }).setOrigin(0.5).setInteractive({ useHandCursor: true }).on('pointerup', () => this.close());
+    // Standardized bottom-left BACK button
+    renderBackButton(this, () => this.close());
 
     this.input.keyboard?.on('keydown-ESC', () => this.close());
 
@@ -135,8 +140,10 @@ export class LeaderboardScene extends Phaser.Scene {
       } else {
         toTitle(this);
       }
-    } else {
+    } else if (this.returnTo === 'Title') {
       toTitle(this);
+    } else {
+      transitionTo(this, this.returnTo);
     }
   }
 
