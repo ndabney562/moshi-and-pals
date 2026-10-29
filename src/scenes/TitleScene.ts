@@ -171,9 +171,9 @@ export class TitleScene extends Phaser.Scene {
     this.tap.on('pointerup', (_p: any, _x: any, _y: any, e: any) => onStart(e));
 
     for (const b of [this.dailyButton, this.difficultyButton, this.modeButton, this.continueButton, this.updatePill]) menuButton(b);
-    this.dailyButton.setText("TODAY'S SHIFT").setColor('#0d2b2e');
-    this.modeButton.setColor('#e8fff9');
-    this.difficultyButton.setColor('#e8fff9');
+    this.dailyButton.setText("TODAY'S SHIFT").setColor('#fef08a');
+    this.modeButton.setColor('#f0fdfa');
+    this.difficultyButton.setColor('#f0fdfa');
     this.dailyBestText.setColor('#ffe66d').setBackgroundColor('rgba(0,0,0,0)').setVisible(false);
 
     this.layout();
@@ -209,28 +209,27 @@ export class TitleScene extends Phaser.Scene {
     });
   }
 
-  /** Clean arcade layout with unobstructed full-poster artwork and tactile controls. */
+  /** Clean arcade layout with unobstructed full-poster artwork and floating 3D glossy pills matching user PNG. */
   layout(): void {
     const { width: w, height: h } = this.scale;
     const safe = readSafeArea();
     const left = Math.max(20, safe.left + 14);
 
-    const topBarH = 64;
-    const bottomBarH = Math.min(130, Math.max(96, Math.round(h * 0.18)));
+    const topBarH = 58;
+    const bottomBarH = Math.min(118, Math.max(92, Math.round(h * 0.17)));
     const bottomBarY = h - bottomBarH;
     const availH = bottomBarY - topBarH;
-    const centerY = topBarH + availH / 2;
+    const centerY = topBarH + availH / 2 + 6;
 
     const bgK = Math.max(w / this.bgArt.width, h / this.bgArt.height);
-    this.bgArt.setScale(bgK).setPosition(w / 2, h / 2);
+    this.bgArt.setScale(bgK).setPosition(w / 2, h / 2).setAlpha(0.75).clearTint();
 
-    const k = Math.min(w / this.art.width, availH / this.art.height);
+    const k = Math.min(w / this.art.width, (h - topBarH * 0.7) / this.art.height);
     this.art.setScale(k).setPosition(w / 2, centerY);
 
     this.menuCards.clear();
-    // Bottom console shelf
-    this.menuCards.fillStyle(0x06181b, 0.90).fillRect(0, bottomBarY, w, bottomBarH);
-    this.menuCards.lineStyle(1.5, 0x1f4f55, 0.8).lineBetween(0, bottomBarY, w, bottomBarY);
+    // Subtle bottom vignette so floating pills pop over floor reflections without a solid slab
+    this.menuCards.fillStyle(0x041218, 0.28).fillRoundedRect(w * 0.12, bottomBarY - 4, w * 0.76, bottomBarH, 28);
 
     this.heading.setVisible(false);
     this.subtitle.setVisible(false);
@@ -245,61 +244,60 @@ export class TitleScene extends Phaser.Scene {
     // Call header layout
     this.topHeader.layout();
 
-    // Bottom controls
-    const yHero = bottomBarY + bottomBarH * 0.36;
-    const ySec = bottomBarY + bottomBarH * 0.77;
+    // Bottom floating pill controls
+    const yHero = bottomBarY + bottomBarH * 0.34;
+    const ySec = bottomBarY + bottomBarH * 0.78;
 
     if (this.continueButton.visible) {
-      this.continueButton.setOrigin(0.5).setPosition(w / 2 - 140, yHero).setFontSize(18).setPadding(18, 10);
-      this.tap.setText('NEW SHIFT  →').setOrigin(0.5).setPosition(w / 2 + 140, yHero).setFontSize(18).setPadding(18, 10);
+      this.continueButton.setOrigin(0.5).setPosition(w / 2 - 155, yHero).setFontSize(17).setPadding(18, 10).setColor('#04242c');
+      this.tap.setText('NEW SHIFT  →').setOrigin(0.5).setPosition(w / 2 + 165, yHero).setFontSize(18).setPadding(22, 10).setColor('#261600');
     } else {
-      this.tap.setText('START SHIFT  →').setOrigin(0.5).setPosition(w / 2, yHero).setFontSize(22).setPadding(28, 12);
+      this.tap.setText('START SHIFT  →').setOrigin(0.5).setPosition(w / 2, yHero).setFontSize(22).setPadding(30, 12).setColor('#04242c');
     }
 
-    const secSpacing = Math.min(240, (w - left * 2) / 3.4);
-    this.modeButton.setOrigin(0.5).setPosition(w / 2 - secSpacing, ySec).setFontSize(15).setPadding(14, 7);
-    this.difficultyButton.setOrigin(0.5).setPosition(w / 2, ySec).setFontSize(15).setPadding(14, 7);
-    this.dailyButton.setOrigin(0.5).setPosition(w / 2 + secSpacing, ySec).setFontSize(15).setPadding(14, 7);
+    const secSpacing = Math.min(230, (w - left * 2) / 3.4);
+    this.modeButton.setOrigin(0.5).setPosition(w / 2 - secSpacing, ySec).setFontSize(14).setPadding(16, 7);
+    this.difficultyButton.setOrigin(0.5).setPosition(w / 2, ySec).setFontSize(14).setPadding(16, 7);
+    this.dailyButton.setOrigin(0.5).setPosition(w / 2 + secSpacing, ySec).setFontSize(14).setPadding(16, 7);
     this.modeInfo.setVisible(false);
     this.difficultyInfo.setVisible(false);
     this.dailyBestText.setVisible(false);
     this.updatePill.setOrigin(0.5).setPosition(w / 2, 76).setFontSize(15);
 
-    // Style bottom buttons with tactile depth
+    // Style bottom buttons as glossy 3D floating pills (matching moshi-and-pals-title.PNG)
     for (const b of [this.tap, this.modeButton, this.difficultyButton, this.dailyButton, this.continueButton]) {
       b.setBackgroundColor('rgba(0,0,0,0)');
       if (!b.visible) continue;
       const box = b.getBounds();
       b.input?.hitArea?.setTo?.(-8, -8, box.width + 16, box.height + 16);
-      const isPrimary = b === this.tap || (b === this.continueButton && this.continueButton.visible);
+      const isContinue = b === this.continueButton && this.continueButton.visible;
+      const isTap = b === this.tap;
+      const isGoldTap = isTap && this.continueButton.visible;
+      const isCyanHero = isContinue || (isTap && !this.continueButton.visible);
       const isDaily = b === this.dailyButton;
-      const radius = isPrimary ? 18 : 12;
+      const radius = (isCyanHero || isGoldTap) ? 20 : 15;
 
-      this.menuCards.fillStyle(0x000000, isPrimary ? 0.25 : 0.15)
-        .fillRoundedRect(box.x, box.y + (isPrimary ? 3 : 2), box.width, box.height, radius);
+      // Outer drop shadow
+      this.menuCards.fillStyle(0x020c12, 0.42)
+        .fillRoundedRect(box.x, box.y + 4, box.width, box.height, radius);
 
-      if (isPrimary) {
-        this.menuCards.fillStyle(0x147a62, 1).fillRoundedRect(box.x, box.y + 2, box.width, box.height, radius);
-      } else if (isDaily) {
-        this.menuCards.fillStyle(0x8a6d00, 1).fillRoundedRect(box.x, box.y + 2, box.width, box.height, radius);
+      if (isCyanHero) {
+        // 3D Cyan/Mint glossy pill (CONTINUE SHIFT / solo START SHIFT)
+        this.menuCards.fillStyle(0x0e7490, 1).fillRoundedRect(box.x, box.y + 3, box.width, box.height, radius);
+        this.menuCards.fillStyle(0x38e8d8, 1).fillRoundedRect(box.x, box.y, box.width, box.height - 2, radius);
+        this.menuCards.lineStyle(2, 0xa5f3fc, 0.95).strokeRoundedRect(box.x, box.y, box.width, box.height - 2, radius);
+        this.menuCards.fillStyle(0xffffff, 0.28).fillRoundedRect(box.x + 6, box.y + 2, box.width - 12, (box.height - 4) * 0.42, radius - 4);
+      } else if (isGoldTap) {
+        // 3D Gold/Amber glossy pill (NEW SHIFT ->)
+        this.menuCards.fillStyle(0xb45309, 1).fillRoundedRect(box.x, box.y + 3, box.width, box.height, radius);
+        this.menuCards.fillStyle(0xfacc15, 1).fillRoundedRect(box.x, box.y, box.width, box.height - 2, radius);
+        this.menuCards.lineStyle(2, 0xfef08a, 0.95).strokeRoundedRect(box.x, box.y, box.width, box.height - 2, radius);
+        this.menuCards.fillStyle(0xffffff, 0.32).fillRoundedRect(box.x + 6, box.y + 2, box.width - 12, (box.height - 4) * 0.42, radius - 4);
       } else {
-        this.menuCards.fillStyle(0x163f45, 1).fillRoundedRect(box.x, box.y + 1, box.width, box.height, radius);
-      }
-
-      const faceColor = isPrimary ? 0x80eac8 : isDaily ? 0xffe66d : 0x1f4f55;
-      this.menuCards.fillStyle(faceColor, 1)
-        .fillRoundedRect(box.x, box.y, box.width, box.height - (isPrimary ? 2 : 1), radius);
-
-      const strokeColor = isPrimary ? 0x4db896 : isDaily ? 0xffd166 : 0x3da896;
-      this.menuCards.lineStyle(1.5, strokeColor, 0.9)
-        .strokeRoundedRect(box.x, box.y, box.width, box.height - (isPrimary ? 2 : 1), radius);
-
-      if (isPrimary) {
-        this.menuCards.lineStyle(1, 0xffffff, 0.5)
-          .beginPath()
-          .moveTo(box.x + radius, box.y + 1)
-          .lineTo(box.x + box.width - radius, box.y + 1)
-          .strokePath();
+        // Dark-teal glassy secondary pills (STANDARD ▾, WALK-IN ▾, TODAY'S SHIFT)
+        this.menuCards.fillStyle(0x0b2736, 0.90).fillRoundedRect(box.x, box.y, box.width, box.height, radius);
+        this.menuCards.lineStyle(1.5, isDaily ? 0xfacc15 : 0x38bdf8, isDaily ? 0.85 : 0.6)
+          .strokeRoundedRect(box.x, box.y, box.width, box.height, radius);
       }
     }
     this.layoutDailyPanel();

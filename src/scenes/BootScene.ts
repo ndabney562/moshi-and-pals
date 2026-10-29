@@ -21,6 +21,8 @@ export class BootScene extends Phaser.Scene {
     // Noah's title art (Moshi and Pals poster)
     this.load.image('title-art', 'assets/title.jpg');
     this.load.image('provider-portraits', 'assets/provider-portraits.png');
+    this.load.image('menu-sprites', 'assets/menu-sprites.jpg');
+    this.load.image('menu-bgs', 'assets/menu-bgs.jpg');
   }
 
   create(): void {
