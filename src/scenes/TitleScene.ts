@@ -182,8 +182,18 @@ export class TitleScene extends Phaser.Scene {
     this.heading = this.add.text(0, 0, 'Moshi\nand Pals.', { fontFamily: MENU.font, fontSize: '66px', fontStyle: '900', color: MENU.ink, lineSpacing: -12 }).setVisible(false);
     this.subtitle = this.add.text(0, 0, 'A little chaos. A lot of care.', { fontFamily: MENU.font, fontSize: '21px', color: MENU.muted }).setVisible(false);
     this.wordmark = this.add.text(0, 0, 'Moshi and Pals', { fontFamily: MENU.font, fontSize: '24px', fontStyle: '900', color: MENU.ink }).setVisible(false);
-    this.portrait = this.add.image(0, 0, 'provider-portraits', selected.id);
-    this.pickInfo.setText(selected.name).setColor('#e8fff9').setBackgroundColor('rgba(0,0,0,0)').setOrigin(0, .5);
+    this.portrait = this.add.image(0, 0, 'provider-portraits', selected.id).setInteractive({ useHandCursor: true });
+    this.portrait.on('pointerdown', (_p: Phaser.Input.Pointer, _x: number, _y: number, e: Phaser.Types.Input.EventData) => {
+      e?.stopPropagation?.();
+      this.started = true;
+      this.scene.start('Providers');
+    });
+    this.pickInfo.setText(selected.name).setColor('#e8fff9').setBackgroundColor('rgba(0,0,0,0)').setOrigin(0, .5).setInteractive({ useHandCursor: true });
+    this.pickInfo.on('pointerdown', (_p: Phaser.Input.Pointer, _x: number, _y: number, e: Phaser.Types.Input.EventData) => {
+      e?.stopPropagation?.();
+      this.started = true;
+      this.scene.start('Providers');
+    });
     this.npsText.setText(`⭐ ${progress().nps.toLocaleString()} NPS  ·  🎓 ${progress().credits} CME  ·  $${progress().bank.toLocaleString()}`).setColor('#e8fff9').setBackgroundColor('rgba(0,0,0,0)');
     this.tap.setText('START SHIFT  →').setColor('#0d2b2e');
     menuButton(this.tap, true).setInteractive({ useHandCursor: true }).on('pointerdown', () => this.begin());
@@ -204,16 +214,33 @@ export class TitleScene extends Phaser.Scene {
     this.input.keyboard?.once('keydown', () => (this.dailyPanel.visible ? this.begin(localDate()) : this.begin()));
     this.input.on('pointerdown', (_p: Phaser.Input.Pointer, over: Phaser.GameObjects.GameObject[]) => {
       if (this.dailyPanel.visible) return;
-      const buttons: Phaser.GameObjects.GameObject[] = [this.providersButton, this.leaderboardButton, this.updatePill, this.continueButton, this.boardButton, this.lockerButton, this.dailyButton, this.difficultyButton, this.modeButton];
+      const buttons: Phaser.GameObjects.GameObject[] = [
+        this.providersButton, this.leaderboardButton, this.updatePill, this.continueButton,
+        this.boardButton, this.lockerButton, this.dailyButton, this.difficultyButton, this.modeButton,
+        this.tap, this.portrait, this.pickInfo,
+      ];
       if (buttons.some((b) => over.includes(b))) return;
-      // Interactive objects enter Phaser's hit-test list on the next frame.
-      // A tap during the first Title frame must still honor Continue/nav rather
-      // than fall through to the legacy tap-anywhere normal-shift action.
-      const pending = (buttons as Phaser.GameObjects.Text[]).find(b => b.visible && b.getBounds().contains(_p.x, _p.y));
-      if (pending) {
-        pending.emit('pointerdown', _p, 0, 0, { stopPropagation() {} });
+
+      // Expand hit detection by 16px for comfortable touch forgiveness on mobile
+      const hit = (buttons as (Phaser.GameObjects.Text | Phaser.GameObjects.Image)[]).find(b => {
+        if (!b.visible) return false;
+        const bounds = b.getBounds();
+        return _p.x >= bounds.x - 16 && _p.x <= bounds.right + 16 &&
+               _p.y >= bounds.y - 16 && _p.y <= bounds.bottom + 16;
+      });
+      if (hit) {
+        hit.emit('pointerdown', _p, 0, 0, { stopPropagation() {} });
         return;
       }
+
+      // Shield the header and footer consoles from accidental shift starts
+      const topBarH = 64;
+      const bottomBarH = Math.min(130, Math.max(96, Math.round(this.scale.height * 0.18)));
+      const bottomBarY = this.scale.height - bottomBarH;
+      if (_p.y <= topBarH + 16 || _p.y >= bottomBarY - 16) {
+        return;
+      }
+
       this.begin();
     });
   }
@@ -225,8 +252,8 @@ export class TitleScene extends Phaser.Scene {
     const left = Math.max(20, safe.left + 14);
     const right = w - Math.max(20, safe.right + 14);
 
-    const topBarH = 48;
-    const bottomBarH = Math.min(108, Math.max(82, Math.round(h * 0.23)));
+    const topBarH = 64;
+    const bottomBarH = Math.min(130, Math.max(96, Math.round(h * 0.18)));
     const bottomBarY = h - bottomBarH;
     const availH = bottomBarY - topBarH;
     const centerY = topBarH + availH / 2;
@@ -242,11 +269,11 @@ export class TitleScene extends Phaser.Scene {
     this.menuCards.clear();
 
     // 1. Sleek top dark glassmorphic header bar
-    this.menuCards.fillStyle(0x06181b, 0.82).fillRect(0, 0, w, topBarH);
+    this.menuCards.fillStyle(0x06181b, 0.85).fillRect(0, 0, w, topBarH);
     this.menuCards.lineStyle(1, 0x1f4f55, 0.6).lineBetween(0, topBarH, w, topBarH);
 
     // 2. Sleek bottom dark glassmorphic console shelf
-    this.menuCards.fillStyle(0x06181b, 0.88).fillRect(0, bottomBarY, w, bottomBarH);
+    this.menuCards.fillStyle(0x06181b, 0.9).fillRect(0, bottomBarY, w, bottomBarH);
     this.menuCards.lineStyle(1, 0x1f4f55, 0.6).lineBetween(0, bottomBarY, w, bottomBarY);
 
     // Hide text headers (poster illustration already features the title logo)
@@ -257,35 +284,35 @@ export class TitleScene extends Phaser.Scene {
     // Doctor chip in top bar (satisfies menu-design.spec.ts portrait/name check)
     const docX = left + 14;
     const docY = Math.round(topBarH / 2);
-    this.portrait.setPosition(docX, docY).setDisplaySize(24, 32).setVisible(true);
-    this.pickInfo.setPosition(docX + 16, docY).setFontSize(13).setColor('#e8fff9').setOrigin(0, 0.5).setVisible(true);
+    this.portrait.setPosition(docX, docY).setDisplaySize(28, 36).setVisible(true);
+    this.pickInfo.setPosition(docX + 20, docY).setFontSize(14).setColor('#e8fff9').setOrigin(0, 0.5).setVisible(true);
 
     // Top Navigation buttons (equally spaced across center-top)
     const navButtons = [this.providersButton, this.lockerButton, this.boardButton, this.leaderboardButton];
-    const navStartX = left + 120;
-    const navAvailW = Math.max(340, right - 200 - navStartX);
+    const navStartX = left + 130;
+    const navAvailW = Math.max(340, right - 220 - navStartX);
     const slot = navAvailW / 4;
     navButtons.forEach((b, i) => {
-      b.setOrigin(0.5).setFontSize(14).setPadding(8, 5)
+      b.setOrigin(0.5).setFontSize(15).setPadding(12, 8)
         .setPosition(navStartX + slot * (i + 0.5), docY);
     });
-    this.npsText.setOrigin(1, 0.5).setFontSize(13).setPosition(right, docY);
+    this.npsText.setOrigin(1, 0.5).setFontSize(14).setPosition(right, docY);
 
     // Bottom controls
-    const yHero = bottomBarY + bottomBarH * 0.35;
+    const yHero = bottomBarY + bottomBarH * 0.36;
     const ySec = bottomBarY + bottomBarH * 0.77;
 
     if (this.continueButton.visible) {
-      this.continueButton.setOrigin(0.5).setPosition(w / 2 - 130, yHero).setFontSize(18).setPadding(18, 10);
-      this.tap.setText('NEW SHIFT  →').setOrigin(0.5).setPosition(w / 2 + 130, yHero).setFontSize(18).setPadding(18, 10);
+      this.continueButton.setOrigin(0.5).setPosition(w / 2 - 140, yHero).setFontSize(19).setPadding(20, 12);
+      this.tap.setText('NEW SHIFT  →').setOrigin(0.5).setPosition(w / 2 + 140, yHero).setFontSize(19).setPadding(20, 12);
     } else {
-      this.tap.setText('START SHIFT  →').setOrigin(0.5).setPosition(w / 2, yHero).setFontSize(22).setPadding(28, 12);
+      this.tap.setText('START SHIFT  →').setOrigin(0.5).setPosition(w / 2, yHero).setFontSize(23).setPadding(30, 14);
     }
 
-    const secSpacing = Math.min(180, (w - left * 2) / 3.4);
-    this.modeButton.setOrigin(0.5).setPosition(w / 2 - secSpacing, ySec).setFontSize(15).setPadding(12, 6);
-    this.difficultyButton.setOrigin(0.5).setPosition(w / 2, ySec).setFontSize(15).setPadding(12, 6);
-    this.dailyButton.setOrigin(0.5).setPosition(w / 2 + secSpacing, ySec).setFontSize(15).setPadding(12, 6);
+    const secSpacing = Math.min(240, (w - left * 2) / 3.4);
+    this.modeButton.setOrigin(0.5).setPosition(w / 2 - secSpacing, ySec).setFontSize(16).setPadding(16, 8);
+    this.difficultyButton.setOrigin(0.5).setPosition(w / 2, ySec).setFontSize(16).setPadding(16, 8);
+    this.dailyButton.setOrigin(0.5).setPosition(w / 2 + secSpacing, ySec).setFontSize(16).setPadding(16, 8);
     this.modeInfo.setVisible(false);
     this.difficultyInfo.setVisible(false);
     this.dailyBestText.setVisible(false);
@@ -295,6 +322,7 @@ export class TitleScene extends Phaser.Scene {
       b.setBackgroundColor('rgba(0,0,0,0)');
       if (!b.visible) continue;
       const box = b.getBounds();
+      b.input?.hitArea?.setTo?.(-8, -8, box.width + 16, box.height + 16);
       const isPrimary = b === this.tap || (b === this.continueButton && this.continueButton.visible);
       const isDaily = b === this.dailyButton;
       const radius = isPrimary ? 20 : 12;
