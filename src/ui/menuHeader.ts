@@ -1,9 +1,8 @@
 import Phaser from 'phaser';
 import { MENU } from './menuTheme';
-import { progress } from '../core/progress';
+import { progress, doctorUnlocked } from '../core/progress';
 import { settings, saveSettings } from '../core/settings';
 import { characterById } from '../data/characters';
-import { doctorUnlocked } from '../core/progress';
 import { readSafeArea } from '../core/safeArea';
 import { toTitle } from '../core/native';
 
@@ -66,10 +65,10 @@ export interface MenuHeaderComponents {
 }
 
 /**
- * Standardized Top Panel header for Title and Sub-menus.
- * - Left: Doctor Avatar + Level Star + Doctor Name (tappable -> Providers)
- * - Center: All 5 tabs on Title screen; ONLY active tab badge on sub-screens.
- * - Right: Standardized stats badges (⭐ NPS · 🎓 CME · 💵 $Bank · ⚙️ Settings)
+ * Standardized Floating Pill Top Panel for Title and Sub-menus (matching user PNG mockups).
+ * - Left: Floating rounded dark-teal doctor pill with portrait, name, star badge & cyan progress bar
+ * - Center: All 5 floating rounded tab pills on Title screen; ONLY active glowing tab pill on sub-screens
+ * - Right: Floating rounded dark-teal stats pill (⭐ NPS · 🎓 CME · 💵 $Bank | ⚙️)
  */
 export function renderMenuTopPanel(
   scene: Phaser.Scene,
@@ -87,9 +86,9 @@ export function renderMenuTopPanel(
 
   const pickInfo = scene.add.text(0, 0, selectedDoc.name, {
     fontFamily: MENU.font,
-    fontSize: '15px',
+    fontSize: '14px',
     fontStyle: 'bold',
-    color: '#e8fff9',
+    color: '#ffffff',
   }).setOrigin(0, 0.5).setInteractive({ useHandCursor: true }).setDepth(102);
 
   const doctorChipHit = scene.add.rectangle(0, 0, 10, 10, 0xffffff, 0)
@@ -108,21 +107,20 @@ export function renderMenuTopPanel(
   // 2. Center Navigation Tabs
   const tabButtons = new Map<string, Phaser.GameObjects.Text>();
   let activeTabBadge: Phaser.GameObjects.Text | undefined;
+  let hoveredTab: string | null = null;
 
   if (activeTab === 'title') {
-    // Render all 5 navigation tabs
     for (const tab of MENU_TABS) {
       const btn = scene.add.text(0, 0, `${tab.icon} ${tab.label}`, {
         fontFamily: MENU.font,
         fontSize: '13px',
         fontStyle: 'bold',
-        color: '#e8fff9',
-        backgroundColor: '#163b40',
+        color: '#f0fdfa',
         padding: { x: 10, y: 7 },
       }).setOrigin(0.5).setInteractive({ useHandCursor: true }).setDepth(102);
 
-      btn.on('pointerover', () => btn.setBackgroundColor('#215a61'));
-      btn.on('pointerout', () => btn.setBackgroundColor('#163b40'));
+      btn.on('pointerover', () => { hoveredTab = tab.id; layout(); });
+      btn.on('pointerout', () => { if (hoveredTab === tab.id) { hoveredTab = null; layout(); } });
       btn.on('pointerdown', (_p: Phaser.Input.Pointer, _x: number, _y: number, e: any) => {
         e?.stopPropagation?.();
         const data = tab.id === 'leaderboard' ? { returnTo: 'Title' } : tab.sceneData;
@@ -135,7 +133,6 @@ export function renderMenuTopPanel(
       }
     }
   } else {
-    // Render ONLY the active tab badge in the center
     const activeConf = MENU_TABS.find(t => t.id === activeTab) ?? {
       id: activeTab,
       label: activeTab.toUpperCase(),
@@ -144,11 +141,10 @@ export function renderMenuTopPanel(
     };
     activeTabBadge = scene.add.text(0, 0, `${activeConf.icon} ${activeConf.label}`, {
       fontFamily: MENU.font,
-      fontSize: '16px',
+      fontSize: '15px',
       fontStyle: '900',
-      color: '#0d2b2e',
-      backgroundColor: '#80eac8',
-      padding: { x: 18, y: 7 },
+      color: '#082630',
+      padding: { x: 20, y: 7 },
     }).setOrigin(0.5).setDepth(102);
   }
 
@@ -158,13 +154,12 @@ export function renderMenuTopPanel(
     fontFamily: MENU.font,
     fontSize: '13px',
     fontStyle: 'bold',
-    color: '#e8fff9',
+    color: '#f0fdfa',
   }).setOrigin(1, 0.5).setDepth(102);
 
-  // Settings cog icon
-  const settingsButton = scene.add.text(0, 0, '⚙️', {
+  const settingsButton = scene.add.text(0, 0, settings.sound ? '⚙️' : '🔇', {
     fontFamily: MENU.font,
-    fontSize: '18px',
+    fontSize: '16px',
     padding: { x: 6, y: 4 },
   }).setOrigin(1, 0.5).setInteractive({ useHandCursor: true }).setDepth(102);
 
@@ -176,64 +171,93 @@ export function renderMenuTopPanel(
     settingsButton.setText(settings.sound ? '⚙️' : '🔇');
   });
 
+  const drawGlassPill = (x: number, y: number, w: number, h: number, r: number, active = false, hover = false) => {
+    // Drop shadow
+    bar.fillStyle(0x020c12, 0.35).fillRoundedRect(x, y + 2, w, h, r);
+    if (active) {
+      bar.fillStyle(0x38e8d8, 0.96).fillRoundedRect(x, y, w, h, r);
+      bar.lineStyle(2, 0xa5f3fc, 0.95).strokeRoundedRect(x, y, w, h, r);
+    } else {
+      bar.fillStyle(hover ? 0x164458 : 0x0b2736, 0.88).fillRoundedRect(x, y, w, h, r);
+      bar.lineStyle(1.5, hover ? 0x67e8f9 : 0x38bdf8, hover ? 0.85 : 0.48).strokeRoundedRect(x, y, w, h, r);
+    }
+  };
+
   const layout = () => {
-    const { width: w, height: _h } = scene.scale;
+    const { width: w } = scene.scale;
     const safe = readSafeArea();
-    const left = Math.max(16, safe.left + 12);
-    const right = w - Math.max(16, safe.right + 12);
-    const topBarH = 64;
-    const centerY = topBarH / 2;
+    const left = Math.max(12, safe.left + 8);
+    const right = w - Math.max(12, safe.right + 8);
+    const topBarH = 58;
+    const centerY = topBarH / 2 + 2;
 
     bar.clear();
-    // Glassmorphic dark header bar with subtle elevation and border
-    bar.fillStyle(0x06181b, 0.90).fillRect(0, 0, w, topBarH);
-    bar.lineStyle(1.5, 0x1f4f55, 0.8).lineBetween(0, topBarH, w, topBarH);
 
-    // Doctor Chip layout (Left)
-    const docX = left + 14;
-    portrait.setPosition(docX, centerY).setDisplaySize(28, 36);
-    pickInfo.setPosition(docX + 22, centerY).setText(selectedDoc.name);
+    // 1. Doctor Pill (Left)
+    const docPillX = left;
+    const docPillH = 42;
+    const docPillY = centerY - docPillH / 2;
+    portrait.setPosition(docPillX + 21, centerY).setDisplaySize(28, 32);
+    pickInfo.setPosition(docPillX + 41, centerY - 5).setText(selectedDoc.name);
 
-    // Chip container bounds for hit detection
-    const chipW = 32 + pickInfo.width + 12;
-    doctorChipHit.setPosition(docX - 8 + chipW / 2, centerY).setSize(chipW, 44);
+    const docPillW = Math.max(108, 46 + pickInfo.width + 14);
+    drawGlassPill(docPillX, docPillY, docPillW, docPillH, 16);
+    // Portrait frame border
+    bar.lineStyle(1.5, 0x38bdf8, 0.7).strokeRoundedRect(docPillX + 6, centerY - 17, 30, 34, 8);
+    // Cyan XP / level bar under doctor name (matching PNG top-left pill)
+    const barW = Math.max(36, docPillW - 52);
+    bar.fillStyle(0x061822, 0.9).fillRoundedRect(docPillX + 41, centerY + 6, barW, 6, 3);
+    bar.fillStyle(0x22d3ee, 0.95).fillRoundedRect(docPillX + 41, centerY + 6, Math.round(barW * 0.68), 6, 3);
 
-    // Right stats layout
-    settingsButton.setPosition(right, centerY);
+    doctorChipHit.setPosition(docPillX + docPillW / 2, centerY).setSize(docPillW, docPillH);
+
+    // 3. Stats Pill (Right)
+    if (w < 960) {
+      npsText.setFontSize(11).setText(`⭐ ${p.nps} · 🎓 ${p.credits} · $${p.bank}`);
+    } else if (w < 1150) {
+      npsText.setFontSize(12).setText(`⭐ ${p.nps} · 🎓 ${p.credits} · 💵 $${p.bank}`);
+    } else {
+      npsText.setFontSize(13).setText(`⭐ ${p.nps.toLocaleString()} NPS  ·  🎓 ${p.credits} CME  ·  💵 $${p.bank.toLocaleString()}`);
+    }
+    settingsButton.setPosition(right - 6, centerY);
     npsText.setPosition(right - 34, centerY);
 
-    // Compact stats text on narrow screens
-    if (w < 1100) {
-      npsText.setText(`⭐ ${p.nps}  ·  🎓 ${p.credits}  ·  $${p.bank}`);
-    } else {
-      npsText.setText(`⭐ ${p.nps.toLocaleString()} NPS  ·  🎓 ${p.credits} CME  ·  $${p.bank.toLocaleString()}`);
-    }
+    const statsPillW = npsText.width + 48;
+    const statsPillH = 40;
+    const statsPillX = right - statsPillW;
+    drawGlassPill(statsPillX, centerY - statsPillH / 2, statsPillW, statsPillH, 16);
+    // Subtle vertical divider before gear icon
+    bar.lineStyle(1, 0x38bdf8, 0.35).lineBetween(right - 30, centerY - 11, right - 30, centerY + 11);
 
+    // 2. Center Tab Pills
     if (activeTab === 'title') {
-      // 5 tabs centered
-      const navStartX = docX + chipW + 16;
-      const navEndX = npsText.x - npsText.width - 24;
-      const navAvailW = Math.max(380, navEndX - navStartX);
+      const navStartX = docPillX + docPillW + 8;
+      const navEndX = statsPillX - 8;
+      const navAvailW = Math.max(340, navEndX - navStartX);
       const slot = navAvailW / MENU_TABS.length;
 
       MENU_TABS.forEach((tab, i) => {
         const btn = tabButtons.get(tab.id);
         if (btn) {
-          const btnX = navStartX + slot * (i + 0.5);
-          btn.setPosition(btnX, centerY);
-          // Scale font slightly if tight
-          if (slot < 95) {
-            btn.setFontSize(11).setPadding(6, 5);
+          if (slot < 92) {
+            btn.setFontSize(10).setPadding(5, 5);
           } else if (slot < 115) {
-            btn.setFontSize(12).setPadding(8, 6);
+            btn.setFontSize(11).setPadding(7, 6);
           } else {
             btn.setFontSize(13).setPadding(10, 7);
           }
+          const btnX = navStartX + slot * (i + 0.5);
+          btn.setPosition(btnX, centerY);
+          const pw = Math.min(slot - 4, btn.width + 4);
+          const ph = 36;
+          drawGlassPill(btnX - pw / 2, centerY - ph / 2, pw, ph, 14, false, hoveredTab === tab.id);
         }
       });
     } else if (activeTabBadge) {
-      // Single active tab badge in exact center
       activeTabBadge.setPosition(w / 2, centerY);
+      const pw = activeTabBadge.width + 16;
+      const ph = 38;
+      drawGlassPill(w / 2 - pw / 2, centerY - ph / 2, pw, ph, 16, true, false);
     }
   };
 
@@ -271,24 +295,48 @@ export function renderMenuTopPanel(
 
 /**
  * Standardized Back Button in the bottom-left on all sub-screens.
- * Text property is strictly 'BACK' for test suite compatibility.
+ * Styled as a cream/white 3D pill with left chevron matching the user PNGs,
+ * while keeping btn.text === 'BACK' for E2E/smoke test queries.
  */
 export function renderBackButton(
   scene: Phaser.Scene,
   onBack?: () => void
 ): Phaser.GameObjects.Text {
   const safe = readSafeArea();
-  const left = Math.max(24, safe.left + 16);
-  const bottom = scene.scale.height - Math.max(20, safe.bottom + 12) - 18;
+  const left = Math.max(20, safe.left + 14);
+  const bottom = scene.scale.height - Math.max(18, safe.bottom + 10) - 18;
+
+  const pillBg = scene.add.graphics().setDepth(99);
 
   const btn = scene.add.text(left, bottom, 'BACK', {
     fontFamily: MENU.font,
-    fontSize: '20px',
-    fontStyle: 'bold',
-    color: '#0d2b2e',
-    backgroundColor: '#80eac8',
-    padding: { x: 26, y: 12 },
+    fontSize: '18px',
+    fontStyle: '900',
+    color: '#123740',
+    padding: { x: 28, y: 10 },
   }).setOrigin(0, 0.5).setInteractive({ useHandCursor: true }).setDepth(100);
+  (btn as any).__pillBg = pillBg;
+
+  let isHover = false;
+  const drawPill = () => {
+    const x = btn.x;
+    const y = btn.y - btn.height / 2;
+    const w = btn.width + 8;
+    const h = btn.height;
+    pillBg.clear();
+    pillBg.fillStyle(0x051821, 0.35).fillRoundedRect(x, y + 3, w, h, 18);
+    pillBg.fillStyle(isHover ? 0xffffff : 0xf7f2e7, 0.98).fillRoundedRect(x, y, w, h, 18);
+    pillBg.lineStyle(2, isHover ? 0x38bdf8 : 0xd0c8b8, 1).strokeRoundedRect(x, y, w, h, 18);
+    // Draw '<' chevron inside left padding of the pill
+    const cx = x + 16;
+    const cy = btn.y;
+    pillBg.lineStyle(2.5, 0x123740, 1);
+    pillBg.beginPath();
+    pillBg.moveTo(cx + 4, cy - 5);
+    pillBg.lineTo(cx - 2, cy);
+    pillBg.lineTo(cx + 4, cy + 5);
+    pillBg.strokePath();
+  };
 
   const handleBack = () => {
     if (onBack) {
@@ -298,8 +346,8 @@ export function renderBackButton(
     }
   };
 
-  btn.on('pointerover', () => btn.setBackgroundColor('#a5f5dc'));
-  btn.on('pointerout', () => btn.setBackgroundColor('#80eac8'));
+  btn.on('pointerover', () => { isHover = true; drawPill(); });
+  btn.on('pointerout', () => { isHover = false; drawPill(); });
   btn.on('pointerdown', (_p: Phaser.Input.Pointer, _x: number, _y: number, e: any) => {
     e?.stopPropagation?.();
     handleBack();
@@ -311,13 +359,18 @@ export function renderBackButton(
 
   const relayout = () => {
     const s = readSafeArea();
-    const l = Math.max(24, s.left + 16);
-    const b = scene.scale.height - Math.max(20, s.bottom + 12) - 18;
+    const l = Math.max(20, s.left + 14);
+    const b = scene.scale.height - Math.max(18, s.bottom + 10) - 18;
     btn.setPosition(l, b);
+    drawPill();
   };
 
+  drawPill();
   scene.scale.on('resize', relayout);
-  scene.events.once('shutdown', () => scene.scale.off('resize', relayout));
+  scene.events.once('shutdown', () => {
+    scene.scale.off('resize', relayout);
+    pillBg.destroy();
+  });
 
   return btn;
 }

@@ -10,11 +10,54 @@ export const MENU = {
 // Atlas art order: Ken wears the dark fleece; Kaya wears the cap and sunglasses.
 export const PORTRAITS = ['eugene', 'ken', 'lucien', 'kaya', 'jason', 'dhiwya', 'raj', 'lidiya', 'dharma', 'amanda', 'janeen'];
 
+export const MENU_SPRITE_FRAMES = [
+  'tool-squirtBottle', 'tool-lysolFogger', 'tool-bleachSoaker', 'tool-uvWand',
+  'tool-peroxideFoamer', 'tool-wipes', 'tool-gelLauncher', 'tool-defib',
+  'staff-omar', 'staff-alan', 'staff-donald', 'staff-selina',
+  'staff-elaine', 'staff-alexandra', 'germ-basic', 'germ-sprinter',
+  'germ-sneezer', 'germ-sporePod', 'germ-duo', 'germ-patientZero',
+  'ui-podium',
+] as const;
+
+export const MENU_BG_FRAMES = ['bg-providers', 'bg-locker', 'bg-board', 'bg-leaderboard'] as const;
+export type MenuBgFrame = typeof MENU_BG_FRAMES[number];
+
 export function registerPortraits(scene: Phaser.Scene): void {
   const texture = scene.textures.get('provider-portraits');
   const source = texture.getSourceImage() as HTMLImageElement;
   const w = source.width / 4, h = source.height / 3;
   PORTRAITS.forEach((id, i) => texture.add(id, 0, Math.round(i % 4 * w), Math.round(Math.floor(i / 4) * h), Math.floor(w), Math.floor(h)));
+
+  if (scene.textures.exists('menu-sprites')) {
+    const spriteTex = scene.textures.get('menu-sprites');
+    const sw = 200, sh = 190;
+    MENU_SPRITE_FRAMES.forEach((id, i) => {
+      if (!spriteTex.has(id)) {
+        spriteTex.add(id, 0, (i % 4) * sw, Math.floor(i / 4) * sh, sw, sh);
+      }
+    });
+  }
+
+  if (scene.textures.exists('menu-bgs')) {
+    const bgTex = scene.textures.get('menu-bgs');
+    const bw = 800, bh = 450;
+    MENU_BG_FRAMES.forEach((id, i) => {
+      if (!bgTex.has(id)) {
+        bgTex.add(id, 0, (i % 2) * bw, Math.floor(i / 2) * bh, bw, bh);
+      }
+    });
+  }
+}
+
+export function renderMenuBackground(scene: Phaser.Scene, frame: MenuBgFrame): void {
+  const w = scene.scale.width;
+  const h = scene.scale.height;
+  if (scene.textures.exists('menu-bgs') && scene.textures.get('menu-bgs').has(frame)) {
+    const bg = scene.add.image(w / 2, h / 2, 'menu-bgs', frame).setDepth(-20);
+    bg.setScale(Math.max(w / 800, h / 450));
+  } else {
+    scene.add.rectangle(w / 2, h / 2, w, h, MENU.paper).setDepth(-20);
+  }
 }
 
 export function menuButton(t: Phaser.GameObjects.Text, primary = false): Phaser.GameObjects.Text {

@@ -30,5 +30,5 @@ for (const url of local) {
 }
 const pwa = JSON.parse(readFileSync(resolve(root, 'manifest.webmanifest'), 'utf8'));
 for (const icon of pwa.icons) assert.ok(existsSync(resolve(root, icon.src)), `Missing icon: ${icon.src}`);
-for (const file of ['sw.js', 'version.json', 'assets/title.jpg', 'social-card.png']) assert.ok(existsSync(resolve(root, file)), `Missing ${file}`);
+for (const file of ['sw.js', 'version.json', 'assets/title.jpg', 'assets/menu-sprites.jpg', 'assets/menu-bgs.jpg', 'social-card.png']) assert.ok(existsSync(resolve(root, file)), `Missing ${file}`);
 console.log(`Verified shared web bundle: ${Object.keys(manifest.files).length} files; source ${manifest.source.slice(0, 12)}`);
