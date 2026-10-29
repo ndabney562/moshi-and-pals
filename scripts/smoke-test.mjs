@@ -52,9 +52,21 @@ page.on('console', (m) => m.type() === 'error' && errors.push(m.text()));
 const buttonAtIn = (pg, sceneKey, name) => pg.evaluate(([k, n]) => {
   const b = window.game.scene.getScene(k)[n];
   const canvas = window.game.canvas.getBoundingClientRect();
+  const bounds = b.getBounds ? b.getBounds() : { centerX: b.x, centerY: b.y };
+  const isPortrait = document.body.classList.contains('portrait');
+  if (isPortrait) {
+    const kw = canvas.height / window.game.scale.width;
+    const kh = canvas.width / window.game.scale.height;
+    return { x: canvas.right - bounds.centerY * kh, y: canvas.top + bounds.centerX * kw };
+  }
   const s = canvas.width / window.game.scale.width;
-  return { x: canvas.left + b.x * s, y: canvas.top + b.y * s };
+  return { x: canvas.left + bounds.centerX * s, y: canvas.top + bounds.centerY * s };
 }, [sceneKey, name]);
+
+const startShift = async (pg = page) => {
+  const at = await buttonAtIn(pg, 'Title', 'tap');
+  await pg.touchscreen.tap(at.x, at.y);
+};
 
 let failed = false;
 let passedChecks = 0;
@@ -72,7 +84,7 @@ try {
   await page.waitForFunction(() => window.game?.scene.isActive('Title'));
   await page.screenshot({ path: 'smoke-title.png' });
 
-  await page.touchscreen.tap(426, 200);
+  await startShift(page);
   await page.waitForFunction(() => window.game.scene.isActive('Hud'));
   await page.waitForTimeout(300);
 
@@ -1547,7 +1559,7 @@ try {
   check(atlas.length === 1 && /disinfected/.test(atlas[0]), `the Microbiology Atlas lists germs with lifetime kills (${atlas[0]})`);
   await tapText('Board', 'BACK');
   await page.waitForFunction(() => window.game.scene.isActive('Title'), null, { timeout: 10000 }).catch(() => {});
-  await page.touchscreen.tap(426, 120);
+  await startShift(page);
   await page.waitForFunction(() => window.game.scene.isActive('Hud'), null, { timeout: 15000 }).catch(() => {});
   const onShift = await page.evaluate(() => window.game.scene.getScene('Game').player.maxHp);
   check(onShift === 90, `a shift under Infectious Disease starts with its catch: 90 max health (${onShift})`);
@@ -1570,7 +1582,7 @@ try {
   dbg.on('pageerror', (e) => dbgErrors.push(where(e)));
   await dbg.goto(url + '?round=6&copays=999&god&fps=30');
   await dbg.waitForFunction(() => window.game?.scene.isActive('Title'));
-  await dbg.touchscreen.tap(426, 200);
+  await startShift(dbg);
   await dbg.waitForFunction(() => window.game.scene.getScene('Game')?.waves?.round === 6, null, { timeout: 90000 });
   await dbg.waitForTimeout(6000); // germs reach Eugene and bump him
   // Phaser 3.90 actualFps counts RAF callbacks before its FPS limiter. Count real scene updates instead.
@@ -1676,7 +1688,7 @@ try {
   }
   for (const mod of ['fluSeason', 'powerOutage', 'inspectionDay', 'shortStaffed', 'construction', 'fullMoon']) {
     const { c, p, errs } = await fresh17(`?mods=${mod}&god&copays=500`);
-    await p.touchscreen.tap(426, 120);
+    await startShift(p);
     await p.waitForFunction(() => window.game.scene.isActive('Hud'), null, { timeout: 30000 });
     const st = await p.evaluate((m) => {
       const sc = window.game.scene.getScene('Game');
@@ -1713,7 +1725,7 @@ try {
       label: window.game.scene.getScene('Title').difficultyButton.text,
       game: window.game.scene.isActive('Game'),
     }));
-    await p.touchscreen.tap(426, 120);
+    await startShift(p);
     await p.waitForFunction(() => window.game.scene.isActive('Hud'), null, { timeout: 30000 });
     const hard = await p.evaluate(() => {
       const sc = window.game.scene.getScene('Game');
@@ -1735,7 +1747,7 @@ try {
   pp.on('pageerror', (e) => tallErrors.push(where(e)));
   await pp.goto(url);
   await pp.waitForFunction(() => window.game?.scene.isActive('Title'));
-  await pp.touchscreen.tap(196, 426);
+  await startShift(pp);
   await pp.waitForFunction(() => window.game.scene.isActive('Hud'), null, { timeout: 15000 });
   await pp.waitForTimeout(400);
   const shape = await pp.evaluate(() => {
@@ -1870,7 +1882,7 @@ try {
     check(poor === 0, `with $100 left, no upgrade can be bought (${poor} tappable)`);
     await tapIn('Locker', 'BACK');
     await lp.waitForFunction(() => window.game.scene.isActive('Title'), null, { timeout: 10000 }).catch(() => {});
-    await lp.touchscreen.tap(426, 120);
+    await startShift(lp);
     await lp.waitForFunction(() => window.game.scene.isActive('Hud'), null, { timeout: 30000 }).catch(() => {});
     const tool = await lp.evaluate(() => {
       const d = window.game.scene.getScene('Game').sprayer.def;
@@ -1895,7 +1907,7 @@ try {
     pp2.on('pageerror', (e) => palErrors.push(where(e)));
     await pp2.goto(url + '?god', { timeout: 90000 });
     await pp2.waitForFunction(() => window.game?.scene.isActive('Title'));
-    await pp2.touchscreen.tap(426, 120);
+    await startShift(pp2);
     await pp2.waitForFunction(() => window.game.scene.isActive('Hud'), null, { timeout: 15000 });
     const start = await pp2.evaluate(() => {
       const sc = window.game.scene.getScene('Game');
@@ -1934,7 +1946,7 @@ try {
     kp.on('pageerror', (e) => kenErrors.push(where(e)));
     await kp.goto(url + '?god&doctor=ken', { timeout: 90000 });
     await kp.waitForFunction(() => window.game?.scene.isActive('Title'));
-    await kp.touchscreen.tap(426, 120);
+    await startShift(kp);
     await kp.waitForFunction(() => window.game.scene.isActive('Hud'), null, { timeout: 15000 });
     const ken = await kp.evaluate(() => {
       const sc = window.game.scene.getScene('Game');
@@ -2100,7 +2112,7 @@ try {
       `the Residency Board hires Omar for 12 CME (${JSON.stringify({ owned: afterHire.owned, credits: afterHire.credits })})`);
     await sp1.goto(url + '?god&scribe=alan&callout=none', { timeout: 90000 });
     await sp1.waitForFunction(() => window.game?.scene.isActive('Title'));
-    await sp1.touchscreen.tap(426, 120);
+    await startShift(sp1);
     await scribeWorks(sp1, 'alan');
     const pool1 = await sp1.evaluate(() => window.game.scene.getScene('Game').powerups.dropPool);
     check(!pool1.some((id) => id.startsWith('scribe')), `the scribes have no pill (${pool1.join(', ')})`);
@@ -2130,7 +2142,7 @@ try {
     sp2.on('pageerror', (e) => scribeErrors2.push(where(e)));
     await sp2.goto(url + '?god&scribe=omar&callout=none', { timeout: 90000 });
     await sp2.waitForFunction(() => window.game?.scene.isActive('Title'));
-    await sp2.touchscreen.tap(426, 120);
+    await startShift(sp2);
     await scribeWorks(sp2, 'omar');
     const drops = await sp2.evaluate(() => {
       const sc = window.game.scene.getScene('Game');
@@ -2215,7 +2227,7 @@ try {
     check(omarNext[0]?.includes('Employee of the Month'), `Omar skips Overtime on the STAFF shelf (${JSON.stringify(omarNext)})`);
     await tapIn('Locker', 'BACK');
     await fp.waitForFunction(() => window.game.scene.isActive('Title'), null, { timeout: 10000 }).catch(() => {});
-    await fp.touchscreen.tap(426, 120);
+    await startShift(fp);
     await fp.waitForFunction(() => window.game.scene.isActive('Hud'), null, { timeout: 60000 });
     const setup = await fp.evaluate(() => {
       const sc = window.game.scene.getScene('Game');
@@ -2269,7 +2281,7 @@ try {
     sp.on('pageerror', (e) => saveErrors.push(where(e)));
     await sp.goto(url + '?god&callout=none', { timeout: 90000 });
     await sp.waitForFunction(() => window.game?.scene.isActive('Title'), null, { timeout: 90000 });
-    await sp.touchscreen.tap(426, 120);
+    await startShift(sp);
     await sp.waitForFunction(() => window.game.scene.isActive('Hud'), null, { timeout: 60000 });
     const built = await sp.evaluate(() => {
       const sc = window.game.scene.getScene('Game');
@@ -2328,7 +2340,7 @@ try {
     mp.on('pageerror', (e) => cureErrors.push(where(e)));
     await mp.goto(url + '?god&copays=500', { timeout: 90000 });
     await mp.waitForFunction(() => window.game?.scene.isActive('Title'));
-    await mp.touchscreen.tap(426, 120);
+    await startShift(mp);
     await mp.waitForFunction(() => window.game.scene.isActive('Hud'), null, { timeout: 60000 });
     const clues = await mp.evaluate(() => {
       const sc = window.game.scene.getScene('Game');

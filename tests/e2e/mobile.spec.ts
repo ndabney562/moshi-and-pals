@@ -1,11 +1,11 @@
-import { test, expect, active, start } from '../helpers/game';
+import { test, expect, active, start, tapObject } from '../helpers/game';
 
 test('portrait rotates the canvas and a touch starts the game', async ({ page }) => {
   await page.setViewportSize({ width: 393, height: 852 });
   await page.goto('./?god&seed=123');
   await active(page, 'Title');
   await expect(page.locator('body')).toHaveClass(/portrait/);
-  await page.touchscreen.tap(193, 426);
+  await tapObject(page, 'Title', 'tap');
   await active(page, 'Hud');
   const bounds = await page.locator('canvas').boundingBox();
   expect(bounds!.width).toBeLessThanOrEqual(394);

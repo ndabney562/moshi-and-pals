@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 import { toTitle } from '../core/native';
+import { renderMenuTopPanel, renderBackButton, MenuHeaderComponents } from '../ui/menuHeader';
 import { COLORS as GAME_COLORS } from '../config/theme';
 import { MENU, restartOnMenuResize } from '../ui/menuTheme';
 const COLORS = { ...GAME_COLORS, uiText: MENU.ink, uiAccent: MENU.teal };
@@ -22,6 +23,7 @@ export class LockerScene extends Phaser.Scene {
   private header!: Phaser.GameObjects.Text;
   private shelf: 'tools' | 'staff' = 'tools';
   private tabs: { id: 'tools' | 'staff'; text: Phaser.GameObjects.Text }[] = [];
+  private topHeader?: MenuHeaderComponents;
 
   constructor() {
     super('Locker');
@@ -29,22 +31,32 @@ export class LockerScene extends Phaser.Scene {
 
   create(): void {
     restartOnMenuResize(this);
+    if (this.cameras?.main) {
+      this.cameras.main.fadeIn(150, 0, 0, 0);
+    }
     const { width, height } = this.scale;
     this.add.rectangle(0, 0, width, height, MENU.paper).setOrigin(0);
-    this.header = this.add.text(width / 2, 40, '', { fontFamily: font, fontSize: '38px', fontStyle: '900', color: COLORS.uiText }).setOrigin(0.5);
-    this.add.text(width / 2, 80, `${Math.round(LOCKER.bankShare * 100)}% of the Copays you earn on every shift come home here. Upgrades work on every shift after.`, {
-      fontFamily: font, fontSize: '17px', fontStyle: 'italic', color: COLORS.uiAccent,
+
+    // Standardized Top Panel: Single active tab badge '🧰 LOCKER'
+    this.topHeader = renderMenuTopPanel(this, 'locker');
+    this.events.once('shutdown', () => {
+      this.topHeader?.destroy();
+    });
+
+    this.header = this.add.text(width / 2, 40, '', { fontFamily: font, fontSize: '38px', fontStyle: '900', color: COLORS.uiText }).setOrigin(0.5).setVisible(false);
+    this.add.text(width / 2, 84, `${Math.round(LOCKER.bankShare * 100)}% of the Copays you earn on every shift come home here. Upgrades work on every shift after.`, {
+      fontFamily: font, fontSize: '16px', fontStyle: 'italic', color: COLORS.uiAccent,
     }).setOrigin(0.5).setWordWrapWidth(width - 60);
     this.tabs = (['tools', 'staff'] as const).map((id, i) => ({
       id,
-      text: this.add.text(width / 2 + (i - 0.5) * 200, 116, id === 'tools' ? 'TOOLS' : 'STAFF', {
+      text: this.add.text(width / 2 + (i - 0.5) * 200, 118, id === 'tools' ? 'TOOLS' : 'STAFF', {
         fontFamily: font, fontSize: '18px', fontStyle: 'bold', color: COLORS.uiText, backgroundColor: '#eeeade', padding: { x: 18, y: 7 },
       }).setOrigin(0.5).setInteractive({ useHandCursor: true }).on('pointerup', () => { this.shelf = id; this.draw(); }),
     }));
     this.body = this.add.container(0, 0);
-    this.add.text(width / 2, height - 40, 'BACK', {
-      fontFamily: font, fontSize: '26px', fontStyle: 'bold', color: COLORS.uiText, backgroundColor: '#e4e6dc', padding: { x: 44, y: 12 },
-    }).setOrigin(0.5).setInteractive({ useHandCursor: true }).on('pointerup', () => toTitle(this));
+
+    // Standardized bottom-left BACK button
+    renderBackButton(this, () => toTitle(this));
     this.input.keyboard?.on('keydown-ESC', () => toTitle(this));
     this.draw();
   }

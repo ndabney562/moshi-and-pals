@@ -1,4 +1,4 @@
-import { test, expect, active } from '../helpers/game';
+import { test, expect, active, tapObject } from '../helpers/game';
 
 test('native host receives boot snapshot, validates settings, starts and exits', async ({ page }) => {
   await page.addInitScript(() => {
@@ -29,7 +29,7 @@ test('@smoke a shared native-query link without the app host stays playable', as
   await page.goto('./?native&god&seed=123');
   await active(page, 'Title');
   expect(await page.evaluate(() => typeof window.moshiNative)).toBe('undefined');
-  await page.touchscreen.tap(426, 200);
+  await tapObject(page, 'Title', 'tap');
   await active(page, 'Hud');
 });
 
@@ -37,6 +37,6 @@ test('the same bundle runs from a root index.html URL used by the native scheme'
   const origin = new URL(baseURL!).origin;
   await page.goto(`${origin}/index.html?god&seed=123`);
   await active(page, 'Title');
-  await page.touchscreen.tap(426, 200);
+  await tapObject(page, 'Title', 'tap');
   await active(page, 'Hud');
 });

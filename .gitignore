@@ -19,3 +19,5 @@ coverage/
 
 # Local provider reference photos; excluded from published game assets
 .local/provider-references/
+moshi-and-pals-*.PNG
+output/
