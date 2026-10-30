@@ -2,7 +2,7 @@ import Phaser from 'phaser';
 import { toTitle } from '../core/native';
 import { transitionTo, renderMenuTopPanel, renderBackButton, MenuHeaderComponents } from '../ui/menuHeader';
 import { COLORS as GAME_COLORS } from '../config/theme';
-import { MENU, renderMenuBackground, restartOnMenuResize } from '../ui/menuTheme';
+import { MENU, renderMenuBackground, restartOnMenuResize, queueMenuArt } from '../ui/menuTheme';
 const COLORS = { ...GAME_COLORS, uiText: MENU.ink, uiAccent: MENU.teal };
 import type { ShiftMode } from '../core/shift';
 import type { DifficultyId } from '../data/difficulties';
@@ -32,6 +32,10 @@ export class LeaderboardScene extends Phaser.Scene {
     if (data?.returnTo) this.returnTo = data.returnTo;
     if (data?.mode) this.mode = data.mode;
     if (data?.difficulty) this.difficulty = data.difficulty;
+  }
+
+  preload(): void {
+    queueMenuArt(this);
   }
 
   create(): void {

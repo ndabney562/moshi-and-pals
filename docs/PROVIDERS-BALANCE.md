@@ -14,6 +14,8 @@ October 26, 2026. The user approved all seven first/second ability designs and t
 
 All second abilities have separate buttons/cooldowns, use F on a keyboard, require the provider to be hired and the second ability purchased, and spend NPS only after confirmation. Q activates the first. Existing saved hires remain owned. The dedicated Providers scene supports all eleven providers and is opened by both the web title and the iOS Play menu.
 
+**Intentional (Noah, Oct 30, 2026):** Janeen's 4x damage, +250 HP and 10,000 NPS price and Amanda's 1% movement and damage are jokes on purpose, not bugs. Don't rebalance them.
+
 Janeen is strongest at equivalent tools/upgrades, including comparison with Lidiya's doubled solo multiplier. The game permits unlimited health-snack purchases; this does not claim an unupgraded Janeen has more health than an arbitrarily upgraded different run. No existing snack caps or saves were silently changed.
 
 Call-out scheduling, trainee events, the full distraction event system, Flu Season, Alexandra and the shared leaderboard remain separate expansion milestones. Rally abilities gather active combat helpers and clear their interruption flag; the separate random distraction system has not been shipped here. Standard shift saves restart the round with temporary effects fresh, as before. Raj's consumed pantry is explicitly persisted and restored; Lidiya's companion identity is derived from the run seed and returns when upstairs is open.

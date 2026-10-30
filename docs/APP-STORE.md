@@ -10,7 +10,7 @@ Status as of Oct 30, 2026. **[Noah]** marks steps only Noah can do (Apple accoun
   archive from main is higher than the last. Version (`MARKETING_VERSION`) is set by hand.
 - `ITSAppUsesNonExemptEncryption = NO` in `ios/Config/Info.plist`: no export-compliance question per upload.
 - No team or brand logos in the art: the logos on Kaya's cap are painted out of `title.jpg` and
-  `social-card.png`.
+  `social-card.jpg`.
 - Game Center entitlement; IDs to create are in `docs/GAME-CENTER.md`.
 - Consent: Noah has OK'd it with everyone the game depicts or names (confirmed Oct 30, 2026).
   Noah approved the painted cap the same day.

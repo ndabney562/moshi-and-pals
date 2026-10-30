@@ -20,7 +20,7 @@ teal and mint, and baby caricatures matching the original title illustration.
 
 ## Art provenance
 
-`public/assets/provider-portraits.png` was generated with the built-in imagegen
+`public/assets/provider-portraits.jpg` (a PNG until Oct 30, 2026) was generated with the built-in imagegen
 tool from the approved `docs/previews/menu-concept-v2.png`. No source photos
 were added to public assets. Prompt: an exact four-column, three-row uniform
 portrait atlas, ivory backgrounds, glossy softly rendered three-quarter baby

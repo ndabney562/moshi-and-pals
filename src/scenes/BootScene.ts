@@ -19,9 +19,8 @@ export class BootScene extends Phaser.Scene {
   preload(): void {
     // Noah's title art (Moshi and Pals poster)
     this.load.image('title-art', 'assets/title.jpg');
-    this.load.image('provider-portraits', 'assets/provider-portraits.png');
-    this.load.image('menu-sprites', 'assets/menu-sprites.jpg');
-    this.load.image('menu-bgs', 'assets/menu-bgs.jpg');
+    this.load.image('provider-portraits', 'assets/provider-portraits.jpg');
+    // (The menu art loads later: see queueMenuArt in ui/menuTheme.ts)
   }
 
   create(): void {

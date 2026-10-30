@@ -22,11 +22,33 @@ export const MENU_SPRITE_FRAMES = [
 export const MENU_BG_FRAMES = ['bg-providers', 'bg-locker', 'bg-board', 'bg-leaderboard'] as const;
 export type MenuBgFrame = typeof MENU_BG_FRAMES[number];
 
+/** Art only the Providers, Locker, Board and Leaderboard screens use: not loaded at boot. */
+const MENU_ART = { 'menu-sprites': 'assets/menu-sprites.jpg', 'menu-bgs': 'assets/menu-bgs.jpg' } as const;
+
+/** Queues whatever menu art isn't loaded yet. Menu scenes call it from preload(), so they wait for it. */
+export function queueMenuArt(scene: Phaser.Scene): boolean {
+  const missing = Object.entries(MENU_ART).filter(([key]) => !scene.textures.exists(key));
+  if (!missing.length) return false;
+  for (const [key, url] of missing) scene.load.image(key, url);
+  scene.load.once(Phaser.Loader.Events.COMPLETE, () => registerMenuFrames(scene));
+  return true;
+}
+
+/** The title calls this once it's showing: the menu art arrives in the background, before most taps. */
+export function preloadMenuArt(scene: Phaser.Scene): void {
+  if (queueMenuArt(scene)) scene.load.start();
+}
+
 export function registerPortraits(scene: Phaser.Scene): void {
   const texture = scene.textures.get('provider-portraits');
   const source = texture.getSourceImage() as HTMLImageElement;
   const w = source.width / 4, h = source.height / 3;
-  PORTRAITS.forEach((id, i) => texture.add(id, 0, Math.round(i % 4 * w), Math.round(Math.floor(i / 4) * h), Math.floor(w), Math.floor(h)));
+  PORTRAITS.forEach((id, i) => { if (!texture.has(id)) texture.add(id, 0, Math.round(i % 4 * w), Math.round(Math.floor(i / 4) * h), Math.floor(w), Math.floor(h)); });
+  registerMenuFrames(scene);
+}
+
+/** Frames of the menu art, once it's loaded (safe to call again). */
+export function registerMenuFrames(scene: Phaser.Scene): void {
 
   if (scene.textures.exists('menu-sprites')) {
     const spriteTex = scene.textures.get('menu-sprites');

@@ -1,7 +1,7 @@
 import Phaser from 'phaser';
 import { renderMenuTopPanel, renderBackButton, transitionTo, MenuHeaderComponents } from '../ui/menuHeader';
 import { COLORS as GAME_COLORS } from '../config/theme';
-import { MENU, renderMenuBackground, restartOnMenuResize } from '../ui/menuTheme';
+import { MENU, renderMenuBackground, restartOnMenuResize, queueMenuArt } from '../ui/menuTheme';
 const COLORS = { ...GAME_COLORS, uiText: MENU.ink, uiAccent: MENU.teal };
 import { LOCKER, STAFF } from '../config/locker';
 import { sfx } from '../core/sfx';
@@ -28,6 +28,10 @@ export class LockerScene extends Phaser.Scene {
 
   constructor() {
     super('Locker');
+  }
+
+  preload(): void {
+    queueMenuArt(this);
   }
 
   create(): void {
