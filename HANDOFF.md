@@ -8,23 +8,22 @@ public-facing.
 docs/MY_CONTRIBUTIONS.md, docs/APP-STORE.md. History: docs/HANDOFF-ARCHIVE.md.
 
 ## Done
-- Step 1, menus option A: PR #92 (web title and menus in the app). Its iOS CI
-  fix builds with the newest Xcode on the runner so it matches the iOS 26
-  simulator; the old mismatch lost or crashed synthesized taps.
-- Step 2, App Store compliance: draft PR #93, stacked on #92. Privacy policy,
+- Step 1, menus option A: PR #92 merged to main (f80d936, Oct 30, 2026) after
+  iOS CI went green on the macos-26 runner with the newest Xcode. The old
+  Xcode 16.4 + iOS 26 simulator mismatch lost or crashed synthesized taps;
+  macos-15 runners were unavailable during a GitHub Actions incident.
+- Step 2, App Store compliance: draft PR #93, now based on main. Privacy policy,
   build number = commit count, logos painted off Kaya's cap (Noah approved),
   docs/APP-STORE.md. Noah has consent from every real person in the game.
 
 ## In progress
-- #92's iOS CI re-run (run 41096525987) is waiting for a GitHub macOS runner
-  ("capacity constraints"); the first attempt was never picked up.
+- #93's CI on main. Noah said to merge approved PRs when green.
 
 ## Next step (exact)
-1. [Claude] When run 41096525987 finishes: if green, tell Noah to merge #92;
-   if red, read its xcresult artifact and fix on `feat/menus-option-a`. If it
-   is still queued after an hour, try `runs-on: macos-26` in ios.yml.
-2. [Noah] Merge #92. [Claude] Retarget #93 to main (`gh pr edit 93 --base main`),
-   confirm its CI, then Noah merges.
+1. [Claude] When #93's checks (web + iOS) are green: `gh pr ready 93` and
+   `gh pr merge 93 --merge`. Then check the privacy page is live at
+   https://ndabney562.github.io/moshi-and-pals/privacy.html (Pages deploy).
+2. [Claude] Ask Noah before deleting merged branches (step 4 hygiene).
 3. [Noah] Set the Team in Xcode, create the Game Center IDs from
    docs/GAME-CENTER.md, then the TestFlight steps in docs/APP-STORE.md.
 4. [Claude] Step 3, polish and weight: title-art seams at iPhone landscape
