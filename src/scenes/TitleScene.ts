@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { MENU, menuButton } from '../ui/menuTheme';
+import { MENU, menuButton, preloadMenuArt } from '../ui/menuTheme';
 import { renderMenuTopPanel, MenuHeaderComponents } from '../ui/menuHeader';
 import { DISPLAY } from '../config/display';
 import { COLORS } from '../config/theme';
@@ -67,7 +67,9 @@ export class TitleScene extends Phaser.Scene {
     if (this.cameras?.main) {
       this.cameras.main.fadeIn(150, 0, 0, 0);
     }
-    this.bgArt = this.add.image(0, 0, 'title-art').setOrigin(0.5, 0.5).setAlpha(0.55).setTint(0xaaccee);
+    this.bgArt = this.add.image(0, 0, 'title-art').setOrigin(0.5, 0.5).setTint(0x8899aa);
+    // Only very wide windows see it, beside the poster: soft enough that its edges don't read as seams
+    this.bgArt.preFX?.addBlur(1, 2, 2, 2);
     this.art = this.add.image(0, 0, 'title-art').setOrigin(0.5, 0.5);
     if (!settings.reducedMotion) this.tweens.add({ targets: this.art, alpha: { from: 0, to: 1 }, duration: 400 });
     this.menuCards = this.add.graphics();
@@ -178,6 +180,7 @@ export class TitleScene extends Phaser.Scene {
 
     this.layout();
     this.scale.on('resize', this.layout, this);
+    preloadMenuArt(this);
     this.events.once('shutdown', () => {
       this.scale.off('resize', this.layout, this);
       this.topHeader?.destroy();
@@ -221,11 +224,18 @@ export class TitleScene extends Phaser.Scene {
     const availH = bottomBarY - topBarH;
     const centerY = topBarH + availH / 2 + 6;
 
-    const bgK = Math.max(w / this.bgArt.width, h / this.bgArt.height);
-    this.bgArt.setScale(bgK).setPosition(w / 2, h / 2).setAlpha(0.75).clearTint();
-
-    const k = Math.min(w / this.art.width, (h - topBarH * 0.7) / this.art.height);
-    this.art.setScale(k).setPosition(w / 2, centerY);
+    if (w / h <= DISPLAY.titleCoverMaxAspect) {
+      // Fill the screen: no copy beside the poster, so no seams. Crop mostly from the floor behind the pills.
+      const k = Math.max(w / this.art.width, h / this.art.height);
+      const extra = this.art.height * k - h;
+      this.art.setScale(k).setPosition(w / 2, h / 2 + extra * (0.5 - DISPLAY.titleCropTop));
+      this.bgArt.setVisible(false);
+    } else {
+      const bgK = Math.max(w / this.bgArt.width, h / this.bgArt.height);
+      this.bgArt.setVisible(true).setScale(bgK).setPosition(w / 2, h / 2);
+      const k = Math.min(w / this.art.width, (h - topBarH * 0.7) / this.art.height);
+      this.art.setScale(k).setPosition(w / 2, centerY);
+    }
 
     this.menuCards.clear();
     // Subtle bottom vignette so floating pills pop over floor reflections without a solid slab

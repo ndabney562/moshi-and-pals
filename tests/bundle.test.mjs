@@ -6,13 +6,13 @@ import { join, resolve } from 'node:path';
 import { execFileSync, spawnSync } from 'node:child_process';
 
 const verifier = resolve('scripts/verify-web-bundle.mjs');
-function alteredBundle(change) {
+function alteredBundle(change, args = []) {
   const temporary = mkdtempSync(join(tmpdir(), 'moshi-bundle-test-'));
   const bundle = join(temporary, 'web');
   try {
     cpSync('dist', bundle, { recursive: true });
     change(bundle);
-    return spawnSync(process.execPath, [verifier, bundle], { encoding: 'utf8' });
+    return spawnSync(process.execPath, [verifier, bundle, ...args], { encoding: 'utf8' });
   } finally { rmSync(temporary, { recursive: true, force: true }); }
 }
 test('iOS receives the identical sealed artifact, including browser-only files', () => {
@@ -34,4 +34,9 @@ test('verification rejects a bundle sealed against older sources', () => {
   });
   assert.notEqual(result.status, 0);
   assert.match(result.stderr, /Web bundle is stale/);
+});
+test('verification rejects an image over its size budget, even when sealed', () => {
+  const result = alteredBundle((bundle) => writeFileSync(join(bundle, 'assets', 'huge.png'), Buffer.alloc(600 * 1024)), ['--seal']);
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /assets\/huge\.png is 600 KB; images must be ≤ 512 KB/);
 });

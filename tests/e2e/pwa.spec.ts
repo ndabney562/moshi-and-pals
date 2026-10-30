@@ -66,9 +66,9 @@ test('a worker upgrade keeps the previous build available for offline reload', a
 test('sharing metadata resolves to a real preview image and asset misses return 404', async ({ page, request }) => {
   await page.goto('./');
   await active(page, 'Title');
-  expect(await page.locator('meta[property="og:image"]').getAttribute('content')).toBe('https://ndabney562.github.io/moshi-and-pals/social-card.png');
-  const preview = await request.get('./social-card.png');
+  expect(await page.locator('meta[property="og:image"]').getAttribute('content')).toBe('https://ndabney562.github.io/moshi-and-pals/social-card.jpg');
+  const preview = await request.get('./social-card.jpg');
   expect(preview.ok()).toBe(true);
-  expect(preview.headers()['content-type']).toContain('image/png');
+  expect(preview.headers()['content-type']).toContain('image/jpeg');
   expect((await request.get('./assets/definitely-missing.js')).status()).toBe(404);
 });

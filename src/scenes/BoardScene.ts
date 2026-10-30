@@ -1,7 +1,7 @@
 import Phaser from 'phaser';
 import { renderMenuTopPanel, renderBackButton, transitionTo, MenuHeaderComponents } from '../ui/menuHeader';
 import { COLORS as GAME_COLORS } from '../config/theme';
-import { MENU, renderMenuBackground, restartOnMenuResize } from '../ui/menuTheme';
+import { MENU, renderMenuBackground, restartOnMenuResize, queueMenuArt } from '../ui/menuTheme';
 const COLORS = { ...GAME_COLORS, uiText: MENU.ink, uiAccent: MENU.teal };
 import { buy, chooseSpecialty, chooseStartTool, progress } from '../core/progress';
 import { ATLAS, ATLAS_UNLOCK_KILLS } from '../data/atlas';
@@ -47,6 +47,10 @@ export class BoardScene extends Phaser.Scene {
   init(data?: { tab?: Tab }): void {
     if (data?.tab) this.tab = data.tab;
     this.atlasPage = 0;
+  }
+
+  preload(): void {
+    queueMenuArt(this);
   }
 
   create(): void {

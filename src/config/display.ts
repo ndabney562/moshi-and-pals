@@ -14,4 +14,11 @@ export const DISPLAY = {
   /** START: the title fades to black, then the clinic fades in from black. */
   fadeOutMs: 450,
   fadeInMs: 650,
+  /**
+   * Title poster: up to this screen aspect (every iPhone in landscape is ~2.17) the poster fills the screen,
+   * cropping its top and bottom; wider windows show the whole poster over a blurred, dimmed copy.
+   */
+  titleCoverMaxAspect: 2.35,
+  /** Share of the poster's cropped height taken from the top (the rest from the floor behind the bottom pills). */
+  titleCropTop: 0.2,
 };

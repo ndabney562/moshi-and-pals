@@ -1,5 +1,17 @@
 # Changelog
 
+## Polish and weight
+
+- **The title poster fills iPhone screens.** In landscape it now covers the whole screen, cropping a
+  little from the top and more from the floor behind the bottom pills, so there's no faded copy beside
+  it and no seams. Only very wide desktop windows still show the whole poster, over a blurred copy.
+- **The stats pill makes room for the gear** (the "$0" used to run into it).
+- **Half the download.** The provider portraits (2.3 MB → 321 KB) and the social card (1.0 MB → 278 KB)
+  are JPEGs now; the menu art loads in the background once the title is up, and each menu waits for it.
+  The bundle is 3.4 MB, down from about 6.6 MB.
+- **Size budgets in CI.** The bundle check fails the build if an image passes 512 KB, a script 1.8 MB or
+  the whole bundle 4 MB.
+
 ## App Store compliance
 
 - **Privacy policy.** `privacy.html` on the site says the game collects no personal data; the

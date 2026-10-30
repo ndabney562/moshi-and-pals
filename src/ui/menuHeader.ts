@@ -223,15 +223,15 @@ export function renderMenuTopPanel(
     } else {
       npsText.setFontSize(13).setText(`⭐ ${p.nps.toLocaleString()} NPS  ·  🎓 ${p.credits} CME  ·  💵 $${p.bank.toLocaleString()}`);
     }
-    settingsButton.setPosition(right - 6, centerY);
-    npsText.setPosition(right - 34, centerY);
+    // Gear, divider, then the stats, each with its own room (the stats used to run into the gear)
+    settingsButton.setPosition(right - 8, centerY);
+    npsText.setPosition(right - 46, centerY);
 
-    const statsPillW = npsText.width + 48;
+    const statsPillW = npsText.width + 62;
     const statsPillH = 40;
     const statsPillX = right - statsPillW;
     drawGlassPill(statsPillX, centerY - statsPillH / 2, statsPillW, statsPillH, 16);
-    // Subtle vertical divider before gear icon
-    bar.lineStyle(1, 0x38bdf8, 0.35).lineBetween(right - 30, centerY - 11, right - 30, centerY + 11);
+    bar.lineStyle(1, 0x38bdf8, 0.35).lineBetween(right - 38, centerY - 11, right - 38, centerY + 11);
 
     // 2. Center Tab Pills
     if (activeTab === 'title') {

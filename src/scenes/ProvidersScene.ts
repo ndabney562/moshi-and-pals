@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { MENU, renderMenuBackground } from '../ui/menuTheme';
+import { MENU, renderMenuBackground, queueMenuArt } from '../ui/menuTheme';
 import { readSafeArea } from '../core/safeArea';
 import { CHARACTERS } from '../data/characters';
 import { buySecond, doctorUnlocked, hireDoctor, progress, secondUnlocked } from '../core/progress';
@@ -13,6 +13,10 @@ export class ProvidersScene extends Phaser.Scene {
   private content?: Phaser.GameObjects.Container;
   private topHeader?: MenuHeaderComponents;
   constructor() { super('Providers'); }
+
+  preload(): void {
+    queueMenuArt(this);
+  }
 
   create(): void {
     if (this.cameras?.main) {
