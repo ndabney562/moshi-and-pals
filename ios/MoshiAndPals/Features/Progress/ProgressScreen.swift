@@ -23,6 +23,7 @@ struct ProgressScreen: View {
 
 private struct ProgressContent: View {
     let model: ProgressViewModel
+    @Environment(GameCenterService.self) private var gameCenter: GameCenterService?
 
     private let columns = [GridItem(.adaptive(minimum: 140), spacing: Theme.Spacing.s)]
 
@@ -88,6 +89,21 @@ private struct ProgressContent: View {
                     }
                 }
                 .accessibilityIdentifier("atlasLink")
+
+                if let gameCenter, gameCenter.isAuthenticated {
+                    Button {
+                        gameCenter.showDashboard()
+                    } label: {
+                        Label {
+                            Text("Game Center")
+                                .font(Theme.Typography.headline)
+                        } icon: {
+                            Image(systemName: "gamecontroller.fill")
+                                .foregroundStyle(Theme.Palette.brand)
+                        }
+                    }
+                    .accessibilityIdentifier("gameCenterLink")
+                }
             }
         }
         .listStyle(.insetGrouped)

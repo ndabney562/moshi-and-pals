@@ -6,6 +6,7 @@ import SwiftUI
 struct RootView: View {
     let game: GameLayerKind
     @Environment(GameStore.self) private var store
+    @Environment(GameCenterService.self) private var gameCenter: GameCenterService?
     @State private var tab: AppTab = .play
 
     private var isPlaying: Bool { store.presentedScreen != nil }
@@ -27,6 +28,9 @@ struct RootView: View {
         .persistentSystemOverlays(isPlaying ? .hidden : .automatic)
         .onChange(of: isPlaying, initial: true) { _, playing in
             Orientation.lock(playing ? .landscape : .portrait)
+        }
+        .onChange(of: store.snapshot, initial: true) { _, snapshot in
+            gameCenter?.report(snapshot)
         }
         .tint(Theme.Palette.brand)
     }

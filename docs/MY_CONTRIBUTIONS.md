@@ -24,6 +24,7 @@
 - Asked for a native iPhone app (SwiftUI, buildable from GitHub) and picked the native shell with the game bundled inside (v0.32.0).
 
 ## Requested now
+- Game Center: set your Team in Xcode, turn on Game Center for the app in App Store Connect, and create the 3 leaderboards and 34 achievements in `docs/GAME-CENTER.md` (pick points and images). Then sign in to Game Center on your phone, play a shift, and check Progress → Game Center.
 - v0.32.0 iPhone app: open `ios/MoshiAndPals.xcodeproj`, set your Team under Signing & Capabilities, and run it on your phone. Do the haptics feel right? Too many, too few? A 1024 px version of the app icon would make it sharper.
 - Playtest v0.26.0: how many shifts did it take to hire Dr. Kaya (30 NPS)? Are Lucien (45) and Ken (60) worth the wait, and do they feel stronger than Eugene?
 - Playtest v0.19.0 **Today's Shift** (📋 on the title screen) for a few days, and try Walk-In and Trauma Center. Rename any modifier, rewrite their jokes (`src/data/modifiers.ts`), or pitch new ones. Testers can force any: `?mods=powerOutage,fullMoon`.
