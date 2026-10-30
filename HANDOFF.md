@@ -12,26 +12,25 @@ docs/MY_CONTRIBUTIONS.md, docs/APP-STORE.md. History: docs/HANDOFF-ARCHIVE.md.
   iOS CI went green on the macos-26 runner with the newest Xcode. The old
   Xcode 16.4 + iOS 26 simulator mismatch lost or crashed synthesized taps;
   macos-15 runners were unavailable during a GitHub Actions incident.
-- Step 2, App Store compliance: draft PR #93, now based on main. Privacy policy,
+- Step 2, App Store compliance: PR #93 merged (487894d). Privacy policy,
   build number = commit count, logos painted off Kaya's cap (Noah approved),
   docs/APP-STORE.md. Noah has consent from every real person in the game.
-
 - Step 3, polish and weight: PR #94 merged to main (24dca68, Oct 30, 2026).
   Lazy menu art, JPEG portraits and social card, bundle size budgets.
-
-## In progress
-- Step 4 (hygiene): branch `chore/hygiene`, stacked on #94. Version 0.35.0
-  (package.json, lockfile, MARKETING_VERSION x4); CHANGELOG grouped into
-  v0.34.0 and v0.35.0; one-off QA/audit docs and docs/reviews moved to
-  docs/archive/. Janeen and Amanda's numbers are intentional (Noah).
+- Step 4, hygiene: PR #95 merged (ca80e45, Oct 30, 2026). v0.35.0, versioned
+  CHANGELOG, one-off docs in docs/archive/. Live on Pages: version.json says
+  v0.35.0 (ca80e45); privacy.html returns 200.
+- Janeen and Amanda's numbers are intentional (Noah).
 - Branches: Noah deleted 67 stale remote branches (Oct 30, 2026). Their
   commit IDs are in ~/Desktop/AI.Stuff/Local.Stuff/moshi-branch-backup-2026-10-30.txt
   (outside the repo) for restoring any of them.
 
+## In progress
+- Nothing. Waiting on Noah for Apple setup and screenshot scenes.
+
 ## Next step (exact)
-1. [Claude] Open the hygiene PR against main and merge when green.
-2. [Noah] Team in Xcode, Game Center IDs, TestFlight (docs/APP-STORE.md).
-3. [Claude] Screenshots for the App Store (6.9" and 6.5" landscape); Noah picks
+1. [Noah] Team in Xcode, Game Center IDs, TestFlight (docs/APP-STORE.md).
+2. [Claude] Screenshots for the App Store (6.9" and 6.5" landscape); Noah picks
    the scenes.
 
 ## Blockers
