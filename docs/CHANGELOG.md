@@ -1,6 +1,8 @@
 # Changelog
 
-## Polish and weight
+## v0.35.0: Ready for the App Store
+
+### Polish and weight
 
 - **The title poster fills iPhone screens.** In landscape it now covers the whole screen, cropping a
   little from the top and more from the floor behind the bottom pills, so there's no faded copy beside
@@ -12,7 +14,7 @@
 - **Size budgets in CI.** The bundle check fails the build if an image passes 512 KB, a script 1.8 MB or
   the whole bundle 4 MB.
 
-## App Store compliance
+### App Store compliance
 
 - **Privacy policy.** `privacy.html` on the site says the game collects no personal data; the
   only thing that leaves the phone is Game Center scores and achievements, when you're signed in.
@@ -24,7 +26,7 @@
 - **`docs/APP-STORE.md`**: what's done, what Noah does before the first upload (consent from the
   real people in the game, App Store Connect answers, screenshots) and the TestFlight steps.
 
-## iPhone app: the web title and menus (option A)
+### iPhone app: the web title and menus (option A)
 
 - **The app shows the game's own title screen and menus.** `?native` boots to
   Title like a browser does, and leaving a shift or menu returns to Title. The
@@ -46,7 +48,7 @@
   if the page counted no touch (CI's starved runner can lose one), and gives the
   shift 90 s to start.
 
-## App Store readiness
+### App Store readiness
 
 - **iOS privacy manifest**: added `PrivacyInfo.xcprivacy` to the app bundle. It
   declares no tracking and no collected data, plus the two required-reason APIs
@@ -61,14 +63,16 @@
   listed in `docs/GAME-CENTER.md`. The web build is unchanged, and its online
   leaderboard is still off.
 
-## Spore Pod State Readability Prototype
+## v0.34.0: Helpers, Flu Season and the illustrated menus
+
+### Spore Pod State Readability Prototype
 
 - **Enhanced Carapace Silhouette**: Added a reinforced forward-facing shield brow covering the front 120° protected arc on `germ-sporePod`, making its armored face instantly recognizable at any angle or scale on mobile.
 - **Flipped / Vulnerable State Art (`germ-sporePod-flipped`)**: When knocked onto its back via Sinus Purge, the Spore Pod swaps to a cracked, open-shell texture exposing its soft vulnerable belly with dazed spiral eyes and flailing cilia/feet, automatically reverting when the purge timer expires.
 - **Invariants Preserved**: Armor multipliers (0.25× front, 1.5× back/flipped), HP (50), turn speed, knockback resistance, and purge duration remain 100% unchanged.
 - **Testing**: Added unit test coverage in `tests/unit/spore-pod.test.ts` (2 passed) and Playwright browser regression test in `tests/e2e/spore-pod.spec.ts` (2 passed across Chromium and WebKit).
 
-## Illustrated menu remaster
+### Illustrated menu remaster
 
 - Rebuilt the title layout with an unobstructed clinic illustration, rounded
   navigation and a clear Start Shift action; retained real saved balances,
@@ -82,7 +86,7 @@
 - Added browser coverage for menu bounds, roster selection, saved shifts and
   delayed leaderboard responses. See `MENU-VISUAL-PASS.md` for QA and art provenance.
 
-## Shared Online Leaderboard Backend & Integration (Milestone 6)
+### Shared Online Leaderboard Backend & Integration (Milestone 6)
 
 - **Cloudflare Worker & D1 backend**: Lightweight backend in `worker/index.ts` with strict $0 tier compliance (capped request sizes <= 2KB, parameterized SQL queries, edge response caching via `Cache-Control: public, max-age=15`, CORS headers, and `/api/health` probe).
 - **D1 database schema**: Indexed SQL schema (`worker/schema.sql`) tracking mode, difficulty, provider, score, round, streak, and kills.
@@ -92,7 +96,7 @@
 - **Offline & unprovisioned safety**: Client functions safely handle unprovisioned or offline environments without crashing gameplay, throwing unhandled exceptions, or spamming console errors.
 - **Testing**: Added unit test coverage in `tests/unit/leaderboard-api.test.ts` (6 passed) and Playwright E2E browser tests in `tests/e2e/leaderboard.spec.ts` (4 passed across Chromium and WebKit).
 
-## Endless Flu Season Mode (Milestone 5)
+### Endless Flu Season Mode (Milestone 5)
 
 - **Dedicated infinite shift mode**: Endless Flu Season (`mode: 'fluSeason'`) runs as an independent infinite mode, keeping mode-specific score records distinct from standard Walk-In, Urgent, and Trauma records.
 - **Continuous waves & rising outbreak pressure**: WaveDirector delivers continuous waves (`BALANCE.fluSeasonMode.outbreakPressure`), scaling germ count (`14 + 4*(r-1) + 0.25*(r-1)^2`), max on-screen limit (up to 34), cadence (`180ms - 680ms`), and HP/speed. Viral Sprinters and Sneezers appear from wave 1 with elevated spawn weights.
@@ -101,7 +105,7 @@
 - **Save & Quit persistence**: Active shift mode persists in `ShiftSave` (`mode: 'fluSeason'`), resuming seamlessly via CONTINUE SHIFT.
 - **Testing**: Full unit coverage in `tests/unit/flu-season-mode.test.ts` and Chromium/WebKit Playwright E2E coverage in `tests/e2e/flu-season-mode.spec.ts`.
 
-## Alexandra, Premium Masked-Essence Combat Helper (Milestone 4)
+### Alexandra, Premium Masked-Essence Combat Helper (Milestone 4)
 
 - **Alexandra added to Scribe roster**: Original floating essence with a black medical mask, cyan aura, and undulating cloud hover animation (`scribe-alexandra`).
 - **Combat output exceeding combined scribes**: Fires multi-target ink/steam bursts (`everyMs: 700`, `damage: 45`, `targets: 4`, `range: 360`) delivering 64.3 single-target DPS and up to 257.1 multi-target DPS, exceeding Omar, Alan, and Donald combined.
@@ -109,7 +113,7 @@
 - **Helper framework integration**: Inherits provider affinity damage scaling, in-character attendance reasons, and distraction/reactivation events; marked ineligible for trainees.
 - **Testing**: Added unit test coverage in `tests/unit/alexandra.test.ts` and Playwright E2E browser regression tests in `tests/e2e/alexandra.spec.ts`.
 
-## In-World Distractions & Patient Imaging (Milestone 3)
+### In-World Distractions & Patient Imaging (Milestone 3)
 
 - **Random mid-shift in-world distractions**: Combat helpers (Omar, Alan, Donald) can be drawn to clinic distraction points (coffee maker, charts, union handbook, etc.) at round start (`BALANCE.distractions.chancePerRound = 0.18`).
 - **Player intervention & reactivation**: Stepping within 75 px (`interventionRange`) of a distracted helper reactivates them, returning them to following the provider with in-character reactivation dialogue.
@@ -119,7 +123,7 @@
 - **ShiftSave persistence**: Active distractions and imaging assignments serialize remaining ms and coordinates in `ShiftSave.distractions`, restoring cleanly without timer loss.
 - **Testing & debug overrides**: Added `?distract=` and `?imaging=donald` query switches, unit coverage in `tests/unit/distraction.test.ts`, and Playwright E2E coverage in `tests/e2e/distraction.spec.ts`.
 
-## Random Timed Trainees (Milestone 2)
+### Random Timed Trainees (Milestone 2)
 
 - **Random mid-shift trainee assignments**: Omar, Selina, and Elaine can receive trainees during shifts (`BALANCE.trainees`). Alan and Donald are technical/noncompliant specialists and reject trainee assignments.
 - **67% slowdown mechanics**: A trainee reduces helper movement speed, action/attack cadence, and raw output/damage to 33% (`statMult = 0.33`).
@@ -128,7 +132,7 @@
 - **ShiftSave persistence**: Remaining trainee game-time duration is tracked in `ShiftSave.trainees` and restored across save & quit / continue shift cycles.
 - **Testing & debug overrides**: Added `?trainee=` query parameter, unit coverage in `tests/unit/trainee.test.ts`, and Playwright e2e browser test coverage in `tests/e2e/trainee.spec.ts`.
 
-## Helper Call-Outs & Attendance (Milestone 1)
+### Helper Call-Outs & Attendance (Milestone 1)
 
 - **Independent helper attendance rolls per shift**: Each helper who waits in a room rolls once per shift independently, based on the shift seed and provider affinity (`BALANCE.attendance`).
 - **Doctor affinity odds**: Janeen/Dhiwya 3%, Lucien/Jason 6%, Ken 10%, Kaya/Raj/Lidiya 15%, Eugene/Dharma 22%, Amanda 40%.
