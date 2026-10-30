@@ -64,9 +64,10 @@ final class MoshiAndPalsUITests: XCTestCase {
         let app = XCUIApplication()
         app.launchArguments = ["-web-integration"]
         app.launch()
+        // CI's macOS runner needs ~40 s just to launch the app, then the web game boots
         let status = app.staticTexts["realGameStatus"]
-        XCTAssertTrue(status.waitForExistence(timeout: 45))
-        XCTAssertTrue(waitForLabel(status, "Web game ready", timeout: 45), "The real game must boot to its title screen and report ready")
+        XCTAssertTrue(status.waitForExistence(timeout: 90))
+        XCTAssertTrue(waitForLabel(status, "Web game ready", timeout: 90), "The real game must boot to its title screen and report ready")
 
         let web = app.webViews.firstMatch
         XCTAssertTrue(web.waitForExistence(timeout: 10))
@@ -104,8 +105,8 @@ final class MoshiAndPalsUITests: XCTestCase {
         add(attachment)
         app.terminate()
         app.launch()
-        XCTAssertTrue(status.waitForExistence(timeout: 45))
-        XCTAssertTrue(waitForLabel(status, "Web game ready", timeout: 45))
+        XCTAssertTrue(status.waitForExistence(timeout: 90))
+        XCTAssertTrue(waitForLabel(status, "Web game ready", timeout: 90))
     }
 
     /// README screenshots (CI runs this with TEST_RUNNER_SCREENSHOTS=1 and commits them to docs/screenshots).
