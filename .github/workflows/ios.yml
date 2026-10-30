@@ -2,14 +2,18 @@ name: iOS
 
 on:
   pull_request:
-    paths: &ios-paths
+    paths:
       - ios/**
       - src/core/native.ts
       - scripts/ios-bundle-web.sh
       - .github/workflows/ios.yml
   push:
     branches: [main]
-    paths: *ios-paths
+    paths:
+      - ios/**
+      - src/core/native.ts
+      - scripts/ios-bundle-web.sh
+      - .github/workflows/ios.yml
   workflow_dispatch:
     inputs:
       screenshots:
