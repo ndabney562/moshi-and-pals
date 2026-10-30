@@ -1,0 +1,77 @@
+{
+  "date": "2026-10-27",
+  "cliVersion": "0.66.0",
+  "gameSource": "330205bb9be1b00c97d6cfa351a0eb593df2c4b85b2a9c2f9c7ce977960220ca",
+  "publishedMerge": "fd005b3b48cc30cd79e5a753faf05db6adff426b",
+  "scope": "Read-only mechanics comparison; preserve top-down single-player mobile game",
+  "runs": [
+    {
+      "pass": "initial",
+      "modelsReported": [
+        "gemini-3.1-pro-preview-customtools",
+        "gemini-3-flash-preview"
+      ],
+      "tools": {
+        "totalCalls": 5,
+        "totalSuccess": 5,
+        "totalFail": 0,
+        "totalDurationMs": 50,
+        "totalDecisions": {
+          "accept": 5,
+          "reject": 0,
+          "modify": 0,
+          "auto_accept": 0
+        },
+        "byName": {
+          "read_file": {
+            "count": 5,
+            "success": 5,
+            "fail": 0,
+            "durationMs": 50,
+            "decisions": {
+              "accept": 5,
+              "reject": 0,
+              "modify": 0,
+              "auto_accept": 0
+            }
+          }
+        }
+      },
+      "completed": true
+    },
+    {
+      "pass": "refined",
+      "modelsReported": [
+        "gemini-3.1-pro-preview-customtools",
+        "gemini-3-flash-preview"
+      ],
+      "tools": {
+        "totalCalls": 3,
+        "totalSuccess": 3,
+        "totalFail": 0,
+        "totalDurationMs": 21,
+        "totalDecisions": {
+          "accept": 3,
+          "reject": 0,
+          "modify": 0,
+          "auto_accept": 0
+        },
+        "byName": {
+          "read_file": {
+            "count": 3,
+            "success": 3,
+            "fail": 0,
+            "durationMs": 21,
+            "decisions": {
+              "accept": 3,
+              "reject": 0,
+              "modify": 0,
+              "auto_accept": 0
+            }
+          }
+        }
+      },
+      "completed": true
+    }
+  ]
+}
