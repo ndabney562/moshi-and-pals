@@ -11,6 +11,7 @@ struct MoshiAndPalsApp: App {
         WindowGroup {
             RootView(game: environment.game)
                 .environment(environment.store)
+                .environment(environment.gameCenter)
                 .preferredColorScheme(environment.colorScheme)
         }
     }
@@ -25,6 +26,8 @@ struct AppEnvironment {
     var standIn: StandInGame?
     /// Forced by UI tests (`-ui-dark`) for dark mode screenshots; nil follows the system.
     var colorScheme: ColorScheme?
+    /// Only the real app signs in; tests never see Game Center.
+    var gameCenter: GameCenterService?
 
     static func make(arguments: [String] = ProcessInfo.processInfo.arguments) -> AppEnvironment {
         if arguments.contains("-ui-testing") {
@@ -41,7 +44,9 @@ struct AppEnvironment {
             return AppEnvironment(store: store, game: .web(WebGameHost(store: store, ephemeral: true)))
         }
         let store = GameStore(cache: FileSnapshotCache.standard(), haptics: UIKitHaptics())
-        return AppEnvironment(store: store, game: .web(WebGameHost(store: store)))
+        let gameCenter = GameCenterService()
+        gameCenter.start()
+        return AppEnvironment(store: store, game: .web(WebGameHost(store: store)), gameCenter: gameCenter)
     }
 }
 

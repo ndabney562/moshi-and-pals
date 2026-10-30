@@ -6,6 +6,14 @@
   declares no tracking and no collected data, plus the two required-reason APIs
   the app uses: `UserDefaults` (CA92.1, saves) and system uptime (35F9.1, the
   `GameStore` clock). Without it, App Store Connect rejects uploads (ITMS-91053).
+- **Game Center (iPhone app)**: the app signs in at launch and sends each
+  difficulty's best score to its leaderboard and each unlocked achievement to
+  Game Center, reading the snapshot the game already sends. The game itself and
+  the bridge are unchanged. Anything Game Center doesn't confirm is retried with
+  the next snapshot. Progress now has a Game Center button when you're signed in.
+  Today's Shift stays off Game Center. The IDs to create in App Store Connect are
+  listed in `docs/GAME-CENTER.md`. The web build is unchanged, and its online
+  leaderboard is still off.
 
 ## Spore Pod State Readability Prototype
 
