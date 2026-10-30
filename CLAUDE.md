@@ -3,6 +3,8 @@
 - Read `AGENTS.md` and `docs/GEMINI-BENCHMARK-WORKFLOW.md` for the user's standing
   preference: involve Gemini in substantial comparative design reviews, retain
   the top-down mobile game, and verify its suggestions against the actual code.
+  The Gemini CLI is no longer used (Oct 30, 2026); Gemini reviews run in
+  Antigravity, which Noah drives. See AGENTS.md.
 
 - Moshi and Pals: TypeScript + Phaser 3.90 + Vite, iPhone-first, deployed to GitHub Pages from `main`.
 - The native iPhone app lives in `ios/` (SwiftUI, MVVM, logic in the `ios/MoshiKit` package). It bundles the same web build and talks to it through `src/core/native.ts`. CI: `.github/workflows/ios.yml` on macOS. There's no Swift toolchain on Linux, so CI is the only check for Swift changes.

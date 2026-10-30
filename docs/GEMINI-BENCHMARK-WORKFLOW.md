@@ -1,5 +1,7 @@
 # Gemini comparative design workflow
 
+**Tool status (Oct 30, 2026):** the Gemini CLI is not used, because its model call hangs. Antigravity is the Google tool in use, with its own login and quota; Noah runs it. So an agent prepares the evidence packet below and asks Noah to run the review in Antigravity. If he can't, the agent says Gemini is unavailable and labels its own review "Claude only".
+
 User preference recorded October 27, 2026: use Gemini whenever practical to
 compare Moshi and Pals with successful cooperative FPS survival/horde modes.
 The user explicitly chose **keep top-down; benchmark mechanics**. Preserve
