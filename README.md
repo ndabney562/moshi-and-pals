@@ -78,7 +78,7 @@ Use Node 22 to match CI. The test tools are free and run locally.
 
 `npm run test:watch` watches unit tests. Set `REGRESSION_PORT` or `SMOKE_PORT` if the default local ports (4174 and 4173) are occupied. If browser downloads use a custom `PLAYWRIGHT_BROWSERS_PATH`, supply that same variable when running tests.
 
-The suite covers saves/migrations, rewards/purchases, equipment timing, seeded shifts, Pal dialogue selection, bridge commands, real browser transitions, mobile layouts, and controlled offline reload. Native bridge browser tests emulate the host; the simulator suite also boots the real bundled WKWebView, starts a shift, and relaunches the app. See [the remaster QA report](docs/REMASTER-v2-QA.md) for measured results and remaining checks.
+The suite covers saves/migrations, rewards/purchases, equipment timing, seeded shifts, Pal dialogue selection, bridge commands, real browser transitions, mobile layouts, and controlled offline reload. Native bridge browser tests emulate the host; the simulator suite also boots the real bundled WKWebView, starts a shift, and relaunches the app. See [the remaster QA report](docs/archive/REMASTER-v2-QA.md) for measured results and remaining checks.
 
 ## How it fits together
 

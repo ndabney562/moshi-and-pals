@@ -1,6 +1,6 @@
 # HANDOFF
 
-**Goal:** Take Moshi and Pals (v0.33.0) from "works" to an App Store-ready
+**Goal:** Take Moshi and Pals (now v0.35.0) from "works" to an App Store-ready
 iPhone game. Owner: Noah. Ask him before anything creative, irreversible or
 public-facing.
 
@@ -16,27 +16,31 @@ docs/MY_CONTRIBUTIONS.md, docs/APP-STORE.md. History: docs/HANDOFF-ARCHIVE.md.
   build number = commit count, logos painted off Kaya's cap (Noah approved),
   docs/APP-STORE.md. Noah has consent from every real person in the game.
 
+- Step 3, polish and weight: PR #94 merged to main (24dca68, Oct 30, 2026).
+  Lazy menu art, JPEG portraits and social card, bundle size budgets.
+
 ## In progress
-- Step 3 (polish and weight): branch `feat/polish-weight`, draft PR. Noah has the
-  title before/after preview. Merge when CI is green (Noah's standing OK).
-- Step 4 (hygiene) next. Branch facts gathered Oct 30, 2026: 68 remote branches
-  besides main; 64 merged; 3 unmerged but superseded (`rename-moshimonsters`,
-  `pal-lines` = v0.16.2, `claude/project-thread-ujfa6a` = v0.28.1). Ask Noah
-  before deleting any. Janeen and Amanda's numbers are intentional (Noah).
+- Step 4 (hygiene): branch `chore/hygiene`, stacked on #94. Version 0.35.0
+  (package.json, lockfile, MARKETING_VERSION x4); CHANGELOG grouped into
+  v0.34.0 and v0.35.0; one-off QA/audit docs and docs/reviews moved to
+  docs/archive/. Janeen and Amanda's numbers are intentional (Noah).
+- Branches: Noah deleted 67 stale remote branches (Oct 30, 2026). Their
+  commit IDs are in ~/Desktop/AI.Stuff/Local.Stuff/moshi-branch-backup-2026-10-30.txt
+  (outside the repo) for restoring any of them.
 
 ## Next step (exact)
-1. [Claude] Merge the polish PR when green. Then step 4 on a new branch: version
-   0.35.0 in package.json and MARKETING_VERSION (4 places in the pbxproj), group
-   the unversioned CHANGELOG headings into v0.34.0 (milestones 1 to 6, menu
-   remaster, Spore Pod) and v0.35.0 (App Store work and this polish), move
-   one-off QA/audit docs to docs/archive/. Ask Noah about deleting branches.
+1. [Claude] Open the hygiene PR against main and merge when green.
 2. [Noah] Team in Xcode, Game Center IDs, TestFlight (docs/APP-STORE.md).
-3. [Claude] Screenshots for the App Store (6.9" and 6.5" landscape).
+3. [Claude] Screenshots for the App Store (6.9" and 6.5" landscape); Noah picks
+   the scenes.
 
 ## Blockers
 - Apple Developer account and `DEVELOPMENT_TEAM` (Noah).
 
 ## Last test result
+- `chore/hygiene`, Oct 30, 2026, Noah's Mac: build OK (3,434 KB); unit
+  172/172; smoke 207/0; MoshiKit 29/29; xcodebuild test (iPhone 18 Pro
+  simulator) 5 passed, 1 skipped; built app reports 0.35.0.
 - `feat/polish-weight`, Oct 30, 2026, Noah's Mac: build OK (3,434 KB bundle);
   unit 172/172; bundle 7/7 (new size-budget test); Playwright 128 passed
   (Chromium + WebKit, after fixing the PWA spec); smoke 207/0; xcodebuild test
