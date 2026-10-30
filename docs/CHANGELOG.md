@@ -1,5 +1,12 @@
 # Changelog
 
+## App Store readiness
+
+- **iOS privacy manifest**: added `PrivacyInfo.xcprivacy` to the app bundle. It
+  declares no tracking and no collected data, plus the two required-reason APIs
+  the app uses: `UserDefaults` (CA92.1, saves) and system uptime (35F9.1, the
+  `GameStore` clock). Without it, App Store Connect rejects uploads (ITMS-91053).
+
 ## Spore Pod State Readability Prototype
 
 - **Enhanced Carapace Silhouette**: Added a reinforced forward-facing shield brow covering the front 120° protected arc on `germ-sporePod`, making its armored face instantly recognizable at any angle or scale on mobile.
