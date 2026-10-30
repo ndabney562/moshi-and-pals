@@ -47,14 +47,21 @@ docs/MY_CONTRIBUTIONS.md. CHANGELOG.md and BALANCE.md live in `docs/`.
   checks all menu texts, taps START SHIFT and relaunches.
 
 ## In progress
-- PR #92 (menus option A): its first iOS CI run failed in the real-game UI
-  test. The game booted to its title on CI, but the test's blind tap at
-  (0.5, 0.89) never started a shift and the 30 s wait was too short for the
-  starved runner. Fix pushed Oct 30, 2026: in `-web-integration` builds the
-  host counts the page's touches and reports where the START SHIFT pill is
-  (`webInputDiagnostic`); the test taps there, taps again if the page counted
-  no touch, and gives the shift 90 s. Waiting for iOS CI to go green, then
-  Noah merges.
+- PR #92 (menus option A): iOS CI is red for a CI-environment reason, not a
+  game bug. The workflow's simulator picker takes the newest iOS runtime (iOS
+  26.2, iPhone 17 Pro) while the runner's default Xcode is 16.4 (iOS 18.5 SDK).
+  That unsupported pairing breaks synthesized touches into the WKWebView: run 1
+  (8f8a46e) tapped START SHIFT with no effect; run 2 (d30cbaf, after the test
+  learned to tap where the page reports the pill and re-tap) crashed the app in
+  UIKit's gesture graph (`UIGestureGraphEdge`, SIGABRT) on the press. Both
+  runs passed locally on Xcode 27.1. Crash report:
+  xcresult artifact of run 41068034369.
+  **Fix pushed Oct 30, 2026 (Noah said go):** in
+  `.github/workflows/ios.yml` set `DEVELOPER_DIR` to the newest Xcode on the
+  image (`ls -d /Applications/Xcode_*.app | sort -V | tail -1`, 26.3 today) so
+  the toolchain matches the iOS 26 runtime, or make the picker choose an iOS
+  18.x runtime. Prefer the first: Noah builds with Xcode 27.1 locally.
+  Keep d30cbaf's test changes (they give better failure messages).
 
 ## Next step (exact)
 1. [Noah] Review and merge the menus option A PR. Then on a real phone: tap the
