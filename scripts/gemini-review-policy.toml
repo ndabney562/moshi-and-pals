@@ -1,0 +1,11 @@
+# Per-session comparison policy. Model tools may only read supplied files.
+# Apply this with --policy from a curated temporary packet directory.
+[[rule]]
+toolName = "*"
+decision = "deny"
+priority = 900
+
+[[rule]]
+toolName = "read_file"
+decision = "allow"
+priority = 950
