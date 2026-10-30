@@ -9,18 +9,20 @@ import { modifierById } from '../data/modifiers';
 import { achievementList } from './achievements';
 import { events, GameEvents, type HealthPayload } from './events';
 import { applyVolume } from './music';
-import { doctorUnlocked, hireDoctor, progress } from './progress';
+import { doctorUnlocked, progress } from './progress';
 import { dailyBest, loadSave } from './save';
 import { saveSettings, settings, type Settings } from './settings';
 import { setSfxMuted } from './sfx';
-import { chooseShift, dailyShift, localDate } from './shift';
+import { localDate, dailyShift } from './shift';
 import { savedShift } from './shiftSave';
 
 /**
- * NATIVE HOST: the iPhone app (ios/) runs this same build inside a WKWebView, opened with `?native`. There the
- * app's SwiftUI screens replace the title screen: Boot hands off to the empty Native scene, the app starts shifts
- * and opens the board or locker through `window.moshiNative`, and the game reports back (a snapshot of saved
- * progress, leaving to the menu, haptics) through `webkit.messageHandlers.moshi`. In a browser none of this runs.
+ * NATIVE HOST: the iPhone app (ios/) runs this same build inside a WKWebView, opened with `?native`. The game
+ * shows its own title screen and menus there, exactly as in a browser. The app adds what the web can't: a
+ * SwiftUI Settings sheet (the title's gear asks for it), Game Center (the LEADERBOARD tab asks for it) and
+ * haptics. The game reports back through `webkit.messageHandlers.moshi` (a snapshot of saved progress whenever
+ * the title shows or progress changes, `ready`, `playing`, `exit`, haptics) and takes settings changes through
+ * `window.moshiNative`. In a browser none of this runs.
  */
 export const NATIVE = hasNativeHost();
 
@@ -28,33 +30,16 @@ type NativeMessage = { type: string; [key: string]: unknown };
 
 function post(msg: NativeMessage): void { postNativeMessage(msg); }
 
-/** Settings the app may change from its own Settings screen and shift picker. */
+/** Settings the app may change from its Settings sheet. */
 const SETTABLE: (keyof Settings)[] = ['autoAim', 'sound', 'music', 'autoRefill', 'reducedMotion', 'character', 'difficulty'];
 
-let game: Phaser.Game | undefined;
-/** A start or open asked for before Boot finished; the Native scene runs it once it's up. */
-let pending: (() => void) | undefined;
-let idleTimer: ReturnType<typeof setTimeout> | undefined;
-let artSent = false;
-
-/** Everything the app's screens show, read fresh from the saves. `withArt` adds the Pals' and germs' pictures. */
-export function snapshot(withArt = false): NativeMessage {
+/** Everything the app reads (Game Center sends new bests and unlocks), read fresh from the saves. */
+export function snapshot(): NativeMessage {
   const save = loadSave();
   const prog = progress();
   const date = localDate();
   const best = dailyBest(date);
   const saved = savedShift();
-  const art: Record<string, string> = {};
-  if (withArt && game) {
-    const keys = [...CHARACTERS.map((c) => `${c.id}-held`), ...ATLAS.map((a) => `germ-${a.id}`)];
-    for (const key of keys) {
-      try {
-        if (game.textures.exists(key)) art[key] = game.textures.getBase64(key);
-      } catch {
-        // A picture the app can't have just shows its placeholder
-      }
-    }
-  }
   return {
     type: 'snapshot',
     version: __APP_VERSION__,
@@ -76,63 +61,31 @@ export function snapshot(withArt = false): NativeMessage {
       bestScore: best.bestScore, bestRound: best.bestRound, finished: best.finished, firstFinishCme: BALANCE.daily.firstFinishCme,
     },
     savedShift: saved ? { round: saved.round, difficulty: difficultyById(saved.shift.difficulty).name, daily: !!saved.shift.daily, character: saved.character } : null,
-    art,
   };
 }
 
 function sendSnapshot(): void {
-  post(snapshot(!artSent));
-  artSent = true;
+  post(snapshot());
 }
 
-/** Leaving a shift, the board or the locker: the browser game shows its title screen; the app takes over instead. */
+/** Leaving a shift, the board or the locker: back to the title screen (the app hears `exit` too). */
 export function toTitle(scene: Phaser.Scene): void {
-  if (!NATIVE) {
-    scene.scene.start('Title');
-    return;
-  }
-  scene.scene.start('Native');
-  post({ type: 'exit' });
+  scene.scene.start('Title');
+  if (NATIVE) post({ type: 'exit' });
 }
 
-/** Where the app goes from: an empty, dark scene that reports in when it starts and runs any pending request. */
-export class NativeScene extends Phaser.Scene {
-  constructor() {
-    super('Native');
-  }
-
-  create(): void {
-    sendSnapshot();
-    post({ type: 'ready' });
-    const run = pending;
-    pending = undefined;
-    if (run) run();
-    else idle();
-  }
+/** The title's gear: in the app it opens the SwiftUI Settings sheet. False in a browser (the gear toggles sound there). */
+export function openNativeSettings(): boolean {
+  if (!NATIVE) return false;
+  post({ type: 'openSettings' });
+  return true;
 }
 
-/** Nothing to draw behind the app's menus: let the game loop sleep (a start or open wakes it). */
-function idle(): void {
-  clearTimeout(idleTimer);
-  idleTimer = setTimeout(() => {
-    idleTimer = undefined;
-    if (game?.scene.isActive('Native') && !pending) game.loop.sleep();
-  }, 250);
-}
-
-/** Runs `fn` on the Native scene (now if it's up, otherwise as soon as it is). */
-function fromNative(fn: (scene: Phaser.Scene) => void): void {
-  // An older menu sleep must not strand a queued scene transition on a slow frame.
-  clearTimeout(idleTimer);
-  idleTimer = undefined;
-  const run = () => {
-    const scene = game?.scene.getScene('Native');
-    if (scene) fn(scene);
-  };
-  if (game?.scene.isActive('Native')) run();
-  else pending = run;
-  // wake() ticks synchronously: make the command available before that first tick.
-  game?.loop.wake();
+/** The LEADERBOARD tab and button: in the app they open Game Center. False in a browser (the web leaderboard shows there). */
+export function openNativeGameCenter(): boolean {
+  if (!NATIVE) return false;
+  post({ type: 'openGameCenter' });
+  return true;
 }
 
 let lastHp = -1;
@@ -160,31 +113,13 @@ function watchForHaptics(): void {
   events.on(GameEvents.AchievementUnlocked, () => haptic('achievement'));
   events.on(GameEvents.PlayerDied, () => {
     haptic('death');
-    // The records are written just after; the app's screens pick them up
+    // The records are written just after; Game Center picks them up
     setTimeout(sendSnapshot, 500);
   });
 }
 
-/** What the app can ask for (`window.moshiNative.start({ kind: 'daily' })` etc). */
+/** What the app can ask for (`window.moshiNative.setSettings({ sound: false })` etc). */
 const api = {
-  /** Starts a shift: a normal one, Today's Shift, or the saved one. */
-  start({ kind }: { kind?: 'normal' | 'daily' | 'resume' } = {}): void {
-    fromNative((scene) => {
-      const resume = kind === 'resume' && !!savedShift();
-      chooseShift(resume ? savedShift()?.shift.daily : kind === 'daily' ? localDate() : undefined);
-      scene.scene.start('Game', { resume });
-    });
-  },
-  /** Opens the Residency Board or the Equipment Locker (their BACK returns to the app). */
-  open(screen: 'board' | 'locker' | 'providers'): void {
-    fromNative((scene) => scene.scene.start(screen === 'providers' ? 'Providers' : screen === 'board' ? 'Board' : 'Locker'));
-  },
-  /** Hires a Pal with NPS Scores. True if it worked; a fresh snapshot follows either way. */
-  hire(id: string): boolean {
-    const ok = !doctorUnlocked(id) && hireDoctor(id);
-    sendSnapshot();
-    return ok;
-  },
   /** Changes settings (unknown keys and wrong types are ignored), applies sound and music, and saves. */
   setSettings(changes: Partial<Settings>): void {
     const target = settings as unknown as Record<string, unknown>;
@@ -207,14 +142,19 @@ const api = {
   },
 };
 
-/** Called once from main.ts. Only does anything inside the app. */
-export function installNativeBridge(g: Phaser.Game): void {
+/**
+ * Called once from main.ts. Only does anything inside the app: installs `window.moshiNative`, watches for
+ * haptics, and reports in (`snapshot`, then `ready`) every time the title screen comes up.
+ */
+export function installNativeBridge(game: Phaser.Game): void {
   if (!NATIVE) return;
-  game = g;
   (window as unknown as { moshiNative: typeof api }).moshiNative = api;
   watchForHaptics();
-  // Phaser restarts its loop when the app comes back to the foreground; back to sleep if the menus are up
-  g.events.on(Phaser.Core.Events.VISIBLE, () => {
-    if (g.scene.isActive('Native')) idle();
+  // The scenes exist once the game is ready; the title screen is created after Boot and after every exit
+  game.events.once(Phaser.Core.Events.READY, () => {
+    game.scene.getScene('Title')?.events.on(Phaser.Scenes.Events.CREATE, () => {
+      sendSnapshot();
+      post({ type: 'ready' });
+    });
   });
 }

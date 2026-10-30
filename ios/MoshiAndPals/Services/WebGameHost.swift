@@ -62,11 +62,19 @@ final class WebGameHost: NSObject, GameCommandSending {
             let message = try BridgeMessage.decode(body: body)
             store.receive(message)
             #if DEBUG
-            if message == .playing && ProcessInfo.processInfo.arguments.contains("-web-integration") {
-                DispatchQueue.main.asyncAfter(deadline: .now() + 1) { [weak self] in
-                    guard let view = self?.webView else { return }
-                    view.evaluateJavaScript("JSON.stringify({inner:[innerWidth,innerHeight],visual:[visualViewport.width,visualViewport.height],portrait:document.body.className,canvas:document.querySelector('canvas').getBoundingClientRect().toJSON(),parent:document.getElementById('game').getBoundingClientRect().toJSON()})") { [weak self] value, _ in
-                        self?.store.layoutDiagnostic = value as? String ?? "unavailable"
+            if ProcessInfo.processInfo.arguments.contains("-web-integration") {
+                if message == .playing {
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 1) { [weak self] in
+                        guard let view = self?.webView else { return }
+                        view.evaluateJavaScript("JSON.stringify({inner:[innerWidth,innerHeight],visual:[visualViewport.width,visualViewport.height],portrait:document.body.className,canvas:document.querySelector('canvas').getBoundingClientRect().toJSON(),parent:document.getElementById('game').getBoundingClientRect().toJSON()})") { [weak self] value, _ in
+                            self?.store.layoutDiagnostic = value as? String ?? "unavailable"
+                        }
+                    }
+                }
+                if message == .ready {
+                    // Every text on the title screen: the UI test checks the web menus are all there
+                    webView?.evaluateJavaScript("JSON.stringify(game.scene.getScene('Title').children.list.filter(c => c.text).map(c => c.text))") { [weak self] value, _ in
+                        self?.store.titleDiagnostic = value as? String ?? "unavailable"
                     }
                 }
             }
@@ -78,7 +86,7 @@ final class WebGameHost: NSObject, GameCommandSending {
 }
 
 extension WebGameHost: WKNavigationDelegate {
-    /// iOS can stop a backgrounded web page to save memory: start it again and go back to the menus.
+    /// iOS can stop a backgrounded web page to save memory: start it again (it boots back to its title screen).
     func webViewWebContentProcessDidTerminate(_ webView: WKWebView) {
         store.gameDidReset()
         load()

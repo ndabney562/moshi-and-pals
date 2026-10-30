@@ -1,20 +1,31 @@
 import MoshiKit
 import SwiftUI
 
-/// The Settings tab. Sound, music and gameplay switches are the same ones as the in-game pause menu.
-struct SettingsView: View {
+/// The Settings sheet, opened by the gear on the game's title screen. Sound, music and gameplay switches are
+/// the same ones as the in-game pause menu; haptics are the app's own.
+struct SettingsSheet: View {
     @Environment(GameStore.self) private var store
+    @Environment(\.dismiss) private var dismiss
     @State private var model: SettingsViewModel?
 
     var body: some View {
-        Group {
-            if let model {
-                SettingsForm(model: model)
-            } else {
-                Color.clear
+        NavigationStack {
+            Group {
+                if let model {
+                    SettingsForm(model: model)
+                } else {
+                    Color.clear
+                }
+            }
+            .navigationTitle("Settings")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Done") { dismiss() }
+                        .accessibilityIdentifier("settingsDoneButton")
+                }
             }
         }
-        .navigationTitle("Settings")
         .onAppear {
             if model == nil { model = SettingsViewModel(store: store) }
         }
@@ -70,6 +81,6 @@ private struct SettingsForm: View {
 }
 
 #Preview {
-    NavigationStack { SettingsView() }
+    SettingsSheet()
         .environment(GameStore(cache: MemorySnapshotCache(.sample)))
 }

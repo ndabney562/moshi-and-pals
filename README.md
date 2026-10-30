@@ -4,12 +4,12 @@ A comedic wave-survival game for iPhone. Dr. Eugene "Moshi" Moshkovich and his P
 
 It ships two ways from this one repo:
 
-- **iPhone app** (`ios/`): a native SwiftUI app with the game bundled inside. It works offline, has haptics, and supports dark mode and Dynamic Type.
+- **iPhone app** (`ios/`): a SwiftUI shell with the game bundled inside. It works offline and adds haptics, a native Settings sheet and Game Center.
 - **Web** at https://ndabney562.github.io/moshi-and-pals/ (in Safari: Share → Add to Home Screen).
 
-| Play | Progress | Settings (dark) | In a shift |
-|---|---|---|---|
-| ![Play tab](docs/screenshots/play-light.png) | ![Progress tab](docs/screenshots/progress-light.png) | ![Settings in dark mode](docs/screenshots/settings-dark.png) | ![A shift in the waiting room](docs/screenshots/game.png) |
+| Title screen | In a shift | Settings sheet (dark) |
+|---|---|---|
+| ![The title screen](docs/screenshots/remaster-title-phone.png) | ![A shift in the waiting room](docs/screenshots/game.png) | ![Settings in dark mode](docs/screenshots/settings-dark.png) |
 
 ## Features
 
@@ -23,10 +23,11 @@ It ships two ways from this one repo:
 
 What the iPhone app adds:
 
-- Native SwiftUI menus: pick a Pal and difficulty, Today's Shift, records, achievements, the Atlas and settings.
+- The same title screen and menus as the web (Providers, Locker, Board, Atlas, Today's Shift), so nothing is missing in the app.
+- A native Settings sheet behind the title's gear, with haptics and the app and game versions.
+- Game Center behind the LEADERBOARD tab: best scores per difficulty and achievements.
 - Haptics when you're hit, use a Sinus Purge, meet or beat a boss, or unlock something. You can turn them off.
-- Light and dark mode, Dynamic Type, VoiceOver labels, and colors that adapt to Increase Contrast.
-- Portrait menus and a landscape game. The game runs offline from a copy bundled in the app.
+- Landscape only. The game runs offline from a copy bundled in the app.
 
 ## Run the iPhone app
 
@@ -91,7 +92,7 @@ ios/
 scripts/ios-bundle-web.sh   builds the game into the app
 ```
 
-The app keeps one `WKWebView` running the bundled game. While the menus are showing, the game's loop is asleep. The SwiftUI screens send commands through `window.moshiNative`, like "start a shift", "open the board" or "change a setting". The game answers through a `WKScriptMessageHandler` with a snapshot of the saves, haptic cues, and "back to the menu". More detail is in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
+The app keeps one `WKWebView` running the bundled game, title screen included. The game talks to the app through a `WKScriptMessageHandler`: a snapshot of the saves (Game Center reads it), `ready`, `playing`, `exit`, haptic cues, and "open Settings" or "open Game Center" when the title's gear or LEADERBOARD tab is tapped. The Settings sheet changes settings through `window.moshiNative.setSettings`. More detail is in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 
 Docs live in [`docs/`](docs/): design, architecture, assets, backlog, bugs, balance, changelog, contributions. See [CONTRIBUTING.md](CONTRIBUTING.md) to help out.
 

@@ -4,10 +4,8 @@
 App Store-ready iPhone game. Owner: Noah. Ask him before anything creative,
 irreversible or public-facing.
 
-**Read first:** CLAUDE.md, README.md, docs/ROADMAP.md, docs/REMASTER-v2-QA.md,
-docs/MY_CONTRIBUTIONS.md. CHANGELOG.md and BALANCE.md live in `docs/` (CLAUDE.md
-wrongly says root). `AGENTS.md` and `docs/GEMINI-BENCHMARK-WORKFLOW.md` are
-referenced by CLAUDE.md but do not exist in the repo.
+**Read first:** CLAUDE.md, AGENTS.md, README.md, docs/ROADMAP.md,
+docs/MY_CONTRIBUTIONS.md. CHANGELOG.md and BALANCE.md live in `docs/`.
 
 ## Done
 - Phase 0 audit (Oct 30, 2026, from commit c4dc551). App Store gaps found:
@@ -38,26 +36,47 @@ referenced by CLAUDE.md but do not exist in the repo.
     set as CODE_SIGN_ENTITLEMENTS for the app.
   - `docs/GAME-CENTER.md` lists the IDs to create in App Store Connect.
 
+- Menus option A (Oct 30, 2026, branch `feat/menus-option-a`, draft PR). The
+  app shows the web title and menus; `?native` boots to Title and `toTitle()`
+  returns there. SwiftUI keeps the Settings sheet (the title's gear posts
+  `openSettings`), Game Center (the LEADERBOARD tab and game-over button post
+  `openGameCenter`), haptics and the landscape lock. PlayView, ProgressScreen
+  and their view models are deleted; `start`/`open`/`hire` and the art in the
+  snapshot are gone from the bridge. New tests: every title feature reachable in
+  `?native` (Playwright + smoke); iOS UI test boots the real game to its title,
+  checks all menu texts, taps START SHIFT and relaunches.
+
 ## In progress
-- Nothing.
+- Waiting for Noah to review the menus option A draft PR and for its iOS CI run.
 
 ## Next step (exact)
-1. [Noah] Set the Team in Xcode, and create the Game Center IDs in
-   `docs/GAME-CENTER.md`. Then test on a real phone: sign-in can't be checked in
-   an unsigned simulator build.
-2. [Any agent] Phase 2: a draft App Store listing (description, keywords, age
-   rating answers, privacy policy text) for Noah to approve. Nothing gets
-   published without him.
-3. [Any agent] Phase 3: a first-run onboarding review. Get a Gemini second
-   opinion first.
+1. [Noah] Review and merge the menus option A PR. Then on a real phone: tap the
+   gear (Settings sheet), tap LEADERBOARD (Game Center), play a shift.
+2. [Any agent] Step 2 of Noah's plan: App Store compliance. Privacy policy page
+   on GitHub Pages linked from Settings → About, build number from the CI run
+   number, docs/APP-STORE.md checklist. Noah supplies or approves the title art
+   without the NBA logo on Ken's cap.
+3. [Noah] Set the Team in Xcode and create the Game Center IDs in
+   `docs/GAME-CENTER.md`. Sign-in can't be checked in an unsigned simulator
+   build.
+4. [Any agent] Step 3: polish and weight (title-art seams at iPhone landscape
+   width, crowded top nav, PNG → WebP/JPEG with CI size budgets, lazy menu art,
+   WebKit cold start). Then step 4 hygiene (version bump, trim docs, stale
+   branches: ask Noah before deleting) and step 5 (ask Noah about Janeen and
+   Amanda's numbers).
 
 ## Blockers
 - `DEVELOPMENT_TEAM` and an Apple Developer account (Noah).
-- The second-opinion review process doc is missing (`docs/GEMINI-BENCHMARK-WORKFLOW.md`).
 
 ## Last test result
-- Oct 30, 2026, Node 24.22.1, after `npm ci`: `npm run test:all` exit 0. Unit:
-  173/173 passed. Playwright: 126 passed. Smoke: 206 passed, 0 failed.
+- Menus option A, Oct 30, 2026, on Noah's Mac: `npm run build` OK; unit
+  172/172; Playwright native, mobile, leaderboard and menu-design specs 40/40
+  (Chromium + WebKit); full smoke: see the PR description. `swift test`
+  (MoshiKit) 29/29. `xcodebuild test` on the iPhone simulator (Xcode 27.1): 4 UI
+  tests passed, 1 skipped (screenshots), including the real bundled game
+  booting to its title with every menu and starting a shift from it.
+- Earlier (main at 2fcf6fd): `npm run test:all` exit 0. Unit 173/173.
+  Playwright 126 passed. Smoke 206 passed, 0 failed.
 - iOS simulator build (Xcode 27.1, iPhone 18 Pro): BUILD SUCCEEDED, and
   `PrivacyInfo.xcprivacy` is in `MoshiAndPals.app`.
 - Phase 1, Oct 30, 2026: `swift test --package-path ios/MoshiKit` gives 39
@@ -68,7 +87,7 @@ referenced by CLAUDE.md but do not exist in the repo.
   build and the App Store Connect IDs.
 
 ## Last commit
-- See `git log feat/appstore-readiness -1`. It's based on c4dc551.
+- See `git log feat/menus-option-a -1`. It's based on main at 2fcf6fd.
 
 ## Agent / model + time
-- Claude Code (claude-opus-5-5), Oct 30, 2026.
+- Claude Code (claude-fable-5-1), Oct 30, 2026.

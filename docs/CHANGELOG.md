@@ -1,5 +1,24 @@
 # Changelog
 
+## iPhone app: the web title and menus (option A)
+
+- **The app shows the game's own title screen and menus.** `?native` boots to
+  Title like a browser does, and leaving a shift or menu returns to Title. The
+  SwiftUI tabs (Play, Progress) and their view models are gone; Providers,
+  Locker, Board, Atlas, Today's Shift, difficulty, mode and Flu Season are the
+  web's, so the app has every title-screen feature. The app is landscape only.
+- **SwiftUI keeps Settings, haptics and Game Center.** The title's gear posts
+  `openSettings` and the app shows its Settings sheet (sound, music, gameplay,
+  haptics, versions). The LEADERBOARD tab and the game-over LEADERBOARD button
+  post `openGameCenter` and the app opens the Game Center dashboard. The web
+  leaderboard is unchanged in browsers.
+- **Bridge trimmed.** The game no longer takes `start`, `open` or `hire` (the
+  title does those) and no longer sends the Pals' and germs' pictures; the
+  snapshot (read by Game Center), `ready`, `playing`, `exit` and haptics stay.
+- **Tests.** New Playwright and smoke checks that every title-screen feature is
+  reachable in `?native`; the iOS UI tests check the real bundled game boots to
+  a title with all its menus, starts a shift from it, and relaunches.
+
 ## App Store readiness
 
 - **iOS privacy manifest**: added `PrivacyInfo.xcprivacy` to the app bundle. It

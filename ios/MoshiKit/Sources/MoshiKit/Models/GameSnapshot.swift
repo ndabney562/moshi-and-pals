@@ -1,8 +1,8 @@
 import Foundation
 
-/// Everything the native screens show, as the bundled game reports it (`snapshot()` in src/core/native.ts).
-/// Decoding is forgiving: a missing field falls back to an empty value, so an older or newer game build
-/// never leaves the app without a menu.
+/// The game's saved progress, as the bundled game reports it (`snapshot()` in src/core/native.ts). Game Center
+/// reads the records and achievements; the Settings sheet reads the settings and version. Decoding is forgiving:
+/// a missing field falls back to an empty value, so an older or newer game build never breaks the app.
 public struct GameSnapshot: Codable, Equatable, Sendable {
     public var version: String
     public var settings: GameSettings
@@ -14,8 +14,6 @@ public struct GameSnapshot: Codable, Equatable, Sendable {
     public var atlas: [AtlasEntry]
     public var today: TodaysShift
     public var savedShift: SavedShift?
-    /// PNG data URLs keyed by texture name (`eugene-held`, `germ-basic`). Sent once per launch of the game.
-    public var art: [String: String]
 
     public init(
         version: String = "",
@@ -27,8 +25,7 @@ public struct GameSnapshot: Codable, Equatable, Sendable {
         achievements: [Achievement] = [],
         atlas: [AtlasEntry] = [],
         today: TodaysShift = TodaysShift(),
-        savedShift: SavedShift? = nil,
-        art: [String: String] = [:]
+        savedShift: SavedShift? = nil
     ) {
         self.version = version
         self.settings = settings
@@ -40,7 +37,6 @@ public struct GameSnapshot: Codable, Equatable, Sendable {
         self.atlas = atlas
         self.today = today
         self.savedShift = savedShift
-        self.art = art
     }
 
     public init(from decoder: Decoder) throws {
@@ -55,17 +51,10 @@ public struct GameSnapshot: Codable, Equatable, Sendable {
         atlas = try c.decodeIfPresent([AtlasEntry].self, forKey: .atlas) ?? []
         today = try c.decodeIfPresent(TodaysShift.self, forKey: .today) ?? TodaysShift()
         savedShift = try c.decodeIfPresent(SavedShift.self, forKey: .savedShift)
-        art = try c.decodeIfPresent([String: String].self, forKey: .art) ?? [:]
     }
 
     public func pal(id: String) -> Pal? { pals.first { $0.id == id } }
     public func difficulty(id: String) -> Difficulty? { difficulties.first { $0.id == id } }
-
-    /// The PNG bytes of a texture the game sent, if any.
-    public func artData(_ key: String) -> Data? {
-        guard let url = art[key], let comma = url.firstIndex(of: ",") else { return nil }
-        return Data(base64Encoded: String(url[url.index(after: comma)...]))
-    }
 }
 
 public struct GameSettings: Codable, Equatable, Sendable {
@@ -108,9 +97,6 @@ public struct Pal: Codable, Equatable, Identifiable, Sendable {
         self.price = price
         self.unlocked = unlocked
     }
-
-    /// The game's texture for their portrait.
-    public var artKey: String { "\(id)-held" }
 }
 
 /// A difficulty and this device's records on it.
@@ -189,7 +175,6 @@ public struct AtlasEntry: Codable, Equatable, Identifiable, Sendable {
         self.unlocked = unlocked
     }
 
-    public var artKey: String { "germ-\(id)" }
     /// 0...1 toward unlocking.
     public var fraction: Double { need > 0 ? min(1, Double(kills) / Double(need)) : 1 }
 }

@@ -7,20 +7,24 @@ public protocol GameCommandSending: AnyObject {
     func send(_ command: BridgeCommand)
 }
 
-/// The app's single source of truth: the game's latest snapshot, whether the game is up, and which game
-/// screen (if any) is showing. Screens read it through their view models; the game host feeds it messages.
+/// The app's single source of truth: the game's latest snapshot, whether the game is up or in a shift, and
+/// what the game has asked the app to show. The game host feeds it messages; the Settings sheet reads it.
 @MainActor
 @Observable
 public final class GameStore {
     public private(set) var snapshot: GameSnapshot
-    /// The game has booted and takes commands. Commands sent before then wait.
+    /// The game's title screen is up and it takes commands. Commands sent before then wait.
     public private(set) var isGameReady = false
     public private(set) var isShiftRunning = false
     #if DEBUG
     public var layoutDiagnostic = ""
+    /// The texts on the game's title screen (`-web-integration` builds), to check the web menus are all there.
+    public var titleDiagnostic = ""
     #endif
-    /// The game screen showing full screen, or nil for the native menus.
-    public var presentedScreen: GameScreen?
+    /// The game asked for the Settings sheet (the title's gear); the sheet clears it when dismissed.
+    public var isSettingsPresented = false
+    /// Runs when the game asks for Game Center (the LEADERBOARD tab). The app sets it; nil does nothing.
+    @ObservationIgnored public var onOpenGameCenter: (() -> Void)?
     public var hapticsEnabled: Bool {
         didSet { preferences.hapticsEnabled = hapticsEnabled }
     }
@@ -66,14 +70,15 @@ public final class GameStore {
             pending.forEach { sink?.send($0) }
         case .playing:
             isShiftRunning = true
-        case .snapshot(var next):
-            // Pictures come once per launch of the game; later snapshots keep them
-            if next.art.isEmpty { next.art = snapshot.art }
+        case .snapshot(let next):
             snapshot = next
             cache.save(next)
         case .exit:
             isShiftRunning = false
-            presentedScreen = nil
+        case .openSettings:
+            isSettingsPresented = true
+        case .openGameCenter:
+            onOpenGameCenter?()
         case .haptic(let kind):
             guard hapticsEnabled, throttle.allow(kind, at: clock()) else { return }
             haptics?.play(kind.style)
@@ -82,11 +87,11 @@ public final class GameStore {
         }
     }
 
-    /// The game's page went away (it crashed or is reloading): back to the menus until it reports in again.
+    /// The game's page went away (it crashed or is reloading): nothing to show until it reports in again.
     public func gameDidReset() {
         isGameReady = false
         isShiftRunning = false
-        presentedScreen = nil
+        isSettingsPresented = false
     }
 
     // MARK: To the game
@@ -95,25 +100,8 @@ public final class GameStore {
         if isGameReady, let sink {
             sink.send(command)
         } else {
-            // Only the last start or open counts (a double tap before the game is up starts one shift)
-            if command.isNavigation { queued.removeAll { $0.isNavigation } }
             queued.append(command)
         }
-    }
-
-    public func startShift(_ kind: ShiftKind) {
-        presentedScreen = .shift
-        send(.start(kind))
-    }
-
-    /// Opens the Residency Board or the Equipment Locker.
-    public func open(_ screen: GameScreen) {
-        presentedScreen = screen
-        send(.open(screen))
-    }
-
-    public func hire(_ palID: String) {
-        send(.hire(palID: palID))
     }
 
     public func update(_ patch: SettingsPatch) {
@@ -121,7 +109,7 @@ public final class GameStore {
         send(.setSettings(patch))
     }
 
-    /// A light tap for native controls (picking a Pal, toggles), if haptics are on.
+    /// A light tap for native controls (toggles), if haptics are on.
     public func selectionFeedback() {
         guard hapticsEnabled else { return }
         haptics?.play(.selection)

@@ -34,7 +34,7 @@ struct AppEnvironment {
             let defaults = UserDefaults(suiteName: "ui-testing") ?? .standard
             defaults.removePersistentDomain(forName: "ui-testing")
             let store = GameStore(cache: MemorySnapshotCache(.sample), preferences: AppPreferences(defaults: defaults))
-            let fake = StandInGame(store: store)
+            let fake = StandInGame()
             store.attach(fake)
             store.receive(.ready)
             return AppEnvironment(store: store, game: .standIn, standIn: fake, colorScheme: arguments.contains("-ui-dark") ? .dark : nil)
@@ -58,20 +58,9 @@ enum GameLayerKind {
 /// Accepts commands and does nothing: the UI tests' game.
 @MainActor
 final class StandInGame: GameCommandSending {
-    private let store: GameStore
-
-    init(store: GameStore) {
-        self.store = store
-    }
+    private(set) var sent: [BridgeCommand] = []
 
     func send(_ command: BridgeCommand) {
-        if case .hire(let id) = command {
-            var snapshot = store.snapshot
-            if let i = snapshot.pals.firstIndex(where: { $0.id == id }) {
-                snapshot.progress.nps -= snapshot.pals[i].price
-                snapshot.pals[i].unlocked = true
-            }
-            store.receive(.snapshot(snapshot))
-        }
+        sent.append(command)
     }
 }
