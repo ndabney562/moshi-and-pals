@@ -46,6 +46,15 @@ docs/MY_CONTRIBUTIONS.md. CHANGELOG.md and BALANCE.md live in `docs/`.
   `?native` (Playwright + smoke); iOS UI test boots the real game to its title,
   checks all menu texts, taps START SHIFT and relaunches.
 
+- Step 2, App Store compliance (Oct 30, 2026, branch `feat/app-store-compliance`,
+  draft PR stacked on #92). Privacy policy `public/privacy.html`, linked from
+  Settings → About (UI test `testSettingsLinksToThePrivacyPolicy`). Build
+  number = commit count via `scripts/ios-build-number.sh` (Xcode build phase
+  "Stamp the build number"; ios.yml fetches full history). Noah clarified the
+  cap belongs to Kaya, not Ken (the poster was already right); the team logo
+  and side brand mark are painted out of `title.jpg` and `social-card.png`
+  (OpenCV inpaint, cap kept). `docs/APP-STORE.md` is the checklist.
+
 ## In progress
 - PR #92 (menus option A): iOS CI is red for a CI-environment reason, not a
   game bug. The workflow's simulator picker takes the newest iOS runtime (iOS
@@ -62,6 +71,9 @@ docs/MY_CONTRIBUTIONS.md. CHANGELOG.md and BALANCE.md live in `docs/`.
   the toolchain matches the iOS 26 runtime, or make the picker choose an iOS
   18.x runtime. Prefer the first: Noah builds with Xcode 27.1 locally.
   Keep d30cbaf's test changes (they give better failure messages).
+
+- Step 2 PR: waiting for Noah to approve the painted cap (preview sent) and
+  merge after #92.
 
 ## Next step (exact)
 1. [Noah] Review and merge the menus option A PR. Then on a real phone: tap the
@@ -83,6 +95,9 @@ docs/MY_CONTRIBUTIONS.md. CHANGELOG.md and BALANCE.md live in `docs/`.
 - `DEVELOPMENT_TEAM` and an Apple Developer account (Noah).
 
 ## Last test result
+- Step 2 branch, Oct 30, 2026, on Noah's Mac: build OK (14 bundle files incl.
+  privacy.html); unit 172/172; smoke 207/0; MoshiKit 29/29; xcodebuild test 5
+  passed, 1 skipped; the built app's CFBundleVersion is 295 = commit count.
 - CI-fix commit on `feat/menus-option-a`, Oct 30, 2026, on Noah's Mac:
   `npm run build` OK; unit 172/172; smoke 207 passed, 0 failed; `swift test`
   (MoshiKit) 29/29; `xcodebuild test` on the booted iPhone simulator (Xcode

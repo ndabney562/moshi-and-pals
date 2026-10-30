@@ -1,5 +1,17 @@
 # Changelog
 
+## App Store compliance
+
+- **Privacy policy.** `privacy.html` on the site says the game collects no personal data; the
+  only thing that leaves the phone is Game Center scores and achievements, when you're signed in.
+  Settings → About links to it.
+- **Build numbers count up by themselves.** An Xcode build phase sets the build number to the commit
+  count, so every archive from main is higher than the last. iOS CI fetches the full history for it.
+- **No logos on Kaya's cap.** The team logo and the small brand mark are painted out of the title
+  poster and the social card. The cap stays.
+- **`docs/APP-STORE.md`**: what's done, what Noah does before the first upload (consent from the
+  real people in the game, App Store Connect answers, screenshots) and the TestFlight steps.
+
 ## iPhone app: the web title and menus (option A)
 
 - **The app shows the game's own title screen and menus.** `?native` boots to
