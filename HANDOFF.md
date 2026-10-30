@@ -72,8 +72,9 @@ docs/MY_CONTRIBUTIONS.md. CHANGELOG.md and BALANCE.md live in `docs/`.
   18.x runtime. Prefer the first: Noah builds with Xcode 27.1 locally.
   Keep d30cbaf's test changes (they give better failure messages).
 
-- Step 2 PR: waiting for Noah to approve the painted cap (preview sent) and
-  merge after #92.
+- Step 2 PR #93: Noah approved the painted cap and has consent from every real
+  person in the game (Oct 30, 2026); privacy contact stays GitHub issues.
+  Merge order: #92 when iOS CI is green, then retarget #93 to main.
 
 ## Next step (exact)
 1. [Noah] Review and merge the menus option A PR. Then on a real phone: tap the

@@ -12,18 +12,17 @@ Status as of Oct 30, 2026. **[Noah]** marks steps only Noah can do (Apple accoun
 - No team or brand logos in the art: the logos on Kaya's cap are painted out of `title.jpg` and
   `social-card.png`.
 - Game Center entitlement; IDs to create are in `docs/GAME-CENTER.md`.
+- Consent: Noah has OK'd it with everyone the game depicts or names (confirmed Oct 30, 2026).
+  Noah approved the painted cap the same day.
 
 ## Before the first upload
-1. **[Noah] Written OK from the real people in the game.** Kaya and Lucien (playable), and also Ken,
-   Diamond, Omar, Alan and any other coworker named in `src/data/`. A text or email that says they
-   agree to appear in a public App Store game is enough to keep on file.
-2. **[Noah] App Store Connect record.** Bundle ID `com.ndabney562.moshiandpals`, name "Moshi & Pals"
+1. **[Noah] App Store Connect record.** Bundle ID `com.ndabney562.moshiandpals`, name "Moshi & Pals"
    (must be unique on the store), primary category Games › Action.
-3. **[Noah] URLs.** Privacy Policy URL: the page above. Support URL (required):
+2. **[Noah] URLs.** Privacy Policy URL: the page above. Support URL (required):
    https://github.com/ndabney562/moshi-and-pals/issues, or an email page if you prefer.
-4. **[Noah] App Privacy answers:** "Data Not Collected". Game Center scores go to Apple, and Apple says
+3. **[Noah] App Privacy answers:** "Data Not Collected". Game Center scores go to Apple, and Apple says
    developers don't disclose data Apple collects.
-5. **[Noah] Age rating questionnaire** (Apple computes the rating from these):
+4. **[Noah] Age rating questionnaire** (Apple computes the rating from these):
    | Question | Answer | Why |
    |---|---|---|
    | Cartoon or Fantasy Violence | Frequent/Intense | spraying germs is the whole game |
@@ -32,7 +31,7 @@ Status as of Oct 30, 2026. **[Noah]** marks steps only Noah can do (Apple accoun
    | Medical/Treatment Information | Infrequent/Mild | joke prescriptions, not advice |
    | Everything else (gambling, sexual content, horror, user-generated content, web access) | None/No | |
    Expect 13+. Removing the profanity would likely lower it.
-6. **Screenshots, landscape** (3 to 10 each; an agent can capture them, Noah picks the scenes):
+5. **Screenshots, landscape** (3 to 10 each; an agent can capture them, Noah picks the scenes):
    | Display | Size (px) | Simulator |
    |---|---|---|
    | 6.9" | 2868 × 1320 | iPhone Pro Max |

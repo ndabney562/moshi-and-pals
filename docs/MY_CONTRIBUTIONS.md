@@ -21,6 +21,7 @@
 - Asked to save progress when quitting mid-game; picked "start of that round" for where a saved shift picks up (v0.31.0).
 - Made the title poster (title screen since v0.5.2; redone as Moshi and Pals in v0.5.6; all four doctors in v0.18.0).
 - Decided Ken shows as just "Ken" and Diamond loses her flag pin.
+- Got consent from everyone the game depicts or names, and approved the logo-free cap (it's Kaya's cap, not Ken's) for the App Store (Oct 30, 2026).
 - Asked for a native iPhone app (SwiftUI, buildable from GitHub) and picked the native shell with the game bundled inside (v0.32.0).
 
 ## Requested now
