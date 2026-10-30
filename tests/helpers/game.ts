@@ -47,9 +47,10 @@ export async function start(page: Page, query?: string) {
   await tapObject(page, 'Title', 'tap');
   await active(page, 'Hud');
 }
+/** Taps a game object of a scene by property name (a dotted path reaches into components, e.g. `topHeader.settingsButton`). */
 export async function tapObject(page: Page, scene: string, property: string) {
   const point = await page.evaluate(([key, field]) => {
-    const object = window.game.scene.getScene(key)[field];
+    const object = field.split('.').reduce((o: any, k: string) => o[k], window.game.scene.getScene(key));
     const box = window.game.canvas.getBoundingClientRect();
     const bounds = object.getBounds();
     const isPortrait = document.body.classList.contains('portrait');

@@ -4,7 +4,7 @@ import { progress, doctorUnlocked } from '../core/progress';
 import { settings, saveSettings } from '../core/settings';
 import { characterById } from '../data/characters';
 import { readSafeArea } from '../core/safeArea';
-import { toTitle } from '../core/native';
+import { NATIVE, openNativeGameCenter, openNativeSettings, toTitle } from '../core/native';
 
 export type MenuTabId = 'title' | 'providers' | 'locker' | 'board' | 'atlas' | 'leaderboard';
 
@@ -123,6 +123,8 @@ export function renderMenuTopPanel(
       btn.on('pointerout', () => { if (hoveredTab === tab.id) { hoveredTab = null; layout(); } });
       btn.on('pointerdown', (_p: Phaser.Input.Pointer, _x: number, _y: number, e: any) => {
         e?.stopPropagation?.();
+        // In the iPhone app the leaderboard is Game Center
+        if (tab.id === 'leaderboard' && openNativeGameCenter()) return;
         const data = tab.id === 'leaderboard' ? { returnTo: 'Title' } : tab.sceneData;
         transitionTo(scene, tab.targetScene, data);
       });
@@ -157,7 +159,8 @@ export function renderMenuTopPanel(
     color: '#f0fdfa',
   }).setOrigin(1, 0.5).setDepth(102);
 
-  const settingsButton = scene.add.text(0, 0, settings.sound ? '⚙️' : '🔇', {
+  // The gear opens the iPhone app's Settings sheet; in a browser it toggles sound and music
+  const settingsButton = scene.add.text(0, 0, settings.sound || NATIVE ? '⚙️' : '🔇', {
     fontFamily: MENU.font,
     fontSize: '16px',
     padding: { x: 6, y: 4 },
@@ -165,6 +168,7 @@ export function renderMenuTopPanel(
 
   settingsButton.on('pointerdown', (_p: Phaser.Input.Pointer, _x: number, _y: number, e: any) => {
     e?.stopPropagation?.();
+    if (openNativeSettings()) return;
     settings.sound = !settings.sound;
     settings.music = settings.sound;
     saveSettings();

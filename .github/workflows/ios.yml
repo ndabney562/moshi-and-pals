@@ -27,7 +27,7 @@ concurrency:
 
 jobs:
   build-and-test:
-    runs-on: macos-15
+    runs-on: macos-26
     timeout-minutes: 45
     permissions:
       contents: write
@@ -38,6 +38,14 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
+
+      # The image's default Xcode (16.4) is older than its newest iOS simulator runtime (26.x), which the
+      # simulator picker below chooses. That pairing breaks synthesized touches in the web view (PR #92), so
+      # build with the newest Xcode on the image to match the runtime.
+      - name: Use the newest Xcode
+        run: |
+          XCODE=$(ls -d /Applications/Xcode_*.app | sort -V | tail -1)
+          echo "DEVELOPER_DIR=$XCODE/Contents/Developer" >> "$GITHUB_ENV"
 
       - name: Xcode version
         run: xcodebuild -version

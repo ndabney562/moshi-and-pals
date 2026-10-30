@@ -2,7 +2,7 @@ import MoshiKit
 import SwiftUI
 import WebKit
 
-/// The game itself, full screen: the web view, a short "scrubbing in" cover while it gets going, or an
+/// The game itself, full screen: the web view, a short "scrubbing in" cover while it boots, or an
 /// explanation if this build has no game files.
 struct GameLayer: View {
     let kind: GameLayerKind
@@ -31,6 +31,12 @@ struct GameLayer: View {
                 Text(store.layoutDiagnostic)
                     .frame(width: 1, height: 1).clipped()
                     .accessibilityIdentifier("webLayoutDiagnostic")
+                Text(store.titleDiagnostic)
+                    .frame(width: 1, height: 1).clipped()
+                    .accessibilityIdentifier("webTitleDiagnostic")
+                Text(store.inputDiagnostic)
+                    .frame(width: 1, height: 1).clipped()
+                    .accessibilityIdentifier("webInputDiagnostic")
                 #endif
                 Text(store.isShiftRunning ? "Shift in progress" : store.isGameReady ? "Web game ready" : "Web game loading")
                     .font(.caption)
@@ -39,7 +45,7 @@ struct GameLayer: View {
                     .frame(maxHeight: .infinity, alignment: .top)
             }
 
-            if store.presentedScreen != nil && !store.isGameReady && isWeb {
+            if !store.isGameReady && isWeb {
                 ScrubbingInView()
                     .transition(.opacity)
             }
@@ -92,8 +98,6 @@ private struct ScrubbingInView: View {
 
 /// Shown only by a build made without Node.js (the game files are bundled by scripts/ios-bundle-web.sh).
 private struct MissingGameView: View {
-    @Environment(GameStore.self) private var store
-
     var body: some View {
         VStack(spacing: Theme.Spacing.m) {
             Image(systemName: "shippingbox")
@@ -104,29 +108,31 @@ private struct MissingGameView: View {
             Text("Install Node.js 22 (brew install node), then build again in Xcode.")
                 .font(Theme.Typography.body)
                 .multilineTextAlignment(.center)
-            Button("Back to the menu") { store.presentedScreen = nil }
-                .buttonStyle(.primary)
-                .frame(maxWidth: 320)
         }
         .foregroundStyle(Theme.Palette.onHero)
         .padding(Theme.Spacing.xl)
     }
 }
 
-/// The UI tests' game: names the screen it stands in for and leaves like the real one does.
+/// The UI tests' game: a stand-in for the web page, with buttons that send the messages its title screen would.
 private struct StandInGameView: View {
     @Environment(GameStore.self) private var store
 
     var body: some View {
         VStack(spacing: Theme.Spacing.m) {
-            Text(store.presentedScreen.map { "Game: \($0.rawValue)" } ?? "")
+            Text(store.isShiftRunning ? "Game: shift" : "Game: title")
                 .font(Theme.Typography.title)
                 .foregroundStyle(Theme.Palette.onHero)
                 .accessibilityIdentifier("gameScreen")
-            Button("End Shift") { store.receive(.exit) }
-                .buttonStyle(.primary)
-                .frame(maxWidth: 320)
-                .accessibilityIdentifier("endShiftButton")
+            HStack(spacing: Theme.Spacing.s) {
+                Button("Settings") { store.receive(.openSettings) }
+                    .accessibilityIdentifier("webSettingsGear")
+                Button("Leaderboard") { store.receive(.openGameCenter) }
+                    .accessibilityIdentifier("webLeaderboardTab")
+                Button(store.isShiftRunning ? "End Shift" : "Start Shift") { store.receive(store.isShiftRunning ? .exit : .playing) }
+                    .accessibilityIdentifier(store.isShiftRunning ? "webEndShift" : "webStartShift")
+            }
+            .buttonStyle(.secondary)
         }
         .padding(Theme.Spacing.xl)
     }

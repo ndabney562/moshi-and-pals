@@ -3,7 +3,7 @@ import { ProvidersScene } from './scenes/ProvidersScene';
 import { viewportSize } from './core/viewport';
 import { DISPLAY } from './config/display';
 import { DEBUG } from './core/debug';
-import { installNativeBridge, NATIVE, NativeScene } from './core/native';
+import { installNativeBridge, NATIVE } from './core/native';
 import { resumeAudio } from './core/sfx';
 import { registerOffline, watchForUpdates } from './core/updates';
 import { applyOrientation, isPortrait, patchForPortrait } from './core/orientation';
@@ -44,7 +44,7 @@ const game = new Phaser.Game({
   physics: { default: 'arcade', arcade: { debug: false } },
   input: { activePointers: 3 },
   render: { antialias: true, powerPreference: 'high-performance' },
-  scene: [BootScene, ProvidersScene, TitleScene, GameScene, HudScene, GameOverScene, BoardScene, LockerScene, LeaderboardScene, NativeScene],
+  scene: [BootScene, ProvidersScene, TitleScene, GameScene, HudScene, GameOverScene, BoardScene, LockerScene, LeaderboardScene],
 });
 
 patchForPortrait(game);
@@ -90,7 +90,7 @@ document.addEventListener('gesturestart', (e) => e.preventDefault());
 document.addEventListener('dblclick', (e) => e.preventDefault());
 
 // Works offline from the Home Screen, and notices when a newer build is live
-// (the iPhone app ships its own copy of the game, so it needs neither)
+// (the iPhone app ships its own copy of the game, so it needs neither; it gets the bridge instead)
 if (NATIVE) installNativeBridge(game);
 else {
   registerOffline();

@@ -1,24 +1,5 @@
 import Foundation
 
-/// The kind of shift to start.
-public enum ShiftKind: String, Codable, Sendable {
-    case normal
-    /// Today's Shift.
-    case daily
-    /// The shift kept with SAVE & QUIT.
-    case resume
-}
-
-/// Screens of the game the app opens full screen.
-public enum GameScreen: String, Codable, Identifiable, Sendable {
-    case shift
-    case board
-    case locker
-    case providers
-
-    public var id: String { rawValue }
-}
-
 /// Settings the app may change (only the keys set are sent).
 public struct SettingsPatch: Encodable, Equatable, Sendable {
     public var autoAim: Bool?
@@ -40,7 +21,7 @@ public struct SettingsPatch: Encodable, Equatable, Sendable {
         self.difficulty = difficulty
     }
 
-    /// Applies the patch to local settings, so the screens update before the game confirms.
+    /// Applies the patch to local settings, so the sheet updates before the game confirms.
     public func applied(to settings: GameSettings) -> GameSettings {
         var s = settings
         if let autoAim { s.autoAim = autoAim }
@@ -54,33 +35,17 @@ public struct SettingsPatch: Encodable, Equatable, Sendable {
     }
 }
 
-/// A request to the bundled game (`window.moshiNative` in src/core/native.ts).
+/// A request to the bundled game (`window.moshiNative` in src/core/native.ts). The game's own title screen
+/// starts shifts and opens menus; the app only changes settings and asks for a fresh snapshot.
 public enum BridgeCommand: Equatable, Sendable {
-    case start(ShiftKind)
-    case open(GameScreen)
-    case hire(palID: String)
     case setSettings(SettingsPatch)
     case refresh
-
-    /// Starts a shift or opens a screen.
-    public var isNavigation: Bool {
-        switch self {
-        case .start, .open: return true
-        default: return false
-        }
-    }
 
     /// The JavaScript that runs it. Arguments are JSON-encoded, so no value can break out of the call.
     /// Does nothing if the game hasn't installed its bridge (a page that failed to load).
     public var javaScript: String {
         let call: String
         switch self {
-        case .start(let kind):
-            call = "start(\(Self.json(["kind": kind.rawValue])))"
-        case .open(let screen):
-            call = "open(\(Self.json(screen.rawValue)))"
-        case .hire(let id):
-            call = "hire(\(Self.json(id)))"
         case .setSettings(let patch):
             call = "setSettings(\(Self.json(patch)))"
         case .refresh:

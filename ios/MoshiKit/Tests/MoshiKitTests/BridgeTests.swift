@@ -10,6 +10,8 @@ final class BridgeMessageTests: XCTestCase {
         XCTAssertEqual(try decode(#"{"type":"ready"}"#), .ready)
         XCTAssertEqual(try decode(#"{"type":"playing"}"#), .playing)
         XCTAssertEqual(try decode(#"{"type":"exit"}"#), .exit)
+        XCTAssertEqual(try decode(#"{"type":"openSettings"}"#), .openSettings)
+        XCTAssertEqual(try decode(#"{"type":"openGameCenter"}"#), .openGameCenter)
         XCTAssertEqual(try decode(#"{"type":"haptic","kind":"purge"}"#), .haptic(.purge))
     }
 
@@ -34,8 +36,7 @@ final class BridgeMessageTests: XCTestCase {
          "achievements":[{"id":"firstKill","name":"Hand Hygiene Compliant","how":"Disinfect a germ","unlocked":true}],
          "atlas":[{"id":"basic","name":"Basic Germ","note":"Round.","kills":30,"need":25,"unlocked":true}],
          "today":{"date":"2026-10-21","mods":[{"id":"fullMoon","name":"Full Moon","icon":"🌕","blurb":"Weird."}],"bestScore":0,"bestRound":0,"finished":0,"firstFinishCme":2},
-         "savedShift":null,
-         "art":{"eugene-held":"data:image/png;base64,iVBORw0KGgo="}}
+         "savedShift":null}
         """
         guard case .snapshot(let snap) = try decode(json) else { return XCTFail("expected a snapshot") }
         XCTAssertEqual(snap.version, "v0.31.0 (abc1234)")
@@ -45,8 +46,11 @@ final class BridgeMessageTests: XCTestCase {
         XCTAssertEqual(snap.totals.totalKills, 250)
         XCTAssertEqual(snap.today.mods.first?.icon, "🌕")
         XCTAssertNil(snap.savedShift)
-        XCTAssertEqual(snap.artData("eugene-held"), Data([0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A]))
-        XCTAssertNil(snap.artData("germ-basic"))
+    }
+
+    func testOlderGameBuildsWithPicturesStillDecode() throws {
+        guard case .snapshot(let snap) = try decode(#"{"type":"snapshot","version":"v0.33.0","art":{"eugene-held":"data:image/png;base64,AA=="}}"#) else { return XCTFail("expected a snapshot") }
+        XCTAssertEqual(snap.version, "v0.33.0")
     }
 
     func testSnapshotWithMissingFieldsFallsBackToEmpty() throws {
@@ -64,11 +68,8 @@ final class BridgeMessageTests: XCTestCase {
 
 final class BridgeCommandTests: XCTestCase {
     func testJavaScriptForEachCommand() {
-        XCTAssertEqual(BridgeCommand.start(.daily).javaScript, #"window.moshiNative && window.moshiNative.start({"kind":"daily"});"#)
-        XCTAssertEqual(BridgeCommand.open(.board).javaScript, #"window.moshiNative && window.moshiNative.open("board");"#)
-        XCTAssertEqual(BridgeCommand.open(.providers).javaScript, #"window.moshiNative && window.moshiNative.open("providers");"#)
-        XCTAssertEqual(BridgeCommand.hire(palID: "ken").javaScript, #"window.moshiNative && window.moshiNative.hire("ken");"#)
         XCTAssertEqual(BridgeCommand.refresh.javaScript, "window.moshiNative && window.moshiNative.refresh();")
+        XCTAssertEqual(BridgeCommand.setSettings(SettingsPatch(character: "ken")).javaScript, #"window.moshiNative && window.moshiNative.setSettings({"character":"ken"});"#)
     }
 
     func testSettingsSendOnlyWhatChanged() {
@@ -77,15 +78,8 @@ final class BridgeCommandTests: XCTestCase {
     }
 
     func testArgumentsCannotBreakOutOfTheCall() {
-        let js = BridgeCommand.hire(palID: #"x"); alert(1); ("#).javaScript
-        XCTAssertEqual(js, #"window.moshiNative && window.moshiNative.hire("x\"); alert(1); (");"#)
-    }
-
-    func testNavigationCommands() {
-        XCTAssertTrue(BridgeCommand.start(.normal).isNavigation)
-        XCTAssertTrue(BridgeCommand.open(.locker).isNavigation)
-        XCTAssertFalse(BridgeCommand.refresh.isNavigation)
-        XCTAssertFalse(BridgeCommand.hire(palID: "kaya").isNavigation)
+        let js = BridgeCommand.setSettings(SettingsPatch(character: #"x"); alert(1); ("#)).javaScript
+        XCTAssertEqual(js, #"window.moshiNative && window.moshiNative.setSettings({"character":"x\"); alert(1); ("});"#)
     }
 
     func testPatchAppliesOnlySetFields() {

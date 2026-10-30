@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { toTitle } from '../core/native';
+import { openNativeGameCenter, toTitle } from '../core/native';
 import { COLORS } from '../config/theme';
 import type { RunResult } from '../core/events';
 import { CREDITS } from '../data/miracleCure';
@@ -165,6 +165,7 @@ export class GameOverScene extends Phaser.Scene {
     const by = Math.min(height - 56, cy + ch + 70);
     this.makeButton(width / 2 - 250, by, 250, 'PLAY AGAIN', 0x2a9d8f, () => this.scene.start('Game', { resume: false }));
     this.makeButton(width / 2 + 10, by, 220, 'LEADERBOARD', 0x1f4f55, () => {
+      if (openNativeGameCenter()) return;
       this.scene.pause('GameOver');
       this.scene.launch('Leaderboard', {
         returnTo: 'GameOver',

@@ -52,47 +52,43 @@ final class GameStoreTests: XCTestCase {
     func testCommandsWaitForTheGame() {
         let (store, sink, _) = makeStore()
         store.update(SettingsPatch(sound: false))
-        store.startShift(.normal)
+        store.update(SettingsPatch(music: false))
         XCTAssertTrue(sink.sent.isEmpty)
-        XCTAssertEqual(store.presentedScreen, .shift)
         store.receive(.ready)
-        XCTAssertEqual(sink.sent, [.setSettings(SettingsPatch(sound: false)), .start(.normal)])
+        XCTAssertEqual(sink.sent, [.setSettings(SettingsPatch(sound: false)), .setSettings(SettingsPatch(music: false))])
         store.refreshAfterReady()
         XCTAssertEqual(sink.sent.last, .refresh, "once ready, commands go straight through")
     }
 
-    func testOnlyTheLastNavigationWaits() {
-        let (store, sink, _) = makeStore()
-        store.startShift(.normal)
-        store.startShift(.daily)
-        store.open(.board)
-        store.receive(.ready)
-        XCTAssertEqual(sink.sent, [.open(.board)])
-    }
-
-    func testSnapshotsAreCachedAndKeepTheirPictures() {
-        var first = GameSnapshot.sample
-        first.art = ["eugene-held": "data:image/png;base64,AA=="]
+    func testSnapshotsAreCached() {
         let (store, _, cache) = makeStore(snapshot: nil)
-        store.receive(.snapshot(first))
-        var second = GameSnapshot.sample
-        second.totals.runs = 99
-        store.receive(.snapshot(second))
+        var next = GameSnapshot.sample
+        next.totals.runs = 99
+        store.receive(.snapshot(next))
         XCTAssertEqual(store.snapshot.totals.runs, 99)
-        XCTAssertEqual(store.snapshot.art["eugene-held"], "data:image/png;base64,AA==")
         XCTAssertEqual(cache.stored?.totals.runs, 99)
     }
 
-    func testExitAndResetReturnToTheMenus() {
+    func testTheGameAsksForTheSettingsSheetAndGameCenter() {
         let (store, _, _) = makeStore()
+        var gameCenterOpened = 0
+        store.onOpenGameCenter = { gameCenterOpened += 1 }
         store.receive(.ready)
-        store.open(.locker)
-        store.receive(.exit)
-        XCTAssertNil(store.presentedScreen)
-        store.startShift(.normal)
+        XCTAssertFalse(store.isSettingsPresented)
+        store.receive(.openSettings)
+        XCTAssertTrue(store.isSettingsPresented)
+        store.receive(.openGameCenter)
+        XCTAssertEqual(gameCenterOpened, 1)
+        store.receive(.playing)
         store.gameDidReset()
-        XCTAssertNil(store.presentedScreen)
+        XCTAssertFalse(store.isSettingsPresented, "a reloaded game comes back to its title with no sheet over it")
         XCTAssertFalse(store.isGameReady)
+    }
+
+    func testGameCenterRequestsWithNoHandlerAreHarmless() {
+        let (store, _, _) = makeStore()
+        store.receive(.openGameCenter)
+        XCTAssertFalse(store.isSettingsPresented)
     }
 
     func testHapticsRespectTheSwitchAndTheThrottle() {

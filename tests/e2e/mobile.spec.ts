@@ -84,11 +84,13 @@ test('waking the native game reconciles orientation even when resize events are 
   });
   await page.goto('./?native&god&seed=123');
   await page.waitForFunction(() => window.__native.some((message) => message.type === 'ready'));
+  // iOS pauses the page in the background; it comes back rotated with no resize event delivered
   await page.evaluate(() => window.game.loop.sleep());
   await page.setViewportSize({ width: 852, height: 393 });
-  await page.evaluate(() => window.moshiNative.start());
-  await active(page, 'Hud');
+  await page.evaluate(() => window.game.loop.wake());
   await expect(page.locator('body')).not.toHaveClass(/portrait/);
+  await tapObject(page, 'Title', 'tap');
+  await active(page, 'Hud');
   await expect.poll(() => page.locator('#game').evaluate((parent) => parent.getBoundingClientRect().height)).toBe(393);
   await expect.poll(() => page.locator('canvas').evaluate((canvas) => canvas.getBoundingClientRect().bottom)).toBeLessThanOrEqual(394);
 });

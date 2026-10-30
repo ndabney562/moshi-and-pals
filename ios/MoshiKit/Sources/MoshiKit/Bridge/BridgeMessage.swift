@@ -2,14 +2,18 @@ import Foundation
 
 /// A message from the bundled game (`post()` in src/core/native.ts).
 public enum BridgeMessage: Equatable, Sendable {
-    /// The game finished booting (or came back to the menu) and takes commands.
+    /// The title screen is up (after booting, and after every shift or menu) and the game takes commands.
     case ready
-    /// The real web game has initialized a playable shift.
+    /// A shift started.
     case playing
     /// Saved progress changed.
     case snapshot(GameSnapshot)
-    /// The player left a shift, the board or the locker.
+    /// The player left a shift, the board or the locker for the title screen.
     case exit
+    /// The title's gear: show the Settings sheet.
+    case openSettings
+    /// The LEADERBOARD tab or button: show Game Center.
+    case openGameCenter
     case haptic(HapticKind)
     /// Something this app version doesn't know (a newer game build): ignored.
     case unknown(String)
@@ -33,6 +37,10 @@ public enum BridgeMessage: Equatable, Sendable {
             return .playing
         case "exit":
             return .exit
+        case "openSettings":
+            return .openSettings
+        case "openGameCenter":
+            return .openGameCenter
         case "snapshot":
             return .snapshot(try JSONDecoder().decode(GameSnapshot.self, from: data))
         case "haptic":

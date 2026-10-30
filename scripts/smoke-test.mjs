@@ -2449,8 +2449,8 @@ try {
     check(cureErrors.length === 0, `no errors in the Miracle Cure${cureErrors.length ? ': ' + cureErrors.join(' | ') : ''}`);
     await mc.close();
   }
-  // The iPhone app (ios/): ?native boots into the empty Native scene instead of the title, sends the app a snapshot
-  // (with the Pals' and germs' pictures), opens the board and comes back, then starts a shift when asked
+  // The iPhone app (ios/): ?native shows the same title screen, sends the app a snapshot and `ready`, opens the
+  // board and comes back (`exit`), asks the app for its Settings sheet and Game Center, and starts a shift (`playing`)
   {
     const nc = await browser.newContext({ viewport: { width: 852, height: 393 }, deviceScaleFactor: 1, isMobile: true, hasTouch: true });
     await nc.addInitScript(() => {
@@ -2465,19 +2465,25 @@ try {
     await np.waitForFunction(() => window.__native.some((m) => m.type === 'ready'));
     const snap = await np.evaluate(() => {
       const s = window.__native.find((m) => m.type === 'snapshot');
-      return { pals: s.pals.length, achievements: s.achievements.length, atlas: s.atlas.length, art: (s.art['eugene-held'] ?? '').startsWith('data:image/png'), title: window.game.scene.isActive('Title') };
+      return { pals: s.pals.length, achievements: s.achievements.length, atlas: s.atlas.length, art: 'art' in s, title: window.game.scene.isActive('Title') };
     });
-    check(snap.pals === 11 && snap.achievements > 20 && snap.atlas > 10 && snap.art && !snap.title,
-      `native: boots to the app's menu with a snapshot (${JSON.stringify(snap)})`);
-    await np.evaluate(() => window.moshiNative.open('board'));
+    check(snap.pals === 11 && snap.achievements > 20 && snap.atlas > 10 && !snap.art && snap.title,
+      `native: boots to the title screen with a snapshot (${JSON.stringify(snap)})`);
+    const press = (scene, path) => np.evaluate(([key, p]) => p.split('.').reduce((o, k) => o[k], window.game.scene.getScene(key)).emit('pointerdown', {}, 0, 0, { stopPropagation() {} }), [scene, path]);
+    await press('Title', 'boardButton');
     await np.waitForFunction(() => window.game.scene.isActive('Board'));
     await np.evaluate(() => window.game.scene.getScene('Board').children.list.find((c) => c.text === 'BACK').emit('pointerup'));
-    await np.waitForFunction(() => window.game.scene.isActive('Native') && window.__native.some((m) => m.type === 'exit'));
+    await np.waitForFunction(() => window.game.scene.isActive('Title') && window.__native.some((m) => m.type === 'exit'));
     await np.evaluate(() => window.moshiNative.setSettings({ difficulty: 'walkIn', sound: 'loud' }));
     const set = await np.evaluate(() => JSON.parse(localStorage.getItem('moshi.settings.v1')));
     check(set.difficulty === 'walkIn' && set.sound === true, `native: settings from the app are saved, bad ones ignored (${set.difficulty}, ${set.sound})`);
-    await np.evaluate(() => window.moshiNative.start({ kind: 'daily' }));
-    await np.waitForFunction(() => window.game.scene.isActive('Hud'), null, { timeout: 60000 });
+    await press('Title', 'topHeader.settingsButton');
+    await press('Title', 'leaderboardButton');
+    const asked = await np.evaluate(() => window.__native.filter((m) => m.type === 'openSettings' || m.type === 'openGameCenter').map((m) => m.type));
+    check(asked.join() === 'openSettings,openGameCenter' && await np.evaluate(() => window.game.scene.isActive('Title')),
+      `native: the gear and LEADERBOARD ask the app for Settings and Game Center (${asked.join(', ')})`);
+    await press('Title', 'tap');
+    await np.waitForFunction(() => window.game.scene.isActive('Hud') && window.__native.some((m) => m.type === 'playing'), null, { timeout: 60000 });
     check(nativeErrors.length === 0, `native: no errors${nativeErrors.length ? ': ' + nativeErrors.join(' | ') : ''}`);
     await nc.close();
   }

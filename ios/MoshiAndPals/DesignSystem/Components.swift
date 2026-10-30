@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// The big filled button (Start Shift, Clock In).
+/// The big filled button.
 struct PrimaryButtonStyle: ButtonStyle {
     @Environment(\.isEnabled) private var isEnabled
 
@@ -36,93 +36,4 @@ extension ButtonStyle where Self == PrimaryButtonStyle {
 
 extension ButtonStyle where Self == SecondaryButtonStyle {
     static var secondary: SecondaryButtonStyle { SecondaryButtonStyle() }
-}
-
-/// A rounded surface that groups related content.
-struct Card<Content: View>: View {
-    @ViewBuilder var content: Content
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: Theme.Spacing.s) {
-            content
-        }
-        .padding(Theme.Spacing.m)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Theme.Palette.surface, in: RoundedRectangle(cornerRadius: Theme.Radius.l, style: .continuous))
-    }
-}
-
-/// A section title above a card.
-struct SectionHeader: View {
-    let title: String
-    var trailing: String?
-
-    var body: some View {
-        HStack(alignment: .firstTextBaseline) {
-            Text(title)
-                .font(Theme.Typography.title)
-                .foregroundStyle(Theme.Palette.textPrimary)
-                .accessibilityAddTraits(.isHeader)
-            Spacer()
-            if let trailing {
-                Text(trailing)
-                    .font(Theme.Typography.headline)
-                    .foregroundStyle(Theme.Palette.highlight)
-            }
-        }
-    }
-}
-
-/// A number with a label under it (records, lifetime totals).
-struct StatTile: View {
-    let value: String
-    let label: String
-    let symbol: String
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: Theme.Spacing.xxs) {
-            Image(systemName: symbol)
-                .font(.title3)
-                .foregroundStyle(Theme.Palette.brand)
-                .accessibilityHidden(true)
-            Text(value)
-                .font(Theme.Typography.stat)
-                .foregroundStyle(Theme.Palette.textPrimary)
-                .minimumScaleFactor(0.6)
-                .lineLimit(1)
-            Text(label)
-                .font(Theme.Typography.caption)
-                .foregroundStyle(Theme.Palette.textSecondary)
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(Theme.Spacing.s)
-        .background(Theme.Palette.surface, in: RoundedRectangle(cornerRadius: Theme.Radius.m, style: .continuous))
-        .accessibilityElement(children: .ignore)
-        .accessibilityLabel("\(label): \(value)")
-    }
-}
-
-/// A picture the game drew (a Pal or a germ), or an SF Symbol until the game has sent it.
-struct GameArt: View {
-    let data: Data?
-    let placeholder: String
-    var rotation: Angle = .zero
-
-    var body: some View {
-        if let data, let image = UIImage(data: data) {
-            Image(uiImage: image)
-                .resizable()
-                .interpolation(.high)
-                .scaledToFit()
-                .rotationEffect(rotation)
-                .accessibilityHidden(true)
-        } else {
-            Image(systemName: placeholder)
-                .resizable()
-                .scaledToFit()
-                .padding(Theme.Spacing.s)
-                .foregroundStyle(Theme.Palette.textSecondary)
-                .accessibilityHidden(true)
-        }
-    }
 }
