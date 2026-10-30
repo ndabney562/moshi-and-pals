@@ -17,7 +17,10 @@
   snapshot (read by Game Center), `ready`, `playing`, `exit` and haptics stay.
 - **Tests.** New Playwright and smoke checks that every title-screen feature is
   reachable in `?native`; the iOS UI tests check the real bundled game boots to
-  a title with all its menus, starts a shift from it, and relaunches.
+  a title with all its menus, starts a shift from it, and relaunches. The
+  real-game test taps START SHIFT where the page reports the pill is, taps again
+  if the page counted no touch (CI's starved runner can lose one), and gives the
+  shift 90 s to start.
 
 ## App Store readiness
 

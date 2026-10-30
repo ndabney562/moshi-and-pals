@@ -34,6 +34,9 @@ struct GameLayer: View {
                 Text(store.titleDiagnostic)
                     .frame(width: 1, height: 1).clipped()
                     .accessibilityIdentifier("webTitleDiagnostic")
+                Text(store.inputDiagnostic)
+                    .frame(width: 1, height: 1).clipped()
+                    .accessibilityIdentifier("webInputDiagnostic")
                 #endif
                 Text(store.isShiftRunning ? "Shift in progress" : store.isGameReady ? "Web game ready" : "Web game loading")
                     .font(.caption)

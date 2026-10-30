@@ -47,7 +47,14 @@ docs/MY_CONTRIBUTIONS.md. CHANGELOG.md and BALANCE.md live in `docs/`.
   checks all menu texts, taps START SHIFT and relaunches.
 
 ## In progress
-- Waiting for Noah to review the menus option A draft PR and for its iOS CI run.
+- PR #92 (menus option A): its first iOS CI run failed in the real-game UI
+  test. The game booted to its title on CI, but the test's blind tap at
+  (0.5, 0.89) never started a shift and the 30 s wait was too short for the
+  starved runner. Fix pushed Oct 30, 2026: in `-web-integration` builds the
+  host counts the page's touches and reports where the START SHIFT pill is
+  (`webInputDiagnostic`); the test taps there, taps again if the page counted
+  no touch, and gives the shift 90 s. Waiting for iOS CI to go green, then
+  Noah merges.
 
 ## Next step (exact)
 1. [Noah] Review and merge the menus option A PR. Then on a real phone: tap the
@@ -69,6 +76,10 @@ docs/MY_CONTRIBUTIONS.md. CHANGELOG.md and BALANCE.md live in `docs/`.
 - `DEVELOPMENT_TEAM` and an Apple Developer account (Noah).
 
 ## Last test result
+- CI-fix commit on `feat/menus-option-a`, Oct 30, 2026, on Noah's Mac:
+  `npm run build` OK; unit 172/172; smoke 207 passed, 0 failed; `swift test`
+  (MoshiKit) 29/29; `xcodebuild test` on the booted iPhone simulator (Xcode
+  27.1): 4 UI tests passed, 1 skipped, the real-game test in 28 s.
 - Menus option A, Oct 30, 2026, on Noah's Mac: `npm run build` OK; unit
   172/172; Playwright native, mobile, leaderboard and menu-design specs 40/40
   (Chromium + WebKit); full smoke: see the PR description. `swift test`

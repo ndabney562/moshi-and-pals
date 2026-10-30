@@ -20,6 +20,8 @@ public final class GameStore {
     public var layoutDiagnostic = ""
     /// The texts on the game's title screen (`-web-integration` builds), to check the web menus are all there.
     public var titleDiagnostic = ""
+    /// How many touches the game's page has seen and where its START SHIFT pill is (`-web-integration` builds).
+    public var inputDiagnostic = ""
     #endif
     /// The game asked for the Settings sheet (the title's gear); the sheet clears it when dismissed.
     public var isSettingsPresented = false

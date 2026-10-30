@@ -81,9 +81,23 @@ final class MoshiAndPalsUITests: XCTestCase {
             XCTAssertTrue(texts.contains { $0.contains(feature) }, "\(feature) missing from the title screen: \(texts)")
         }
 
-        // START SHIFT is the hero pill at the bottom middle of the title (TitleScene.layout)
-        web.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.89)).tap()
-        XCTAssertTrue(waitForLabel(status, "Shift in progress", timeout: 30))
+        // Tap START SHIFT where the page says the pill is. CI's starved runner can lose a synthesized touch before
+        // the web content process sees it, so tap again until the page has counted one; then the fade-out and
+        // GameScene boot get up to 90 s there.
+        let input = app.staticTexts["webInputDiagnostic"]
+        XCTAssertTrue(waitForValue(input, timeout: 30) { Self.inputReport($0)?.startShiftOffset != nil },
+                      "The title must report where START SHIFT is: \(input.exists ? input.label : "no diagnostic")")
+        var report = try XCTUnwrap(Self.inputReport(input.label))
+        var taps = 0
+        while report.touches == 0 && taps < 5 {
+            web.coordinate(withNormalizedOffset: try XCTUnwrap(report.startShiftOffset)).press(forDuration: 0.1)
+            taps += 1
+            _ = waitForValue(input, timeout: 10) { (Self.inputReport($0)?.touches ?? 0) > 0 }
+            report = try XCTUnwrap(Self.inputReport(input.label))
+        }
+        XCTAssertGreaterThan(report.touches, 0, "The page saw no touch after \(taps) taps at \(String(describing: report.startShift))")
+        XCTAssertTrue(waitForLabel(status, "Shift in progress", timeout: 90),
+                      "A tap on START SHIFT must start a shift (\(taps) taps, the page saw \(report.touches); status: \(status.label))")
 
         let diagnostic = app.staticTexts["webLayoutDiagnostic"]
         XCTAssertTrue(diagnostic.waitForExistence(timeout: 10))
@@ -130,6 +144,31 @@ final class MoshiAndPalsUITests: XCTestCase {
         attachment.name = name
         attachment.lifetime = .keepAlways
         add(attachment)
+    }
+
+    /// What the real game reports through `webInputDiagnostic` (WebGameHost, `-web-integration` builds).
+    private struct InputReport: Decodable {
+        let touches: Int
+        let startShift: [Double]?
+        var startShiftOffset: CGVector? {
+            guard let startShift, startShift.count == 2 else { return nil }
+            return CGVector(dx: startShift[0], dy: startShift[1])
+        }
+    }
+
+    private static func inputReport(_ label: String) -> InputReport? {
+        label.data(using: .utf8).flatMap { try? JSONDecoder().decode(InputReport.self, from: $0) }
+    }
+
+    /// Polls an element's label until `condition` holds (the game's diagnostics refresh about once a second).
+    @MainActor
+    private func waitForValue(_ element: XCUIElement, timeout: TimeInterval, _ condition: (String) -> Bool) -> Bool {
+        let deadline = Date().addingTimeInterval(timeout)
+        while true {
+            if element.exists, condition(element.label) { return true }
+            if Date() >= deadline { return false }
+            RunLoop.current.run(until: Date().addingTimeInterval(0.5))
+        }
     }
 
     /// Waits for an element's label (the game's messages aren't instant).
