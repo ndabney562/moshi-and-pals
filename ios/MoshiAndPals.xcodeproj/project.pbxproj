@@ -90,6 +90,7 @@
 				E503B88588DB8CA2F5F9AD82 /* Frameworks */,
 				B90248296684F4B9D9A7FA70 /* Resources */,
 				60514BBC297F18C431A6827C /* Bundle the game */,
+				7A1C0B5E2D4F6A8B9C0D1E2F /* Stamp the build number */,
 			);
 			buildRules = (
 			);
@@ -205,6 +206,27 @@
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
 			shellScript = "\"${SRCROOT}/../scripts/ios-bundle-web.sh\"\n";
+			showEnvVarsInLog = 0;
+		};
+		7A1C0B5E2D4F6A8B9C0D1E2F /* Stamp the build number */ = {
+			isa = PBXShellScriptBuildPhase;
+			alwaysOutOfDate = 1;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+				"$(TARGET_BUILD_DIR)/$(INFOPLIST_PATH)",
+			);
+			name = "Stamp the build number";
+			outputFileListPaths = (
+			);
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "\"${SRCROOT}/../scripts/ios-build-number.sh\"\n";
 			showEnvVarsInLog = 0;
 		};
 /* End PBXShellScriptBuildPhase section */

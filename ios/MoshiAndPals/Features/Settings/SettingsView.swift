@@ -75,6 +75,12 @@ private struct SettingsForm: View {
                         Label("Play in the browser", systemImage: "safari")
                     }
                 }
+                if let url = URL(string: "https://ndabney562.github.io/moshi-and-pals/privacy.html") {
+                    Link(destination: url) {
+                        Label("Privacy Policy", systemImage: "hand.raised")
+                    }
+                    .accessibilityIdentifier("privacyPolicyLink")
+                }
             }
         }
     }

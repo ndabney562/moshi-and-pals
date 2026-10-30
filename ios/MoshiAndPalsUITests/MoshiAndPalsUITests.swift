@@ -35,6 +35,22 @@ final class MoshiAndPalsUITests: XCTestCase {
     }
 
     @MainActor
+    func testSettingsLinksToThePrivacyPolicy() {
+        let app = launch()
+        let gear = app.buttons["webSettingsGear"]
+        XCTAssertTrue(gear.waitForExistence(timeout: 10))
+        gear.tap()
+        XCTAssertTrue(app.switches["soundToggle"].waitForExistence(timeout: 5))
+        // About is the last section of a landscape sheet: scroll until the list has built it
+        // (A SwiftUI Link isn't always a button to XCUITest, so match it by identifier alone)
+        let link = app.descendants(matching: .any)["privacyPolicyLink"]
+        let list = app.collectionViews.firstMatch.exists ? app.collectionViews.firstMatch : app.tables.firstMatch
+        for _ in 0..<8 where !link.exists { list.swipeUp() }
+        XCTAssertTrue(link.exists, "Settings → About must link to the privacy policy (App Store requirement)")
+        XCTAssertEqual(link.label, "Privacy Policy")
+    }
+
+    @MainActor
     func testShiftsStartAndEndInTheGame() {
         let app = launch()
         let screen = app.staticTexts["gameScreen"]
